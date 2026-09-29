@@ -7,3 +7,10 @@ ftfy>=6.1
 regex>=2023.0
 imageio>=2.34
 imageio-ffmpeg>=0.5
+# ControlSketch (Stable Diffusion 1.5 + ControlNet, condition detectors, captioning)
+diffusers==0.40.0
+transformers==5.17.0
+tokenizers==0.23.2
+safetensors==0.8.0
+huggingface_hub==1.33.0
+accelerate==1.15.0

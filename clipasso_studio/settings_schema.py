@@ -241,7 +241,6 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("diffusion_guidance_scale", 100, "int", "sds", cli="diffusion_guidance_scale", minimum=1, maximum=200),
     Param("diffusion_timesteps", 1000, "int", "sds", cli="diffusion_timesteps", minimum=100, maximum=1000, step=50),
     Param("lr", 0.8, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
-    Param("lr_scheduler", False, "bool", "optim", cli="lr_scheduler"),
     Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
 ) + _hardware()
 
@@ -259,6 +258,7 @@ CONTROL_EXCLUDED_ARGS: dict[str, str] = {
     "experiment_name": "Weights & Biases online logging is not part of the desktop app",
     "batch_size": "always a single image",
     "diffusion_model": "not used by the original code (Stable Diffusion 1.5 is hard-coded)",
+    "lr_scheduler": "not used by the original code (constant learning rate)",
 }
 
 # ControlSketch defaults that differ from config.py (documented in the README).

@@ -34,7 +34,8 @@ _IGNORED = {
                     ("--save_svg", int), ("--save_final_sketch_in_dict", int), ("--batch_size", int),
                     ("--use_wandb", int), ("--wandb_user", str), ("--wandb_name", str),
                     ("--wandb_project_name", str), ("--experiment_name", str), ("--title", str)),
-    "controlsketch": (("--save_svg_in_dict", int), ("--diffusion_model", str), ("--batch_size", int),
+    "controlsketch": (("--save_svg_in_dict", int), ("--diffusion_model", str), ("--lr_scheduler", int),
+                      ("--batch_size", int),
                       ("--use_wandb", int), ("--wandb_user", str), ("--wandb_name", str),
                       ("--wandb_project_name", str), ("--experiment_name", str)),
 }

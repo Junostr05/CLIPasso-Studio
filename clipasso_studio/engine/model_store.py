@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -68,6 +69,113 @@ def _clip_spec(name: str, bundled: bool, size: int, stored_mb: int) -> ModelSpec
         kind="clip",
     )
 
+
+@dataclass(frozen=True)
+class HFFile:
+    remote: str  # path inside the Hugging Face repository
+    local: str  # path inside the model folder
+    size: int | None = None  # expected download size (checked when given)
+    fp16: bool = False  # store floating point tensors as float16
+
+
+_HF = "https://huggingface.co"
+
+
+def _hf_spec(key: str, folder: str, repo: str, revision: str, files, stored_mb: int) -> ModelSpec:
+    """A model made of several files of a Hugging Face repository (pinned revision), stored in
+    ``folder``; ``folder/manifest.json`` marks a complete installation."""
+    files = tuple(f if isinstance(f, HFFile) else HFFile(*f) for f in files)
+    return ModelSpec(
+        key=key,
+        filename=f"{folder}/manifest.json",
+        urls=(f"{_HF}/{repo}",),
+        download_sha256=None,
+        download_size=sum(f.size or 0 for f in files),
+        stored_size_mb=stored_mb,
+        bundled=False,
+        kind="hf",
+        extra={"repo": repo, "revision": revision, "files": files},
+    )
+
+
+def _controlnet_spec(condition: str, repo: str, revision: str) -> ModelSpec:
+    return _hf_spec(f"controlnet:{condition}", f"controlsketch/controlnet-{condition}", repo, revision, (
+        ("config.json", "config.json"),
+        ("diffusion_pytorch_model.safetensors", "diffusion_pytorch_model.safetensors", 1_445_157_124, True),
+    ), 723)
+
+
+_SD15 = ("stable-diffusion-v1-5/stable-diffusion-v1-5", "451f4fe16113bff5a5d2269ed5ad43b0592e9a14")
+_SDXL = ("stabilityai/stable-diffusion-xl-base-1.0", "462165984030d82259a11f4367a4eed129e94a7b")
+
+
+def _tokenizer_files(folder: str) -> tuple:
+    return tuple((f"{folder}/{n}", f"{folder}/{n}") for n in
+                 ("merges.txt", "special_tokens_map.json", "tokenizer_config.json", "vocab.json"))
+
+
+CONTROLSKETCH_SPECS = (
+    # Stable Diffusion 1.5 (CreativeML OpenRAIL-M) – UNet, VAE, text encoder for the SDS loss
+    _hf_spec("sd15", "controlsketch/sd15", *_SD15, (
+        ("scheduler/scheduler_config.json", "scheduler/scheduler_config.json"),
+        ("text_encoder/config.json", "text_encoder/config.json"),
+        ("text_encoder/model.fp16.safetensors", "text_encoder/model.safetensors", 246_144_864),
+        *_tokenizer_files("tokenizer"),
+        ("unet/config.json", "unet/config.json"),
+        ("unet/diffusion_pytorch_model.fp16.safetensors", "unet/diffusion_pytorch_model.safetensors",
+         1_719_125_304),
+        ("vae/config.json", "vae/config.json"),
+        ("vae/diffusion_pytorch_model.fp16.safetensors", "vae/diffusion_pytorch_model.safetensors", 167_335_342),
+    ), 2135),
+    # ControlNet 1.0 models (OpenRAIL) – one per condition
+    _controlnet_spec("depth", "lllyasviel/sd-controlnet-depth", "35e42a3ea49845b3c76f202f145f257b9fb1b7d4"),
+    _controlnet_spec("canny", "lllyasviel/sd-controlnet-canny", "7f2f69197050967007f6bbd23ab5e52f0384162a"),
+    _controlnet_spec("hed", "lllyasviel/sd-controlnet-hed", "04473d9334ab44908daa66107bbfb6f710aa056d"),
+    _controlnet_spec("scribble", "lllyasviel/sd-controlnet-scribble", "864edcd5ccc6ee2695eeebea5b4512100c83e7b3"),
+    _controlnet_spec("seg", "lllyasviel/sd-controlnet-seg", "ecdcb5645b5099c9a7500a504fb9ab3f743c4d96"),
+    _controlnet_spec("normal", "lllyasviel/sd-controlnet-normal", "1cbed9b3ca84422e4a2f23c14b9f5a114742b31d"),
+    # condition detectors
+    _hf_spec("dpt-hybrid", "controlsketch/dpt-hybrid-midas", "Intel/dpt-hybrid-midas",
+             "11eaf7a1cf4bd70740697dbc216f98980c0aeb03", (
+                 ("config.json", "config.json"),
+                 ("pytorch_model.bin", "model.safetensors", 489_648_389, True),
+             ), 245),
+    _hf_spec("hed", "controlsketch/hed", "lllyasviel/Annotators", "982e7edaec38759d914a963c48c4726685de7d96", (
+        ("ControlNetHED.pth", "ControlNetHED.safetensors", 29_444_406),
+    ), 29),
+    _hf_spec("upernet", "controlsketch/upernet-convnext-small", "openmmlab/upernet-convnext-small",
+             "550b68d291f9a7e4874065c6eec0676b2ba821e6", (
+                 ("config.json", "config.json"),
+                 ("pytorch_model.bin", "model.safetensors", 327_701_893, True),
+             ), 164),
+    # automatic caption when no caption is given (BLIP instead of the 15 GB BLIP-2 OPT-2.7b)
+    _hf_spec("blip", "controlsketch/blip-image-captioning-large", "Salesforce/blip-image-captioning-large",
+             "353689b859fcf0523410b1806dace5fb46ecdf41", (
+                 ("config.json", "config.json"),
+                 ("preprocessor_config.json", "preprocessor_config.json"),
+                 ("special_tokens_map.json", "special_tokens_map.json"),
+                 ("tokenizer.json", "tokenizer.json"),
+                 ("tokenizer_config.json", "tokenizer_config.json"),
+                 ("vocab.txt", "vocab.txt"),
+                 ("model.safetensors", "model.safetensors", 1_879_014_680, True),
+             ), 940),
+    # SDXL cross-attention for the stroke initialisation (attn_model = diffusion)
+    _hf_spec("sdxl", "controlsketch/sdxl-base-1.0", *_SDXL, (
+        ("model_index.json", "model_index.json"),
+        ("scheduler/scheduler_config.json", "scheduler/scheduler_config.json"),
+        ("text_encoder/config.json", "text_encoder/config.json"),
+        ("text_encoder/model.fp16.safetensors", "text_encoder/model.safetensors", 246_144_152),
+        ("text_encoder_2/config.json", "text_encoder_2/config.json"),
+        ("text_encoder_2/model.fp16.safetensors", "text_encoder_2/model.safetensors", 1_389_382_176),
+        *_tokenizer_files("tokenizer"),
+        *_tokenizer_files("tokenizer_2"),
+        ("unet/config.json", "unet/config.json"),
+        ("unet/diffusion_pytorch_model.fp16.safetensors", "unet/diffusion_pytorch_model.safetensors",
+         5_135_149_760),
+        ("vae/config.json", "vae/config.json"),
+        ("vae/diffusion_pytorch_model.fp16.safetensors", "vae/diffusion_pytorch_model.safetensors", 167_335_342),
+    ), 6940),
+)
 
 SPECS: dict[str, ModelSpec] = {s.key: s for s in (
     _clip_spec("RN101", True, 291_791_292, 290),
@@ -130,6 +238,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         kind="vgg",
     ),
 )}
+SPECS.update({s.key: s for s in CONTROLSKETCH_SPECS})
 
 
 def clip_key(name: str) -> str:
@@ -155,6 +264,11 @@ def require(spec_key: str) -> Path:
     if found is None:
         raise ModelMissingError(spec_key)
     return found
+
+
+def model_dir(spec_key: str) -> Path:
+    """Folder of an installed multi-file model (kind 'hf')."""
+    return require(spec_key).parent
 
 
 class ModelMissingError(RuntimeError):
@@ -205,11 +319,22 @@ def _open_gdrive(file_id: str):
     raise RuntimeError("Google Drive did not start the download")
 
 
-def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Callable[[], bool] | None) -> None:
-    src = _open_gdrive(url.split(":", 1)[1]) if url.startswith("gdrive:") else _open(url)
-    with src, open(dest, "wb") as out:
-        total = int(src.headers.get("Content-Length") or 0)
-        done = 0
+def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Callable[[], bool] | None,
+                  offset: int = 0) -> None:
+    """Stream ``url`` into ``dest``; with ``offset`` > 0 the download resumes (HTTP range request)."""
+    if url.startswith("gdrive:"):
+        src = _open_gdrive(url.split(":", 1)[1])
+        offset = 0
+    elif offset:
+        req = urllib.request.Request(url, headers={"User-Agent": "CLIPassoStudio", "Range": f"bytes={offset}-"})
+        src = urllib.request.urlopen(req, timeout=60)
+        if src.status != 206:  # server ignored the range
+            offset = 0
+    else:
+        src = _open(url)
+    with src, open(dest, "ab" if offset else "wb") as out:
+        total = int(src.headers.get("Content-Length") or 0) + offset
+        done = offset
         while True:
             if cancel and cancel():
                 raise InterruptedError("download cancelled")
@@ -312,11 +437,80 @@ def install(spec_key: str, dest_root: Path | None = None, progress: ProgressFn |
     """Download + convert a model into ``dest_root`` (default: the user's model folder)."""
     spec = SPECS[spec_key]
     dest_root = dest_root or paths.downloaded_models_dir()
+    if spec.kind == "hf":
+        return _install_hf(spec, dest_root, progress, cancel)
     dest = dest_root / spec.filename
     with tempfile.TemporaryDirectory(dir=dest_root) as tmp:
         raw = download_raw(spec, Path(tmp), progress, cancel)
         convert(spec, raw, dest)
     return dest
+
+
+def _hf_download(url: str, target: Path, progress: ProgressFn | None, cancel, attempts: int = 4) -> None:
+    """Download with up to ``attempts`` tries, resuming interrupted transfers."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for attempt in range(attempts):
+        offset = target.stat().st_size if target.exists() and attempt else 0
+        try:
+            _download_url(url, target, progress, cancel, offset=offset)
+            return
+        except InterruptedError:
+            raise
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(2 ** attempt)
+
+
+def _convert_hf_file(src: Path, dst: Path, f: HFFile) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if not f.local.endswith(".safetensors"):
+        shutil.copyfile(src, dst)
+        return
+    from safetensors.torch import load_file, save_file
+
+    if src.suffix == ".safetensors":
+        state = load_file(str(src))
+    else:
+        state = torch.load(str(src), map_location="cpu", weights_only=True)
+        state = state.get("state_dict", state) if isinstance(state, dict) else state
+    out = {}
+    for k, v in state.items():
+        if f.fp16 and v.is_floating_point():
+            v = v.half()
+        out[k] = v.contiguous().clone()  # no shared storage (tied weights) for safetensors
+    del state
+    save_file(out, str(dst), metadata={"format": "pt"})
+
+
+def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
+                cancel: Callable[[], bool] | None) -> Path:
+    repo, revision, files = spec.extra["repo"], spec.extra["revision"], spec.extra["files"]
+    dest = (dest_root / spec.filename).parent
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    total = sum(f.size or 0 for f in files) or 1
+    with tempfile.TemporaryDirectory(dir=dest.parent) as tmp:
+        raw_dir, out_dir = Path(tmp) / "raw", Path(tmp) / "out"
+        done = 0
+        for f in files:
+            target = raw_dir / f.remote
+            base = done
+            prog = (lambda d, t, base=base: progress(min(base + d, total), total)) if progress else None
+            _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel)
+            size = target.stat().st_size
+            if f.size and size != f.size:
+                raise RuntimeError(f"Could not download {spec.key}: {f.remote} has {size} bytes, "
+                                   f"expected {f.size}")
+            done += f.size or size
+        for f in files:
+            _convert_hf_file(raw_dir / f.remote, out_dir / f.local, f)
+            (raw_dir / f.remote).unlink()
+        (out_dir / "manifest.json").write_text(json.dumps(
+            {"key": spec.key, "repo": repo, "revision": revision, "files": [f.local for f in files]}, indent=2))
+        if dest.exists():
+            shutil.rmtree(dest)
+        os.replace(out_dir, dest)
+    return dest / "manifest.json"
 
 
 def install_from_file(spec_key: str, raw: str | Path, dest_root: Path | None = None) -> Path:
@@ -330,7 +524,10 @@ def install_from_file(spec_key: str, raw: str | Path, dest_root: Path | None = N
 def uninstall(spec_key: str) -> None:
     spec = SPECS[spec_key]
     target = paths.downloaded_models_dir() / spec.filename
-    if target.is_file():
+    if spec.kind == "hf":
+        if target.is_file():
+            shutil.rmtree(target.parent)
+    elif target.is_file():
         target.unlink()
 
 

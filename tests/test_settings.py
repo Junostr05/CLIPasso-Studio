@@ -190,7 +190,7 @@ def test_cli_parses_original_controlsketch_command_line():
     ("swiftsketch", {"guidance_param": 4.0, "use_refine": False, "save_diffusion_sketch": True, "width": 3.0,
                      "num_sketches": 5, "device": "cpu"}),
     ("controlsketch", {"num_strokes": 16, "condition": "hed", "caption": "a camel", "attn_model": "diffusion",
-                       "object_name": "camel", "lr_scheduler": True, "control_points_per_seg": 2}),
+                       "object_name": "camel", "save_interval": 50, "control_points_per_seg": 2}),
 ])
 def test_cli_roundtrip_per_method(method, changes):
     s = {**schema.default_settings(method), **changes}
