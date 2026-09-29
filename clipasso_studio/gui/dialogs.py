@@ -262,10 +262,20 @@ class ModelDownloadDialog(QDialog):
         self.start_btn.setEnabled(True)
 
 
+MODEL_NAMES = {
+    "u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)",
+    "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
+    "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
+    "blip": "BLIP", "sdxl": "Stable Diffusion XL",
+}
+
+
 def model_display_name(key: str) -> str:
     if key.startswith("clip:"):
         return f"CLIP {key.split(':', 1)[1]}"
-    return {"u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)"}.get(key, key)
+    if key.startswith("controlnet:"):
+        return f"ControlNet · {key.split(':', 1)[1]}"
+    return MODEL_NAMES.get(key, key)
 
 
 def ask_download_missing(parent: QWidget, keys: list[str]) -> bool:

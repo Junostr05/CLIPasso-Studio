@@ -182,6 +182,10 @@ class SegmentedControl(QFrame):
         if key in self._buttons:
             self._buttons[key].setEnabled(enabled)
 
+    def set_visible(self, key: str, visible: bool) -> None:
+        if key in self._buttons:
+            self._buttons[key].setVisible(visible)
+
 
 class CollapsibleSection(QWidget):
     """Header with chevron that shows/hides its content."""
@@ -287,6 +291,45 @@ class Toast(QFrame):
         except (RuntimeError, TypeError):
             pass
         self.hide()
+
+
+class Banner(QFrame):
+    """Inline notice with an optional action button (missing models, hardware hints)."""
+
+    action = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("Banner")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(12, 8, 8, 8)
+        lay.setSpacing(10)
+        self.icon = QLabel()
+        self.text = QLabel()
+        self.text.setWordWrap(True)
+        self.button = QPushButton()
+        self.button.setCursor(Qt.PointingHandCursor)
+        self.button.setProperty("variant", "primary")
+        self.button.clicked.connect(self.action.emit)
+        lay.addWidget(self.icon, 0, Qt.AlignTop)
+        lay.addWidget(self.text, 1)
+        lay.addWidget(self.button, 0, Qt.AlignVCenter)
+        self.hide()
+
+    def show_message(self, text: str, warn: bool = False, button_text: str | None = None,
+                     icon_name: str | None = None) -> None:
+        p = theme.current()
+        self.setObjectName("BannerWarn" if warn else "Banner")
+        self.style().unpolish(self)
+        self.style().polish(self)
+        name = icon_name or ("triangle-alert" if warn else "info")
+        self.icon.setPixmap(icons.pixmap(name, p.warning if warn else p.accent_hover, 18))
+        self.text.setText(text)
+        self.button.setVisible(bool(button_text))
+        if button_text:
+            self.button.setText(button_text)
+            self.button.setIcon(icons.icon("download", p.on_accent))
+        self.show()
 
 
 def hbox(*widgets, spacing: int = 8, margins=(0, 0, 0, 0), stretch_at: int | None = None) -> QHBoxLayout:

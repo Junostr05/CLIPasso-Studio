@@ -299,8 +299,9 @@ def test_sdxl_attention_with_a_tiny_pipeline():
     tok = CLIPTokenizer.from_pretrained(str(model_store.model_dir("sd15") / "tokenizer"))
     sched = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                           set_alpha_to_one=False)
-    pipe = StableDiffusionXLPipeline(vae=vae, text_encoder=CLIPTextModel(cfg), text_encoder_2=CLIPTextModelWithProjection(cfg),
-                                     tokenizer=tok, tokenizer_2=tok, unet=unet, scheduler=sched)
+    pipe = StableDiffusionXLPipeline(vae=vae, text_encoder=CLIPTextModel(cfg),
+                                     text_encoder_2=CLIPTextModelWithProjection(cfg), tokenizer=tok, tokenizer_2=tok,
+                                     unet=unet, scheduler=sched)
     pipe.set_progress_bar_config(disable=True)
     img = Image.open(SAMPLE).convert("RGB")
     attn = S.sdxl_attention(img, "camel", "cpu", 48, pipe=pipe, steps=3)

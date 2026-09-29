@@ -1,6 +1,9 @@
 """Drive a real run through the GUI (offscreen) and take screenshots while it runs.
 
-Usage: python tools/gui_run_check.py OUT_DIR
+Usage: python tools/gui_run_check.py OUT_DIR [--method clipasso|swiftsketch|controlsketch] [--models DIR]
+
+``--models`` links an existing folder of downloaded models (e.g. the SwiftSketch weights) into
+the temporary user data folder of the check.
 """
 
 from __future__ import annotations
@@ -16,11 +19,25 @@ sys.path.insert(0, str(ROOT))
 
 
 def main() -> int:
-    out = Path(sys.argv[1])
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("out")
+    ap.add_argument("--method", default="clipasso")
+    ap.add_argument("--models", default="")
+    args = ap.parse_args()
+    out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     tmp = tempfile.mkdtemp()
     os.environ["XDG_DATA_HOME"] = tmp
     os.environ["LOCALAPPDATA"] = tmp
+    if args.models:
+        from clipasso_studio import paths as _paths
+
+        target = _paths.user_data_dir() / "models"
+        if target.exists():
+            target.rmdir()
+        os.symlink(os.path.abspath(args.models), target)
 
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication, QMessageBox
@@ -41,9 +58,15 @@ def main() -> int:
     w.show()
     studio = w.studio
     studio.set_image(str(paths.resource("samples", "horse.png")))
+    studio.params.set_method(args.method)
     s = studio.params.settings()
-    s.update({"num_iter": 40, "num_sketches": 2, "num_paths": 12, "mask_object": True, "save_interval": 2,
-              "eval_interval": 2})
+    if args.method == "clipasso":
+        s.update({"num_iter": 40, "num_sketches": 2, "num_paths": 12, "mask_object": True, "save_interval": 2,
+                  "eval_interval": 2})
+    elif args.method == "swiftsketch":
+        s.update({"num_sketches": 3})
+    else:
+        s.update({"num_iter": 4, "save_interval": 2, "caption": "a horse", "condition": "canny"})
     studio.params.set_settings(s)
     state = {"shots": 0, "events": set(), "finished": None}
 
@@ -64,7 +87,7 @@ def main() -> int:
 
     def start():
         studio.start()
-        QTimer.singleShot(30000, mid_shot)
+        QTimer.singleShot(30000 if args.method == "clipasso" else 12000, mid_shot)
 
     QTimer.singleShot(500, start)
     QTimer.singleShot(1800 * 1000, app.quit)

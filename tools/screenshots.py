@@ -1,6 +1,10 @@
 """Render screenshots of every page (offscreen) – used for the README and to review the UI.
 
-Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR] [--theme dark|light] [--lang de|en]
+Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR ...] [--theme dark|light] [--lang de|en]
+                                   [--pages studio,studio:swiftsketch,compare,...]
+
+``studio:<method>`` shows the studio with that method selected (and the given job of that method,
+if any). All jobs must be in the same output folder, which the gallery / compare pages then show.
 """
 
 from __future__ import annotations
@@ -19,10 +23,10 @@ sys.path.insert(0, str(ROOT))
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
-    ap.add_argument("--job", default="")
+    ap.add_argument("--job", action="append", default=[])
     ap.add_argument("--theme", default="dark")
     ap.add_argument("--lang", default="de")
-    ap.add_argument("--pages", default="studio,queue,gallery,models,settings,about")
+    ap.add_argument("--pages", default="studio,compare,queue,gallery,models,settings,about")
     ap.add_argument("--size", default="1480x920")
     args = ap.parse_args()
 
@@ -42,7 +46,7 @@ def main() -> int:
     s.data["theme"] = args.theme
     s.data["language"] = args.lang
     if args.job:
-        s.data["output_dir"] = str(Path(args.job).parent)
+        s.data["output_dir"] = str(Path(args.job[0]).parent)
     theme.load_fonts()
     theme.apply(app, args.theme)
     i18n.set_language(args.lang)
@@ -57,24 +61,37 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     pages = args.pages.split(",")
 
+    import json
+
+    jobs = {}
+    for j in args.job:
+        with open(Path(j) / "job.json", encoding="utf-8") as f:
+            summary = json.load(f)
+        jobs[summary.get("method", "clipasso")] = j
+
     def shoot(i=0):
         if i >= len(pages):
             app.quit()
             return
-        page = pages[i]
+        page, _, method = pages[i].partition(":")
+        name = pages[i].replace(":", "_")
         w.show_page(page)
-        if page == "studio" and args.job:
-            w.studio.show_job_dir(args.job)
-            w.studio.modes.set_current("sketch")
         if page == "studio":
+            method = method or "clipasso"
+            if method in jobs:
+                w.studio.show_job_dir(jobs[method])
+                w.studio.image_path = w.studio.image_path  # keep the job's image for the compare page
+            else:
+                w.studio.params.set_method(method)
+            w.studio.modes.set_current("sketch")
             w.studio.params.expand_all(False)
-            w.studio.params.sections["basics"].set_expanded(True)
-            w.studio.params.sections["image"].set_expanded(True)
-            w.studio.params.sections["init"].set_expanded(True)
+            for sec in ("basics", "image", "init", "diffusion", "sds"):
+                if sec in w.studio.params.sections and (sec != "sds" or method == "controlsketch"):
+                    w.studio.params.sections[sec].set_expanded(sec in ("basics", "image", "init", "diffusion"))
 
         def grab():
             app.processEvents()
-            w.grab().save(str(out / f"{page}_{args.theme}_{args.lang}.png"))
+            w.grab().save(str(out / f"{name}_{args.theme}_{args.lang}.png"))
             shoot(i + 1)
 
         QTimer.singleShot(400, grab)

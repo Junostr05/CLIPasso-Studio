@@ -10,27 +10,35 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog
 
 from ... import settings_schema as schema
 from ...engine import model_store
-from .. import icons, theme
+from .. import icons, methods_ui, theme
 from ..i18n import i18n, tr
 from .common import CollapsibleSection, SegmentedControl, ToggleSwitch, button, label, tool_button
 
 GROUP_ICONS = {
     "basics": "sparkles", "image": "image-plus", "strokes": "pen-tool", "init": "scan", "loss": "gauge",
-    "optim": "sliders-horizontal", "augment": "layers", "hardware": "cpu",
+    "optim": "sliders-horizontal", "augment": "layers", "hardware": "cpu", "diffusion": "wand-sparkles",
+    "sds": "wand-sparkles",
 }
 
 
-def _choice_text(param: schema.Param, value) -> str:
-    key = f"param.{param.key}.choice.{value}"
+def param_text_key(method: str, key: str, suffix: str) -> str:
+    """i18n key of a parameter text; a method may override the shared text (param.<method>.<key>.*)."""
+    specific = f"param.{method}.{key}.{suffix}"
+    return specific if i18n.has(specific) else f"param.{key}.{suffix}"
+
+
+def _choice_text(param: schema.Param, value, method: str = schema.DEFAULT_METHOD) -> str:
+    key = param_text_key(method, param.key, f"choice.{value}")
     return tr(key) if i18n.has(key) else str(value)
 
 
 class ParamField(QWidget):
     changed = Signal(str, object)
 
-    def __init__(self, param: schema.Param, parent=None):
+    def __init__(self, param: schema.Param, method: str = schema.DEFAULT_METHOD, parent=None):
         super().__init__(parent)
         self.param = param
+        self.method = method
         self._value = param.default
         self._updating = False
         lay = QVBoxLayout(self)
@@ -169,7 +177,7 @@ class ParamField(QWidget):
 
     # ---------------------------------------------------------------- behaviour
     def _browse(self):
-        path, _ = QFileDialog.getOpenFileName(self, tr(f"param.{self.param.key}.label"), "", "SVG (*.svg)")
+        path, _ = QFileDialog.getOpenFileName(self, self._t("label"), "", "SVG (*.svg)")
         if path:
             self._emit(path)
 
@@ -305,12 +313,15 @@ class ParamField(QWidget):
         self.warning.setVisible(bool(text))
         self.warning.setText(text or "")
 
+    def _t(self, suffix: str) -> str:
+        return tr(param_text_key(self.method, self.param.key, suffix))
+
     def retranslate(self):
         p = self.param
-        self.title.setText(tr(f"param.{p.key}.label"))
-        help_text = tr(f"param.{p.key}.help")
+        self.title.setText(self._t("label"))
+        help_text = self._t("help")
         cli = f"--{p.cli}" if p.cli else ""
-        tip = f"<b>{tr(f'param.{p.key}.label')}</b><br>{help_text}"
+        tip = f"<b>{self._t('label')}</b><br>{help_text}"
         if cli:
             tip += f"<br><span style='color:{theme.current().faint}'>{cli}</span>"
         self.info.setPixmap(icons.pixmap("circle-help", theme.current().faint, 13))
@@ -320,12 +331,13 @@ class ParamField(QWidget):
         self.reset_btn.setToolTip(tr("ui.reset_default", value=str(p.default)))
         if p.kind == "choice":
             for i in range(self.combo.count()):
-                self.combo.setItemText(i, _choice_text(p, self.combo.itemData(i)))
+                self.combo.setItemText(i, _choice_text(p, self.combo.itemData(i), self.method))
         elif p.kind == "flags":
             for c, cb in self.checks.items():
-                cb.setText(_choice_text(p, c))
+                cb.setText(_choice_text(p, c, self.method))
         elif p.kind == "text":
-            self.edit.setPlaceholderText(tr("ui.none_placeholder"))
+            ph = param_text_key(self.method, p.key, "placeholder")
+            self.edit.setPlaceholderText(tr(ph) if i18n.has(ph) else tr("ui.none_placeholder"))
         elif p.kind == "path":
             self.edit.setPlaceholderText(tr("ui.no_file"))
 
@@ -334,17 +346,45 @@ class ParamField(QWidget):
         if not q:
             return True
         p = self.param
-        hay = " ".join([p.key, p.cli or "", tr(f"param.{p.key}.label"), tr(f"param.{p.key}.help")]).lower()
+        hay = " ".join([p.key, p.cli or "", self._t("label"), self._t("help")]).lower()
         return all(part in hay for part in q.split())
+
+
+class _MethodPage:
+    """Fields and sections of one method (only the page of the active method is visible)."""
+
+    def __init__(self, method: str, on_change):
+        self.method = method
+        self.widget = QWidget()
+        lay = QVBoxLayout(self.widget)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(2)
+        self.fields: dict[str, ParamField] = {}
+        self.sections: dict[str, CollapsibleSection] = {}
+        params = schema.params_for(method)
+        for group in schema.METHOD_GROUPS[method]:
+            sec = CollapsibleSection("", GROUP_ICONS.get(group), expanded=group in ("basics", "image"))
+            self.sections[group] = sec
+            for p in params:
+                if p.group != group:
+                    continue
+                f = ParamField(p, method)
+                f.changed.connect(on_change)
+                self.fields[p.key] = f
+                sec.body.addWidget(f)
+            lay.addWidget(sec)
 
 
 class ParamPanel(QWidget):
     settings_changed = Signal(dict)
+    method_changed = Signal(str)
     model_needed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._settings = schema.default_settings()
+        self._method = schema.DEFAULT_METHOD
+        self._per_method = {m: schema.normalize(schema.default_settings(m)) for m in schema.METHODS}
+        self._settings = dict(self._per_method[self._method])
         self._preset = "standard"
         self._applying = False
         outer = QVBoxLayout(self)
@@ -372,19 +412,12 @@ class ParamPanel(QWidget):
         self.inner_lay = QVBoxLayout(inner)
         self.inner_lay.setContentsMargins(0, 0, 8, 0)
         self.inner_lay.setSpacing(2)
-        self.fields: dict[str, ParamField] = {}
-        self.sections: dict[str, CollapsibleSection] = {}
-        for group in schema.GROUPS:
-            sec = CollapsibleSection("", GROUP_ICONS.get(group), expanded=group in ("basics", "image"))
-            self.sections[group] = sec
-            for p in schema.PARAMS:
-                if p.group != group:
-                    continue
-                f = ParamField(p)
-                f.changed.connect(self._field_changed)
-                self.fields[p.key] = f
-                sec.body.addWidget(f)
-            self.inner_lay.addWidget(sec)
+        self.pages: dict[str, _MethodPage] = {}
+        for m in schema.METHODS:
+            page = _MethodPage(m, self._field_changed)
+            page.widget.setVisible(m == self._method)
+            self.inner_lay.addWidget(page.widget)
+            self.pages[m] = page
         self.inner_lay.addStretch(1)
         self.scroll.setWidget(inner)
         outer.addWidget(self.scroll, 1)
@@ -406,40 +439,92 @@ class ParamPanel(QWidget):
         self.retranslate()
         i18n.language_changed.connect(lambda _: self.retranslate())
 
+    # ------------------------------------------------------------------ method
+    @property
+    def fields(self) -> dict[str, ParamField]:
+        return self.pages[self._method].fields
+
+    @property
+    def sections(self) -> dict[str, CollapsibleSection]:
+        return self.pages[self._method].sections
+
+    def method(self) -> str:
+        return self._method
+
+    def settings_for(self, method: str) -> dict:
+        return dict(self._settings) if method == self._method else dict(self._per_method[method])
+
+    def all_settings(self) -> dict[str, dict]:
+        return {m: self.settings_for(m) for m in schema.METHODS}
+
+    def set_method(self, method: str) -> None:
+        if method != self._method:
+            self.set_settings(self._per_method[method])
+
+    def _show_method(self, method: str) -> None:
+        self._per_method[self._method] = dict(self._settings)
+        self._method = method
+        for m, page in self.pages.items():
+            page.widget.setVisible(m == method)
+        self._filter(self.search.text())
+        self.scroll.verticalScrollBar().setValue(0)
+
     # -------------------------------------------------------------- settings io
     def settings(self) -> dict:
         return dict(self._settings)
 
     def set_settings(self, settings: dict):
+        method = schema.method_of(settings)
+        switched = method != self._method
+        if switched:
+            self._show_method(method)
         self._applying = True
         self._settings = schema.normalize(settings)
         for key, f in self.fields.items():
             f.set_value(self._settings[key])
         self._applying = False
+        self._per_method[method] = dict(self._settings)
         self._after_change()
         self._detect_preset()
+        if switched:
+            self._update_header()
+            self.method_changed.emit(method)
         self.settings_changed.emit(self.settings())
+
+    def restore(self, per_method: dict, method: str) -> None:
+        """Settings remembered from the last session (one set per method) and the active method."""
+        for m in schema.METHODS:
+            s = per_method.get(m) if isinstance(per_method, dict) else None
+            if isinstance(s, dict):
+                try:
+                    self._per_method[m] = schema.normalize({**s, "method": m})
+                except ValueError:
+                    pass
+        self._settings = dict(self._per_method[self._method])
+        self.set_settings(self._per_method[method if method in schema.METHODS else self._method])
 
     def apply_preset(self, name: str):
         s = dict(self._settings)
-        s.update(schema.PRESETS[name])
+        s.update(schema.METHOD_PRESETS[self._method][name])
         self._preset = name
         self.set_settings(s)
         self.presets.set_current(name)
         self._update_preset_hint()
 
     def reset_all_fields(self):
-        self.set_settings(schema.default_settings())
+        self.set_settings(schema.default_settings(self._method))
 
     def _field_changed(self, key, value):
         if self._applying:
             return
         self._settings[key] = value
-        if key == "percep_loss" and value != "none" and not self._settings.get("perceptual_weight"):
-            self.fields["perceptual_weight"].set_value(1.0, emit=True)
-            return
-        if key == "clip_text_guide" and value and self._settings.get("text_target") in ("", "none"):
-            self.fields["text_target"].set_warning(tr("ui.text_target_needed"))
+        if self._method == "clipasso":
+            if key == "percep_loss" and value != "none" and not self._settings.get("perceptual_weight"):
+                self.fields["perceptual_weight"].set_value(1.0, emit=True)
+                return
+            if key == "clip_text_guide" and value and self._settings.get("text_target") in ("", "none"):
+                self.fields["text_target"].set_warning(tr("ui.text_target_needed"))
+        self._per_method[self._method] = dict(self._settings)
         self._after_change()
         self._detect_preset()
         self.settings_changed.emit(self.settings())
@@ -448,6 +533,16 @@ class ParamPanel(QWidget):
         s = self._settings
         for key, f in self.fields.items():
             f.set_enabled_state(schema.is_enabled(f.param, s))
+        if self._method == "clipasso":
+            self._after_change_clipasso(s)
+        elif self._method == "controlsketch":
+            self._after_change_controlsketch(s)
+        for group, sec in self.sections.items():
+            n = sum(1 for p in schema.params_for(self._method) if p.group == group and s[p.key] != p.default)
+            base = tr(f"group.{group}")
+            sec.set_title(f"{base}   ·  {tr('ui.n_changed', n=n)}" if n else base)
+
+    def _after_change_clipasso(self, s: dict):
         self.fields["clip_conv_layer_weights"].set_layer_count(schema.num_conv_layers(s["clip_model_name"]))
         self._settings["clip_conv_layer_weights"] = self.fields["clip_conv_layer_weights"].value()
         # model availability hints
@@ -460,13 +555,35 @@ class ParamPanel(QWidget):
                 self.fields[key].set_warning(None)
         if not (s["clip_text_guide"] and s.get("text_target") in ("", "none")):
             self.fields["text_target"].set_warning(None)
-        for group, sec in self.sections.items():
-            n = sum(1 for p in schema.PARAMS if p.group == group and s[p.key] != p.default)
-            base = tr(f"group.{group}")
-            sec.set_title(f"{base}   ·  {tr('ui.n_changed', n=n)}" if n else base)
+
+    def _after_change_controlsketch(self, s: dict):
+        def size_of(keys):
+            mb = methods_ui.download_mb(keys)
+            return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+
+        blip_missing = not model_store.is_available("blip")
+        if not schema.text_value(s["caption"]):
+            self.fields["caption"].set_warning(tr("ui.caption_auto_hint") + (
+                " " + tr("ui.model_download_hint", size=size_of(["blip"])) if blip_missing else ""))
+        else:
+            self.fields["caption"].set_warning(None)
+        from ...engine.methods.controlsketch.conditions import DETECTOR_MODELS
+
+        cond_keys = [f"controlnet:{s['condition']}"] + ([DETECTOR_MODELS[s["condition"]]]
+                                                        if DETECTOR_MODELS.get(s["condition"]) else [])
+        cond_missing = [k for k in cond_keys if not model_store.is_available(k)]
+        self.fields["condition"].set_warning(tr("ui.model_download_hint", size=size_of(cond_missing))
+                                             if cond_missing else None)
+        diffusion = s["use_init_method"] and s["attn_model"] == "diffusion"
+        if diffusion and not schema.text_value(s["object_name"]):
+            self.fields["object_name"].set_warning(tr("ui.object_name_needed"))
+        elif diffusion and not model_store.is_available("sdxl"):
+            self.fields["object_name"].set_warning(tr("ui.model_download_hint", size=size_of(["sdxl"])))
+        else:
+            self.fields["object_name"].set_warning(None)
 
     def _detect_preset(self):
-        for name, values in schema.PRESETS.items():
+        for name, values in schema.METHOD_PRESETS[self._method].items():
             if all(self._settings.get(k) == v for k, v in values.items()):
                 self._preset = name
                 self.presets.set_current(name)
@@ -477,25 +594,19 @@ class ParamPanel(QWidget):
         self._update_preset_hint()
 
     def _update_preset_hint(self):
-        key = f"ui.preset_hint.{self._preset}"
-        self.preset_hint.setText(tr(key) if i18n.has(key) else "")
+        for key in (f"ui.preset_hint.{self._method}.{self._preset}", f"ui.preset_hint.{self._preset}"):
+            if i18n.has(key):
+                self.preset_hint.setText(tr(key))
+                return
+        self.preset_hint.setText("")
 
     def missing_models(self) -> list[str]:
-        s = self._settings
-        needed = {model_store.clip_key(s["clip_model_name"])}
-        if s["attention_init"]:
-            needed.add(model_store.clip_key(s["saliency_clip_model"]) if s["saliency_model"] == "clip" else "dino")
-        if s["train_with_clip"] or s["clip_text_guide"]:
-            needed.add(model_store.clip_key("ViT-B/32"))
-        if s["percep_loss"] == "LPIPS":
-            needed.add("vgg16")
-        needed.add("u2net")
-        return sorted(k for k in needed if not model_store.is_available(k))
+        return methods_ui.missing_models(self._settings)
 
     def _filter(self, text: str):
         for group, sec in self.sections.items():
             any_visible = False
-            for p in schema.PARAMS:
+            for p in schema.params_for(self._method):
                 if p.group != group:
                     continue
                 vis = self.fields[p.key].matches(text)
@@ -509,8 +620,11 @@ class ParamPanel(QWidget):
         for sec in self.sections.values():
             sec.set_expanded(expanded)
 
+    def _update_header(self):
+        self.header.setText(f"{tr('ui.parameters')}  ·  {methods_ui.name(self._method)}")
+
     def retranslate(self):
-        self.header.setText(tr("ui.parameters"))
+        self._update_header()
         for key in ("fast", "standard", "quality"):
             self.presets.set_text(key, tr(f"ui.preset.{key}"))
         self.search.setPlaceholderText(tr("ui.search_params"))
@@ -518,7 +632,8 @@ class ParamPanel(QWidget):
         self.import_btn.setToolTip(tr("ui.import_tip"))
         self.export_btn.setToolTip(tr("ui.export_tip"))
         self.cli_btn.setToolTip(tr("ui.copy_cli_tip"))
-        for f in self.fields.values():
-            f.retranslate()
+        for page in self.pages.values():
+            for f in page.fields.values():
+                f.retranslate()
         self._after_change()
         self._update_preset_hint()

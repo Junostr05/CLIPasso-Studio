@@ -142,6 +142,9 @@ QLabel[role="badge-warning"] {{
 QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 14px; }}
 QFrame#CardFlat {{ background: {p.surface2}; border: 1px solid {p.border}; border-radius: 10px; }}
 QFrame#Divider {{ background: {p.border}; max-height: 1px; min-height: 1px; border: none; }}
+QFrame#MethodCard {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 12px; }}
+QFrame#MethodCard:hover {{ border-color: {p.faint}; }}
+QFrame#MethodCard[selected="true"] {{ background: {p.accent_soft}; border: 1.5px solid {p.accent}; }}
 QFrame#Banner {{ background: {p.accent_soft}; border: 1px solid {p.accent}; border-radius: 10px; }}
 QFrame#BannerWarn {{ background: {p.surface2}; border: 1px solid {p.warning}; border-radius: 10px; }}
 

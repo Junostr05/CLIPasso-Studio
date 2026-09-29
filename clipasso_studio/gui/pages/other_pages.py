@@ -12,8 +12,9 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
                                QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from ... import APP_NAME, __version__, paths
+from ... import settings_schema as schema
 from ...engine import model_store
-from .. import dialogs, icons, theme
+from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import LANGUAGES, i18n, tr
@@ -49,6 +50,35 @@ def _status_role(status: str) -> str:
     return {"done": "badge-success", "failed": "badge-warning", "cancelled": "badge-warning"}.get(status, "badge")
 
 
+def scan_jobs() -> list[tuple[str, dict]]:
+    """Finished jobs in the output folder (job folder, job.json), newest first."""
+    root = app_settings().get("output_dir")
+    items = []
+    if not root or not os.path.isdir(root):
+        return items
+    for name in os.listdir(root):
+        d = os.path.join(root, name)
+        f = os.path.join(d, "job.json")
+        if os.path.isfile(f):
+            try:
+                with open(f, encoding="utf-8") as fh:
+                    items.append((d, json.load(fh)))
+            except (OSError, ValueError):
+                continue
+    items.sort(key=lambda t: t[1].get("created", ""), reverse=True)
+    return items
+
+
+def job_method(summary: dict) -> str:
+    return summary.get("method") or schema.method_of(summary.get("settings"))
+
+
+def method_badge(method: str) -> QLabel:
+    b = label(methods_ui.name(method), "badge")
+    b.setToolTip(tr(f"method.{method}.tagline"))
+    return b
+
+
 # ====================================================================== queue
 class QueueRow(Card):
     def __init__(self, job: QueuedJob, controller: JobController, parent=None):
@@ -68,9 +98,14 @@ class QueueRow(Card):
         info.setSpacing(3)
         self.name = label(job.name, "h3")
         s = job.settings
-        self.details = label(tr("ui.queue.details", strokes=s["num_paths"], iters=s["num_iter"],
+        self.details = label(tr("ui.queue.details", strokes=schema.num_strokes(s), iters=methods_ui.iterations(s),
                                 sketches=s["num_sketches"]), "faint")
-        info.addWidget(self.name)
+        name_row = QHBoxLayout()
+        name_row.setSpacing(8)
+        name_row.addWidget(self.name)
+        name_row.addWidget(method_badge(schema.method_of(s)))
+        name_row.addStretch(1)
+        info.addLayout(name_row)
         info.addWidget(self.details)
         self.bar = QProgressBar()
         self.bar.setRange(0, 1000)
@@ -212,12 +247,22 @@ class GalleryCard(Card):
         name = os.path.splitext(os.path.basename(summary.get("target", job_dir)))[0]
         self.body.addWidget(label(name, "h3"))
         s = summary.get("settings", {})
+        method = job_method(summary)
+        self.method = method
         runs = summary.get("runs", [])
-        best = min((r.get("best_loss", 99) for r in runs), default=None)
-        meta = tr("ui.gallery.meta", strokes=s.get("num_paths", "?"), date=summary.get("created", "")[:16])
+        meta = tr("ui.gallery.meta", strokes=schema.num_strokes({**s, "method": method}),
+                  date=summary.get("created", "")[:16])
         self.body.addWidget(label(meta, "faint"))
-        if best is not None:
-            self.body.addWidget(label(f"Loss {best:.3f}", "badge"), 0, Qt.AlignLeft)
+        badges = QHBoxLayout()
+        badges.setSpacing(6)
+        badges.addWidget(method_badge(method))
+        scores = [r["clip_score"] for r in runs if r.get("clip_score") is not None]
+        if summary.get("clip_score") is not None or scores:
+            badges.addWidget(label(f"CLIP {summary.get('clip_score') or max(scores):.1f}", "badge"))
+        elif runs:
+            badges.addWidget(label(f"Loss {min(r.get('best_loss', 99) for r in runs):.3f}", "badge"))
+        badges.addStretch(1)
+        self.body.addLayout(badges)
         self.body.addStretch(1)
         self.setFixedHeight(self.sizeHint().height())
 
@@ -241,10 +286,13 @@ class GalleryPage(QWidget):
         self.search.setClearButtonEnabled(True)
         self.search.setFixedWidth(220)
         self.search.textChanged.connect(self.refresh)
+        self.filter = SegmentedControl([("all", "")] + [(m, methods_ui.name(m)) for m in schema.METHODS])
+        self.filter.changed.connect(lambda _: self.refresh())
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self._open_folder)
         self.refresh_btn = button("", "refresh-cw")
         self.refresh_btn.clicked.connect(self.refresh)
+        head.addWidget(self.filter, 0, Qt.AlignBottom)
         head.addWidget(self.search, 0, Qt.AlignBottom)
         head.addWidget(self.folder_btn, 0, Qt.AlignBottom)
         head.addWidget(self.refresh_btn, 0, Qt.AlignBottom)
@@ -268,21 +316,7 @@ class GalleryPage(QWidget):
         QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     def scan(self) -> list[tuple[str, dict]]:
-        root = app_settings().get("output_dir")
-        items = []
-        if not root or not os.path.isdir(root):
-            return items
-        for name in os.listdir(root):
-            d = os.path.join(root, name)
-            f = os.path.join(d, "job.json")
-            if os.path.isfile(f):
-                try:
-                    with open(f, encoding="utf-8") as fh:
-                        items.append((d, json.load(fh)))
-                except (OSError, ValueError):
-                    continue
-        items.sort(key=lambda t: t[1].get("created", ""), reverse=True)
-        return items
+        return scan_jobs()
 
     def refresh(self):
         for c in self.cards:
@@ -291,8 +325,11 @@ class GalleryPage(QWidget):
         q = self.search.text().lower().strip()
         cols = max(1, (self.width() - 60) // 236)
         n = 0
+        wanted = self.filter.current() or "all"
         for job_dir, summary in self.scan():
             if q and q not in job_dir.lower():
+                continue
+            if wanted != "all" and job_method(summary) != wanted:
                 continue
             card = GalleryCard(job_dir, summary)
             card.clicked.connect(self.open_job.emit)
@@ -316,6 +353,7 @@ class GalleryPage(QWidget):
         self.title.setText(tr("ui.gallery.title"))
         self.subtitle.setText(tr("ui.gallery.subtitle"))
         self.search.setPlaceholderText(tr("ui.gallery.search"))
+        self.filter.set_text("all", tr("ui.gallery.all"))
         self.folder_btn.setText(tr("ui.open_folder"))
         self.refresh_btn.setText(tr("ui.refresh"))
         self.empty.setText(tr("ui.gallery.empty"))
@@ -325,7 +363,25 @@ class GalleryPage(QWidget):
 MODEL_PURPOSE = {
     "clip:RN101": "ui.models.purpose.rn101", "clip:ViT-B/32": "ui.models.purpose.vitb32",
     "u2net": "ui.models.purpose.u2net", "dino": "ui.models.purpose.dino", "vgg16": "ui.models.purpose.vgg16",
+    "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
+    "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
+    "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
 }
+
+
+def model_group(key: str) -> str:
+    spec = model_store.SPECS[key]
+    if spec.bundled:
+        return "bundled"
+    if key.startswith("clip:"):
+        return "clipasso"
+    if key.startswith("swiftsketch:"):
+        return "swiftsketch"
+    return "controlsketch"
+
+
+def _size_text(mb: float) -> str:
+    return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
 
 
 class ModelRow(Card):
@@ -346,10 +402,15 @@ class ModelRow(Card):
         col.addWidget(self.name)
         col.addWidget(self.desc)
         row.addLayout(col, 1)
-        self.size = label(f"{spec.stored_size_mb} MB", "muted")
+        self.size = label(_size_text(spec.stored_size_mb), "muted")
         row.addWidget(self.size)
         self.state = label("", "badge")
         row.addWidget(self.state)
+        self.import_btn = None
+        if spec.kind == "swiftsketch":  # manual download when Google Drive refuses (quota)
+            self.import_btn = tool_button("upload", "")
+            self.import_btn.clicked.connect(self._import)
+            row.addWidget(self.import_btn)
         self.action = button("", "download")
         self.action.clicked.connect(self._action)
         row.addWidget(self.action)
@@ -360,7 +421,14 @@ class ModelRow(Card):
         spec = model_store.SPECS[self.key]
         found = model_store.find(self.key)
         bundled = found is not None and str(paths.bundled_models_dir()) in str(found)
-        self.desc.setText(tr(MODEL_PURPOSE.get(self.key, "ui.models.purpose.clip_extra")))
+        if self.key.startswith("controlnet:"):
+            cond = self.key.split(":", 1)[1]
+            self.desc.setText(tr("ui.models.purpose.controlnet", condition=tr(f"param.condition.choice.{cond}")))
+        else:
+            self.desc.setText(tr(MODEL_PURPOSE.get(self.key, "ui.models.purpose.clip_extra")))
+        if self.import_btn is not None:
+            self.import_btn.setToolTip(tr("ui.models.import_tip"))
+            self.import_btn.setVisible(not found)
         if bundled:
             self.state.setText(tr("ui.models.bundled"))
             self.state.setProperty("role", "badge-success")
@@ -375,10 +443,26 @@ class ModelRow(Card):
             self.state.setText(tr("ui.models.not_installed"))
             self.state.setProperty("role", "badge")
             self.action.setVisible(True)
-            self.action.setText(tr("ui.download") + f" ({spec.download_size / 1e6:.0f} MB)")
+            self.action.setText(tr("ui.download") + f" ({_size_text(spec.download_size / 1e6)})")
             self.action.setIcon(icons.icon("download", theme.current().text))
         self.state.style().unpolish(self.state)
         self.state.style().polish(self.state)
+
+    def _import(self):
+        path, _ = QFileDialog.getOpenFileName(self, tr("ui.models.import_tip"), os.path.expanduser("~"), "ZIP (*.zip)")
+        if not path:
+            return
+        self.action.setEnabled(False)
+
+        def done(_):
+            self.action.setEnabled(True)
+            self.page.refresh()
+
+        def failed(msg):
+            self.action.setEnabled(True)
+            QMessageBox.warning(self, tr("ui.error"), msg)
+
+        dialogs.run_in_thread(self, model_store.install_from_file, self.key, path, on_done=done, on_error=failed)
 
     def _action(self):
         if model_store.find(self.key):
@@ -402,22 +486,21 @@ class ModelsPage(QWidget):
         self.list_lay = QVBoxLayout(host)
         self.list_lay.setContentsMargins(0, 0, 8, 0)
         self.list_lay.setSpacing(8)
-        self.bundled_title = label("", "h2")
-        self.optional_title = label("", "h2")
         self.rows = []
-        self.list_lay.addWidget(self.bundled_title)
-        for key, spec in model_store.SPECS.items():
-            if spec.bundled:
-                r = ModelRow(key, self)
-                self.rows.append(r)
-                self.list_lay.addWidget(r)
-        self.list_lay.addSpacing(10)
-        self.list_lay.addWidget(self.optional_title)
-        for key, spec in model_store.SPECS.items():
-            if not spec.bundled:
-                r = ModelRow(key, self)
-                self.rows.append(r)
-                self.list_lay.addWidget(r)
+        self.group_titles: dict[str, tuple[QLabel, QLabel]] = {}
+        for group in ("bundled", "clipasso", "swiftsketch", "controlsketch"):
+            title = label("", "h2")
+            hint = label("", "faint", wrap=True)
+            if group != "bundled":
+                self.list_lay.addSpacing(10)
+            self.list_lay.addWidget(title)
+            self.list_lay.addWidget(hint)
+            self.group_titles[group] = (title, hint)
+            for key in model_store.SPECS:
+                if model_group(key) == group:
+                    r = ModelRow(key, self)
+                    self.rows.append(r)
+                    self.list_lay.addWidget(r)
         self.location = label("", "faint", wrap=True)
         self.list_lay.addWidget(self.location)
         self.list_lay.addStretch(1)
@@ -432,8 +515,9 @@ class ModelsPage(QWidget):
     def retranslate(self):
         self.title.setText(tr("ui.models.title"))
         self.subtitle.setText(tr("ui.models.subtitle"))
-        self.bundled_title.setText(tr("ui.models.bundled_title"))
-        self.optional_title.setText(tr("ui.models.optional_title"))
+        for group, (title, hint) in self.group_titles.items():
+            title.setText(tr(f"ui.models.group.{group}"))
+            hint.setText(tr(f"ui.models.group_hint.{group}"))
         self.location.setText(tr("ui.models.location", path=str(paths.downloaded_models_dir())))
         self.refresh()
 
@@ -616,17 +700,26 @@ class AboutPage(QWidget):
         hero.body.addLayout(top)
         self.desc = label("", None, wrap=True)
         hero.body.addWidget(self.desc)
-        links = QHBoxLayout()
-        for key, url in (("ui.about.paper", "https://arxiv.org/abs/2202.05822"),
-                         ("ui.about.project", "https://clipasso.github.io/clipasso/"),
-                         ("ui.about.code", "https://github.com/yael-vinker/CLIPasso")):
-            b = button(tr(key), "external-link", "ghost")
-            b.clicked.connect(lambda _=False, u=url: QDesktopServices.openUrl(QUrl(u)))
-            b.setProperty("i18n", key)
-            links.addWidget(b)
-        links.addStretch(1)
-        self.links = links
-        hero.body.addLayout(links)
+        self.link_buttons = []
+        for method, items in (("CLIPasso", (("ui.about.paper", "https://arxiv.org/abs/2202.05822"),
+                                            ("ui.about.project", "https://clipasso.github.io/clipasso/"),
+                                            ("ui.about.code", "https://github.com/yael-vinker/CLIPasso"))),
+                              ("SwiftSketch · ControlSketch", (
+                                  ("ui.about.paper", "https://arxiv.org/abs/2502.08642"),
+                                  ("ui.about.project", "https://swiftsketch.github.io/"),
+                                  ("ui.about.code", "https://github.com/swiftsketch/SwiftSketch")))):
+            links = QHBoxLayout()
+            name = label(method, "h3")
+            name.setMinimumWidth(190)
+            links.addWidget(name)
+            for key, url in items:
+                b = button(tr(key), "external-link", "ghost")
+                b.clicked.connect(lambda _=False, u=url: QDesktopServices.openUrl(QUrl(u)))
+                b.setProperty("i18n", key)
+                links.addWidget(b)
+                self.link_buttons.append(b)
+            links.addStretch(1)
+            hero.body.addLayout(links)
         col.addWidget(hero)
 
         self.credits = Card()
@@ -654,10 +747,8 @@ class AboutPage(QWidget):
     def retranslate(self):
         self.version.setText(tr("ui.about.version", version=__version__, edition=tr(f"ui.edition.{EDITION}")))
         self.desc.setText(tr("ui.about.desc"))
-        for i in range(self.links.count()):
-            w = self.links.itemAt(i).widget()
-            if w is not None and w.property("i18n"):
-                w.setText(tr(w.property("i18n")))
+        for b in self.link_buttons:
+            b.setText(tr(b.property("i18n")))
         self.credits_title.setText(tr("ui.about.credits"))
         self.credits_text.setText(tr("ui.about.credits_text"))
         self.license_title.setText(tr("ui.about.license"))

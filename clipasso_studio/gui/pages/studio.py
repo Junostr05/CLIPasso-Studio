@@ -15,16 +15,14 @@ from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QM
 from ... import paths
 from ... import settings_schema as schema
 from ...engine import imaging
-from .. import dialogs, icons, theme
+from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import IMAGE_FILTER, ImageDropZone, LossChart, SeedThumb, SketchCanvas
-from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label
+from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label
+from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel
-
-# rough seconds per iteration used for the time estimate before the first run
-DEFAULT_SEC_PER_IT = {"cpu": 1.0, "cuda": 0.08}
 
 
 def _pixmap_from_png(data: bytes) -> QPixmap:
@@ -62,6 +60,8 @@ class StudioPage(QWidget):
         self.seed_attn: dict[int, QPixmap] = {}
         self.seed_runs: dict[int, str] = {}
         self.best_seed: int | None = None
+        self.view_method = schema.DEFAULT_METHOD  # method of the displayed run
+        self.seed_scores: dict[int, float] = {}
         self._status_key = ("ui.status.idle", {})
 
         root = QVBoxLayout(self)
@@ -81,6 +81,8 @@ class StudioPage(QWidget):
         self.device_badge = label("", "badge")
         head.addWidget(self.device_badge, 0, Qt.AlignVCenter)
         root.addLayout(head)
+        self.picker = MethodPicker()
+        root.addWidget(self.picker)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.setChildrenCollapsible(False)
@@ -172,6 +174,9 @@ class StudioPage(QWidget):
         self.stage_badge.setVisible(False)
         top.addWidget(self.stage_badge)
         center.body.addLayout(top)
+        self.banner = Banner()
+        self.banner.action.connect(self._download_missing)
+        center.body.addWidget(self.banner)
         self.canvas = SketchCanvas()
         center.body.addWidget(self.canvas, 1)
 
@@ -234,6 +239,8 @@ class StudioPage(QWidget):
         right.setMaximumWidth(460)
         self.params = ParamPanel()
         self.params.settings_changed.connect(self._settings_changed)
+        self.params.method_changed.connect(self._method_changed)
+        self.picker.changed.connect(self.params.set_method)
         self.params.import_btn.clicked.connect(self.import_preset)
         self.params.export_btn.clicked.connect(self.export_preset)
         self.params.cli_btn.clicked.connect(self.copy_cli)
@@ -252,12 +259,12 @@ class StudioPage(QWidget):
         i18n.language_changed.connect(lambda _: self.retranslate())
 
         s = app_settings()
+        per_method = s.get("last_params_by_method")
         last = s.get("last_params")
-        if isinstance(last, dict):
-            try:
-                self.params.set_settings(last)
-            except ValueError:
-                pass
+        if not isinstance(per_method, dict):
+            per_method = {"clipasso": last} if isinstance(last, dict) else {}
+        self.params.restore(per_method, s.get("last_method") or schema.method_of(last))
+        self._method_changed(self.params.method())
         self._sync_quick()
         self._build_samples_menu()
         last_img = s.get("last_image")
@@ -307,21 +314,79 @@ class StudioPage(QWidget):
 
     def _quick_toggled(self, key, value):
         s = self.params.settings()
-        if s[key] != value:
+        if key in s and s[key] != value:
             self.params.fields[key].set_value(value, emit=True)
 
     def _sync_quick(self):
         s = self.params.settings()
-        for key, (_, sw) in self.quick.items():
-            if sw.isChecked() != bool(s[key]):
+        for key, (lbl, sw) in self.quick.items():
+            present = key in s
+            lbl.setVisible(present)
+            sw.setVisible(present)
+            if present and sw.isChecked() != bool(s[key]):
                 sw.blockSignals(True)
                 sw.setChecked(bool(s[key]))
                 sw.blockSignals(False)
 
     def _settings_changed(self, settings: dict):
         self._sync_quick()
-        app_settings().set("last_params", settings)
+        st = app_settings()
+        st.data["last_params_by_method"] = self.params.all_settings()
+        st.data["last_method"] = self.params.method()
+        st.set("last_params", settings)
         self._update_estimate()
+        self._update_banner()
+        self.picker.cards[self.params.method()].refresh_status(settings)
+
+    def _method_changed(self, method: str):
+        self.picker.set_current(method)
+        self.picker.refresh_status(self.params.all_settings())
+        self._sync_quick()
+        self.reuse_btn.setVisible(method == "clipasso")
+        self.series_btn.setVisible(method != "swiftsketch")
+        if not self.controller.is_busy() and not self.view_dir:
+            self._set_view_method(method)
+        self._update_banner()
+        self._update_estimate()
+
+    def _set_view_method(self, method: str):
+        """Adapt statistics, chart and canvas views to the method of the displayed run."""
+        self.view_method = method
+        loss = methods_ui.uses_loss(method)
+        self.stat_loss.caption.setText(tr("ui.stat.loss") if loss else tr("ui.stat.score"))
+        self.stat_best.caption.setText(tr("ui.stat.best") if loss else tr("ui.stat.best_score"))
+        self.stat_iter.caption.setText(tr("ui.stat.step") if method == "swiftsketch" else tr("ui.stat.iteration"))
+        self.chart.setVisible(method != "swiftsketch")
+        self.chart.empty_text_key = "ui.loss_chart_empty" if loss else "ui.score_chart_empty"
+        self.chart.update()
+        self.modes.set_visible("attention", method != "swiftsketch")
+        self.modes.set_visible("condition", method == "controlsketch")
+        if self.modes.current() in ("attention", "condition") and not (
+                method == "controlsketch" or (method == "clipasso" and self.modes.current() == "attention")):
+            self.modes.set_current("sketch")
+            self.canvas.set_mode("sketch")
+
+    def _update_banner(self):
+        missing = self.params.missing_models()
+        method = self.params.method()
+        if missing:
+            mb = methods_ui.download_mb(missing)
+            size = f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+            names = ", ".join(dialogs.model_display_name(k) for k in missing)
+            self.banner.show_message(tr("ui.banner.models_missing", method=methods_ui.name(method), names=names,
+                                        size=size), button_text=tr("ui.download"), icon_name="download")
+        elif method == "controlsketch" and not methods_ui.has_cuda():
+            self.banner.show_message(tr("ui.banner.gpu_needed"), warn=True)
+        else:
+            self.banner.hide()
+
+    def _download_missing(self):
+        missing = self.params.missing_models()
+        if missing and dialogs.ask_download_missing(self, missing):
+            self.toast.emit(tr("ui.models_ready", method=methods_ui.name(self.params.method())), "success")
+        self.params._after_change()
+        self._update_banner()
+        self.picker.refresh_status(self.params.all_settings())
 
     # ================================================================== run
     def _check_models(self) -> bool:
@@ -376,6 +441,7 @@ class StudioPage(QWidget):
         self.seed_svgs.clear()
         self.seed_attn.clear()
         self.seed_runs.clear()
+        self.seed_scores.clear()
         self.best_seed = None
         self.selected_seed = None
         self.view_dir = ""
@@ -407,6 +473,8 @@ class StudioPage(QWidget):
             t.set_selected(s == seed)
         self.canvas.set_svg(self.seed_svgs.get(seed))
         self.canvas.set_attention(self.seed_attn.get(seed))
+        if not methods_ui.uses_loss(self.view_method) and seed in self.seed_scores:
+            self.stat_loss.value.setText(f"{self.seed_scores[seed]:.1f}")
         self._update_buttons()
 
     def _job_started(self, job: QueuedJob):
@@ -417,7 +485,8 @@ class StudioPage(QWidget):
             self.image_path = job.target
             self.drop.set_image(job.target)
         self.canvas.set_input(self._square_input(QPixmap(job.target)))
-        self.chart.reset(job.settings["num_iter"])
+        self._set_view_method(schema.method_of(job.settings))
+        self.chart.reset(methods_ui.iterations(job.settings))
         self._ensure_thumbs(job.seeds)
         self._set_status("ui.status.starting")
         self._update_buttons()
@@ -438,6 +507,8 @@ class StudioPage(QWidget):
             self.seed_attn[seed] = _pixmap_from_png(data["png"])
             if seed == self.selected_seed:
                 self.canvas.set_attention(self.seed_attn[seed])
+        elif kind == "condition":
+            self.canvas.set_condition(_pixmap_from_png(data["png"]))
         elif kind == "iteration":
             follow = job.seed_progress.get(self.selected_seed, 0.0) >= 1.0 or self.selected_seed not in job.seeds
             if seed != self.selected_seed and follow and seed in self.thumbs:
@@ -453,11 +524,17 @@ class StudioPage(QWidget):
         elif kind == "seed_done":
             self.seed_svgs[seed] = data["svg"]
             self.seed_runs[seed] = data["run_dir"]
+            if data.get("clip_score") is not None:
+                self.seed_scores[seed] = data["clip_score"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
-                self.thumbs[seed].set_caption(f"{data['best_loss']:.3f}")
+                self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score")))
             if seed == self.selected_seed:
                 self.canvas.set_svg(data["svg"])
+            if not methods_ui.uses_loss(self.view_method) and self.seed_scores:
+                self.stat_best.value.setText(f"{max(self.seed_scores.values()):.1f}")
+                if seed == self.selected_seed and data.get("clip_score") is not None:
+                    self.stat_loss.value.setText(f"{data['clip_score']:.1f}")
         elif kind == "job_done":
             best_run = data.get("best_run", "")
             for r in data.get("runs", []):
@@ -481,11 +558,15 @@ class StudioPage(QWidget):
 
     def _on_iteration(self, job, data):
         it, total = data["it"] + 1, data["total"]
+        method = schema.method_of(job.settings)
         self.progress.setValue(int(job.progress * 1000))
         self.stat_iter.value.setText(f"{it}/{total}")
-        self.stat_loss.value.setText(f"{data['loss']:.4f}")
-        best = data["best_loss"]
-        self.stat_best.value.setText(f"{best:.4f}" if best < 99 else "–")
+        if methods_ui.uses_loss(method):
+            self.stat_loss.value.setText(f"{data['loss']:.4f}")
+            best = data["best_loss"]
+            self.stat_best.value.setText(f"{best:.4f}" if best < 99 else "–")
+        elif data.get("score") is not None:
+            self.stat_loss.value.setText(f"{data['score']:.1f}")
         self.stat_time.value.setText(imaging.eta_string(data["elapsed"]))
         remaining_seeds = sum(1 for s in job.seeds if job.seed_progress.get(s, 0) < 1.0) - 1
         eta = data["eta"]
@@ -493,9 +574,12 @@ class StudioPage(QWidget):
             eta += remaining_seeds * data["elapsed"] / max(it, 1) * total
         self.stat_eta.value.setText(imaging.eta_string(eta))
         self.chart.total = total
-        self.chart.add(it, data["loss"], data.get("loss_eval"))
+        if methods_ui.uses_loss(method):
+            self.chart.add(it, data["loss"], data.get("loss_eval"))
+        elif data.get("score") is not None:
+            self.chart.add(it, None, data["score"])
         if it >= 5 and data["elapsed"] > 0:
-            key = "cuda" if job.device.startswith("cuda") else "cpu"
+            key = f"{method}:" + ("cuda" if job.device.startswith("cuda") else "cpu")
             rates = dict(app_settings().get("sec_per_it", {}) or {})
             rates[key] = data["elapsed"] / it
             if it % 50 == 0:
@@ -548,6 +632,7 @@ class StudioPage(QWidget):
             self.view_job = None
         self._reset_view()
         self.view_dir = job_dir
+        self._set_view_method(summary.get("method") or schema.method_of(summary.get("settings")))
         target = summary.get("target", "")
         src = next((os.path.join(job_dir, f) for f in os.listdir(job_dir) if f.startswith("source.")), target)
         if os.path.isfile(src):
@@ -565,7 +650,13 @@ class StudioPage(QWidget):
             except OSError:
                 continue
             self.thumbs[seed].set_svg(self.seed_svgs[seed])
-            self.thumbs[seed].set_caption(f"{r['best_loss']:.3f}")
+            self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score")))
+            if r.get("clip_score") is not None:
+                self.seed_scores[seed] = r["clip_score"]
+            cond = next((os.path.join(r["run_dir"], f) for f in os.listdir(r["run_dir"])
+                         if f.endswith("_condition.png")), None) if os.path.isdir(r["run_dir"]) else None
+            if cond:
+                self.canvas.set_condition(QPixmap(cond))
             attn = os.path.join(r["run_dir"], "attention_map.png")
             if os.path.isfile(attn):
                 self.seed_attn[seed] = QPixmap(attn)
@@ -599,6 +690,20 @@ class StudioPage(QWidget):
                 cfg = json.load(f)
         except (OSError, ValueError):
             cfg = {}
+        method = schema.method_of(summary.get("settings"))
+        if not methods_ui.uses_loss(method):
+            total = methods_ui.iterations(summary.get("settings", {}))
+            self.stat_iter.value.setText(f"{best.get('iterations_done', 0)}/{total}")
+            if best.get("clip_score") is not None:
+                self.stat_loss.value.setText(f"{best['clip_score']:.1f}")
+                self.stat_best.value.setText(f"{best['clip_score']:.1f}")
+            if cfg.get("seconds"):
+                self.stat_time.value.setText(imaging.eta_string(cfg["seconds"]))
+            self.chart.reset(max(int(total), 1))
+            for it, score in cfg.get("clip_scores") or []:
+                self.chart.add(it + 1, None, score)
+            self.chart.update()
+            return
         total = cfg.get("num_iter", best.get("iterations_done", 0))
         self.stat_iter.value.setText(f"{best.get('iterations_done', 0)}/{total}")
         self.stat_best.value.setText(f"{best.get('best_loss', 0):.4f}")
@@ -647,10 +752,16 @@ class StudioPage(QWidget):
         if not self.image_path or not self._check_models():
             return
         base = self.params.settings()
-        for n in (4, 8, 16, 32):
+        method = self.params.method()
+        if method == "swiftsketch":  # always 32 strokes
+            return
+        for n in ((4, 8, 16, 32) if method == "clipasso" else (8, 16, 32, 64)):
             s = dict(base)
-            s["num_paths"] = n
-            s["path_svg"] = "none"
+            if method == "clipasso":
+                s["num_paths"] = n
+                s["path_svg"] = "none"
+            else:
+                s["num_strokes"] = n
             self.controller.enqueue(self.image_path, s, start=not self.controller.is_busy())
         self.toast.emit(tr("ui.series_added"), "success")
         self.open_queue.emit()
@@ -664,14 +775,16 @@ class StudioPage(QWidget):
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             data = data.get("settings", data) if isinstance(data, dict) else {}
-            self.params.set_settings({k: v for k, v in data.items() if k in schema.PARAMS_BY_KEY})
-            self.params.settings_changed.emit(self.params.settings())
+            method = schema.method_of(data)
+            keys = {p.key for p in schema.params_for(method)}
+            self.params.set_settings({"method": method, **{k: v for k, v in data.items() if k in keys}})
             self.toast.emit(tr("ui.preset_loaded"), "success")
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, tr("ui.error"), str(exc))
 
     def export_preset(self):
-        path, _ = QFileDialog.getSaveFileName(self, tr("ui.export"), "clipasso-preset.json", "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("ui.export"), f"{self.params.method()}-preset.json",
+                                              "JSON (*.json)")
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.params.settings(), f, indent=2)
@@ -693,25 +806,35 @@ class StudioPage(QWidget):
     def _set_status(self, key: str, **fmt):
         self._status_key = (key, fmt)
         self.status.setText(tr(key, **fmt))
-        busy = key in ("ui.status.optimizing", "ui.status.loading", "ui.status.init", "ui.status.starting")
+        busy = key in ("ui.status.optimizing", "ui.status.loading", "ui.status.init", "ui.status.starting",
+                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models")
         self.stage_badge.setVisible(busy)
         if busy:
             self.stage_badge.setText(tr("ui.live"))
 
     def _update_estimate(self):
         s = self.params.settings()
+        method = self.params.method()
         rates = app_settings().get("sec_per_it", {}) or {}
-        dev = "cuda" if s["device"] == "cuda" or (s["device"] == "auto" and self.device_badge.text().startswith(
-            "GPU")) else "cpu"
-        per_it = rates.get(dev, DEFAULT_SEC_PER_IT[dev])
-        per_it *= (1 + s["num_aug_clip"]) / 5
-        if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
-            per_it *= 2
+        gpu = s["device"] == "cuda" or (s["device"] == "auto" and (self.device_badge.text().startswith("GPU")
+                                                                  or methods_ui.has_cuda()))
+        dev = "cuda" if gpu else "cpu"
+        legacy = rates.get(dev) if method == "clipasso" else None  # measured by version 1.x
+        per_it = rates.get(f"{method}:{dev}", legacy or methods_ui.DEFAULT_SEC_PER_IT[(method, dev)])
+        if method == "clipasso":
+            per_it *= (1 + s["num_aug_clip"]) / 5
+            if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
+                per_it *= 2
         sketches = s["num_sketches"]
         if s["multiprocess"] and sketches > 1:
             sketches = math.ceil(sketches / min(sketches, 4)) * 1.6
-        secs = per_it * s["num_iter"] * sketches + 15 * s["num_sketches"]
+        secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))
+
+    def _seed_caption(self, best_loss, clip_score) -> str:
+        if methods_ui.uses_loss(self.view_method) or clip_score is None:
+            return f"{best_loss:.3f}" if best_loss is not None else ""
+        return f"{clip_score:.1f}"
 
     def _update_buttons(self):
         busy = self.controller.is_busy()
@@ -759,9 +882,9 @@ class StudioPage(QWidget):
             self.modes.set_text(m, tr(f"ui.mode.{m}"))
         self.canvas.placeholder = tr("ui.canvas_placeholder")
         self.canvas.update()
-        self.stat_iter.caption.setText(tr("ui.stat.iteration"))
-        self.stat_loss.caption.setText(tr("ui.stat.loss"))
-        self.stat_best.caption.setText(tr("ui.stat.best"))
+        self.picker.retranslate()
+        self.picker.refresh_status(self.params.all_settings())
+        self._set_view_method(self.view_method)
         self.stat_time.caption.setText(tr("ui.stat.elapsed"))
         self.stat_eta.caption.setText(tr("ui.stat.eta"))
         self.cancel_btn.setText(tr("ui.cancel"))
@@ -769,6 +892,7 @@ class StudioPage(QWidget):
         key, fmt = self._status_key
         self.status.setText(tr(key, **fmt))
         self._update_estimate()
+        self._update_banner()
         self._update_buttons()
 
     def estimate_holder(self) -> QWidget:

@@ -14,12 +14,14 @@ from . import icons, theme
 from .app_settings import app_settings
 from .controller import JobController
 from .i18n import i18n, tr
+from .pages.compare import ComparePage
 from .pages.other_pages import AboutPage, GalleryPage, ModelsPage, QueuePage, SettingsPage
 from .pages.studio import StudioPage
 from .widgets.common import Toast, label
 
 NAV = (
     ("studio", "brush"),
+    ("compare", "git-compare"),
     ("queue", "list-todo"),
     ("gallery", "images"),
     ("models", "box"),
@@ -112,13 +114,14 @@ class MainWindow(QMainWindow):
         # --------------------------------------------------------------- pages
         self.stack = QStackedWidget()
         self.studio = StudioPage(self.controller)
+        self.compare = ComparePage(self.controller, self.studio)
         self.queue = QueuePage(self.controller, lambda: self.studio.params.settings())
         self.gallery = GalleryPage()
         self.models = ModelsPage()
         self.settings = SettingsPage()
         self.about = AboutPage()
-        self.pages = {"studio": self.studio, "queue": self.queue, "gallery": self.gallery, "models": self.models,
-                      "settings": self.settings, "about": self.about}
+        self.pages = {"studio": self.studio, "compare": self.compare, "queue": self.queue, "gallery": self.gallery,
+                      "models": self.models, "settings": self.settings, "about": self.about}
         for p in self.pages.values():
             self.stack.addWidget(p)
         h.addWidget(self.stack, 1)
@@ -128,6 +131,8 @@ class MainWindow(QMainWindow):
         self.studio.toast.connect(self.toast.show_message)
         self.studio.open_queue.connect(lambda: self.show_page("queue"))
         self.gallery.open_job.connect(self._open_job)
+        self.compare.open_job.connect(self._open_job)
+        self.compare.toast.connect(self.toast.show_message)
         self.settings.theme_changed.connect(self.apply_theme)
         self.controller.job_event.connect(self._on_job_event)
         self.controller.job_finished.connect(self._on_job_finished)

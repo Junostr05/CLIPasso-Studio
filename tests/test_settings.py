@@ -94,13 +94,27 @@ def test_every_param_has_translations():
 
     from clipasso_studio import paths
 
+    def has(data, method, key, suffix):
+        return f"param.{method}.{key}.{suffix}" in data or f"param.{key}.{suffix}" in data
+
+    langs = {}
     for lang in ("de", "en"):
         data = json.loads(paths.resource("i18n", f"{lang}.json").read_text(encoding="utf-8"))
-        for p in schema.PARAMS:
-            assert f"param.{p.key}.label" in data, (lang, p.key)
-            assert f"param.{p.key}.help" in data, (lang, p.key)
-        for g in schema.GROUPS:
-            assert f"group.{g}" in data, (lang, g)
+        langs[lang] = data
+        for method in schema.METHODS:
+            for p in schema.params_for(method):
+                assert has(data, method, p.key, "label"), (lang, method, p.key)
+                assert has(data, method, p.key, "help"), (lang, method, p.key)
+                if p.kind == "choice" and p.key not in ("control_points_per_seg", "clip_model_name",
+                                                          "saliency_clip_model", "device", "gpunum"):
+                    for c in p.choices:
+                        assert has(data, method, p.key, f"choice.{c}") or p.key in (
+                            "clip_conv_loss_type", "percep_loss", "saliency_model"), (lang, method, p.key, c)
+            for g in schema.METHOD_GROUPS[method]:
+                assert f"group.{g}" in data, (lang, g)
+            for key in ("tagline", "speed", "desc"):
+                assert f"method.{method}.{key}" in data, (lang, method, key)
+    assert set(langs["de"]) == set(langs["en"]), set(langs["de"]) ^ set(langs["en"])
 
 
 def test_cli_parses_original_command_line():

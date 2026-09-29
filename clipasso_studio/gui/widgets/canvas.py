@@ -42,7 +42,7 @@ class SketchCanvas(QWidget):
     In "compare" mode a draggable divider reveals the photo on the left and the sketch on the right.
     """
 
-    MODES = ("sketch", "compare", "attention", "mask")
+    MODES = ("sketch", "compare", "attention", "mask", "condition")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -54,6 +54,7 @@ class SketchCanvas(QWidget):
         self._input: QPixmap | None = None
         self._attention: QPixmap | None = None
         self._mask: QPixmap | None = None
+        self._condition: QPixmap | None = None
         self._split = 0.5
         self._drag = False
         self.placeholder = ""
@@ -84,8 +85,12 @@ class SketchCanvas(QWidget):
         self._mask = pm
         self.update()
 
+    def set_condition(self, pm: QPixmap | None):
+        self._condition = pm
+        self.update()
+
     def clear(self):
-        self._svg = self._renderer = self._attention = self._mask = None
+        self._svg = self._renderer = self._attention = self._mask = self._condition = None
         self.update()
 
     def _paper_rect(self) -> QRectF:
@@ -112,6 +117,8 @@ class SketchCanvas(QWidget):
             p.drawPixmap(rect.toRect(), self._attention)
         elif self.mode == "mask" and self._mask:
             p.drawPixmap(rect.toRect(), self._mask)
+        elif self.mode == "condition" and self._condition:
+            p.drawPixmap(rect.toRect(), self._condition)
         elif self.mode == "compare" and self._input:
             p.drawPixmap(rect.toRect(), self._input)
             x = rect.left() + rect.width() * self._split
@@ -175,13 +182,16 @@ class LossChart(QWidget):
         self.train: list[tuple[int, float]] = []
         self.evals: list[tuple[int, float]] = []
         self.total = 1
+        self.empty_text_key = "ui.loss_chart_empty"
 
     def reset(self, total: int = 1):
         self.train, self.evals, self.total = [], [], max(total, 1)
         self.update()
 
-    def add(self, it: int, loss: float, loss_eval: float | None):
-        self.train.append((it, loss))
+    def add(self, it: int, loss: float | None, loss_eval: float | None):
+        """``loss`` (thin line) and ``loss_eval`` (bold line) – either may be None."""
+        if loss is not None:
+            self.train.append((it, loss))
         if loss_eval is not None:
             self.evals.append((it, loss_eval))
         if len(self.train) % 3 == 0 or loss_eval is not None:
@@ -199,7 +209,7 @@ class LossChart(QWidget):
         values = [v for _, v in self.train] + [v for _, v in self.evals]
         if len(values) < 2:
             p.setPen(QColor(pal.faint))
-            p.drawText(r, Qt.AlignCenter, tr("ui.loss_chart_empty"))
+            p.drawText(r, Qt.AlignCenter, tr(self.empty_text_key))
             return
         lo, hi = min(values), max(values)
         if hi - lo < 1e-9:
