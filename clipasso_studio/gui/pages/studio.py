@@ -471,7 +471,8 @@ class StudioPage(QWidget):
             if self.best_seed is not None:
                 self.select_seed(self.best_seed)
         elif kind == "warning":
-            self.toast.emit(data.get("message", ""), "warning")
+            key = f"ui.warn.{data.get('code', '')}"
+            self.toast.emit(tr(key) if i18n.has(key) else data.get("message", ""), "warning")
         elif kind == "log":
             self.toast.emit(data.get("message", ""), "info")
         elif kind == "error":

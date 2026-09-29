@@ -78,6 +78,28 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def cuda_arch_supported(idx: int) -> bool:
+    """False if the GPU's compute capability has no kernels in this PyTorch build."""
+    try:
+        major, minor = torch.cuda.get_device_capability(idx)
+        archs = torch.cuda.get_arch_list()
+    except Exception:
+        return True
+    if not archs:
+        return True
+    cap = major * 10 + minor
+    for a in archs:
+        kind, _, num = a.partition("_")
+        if not num.isdigit():
+            continue
+        n = int(num)
+        if kind == "sm" and n // 10 == major and n <= cap:
+            return True  # binary compatible within the same major version
+        if kind == "compute" and n <= cap:
+            return True  # PTX can be JIT-compiled for newer GPUs
+    return False
+
+
 def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
     """-> (device, warning)."""
     wanted = settings.get("device", "auto")
@@ -85,9 +107,14 @@ def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
         return torch.device("cpu"), None
     if torch.cuda.is_available() and torch.cuda.device_count() > 0:
         idx = min(int(settings.get("gpunum", 0)), torch.cuda.device_count() - 1)
+        if not cuda_arch_supported(idx):
+            name = torch.cuda.get_device_name(idx)
+            return torch.device("cpu"), (f"gpu_unsupported:The GPU '{name}' is not supported by this "
+                                         "PyTorch build – running on the CPU instead.")
         return torch.device(f"cuda:{idx}"), None
     if wanted == "cuda":
-        return torch.device("cpu"), "CUDA is not available – running on the CPU instead (much slower)."
+        return torch.device("cpu"), ("cuda_unavailable:CUDA is not available – running on the CPU instead "
+                                     "(much slower).")
     return torch.device("cpu"), None
 
 
@@ -163,7 +190,8 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     if device is None:
         device, warning = resolve_device(settings)
         if warning:
-            reporter.event("warning", message=warning)
+            code, _, text = warning.partition(":")
+            reporter.event("warning", message=text, code=code)
 
     os.makedirs(run_dir, exist_ok=True)
     svg_logs = os.path.join(run_dir, "svg_logs")
@@ -323,7 +351,8 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
         torch.set_num_threads(int(settings["num_threads"]))
     device, warning = resolve_device(settings)
     if warning:
-        reporter.event("warning", message=warning)
+        code, _, text = warning.partition(":")
+        reporter.event("warning", message=text, code=code)
     job_dir = job_dir or make_job_dir(output_root, target)
     seeds = list(seeds) if seeds is not None else job_seeds(settings)
     reporter.event("job_start", job_dir=job_dir, device=str(device), seeds=seeds)

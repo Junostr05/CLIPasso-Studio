@@ -292,5 +292,7 @@
  "ui.about.license": "Licence",
  "ui.about.license_text": "CLIPasso is licensed under <a href='https://creativecommons.org/licenses/by-nc-sa/4.0/'>CC BY-NC-SA 4.0</a> – <b>non-commercial use only</b>. This app uses the same licence. Notices for other components: THIRD_PARTY_NOTICES.md in the program folder or repository.",
  "ui.import_tip": "Import settings from JSON",
- "ui.export_tip": "Export settings as JSON"
+ "ui.export_tip": "Export settings as JSON",
+ "ui.warn.cuda_unavailable": "No usable NVIDIA GPU found (CUDA not available) – computing on the CPU.",
+ "ui.warn.gpu_unsupported": "This graphics card is not supported by this PyTorch build – computing on the CPU."
 }

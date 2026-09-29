@@ -546,9 +546,14 @@ class SettingsPage(QWidget):
 
             lines = [f"PyTorch {torch.__version__}"]
             if torch.cuda.is_available():
+                from ...engine.pipeline import cuda_arch_supported
+
                 for i in range(torch.cuda.device_count()):
                     prop = torch.cuda.get_device_properties(i)
-                    lines.append(f"GPU {i}: {prop.name} · {prop.total_memory / 2 ** 30:.1f} GB")
+                    ok = "" if cuda_arch_supported(i) else "  ⚠ not supported by this build → CPU"
+                    lines.append(f"GPU {i}: {prop.name} · {prop.total_memory / 2 ** 30:.1f} GB{ok}")
+            elif torch.version.cuda:
+                lines.append(f"CUDA {torch.version.cuda}: no usable NVIDIA GPU/driver found → CPU")
             else:
                 lines.append("CUDA: –")
             return "\n".join(lines)
