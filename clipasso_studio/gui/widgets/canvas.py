@@ -336,6 +336,7 @@ class SeedThumb(QFrame):
         lay.addWidget(self.caption)
         self._selected = False
         self._best = False
+        self.setToolTip(f"Seed {seed}")
 
     def set_svg(self, svg: str):
         self.view.set_svg(svg)

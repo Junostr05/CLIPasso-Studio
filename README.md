@@ -16,6 +16,12 @@
   <a href="#english">English</a>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/camel_drawing.gif" width="260" alt="CLIPasso zeichnet ein Kamel">
+  <img src="docs/screenshots/camel_16_strokes.png" width="260" alt="Ergebnis mit 16 Strichen">
+</p>
+<p align="center"><sub>Mit dieser App erzeugt: 16 Striche, 1001 Iterationen, CPU – links der Zeichenprozess (GIF-Export), rechts das Ergebnis.</sub></p>
+
 ![Studio](docs/screenshots/studio_dark_de.png)
 
 ## Download

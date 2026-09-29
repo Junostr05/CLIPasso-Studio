@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import os
 import platform
-import sys
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QMessageBox, QProgressBar, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
+                               QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from ... import APP_NAME, __version__, paths
 from ...engine import model_store
@@ -659,5 +658,3 @@ class AboutPage(QWidget):
         self.license_title.setText(tr("ui.about.license"))
         self.license_text.setText(tr("ui.about.license_text"))
 
-
-__all__ = ["QueuePage", "GalleryPage", "ModelsPage", "SettingsPage", "AboutPage", "QSize", "QSizePolicy", "sys"]

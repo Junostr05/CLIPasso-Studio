@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import math
 import os
-import time
+import sys
 
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
-                               QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget)
+                               QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
@@ -455,7 +455,7 @@ class StudioPage(QWidget):
             self.seed_runs[seed] = data["run_dir"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
-                self.thumbs[seed].set_caption(f"Loss {data['best_loss']:.3f}")
+                self.thumbs[seed].set_caption(f"{data['best_loss']:.3f}")
             if seed == self.selected_seed:
                 self.canvas.set_svg(data["svg"])
         elif kind == "job_done":
@@ -564,7 +564,7 @@ class StudioPage(QWidget):
             except OSError:
                 continue
             self.thumbs[seed].set_svg(self.seed_svgs[seed])
-            self.thumbs[seed].set_caption(f"Loss {r['best_loss']:.3f}")
+            self.thumbs[seed].set_caption(f"{r['best_loss']:.3f}")
             attn = os.path.join(r["run_dir"], "attention_map.png")
             if os.path.isfile(attn):
                 self.seed_attn[seed] = QPixmap(attn)
@@ -575,6 +575,8 @@ class StudioPage(QWidget):
                 self.best_seed = seed
         for s, t in self.thumbs.items():
             t.set_best(s == self.best_seed)
+            if s == self.best_seed:
+                t.set_caption(f"★ {t.caption.text()}")
         if self.best_seed is not None:
             self.select_seed(self.best_seed)
         if isinstance(summary.get("settings"), dict):
@@ -676,7 +678,8 @@ class StudioPage(QWidget):
 
     def copy_cli(self):
         target = self.image_path or "image.png"
-        args = ["CLIPassoStudio.exe", "--cli", "--target_file", f'"{target}"'] + schema.to_cli_args(
+        exe = f'"{sys.executable}"' if paths.is_frozen() else "python -m clipasso_studio"
+        args = [exe, "--cli", "--target_file", f'"{target}"'] + schema.to_cli_args(
             self.params.settings())
         QGuiApplication.clipboard().setText(" ".join(args))
         self.toast.emit(tr("ui.cli_copied"), "success")
@@ -778,5 +781,3 @@ class StudioPage(QWidget):
     def sizeHint(self):  # noqa: N802
         return QSize(1400, 860)
 
-
-__all__ = ["StudioPage", "QFrame", "QSizePolicy", "time"]

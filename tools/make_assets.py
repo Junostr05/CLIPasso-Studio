@@ -99,7 +99,7 @@ def draw_splash() -> QImage:
 
 
 def main() -> int:
-    app = QGuiApplication(sys.argv)  # noqa: F841
+    app = QGuiApplication(sys.argv)  # noqa: F841 - needed for QFont/QPainter
     for f in (RES / "fonts").glob("*.ttf"):
         QFontDatabase.addApplicationFont(str(f))
     draw_icon(256).save(str(RES / "app_icon.png"))
