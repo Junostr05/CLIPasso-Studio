@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 ROOT = Path(SPECPATH).resolve().parent
 EDITION = os.environ.get("EDITION", "cpu").lower()
@@ -35,6 +35,19 @@ for sub in ("clip", "u2net", "dino", "vgg"):
     datas.append((str(MODELS / sub), f"models/{sub}"))
 
 hiddenimports = collect_submodules("clipasso_studio") + ["PySide6.QtSvg"]
+# ControlSketch: diffusers / transformers import their model classes lazily by name
+for pkg in ("transformers.models.auto", "transformers.models.clip", "transformers.models.dpt",
+            "transformers.models.upernet", "transformers.models.convnext", "transformers.models.blip",
+            "transformers.models.bert", "diffusers.models", "diffusers.schedulers", "diffusers.loaders",
+            "diffusers.pipelines.stable_diffusion_xl"):
+    hiddenimports += collect_submodules(pkg)
+# diffusers checks the installed versions of its dependencies through their metadata
+for dist in ("diffusers", "transformers", "tokenizers", "safetensors", "huggingface_hub", "accelerate", "torch",
+             "numpy", "Pillow", "regex", "requests", "filelock", "packaging", "tqdm", "PyYAML"):
+    try:
+        datas += copy_metadata(dist)
+    except Exception:
+        pass
 
 excludes = [
     "matplotlib", "IPython", "jupyter", "notebook", "pandas", "scipy", "skimage", "sklearn", "cv2",

@@ -183,11 +183,19 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         return {"unet": unet, "controlnet": controlnet, "vae": vae, "tokenizer": tokenizer,
                 "text_encoder": text_encoder, "alphas": alphas}
 
-    for k in [k for k in _cache if k[0] == "sd" and k[1] != (condition, str(device))]:
+    sd_key = ("sd", (condition, str(device)))
+    text_key = ("text", caption, str(device))
+    for k in [k for k in _cache if k[0] == "sd" and k != sd_key]:
         del _cache[k]  # another ControlNet / device: free the memory first
-    models = _cached(("sd", (condition, str(device))), load_models)
-    text, empty = _cached(("text", caption, str(device)),
-                          lambda: sds.embed_text(models["tokenizer"], models["text_encoder"], caption, device))
+    if text_key not in _cache and sd_key in _cache and _cache[sd_key]["text_encoder"] is None:
+        del _cache[sd_key]  # a new caption needs the (released) text encoder again
+    models = _cached(sd_key, load_models)
+    if text_key not in _cache:
+        _cache[text_key] = sds.embed_text(models["tokenizer"], models["text_encoder"], caption, device)
+        models["text_encoder"] = None  # like the original: only the embeddings are needed afterwards
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    text, empty = _cache[text_key]
     dtype = sds.model_dtype(device)
     loss_fn = sds.ControlSDSLoss(models["unet"], models["controlnet"], models["vae"], text, empty,
                                  conditions.condition_tensor(cond_img, size, device, dtype), models["alphas"],

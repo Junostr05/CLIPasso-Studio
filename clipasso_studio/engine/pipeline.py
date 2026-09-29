@@ -48,8 +48,11 @@ class PrintReporter(Reporter):
             if now - self._last < 2 and data["it"] + 1 != data["total"]:
                 return
             self._last = now
-            loss = "" if data.get("loss") is None else (f"  loss {data['loss']:.4f}  "
-                                                         f"best {data['best_loss']:.4f}")
+            loss = "" if data.get("loss") is None else f"  loss {data['loss']:.4f}"
+            if data.get("best_loss") is not None:
+                loss += f"  best {data['best_loss']:.4f}"
+            if data.get("score") is not None:
+                loss += f"  CLIP score {data['score']:.2f}"
             print(f"[seed {data['seed']}] iter {data['it'] + 1}/{data['total']}{loss}  "
                   f"ETA {imaging.eta_string(data['eta'])}", flush=True)
         elif kind in ("log", "warning"):

@@ -158,14 +158,16 @@ PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def _hardware(default_multiprocess: bool = False) -> tuple[Param, ...]:
-    return (
+def _hardware(multiprocess: bool = True) -> tuple[Param, ...]:
+    """Device options; ``multiprocess`` (parallel sketches in several worker processes) is not offered for
+    ControlSketch, where every process would hold its own copy of Stable Diffusion."""
+    return tuple(p for p in (
         Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
         Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
               enabled_if=lambda s: s.get("device") != "cpu"),
-        Param("multiprocess", default_multiprocess, "bool", "hardware", cli="multiprocess"),
+        Param("multiprocess", False, "bool", "hardware", cli="multiprocess") if multiprocess else None,
         Param("num_threads", 0, "int", "hardware", minimum=0, maximum=256),
-    )
+    ) if p is not None)
 
 
 # ------------------------------------------------------------------------ SwiftSketch
@@ -242,7 +244,7 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("diffusion_timesteps", 1000, "int", "sds", cli="diffusion_timesteps", minimum=100, maximum=1000, step=50),
     Param("lr", 0.8, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
     Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
-) + _hardware()
+) + _hardware(multiprocess=False)
 
 CONTROL_GROUPS = ("basics", "image", "strokes", "init", "sds", "optim", "hardware")
 

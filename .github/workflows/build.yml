@@ -12,7 +12,7 @@ on:
         type: boolean
         default: true
       release_tag:
-        description: "Publish a GitHub release with this tag (e.g. v1.0.0); empty = no release"
+        description: "Publish a GitHub release with this tag (e.g. v2.0.0); empty = no release"
         type: string
         default: ""
 
@@ -54,13 +54,15 @@ jobs:
         run: python tools/fetch_models.py
       - name: Unit tests
         run: python -m pytest -q -m "not slow"
+      - name: Self-test of all methods (from source)
+        run: python -m clipasso_studio --selftest selftest_src
       - name: Slow end-to-end tests (all options)
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         run: python -m pytest -q -m slow
       - name: GUI smoke test (offscreen screenshots)
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python tools/screenshots.py screenshots --pages studio,queue,gallery,models,settings,about
+        run: python tools/screenshots.py screenshots --pages studio,studio:swiftsketch,studio:controlsketch,compare,queue,gallery,models,settings,about
       - uses: actions/upload-artifact@v4
         with:
           name: screenshots

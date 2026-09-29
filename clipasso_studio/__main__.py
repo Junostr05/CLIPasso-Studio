@@ -1,8 +1,8 @@
 """Entry point: ``python -m clipasso_studio`` / ``CLIPassoStudio.exe``.
 
     CLIPassoStudio.exe              start the GUI
-    CLIPassoStudio.exe --cli ...    command line mode (arguments of the original CLIPasso scripts)
-    CLIPassoStudio.exe --selftest   short end-to-end run used by the build pipeline
+    CLIPassoStudio.exe --cli ...    command line mode (arguments of the original scripts, --method X)
+    CLIPassoStudio.exe --selftest   short end-to-end runs of all methods used by the build pipeline
 """
 
 from __future__ import annotations
@@ -36,8 +36,56 @@ def _ensure_streams(log_name: str) -> None:
         sys.stderr = sys.stderr or log
 
 
+def _selftest_diffusion_methods(out_dir: str) -> dict:
+    """SwiftSketch and ControlSketch end to end with tiny random networks (no downloads) in this process;
+    checks that every diffusers / transformers class the methods load is importable."""
+    from . import paths
+    from . import settings_schema as schema
+    from .engine import pipeline
+    from .engine import selftest_models as tiny
+    from .engine.methods import controlsketch, swiftsketch
+    from .engine.methods.controlsketch import sds
+
+    sample = str(paths.resource("samples", "camel.png"))
+    results = {}
+    load_net = swiftsketch.load_net
+    swiftsketch.load_net = lambda key, device: (
+        tiny.swiftsketch_net(0 if key.endswith("diffusion") else 1,
+                             cond_mask_prob=0.1 if key.endswith("diffusion") else 0.0).to(device),
+        dict(tiny.SWIFT_ARGS, diffusion_steps=10))
+    try:
+        s = {**schema.default_settings("swiftsketch"), "num_sketches": 2, "save_diffusion_sketch": True}
+        results["swiftsketch"] = pipeline.run_job(s, sample, out_dir, pipeline.PrintReporter())
+    finally:
+        swiftsketch.load_net = load_net
+    load_sd15 = sds.load_sd15
+    sds.load_sd15 = tiny.tiny_sd15_loader
+    try:
+        s = {**schema.default_settings("controlsketch"), "num_iter": 3, "save_interval": 1, "num_strokes": 8,
+             "render_size": 256, "output_svg_size": 256, "condition": "canny", "caption": "a camel"}
+        results["controlsketch"] = pipeline.run_job(s, sample, out_dir, pipeline.PrintReporter())
+    finally:
+        sds.load_sd15 = load_sd15
+        controlsketch.release_models()
+    # classes that are only loaded with downloaded models
+    from diffusers import DDIMScheduler, StableDiffusionXLPipeline  # noqa: F401
+    from transformers import (BlipForConditionalGeneration, BlipProcessor, CLIPTextModel,  # noqa: F401
+                              CLIPTextModelWithProjection, CLIPTokenizer, DPTForDepthEstimation,
+                              UperNetForSemanticSegmentation)
+
+    from .engine.methods.controlsketch import caption, conditions, sdxl_attention  # noqa: F401
+
+    report = {}
+    for method, summary in results.items():
+        svg = summary["best_svg"]
+        ok = os.path.isfile(svg) and "<path" in open(svg, encoding="utf-8").read()
+        report[method] = {"ok": bool(ok and summary.get("clip_score") is not None),
+                          "clip_score": summary.get("clip_score"), "best_svg": svg}
+    return report
+
+
 def selftest(out_dir: str | None = None) -> int:
-    """Run a tiny sketch job on a bundled sample image; exit code 0 = success."""
+    """Run tiny sketch jobs of all methods on a bundled sample image; exit code 0 = success."""
     import json
     import tempfile
     import time
@@ -83,10 +131,14 @@ def selftest(out_dir: str | None = None) -> int:
     from .gui import export  # noqa: F401
 
     report = {"ok": ok, "seconds": round(time.time() - start, 1), "best_svg": summary["best_svg"]}
+    print("selftest: clipasso " + json.dumps(report), flush=True)
+    methods = _selftest_diffusion_methods(out_dir)
+    report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
+              "clipasso": {"ok": ok, "best_svg": summary["best_svg"]}, **methods}
     print("selftest: " + json.dumps(report), flush=True)
     with open(os.path.join(out_dir, "selftest.json"), "w", encoding="utf-8") as f:
         json.dump(report, f)
-    return 0 if ok else 1
+    return 0 if report["ok"] else 1
 
 
 def _close_splash() -> None:

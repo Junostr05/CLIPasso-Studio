@@ -151,20 +151,9 @@ def test_hed_network_matches_the_checkpoint():
 
 
 def tiny_sd(seed=0):
-    from diffusers import AutoencoderKL, ControlNetModel, UNet2DConditionModel
+    from clipasso_studio.engine.selftest_models import tiny_sd as make
 
-    torch.manual_seed(seed)
-    unet = UNet2DConditionModel(block_out_channels=(32, 64), layers_per_block=1, sample_size=8, in_channels=4,
-                                out_channels=4, down_block_types=("DownBlock2D", "CrossAttnDownBlock2D"),
-                                up_block_types=("CrossAttnUpBlock2D", "UpBlock2D"), cross_attention_dim=32,
-                                attention_head_dim=4, norm_num_groups=8)
-    controlnet = ControlNetModel.from_unet(unet, conditioning_embedding_out_channels=(16, 32, 96, 256))
-    vae = AutoencoderKL(block_out_channels=(32, 32, 32, 32), in_channels=3, out_channels=3, latent_channels=4,
-                        down_block_types=("DownEncoderBlock2D",) * 4, up_block_types=("UpDecoderBlock2D",) * 4,
-                        norm_num_groups=8)
-    for m in (unet, controlnet, vae):
-        m.requires_grad_(False).eval()
-    return unet, controlnet, vae
+    return make(seed)
 
 
 def test_alphas_cumprod_matches_diffusers():
@@ -198,31 +187,15 @@ def test_sds_loss_backpropagates_into_the_sketch():
 # ----------------------------------------------------------------------------- full run
 
 
-class _TinyTokenizer:
-    model_max_length = 77
-
-    def __call__(self, text, padding=None, max_length=77, truncation=True, return_tensors="pt"):
-        ids = torch.zeros(1, max_length, dtype=torch.long)
-        return type("T", (), {"input_ids": ids})()
-
-
-class _TinyTextEncoder(torch.nn.Module):
-    def forward(self, ids):
-        torch.manual_seed(int(ids.sum()))
-        return (torch.randn(ids.shape[0], 77, 32),)
-
-
 @pytest.mark.skipif(not BUNDLED, reason="bundled models missing (run tools/fetch_models.py)")
 def test_full_run_with_tiny_models(monkeypatch, tmp_path):
     from clipasso_studio import settings_schema as schema
     from clipasso_studio.engine import pipeline
     from clipasso_studio.engine.methods import controlsketch
     from clipasso_studio.engine.methods.controlsketch import sds
-    from clipasso_studio.engine.methods.controlsketch.sds import alphas_cumprod_from_config
+    from clipasso_studio.engine.selftest_models import tiny_sd15_loader
 
-    unet, controlnet, vae = tiny_sd()
-    monkeypatch.setattr(sds, "load_sd15", lambda cond, device: (unet, controlnet, vae, _TinyTokenizer(),
-                                                                _TinyTextEncoder(), alphas_cumprod_from_config({})))
+    monkeypatch.setattr(sds, "load_sd15", tiny_sd15_loader)
     controlsketch.release_models()
     events = []
 

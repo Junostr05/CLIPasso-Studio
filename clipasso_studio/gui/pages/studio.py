@@ -826,7 +826,7 @@ class StudioPage(QWidget):
             if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
                 per_it *= 2
         sketches = s["num_sketches"]
-        if s["multiprocess"] and sketches > 1:
+        if s.get("multiprocess") and sketches > 1:
             sketches = math.ceil(sketches / min(sketches, 4)) * 1.6
         secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))

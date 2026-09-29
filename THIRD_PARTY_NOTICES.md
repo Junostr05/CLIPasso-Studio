@@ -9,6 +9,16 @@ CLIPasso Studio bundles or is derived from the following works.
 | **U²-Net** (code in `clipasso_studio/engine/u2net/`, weights `u2net.pth`) | https://github.com/xuebinqin/U-2-Net – Xuebin Qin et al. | Apache-2.0 | background mask |
 | **DINO** (code in `clipasso_studio/engine/dino/`, weights ViT-S/8) | https://github.com/facebookresearch/dino – Meta AI | Apache-2.0 | alternative saliency |
 | **VGG16** feature weights (torchvision) | https://github.com/pytorch/vision | BSD-3-Clause (code); ImageNet-trained weights | LPIPS perceptual loss |
+| **SwiftSketch** and **ControlSketch** (method; `clipasso_studio/engine/methods/swiftsketch/` and `controlsketch/` are independent re-implementations written from the paper and the public code, which has no licence file) | https://github.com/swiftsketch/SwiftSketch – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 | method description (paper) | SwiftSketch / ControlSketch sketching |
+| **SwiftSketch model weights** (not bundled – downloaded by the user from the authors' Google Drive on first use) | https://github.com/swiftsketch/SwiftSketch | no explicit licence – research / personal use | SwiftSketch diffusion + refinement networks |
+| **Stable Diffusion v1.5** (not bundled – downloaded on first use) | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 – Runway, CompVis, Stability AI | CreativeML OpenRAIL-M (use restrictions apply) | ControlSketch SDS loss |
+| **ControlNet 1.0** models `lllyasviel/sd-controlnet-*` (not bundled) and the **HED** annotator (`ControlNetHED_Apache2` network in `controlsketch/conditions.py`, weights `lllyasviel/Annotators/ControlNetHED.pth`, not bundled) | https://github.com/lllyasviel/ControlNet – Lvmin Zhang | OpenRAIL (models), Apache-2.0 (HED annotator) | ControlSketch conditions |
+| **MiDaS DPT-Hybrid** `Intel/dpt-hybrid-midas` (not bundled) | https://huggingface.co/Intel/dpt-hybrid-midas – Intel ISL | Apache-2.0 | depth / normal condition |
+| **UperNet ConvNeXt-small** `openmmlab/upernet-convnext-small` (not bundled) | https://huggingface.co/openmmlab/upernet-convnext-small | MIT | segmentation condition |
+| **BLIP** `Salesforce/blip-image-captioning-large` (not bundled) | https://huggingface.co/Salesforce/blip-image-captioning-large – Salesforce | BSD-3-Clause | automatic caption |
+| **Stable Diffusion XL 1.0** (optional, not bundled) | https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0 – Stability AI | CreativeML OpenRAIL++-M | ControlSketch attention initialisation |
+| **DDIM inversion** (algorithm of `controlsketch/sdxl_attention.py`, following Google's Apache-2.0 reference used by ControlSketch) | https://github.com/google/style-aligned | Apache-2.0 | SDXL attention initialisation |
+| **diffusers**, **transformers**, **tokenizers**, **safetensors**, **huggingface_hub**, **accelerate** | https://github.com/huggingface | Apache-2.0 | loading and running the diffusion / vision models |
 | **diffvg** (algorithmic reference; the renderer in `engine/renderer.py` is an independent PyTorch re-implementation of the parts used by CLIPasso) | https://github.com/BachiLi/diffvg – Tzu-Mao Li et al. | Apache-2.0 | differentiable rasterisation |
 | **PyTorch / torchvision** | https://pytorch.org | BSD-3-Clause | deep learning runtime |
 | **NVIDIA CUDA runtime libraries** (GPU edition only, shipped inside the PyTorch wheels) | https://developer.nvidia.com/cuda-toolkit | NVIDIA EULA (redistributable components) | GPU acceleration |
@@ -16,6 +26,10 @@ CLIPasso Studio bundles or is derived from the following works.
 | **NumPy**, **Pillow**, **ftfy**, **regex**, **imageio**, **imageio-ffmpeg** (FFmpeg binary: LGPL/GPL) | PyPI | BSD / HPND / Apache-2.0 / MIT | utilities, video export |
 | **Inter** font | https://rsms.me/inter/ | SIL Open Font License 1.1 (`resources/fonts/LICENSE-Inter-OFL.txt`) | UI font |
 | **Lucide** icons | https://lucide.dev | ISC (`resources/icons/LICENSE-lucide.txt`) | UI icons |
+
+Models marked “not bundled” are not part of the download; the app fetches them from the listed
+sources when the corresponding method or option is used for the first time, and their licences apply
+to their use.
 
 ## Licence of CLIPasso Studio
 
