@@ -32,7 +32,7 @@ Auf der [Release-Seite](https://github.com/Junostr05/Junostr05/releases/latest) 
 |---|---|
 | **`CLIPassoStudio-CPU-Portable.exe`** | Eine einzige Datei: herunterladen, doppelklicken, fertig. Keine Installation, keine Python-Umgebung, alle Modelle sind enthalten (≈ 1,2 GB). Beim Start wird kurz entpackt (15–40 s, mit Splash-Screen). |
 | **`CLIPassoStudio-CPU-Setup.exe`** | Dieselbe App als Installer: einmal installieren, danach schneller Start, Startmenü- und Desktop-Verknüpfung. Keine Admin-Rechte nötig. |
-| **`CLIPassoStudio-GPU-Setup.exe`** + `…-GPU-Setup-*.bin` | Edition für NVIDIA-Grafikkarten (CUDA 12.8, RTX 20xx oder neuer, Treiber ≥ 570), 10–50× schneller. Weil sie größer als 2 GB ist, besteht sie aus mehreren Dateien: **alle in denselben Ordner laden** und die `Setup.exe` starten. Ohne passende GPU rechnet sie auf der CPU. |
+| **`CLIPassoStudio-GPU-Setup.exe`** + `…-GPU-Setup-*.bin` | Edition für NVIDIA-Grafikkarten (CUDA 12.8: GeForce GTX 16xx / RTX 20xx oder neuer, aktueller Treiber ≥ 570), 10–50× schneller. Weil sie größer als 2 GB ist, besteht sie aus mehreren Dateien: **alle in denselben Ordner laden** und die `Setup.exe` starten. Ohne passende GPU (z. B. GTX 10xx) rechnet sie automatisch auf der CPU. |
 
 > Windows SmartScreen warnt eventuell vor einem „unbekannten Herausgeber“ (die EXE ist nicht signiert) → *Weitere Informationen* → *Trotzdem ausführen*.
 
@@ -104,7 +104,7 @@ Wie das Original steht diese App unter **[CC BY-NC-SA 4.0](LICENSE)**, also **nu
 - **Download** from the [releases page](https://github.com/Junostr05/Junostr05/releases/latest):
   - `CLIPassoStudio-CPU-Portable.exe`: single file, no installation, all models included.
   - `CLIPassoStudio-CPU-Setup.exe`: the same app as an installer.
-  - GPU edition: `CLIPassoStudio-GPU-Setup.exe` plus all `.bin` parts, for NVIDIA RTX 20xx+ cards. Put all parts in one folder, then run the setup.
+  - GPU edition: `CLIPassoStudio-GPU-Setup.exe` plus all `.bin` parts, for NVIDIA GTX 16xx / RTX 20xx or newer (CUDA 12.8, driver ≥ 570). Put all parts in one folder, then run the setup.
 - **Every option** of the original scripts can be set in the GUI, with presets, tooltips and search.
 - **Live preview** with before/after comparison, attention map, mask and loss curve. The best sketch is selected automatically.
 - **Export** to SVG, PNG, GIF and MP4. A **queue** for batch jobs, a **gallery** of past results, optional extra CLIP models, dark/light theme, German/English UI.

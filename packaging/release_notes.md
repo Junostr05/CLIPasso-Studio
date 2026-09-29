@@ -6,7 +6,7 @@ Desktop-App für **[CLIPasso](https://github.com/yael-vinker/CLIPasso)** (SIGGRA
 |---|---|
 | **`CLIPassoStudio-CPU-Portable.exe`** | Einfach herunterladen und starten – keine Installation. Läuft auf jedem Windows-10/11-PC (64 Bit). Der Start dauert ca. 15–40 s (Entpacken). |
 | **`CLIPassoStudio-CPU-Setup.exe`** | Gleiche App als Installer (schnellerer Start, Startmenü-Eintrag). |
-| **`CLIPassoStudio-GPU-Setup.exe`** + **alle `CLIPassoStudio-GPU-Setup-*.bin`** | NVIDIA-GPU-Edition (CUDA 12.8, RTX 20xx oder neuer, Treiber ≥ 570): 10–50× schneller. **Alle Dateien in denselben Ordner herunterladen**, dann `CLIPassoStudio-GPU-Setup.exe` starten. |
+| **`CLIPassoStudio-GPU-Setup.exe`** + **alle `CLIPassoStudio-GPU-Setup-*.bin`** | NVIDIA-GPU-Edition (CUDA 12.8: GeForce GTX 16xx / RTX 20xx oder neuer, Treiber ≥ 570): 10–50× schneller; ältere Karten rechnen automatisch auf der CPU. **Alle Dateien in denselben Ordner herunterladen**, dann `CLIPassoStudio-GPU-Setup.exe` starten. |
 
 **Hinweise**
 - Windows SmartScreen kann beim ersten Start warnen („Unbekannter Herausgeber“) → *Weitere Informationen* → *Trotzdem ausführen*.
