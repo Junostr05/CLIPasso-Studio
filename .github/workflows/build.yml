@@ -21,7 +21,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  MODELS_CACHE_KEY: models-v2-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
 
 jobs:
   test:
@@ -46,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: models
-          key: ${{ env.MODELS_CACHE_KEY }}
+          key: models-v2-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
       - name: Download models
         run: python tools/fetch_models.py
       - name: Unit tests
@@ -101,7 +100,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: models
-          key: ${{ env.MODELS_CACHE_KEY }}
+          key: models-v2-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
       - name: Download models
         if: env.SKIP != 'true'
         run: python tools/fetch_models.py
