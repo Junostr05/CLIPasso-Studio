@@ -48,13 +48,16 @@ class PrintReporter(Reporter):
             if now - self._last < 2 and data["it"] + 1 != data["total"]:
                 return
             self._last = now
-            print(f"[seed {data['seed']}] iter {data['it'] + 1}/{data['total']}  loss {data['loss']:.4f}  "
-                  f"best {data['best_loss']:.4f}  ETA {imaging.eta_string(data['eta'])}", flush=True)
+            loss = "" if data.get("loss") is None else (f"  loss {data['loss']:.4f}  "
+                                                         f"best {data['best_loss']:.4f}")
+            print(f"[seed {data['seed']}] iter {data['it'] + 1}/{data['total']}{loss}  "
+                  f"ETA {imaging.eta_string(data['eta'])}", flush=True)
         elif kind in ("log", "warning"):
             print(data.get("message", ""), flush=True)
         elif kind == "seed_done":
-            print(f"[seed {data['seed']}] done – best loss {data['best_loss']:.4f} at iter {data['best_iter']}",
-                  flush=True)
+            score = "" if data.get("clip_score") is None else f", CLIP score {data['clip_score']:.2f}"
+            print(f"[seed {data['seed']}] done – best loss {data['best_loss']:.4f} at iter {data['best_iter']}"
+                  f"{score}", flush=True)
         elif kind == "job_done":
             print(f"Best sketch: {data['best_svg']}", flush=True)
 
@@ -177,6 +180,18 @@ def _png_bytes(img: Image.Image) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def score_run(svg_path: str, target_img: Image.Image, device, reporter: Reporter | None = None) -> float | None:
+    """CLIP similarity of a finished sketch to its input (see :mod:`.scoring`)."""
+    try:
+        from .scoring import get_scorer
+
+        return round(get_scorer(device).score_svg(svg_path, target_img), 2)
+    except Exception as exc:  # scoring is informative only
+        if reporter:
+            reporter.event("log", message=f"CLIP score unavailable: {exc}")
+        return None
 
 
 def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: Reporter | None = None,
@@ -327,10 +342,17 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(final_config, f, indent=2, default=str)
 
+    clip_sc = score_run(best_svg, input_img, device, reporter)
+    if clip_sc is not None:
+        final_config["clip_score"] = clip_sc
+        with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as f:
+            json.dump(final_config, f, indent=2, default=str)
+
     result = SeedResult(seed=seed, run_name=run_name, run_dir=run_dir, best_loss=float(best_loss),
-                        best_iter=int(best_iter), iterations_done=counter, best_svg=best_svg, status=status)
+                        best_iter=int(best_iter), iterations_done=counter, best_svg=best_svg, status=status,
+                        method="clipasso", clip_score=clip_sc, seconds=round(active_time, 1))
     reporter.event("seed_done", seed=seed, best_loss=result.best_loss, best_iter=result.best_iter,
-                   status=status, run_dir=run_dir, svg=open(best_svg, encoding="utf-8").read())
+                   status=status, run_dir=run_dir, svg=open(best_svg, encoding="utf-8").read(), clip_score=clip_sc)
     del loss_func, renderer, optimizer
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -353,15 +375,19 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     if warning:
         code, _, text = warning.partition(":")
         reporter.event("warning", message=text, code=code)
-    job_dir = job_dir or make_job_dir(output_root, target)
+    from . import methods
+
+    method = schema.method_of(settings)
+    impl = methods.get(method)
+    job_dir = job_dir or make_job_dir(output_root, target, method)
     seeds = list(seeds) if seeds is not None else job_seeds(settings)
-    reporter.event("job_start", job_dir=job_dir, device=str(device), seeds=seeds)
+    reporter.event("job_start", job_dir=job_dir, device=str(device), seeds=seeds, method=method)
     results = []
     for seed in seeds:
         if control and control.should_stop():
             break
         run_dir = os.path.join(job_dir, run_name_for(target, settings, seed))
-        results.append(run_single(settings, target, run_dir, seed, reporter, control, device))
+        results.append(impl.run_single(settings, target, run_dir, seed, reporter, control, device))
     if not finish:
         return results
     return finish_job(job_dir, target, settings, results, reporter)

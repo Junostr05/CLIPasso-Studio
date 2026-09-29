@@ -44,3 +44,34 @@ def get_mask_u2net(device, pil_im: Image.Image, net=None):
     im_final = (im_np / max(im_np.max(), 1e-12) * 255).astype(np.uint8)
     mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
     return Image.fromarray(im_final), mask_img
+
+
+def u2net_soft_mask(device, pil_im: Image.Image, net=None) -> np.ndarray:
+    """Soft foreground probability in [0, 1] at the image size (float32 [H, W]).
+
+    Stands in for the BRIA RMBG-1.4 matte that SwiftSketch / ControlSketch use (``get_mask``):
+    min-max normalised, bilinearly resized to the input resolution.
+    """
+    w, h = pil_im.size
+    tf = transforms.Compose([
+        transforms.Resize(min(320, min(w, h)), interpolation=InterpolationMode.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.48145466, 0.4578275, 0.40821073), std=(0.26862954, 0.26130258, 0.27577711)),
+    ])
+    net = net or nets.load_u2net(device)
+    with torch.no_grad():
+        d1 = net(tf(pil_im.convert("RGB")).unsqueeze(0).to(device))[0]
+    pred = d1[0, 0].float()
+    pred = (pred - pred.min()) / (pred.max() - pred.min() + 1e-12)
+    mask = torch.nn.functional.interpolate(pred[None, None], size=(h, w), mode="bilinear", align_corners=False)
+    return mask[0, 0].clamp(0, 1).cpu().numpy().astype(np.float32)
+
+
+def apply_soft_mask(pil_im: Image.Image, mask: np.ndarray) -> Image.Image:
+    """``create_masked_image`` of SwiftSketch: multiply by the matte, pixels below the mean matte
+    value become white."""
+    im = np.asarray(pil_im.convert("RGB")).astype(np.float64)
+    im = im / max(im.max(), 1e-12)
+    im = mask[:, :, None] * im
+    im[mask < mask.mean()] = 1
+    return Image.fromarray((im / max(im.max(), 1e-12) * 255).astype(np.uint8))

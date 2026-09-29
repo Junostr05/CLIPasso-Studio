@@ -102,7 +102,7 @@ class JobRunner:
         settings = schema.normalize(settings)
         os.makedirs(output_root, exist_ok=True)
         job = Job(settings=settings, target=target, output_root=output_root)
-        job.job_dir = jobs.make_job_dir(output_root, target)
+        job.job_dir = jobs.make_job_dir(output_root, target, schema.method_of(settings))
         job.started = time.time()
         self._queue = self._ctx.Queue()
         self._stop = self._ctx.Event()

@@ -3,15 +3,22 @@
 All checkpoints are stored as plain ``state_dict`` files (no TorchScript) so they load with
 ``torch.load(weights_only=True)`` inside the frozen app. U2Net, DINO and VGG are stored
 in float16 to keep the executable small and converted back to float32 when loaded.
+SwiftSketch checkpoints are downloaded from the authors' Google Drive on first use and
+stored as ``{"args": <args.json>, "state_dict": ...}`` in float32.
 """
 
 from __future__ import annotations
 
 import hashlib
+import html
+import json
 import os
+import re
 import shutil
 import tempfile
+import urllib.parse
 import urllib.request
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -93,6 +100,26 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         kind="dino",
     ),
     ModelSpec(
+        key="swiftsketch:diffusion",
+        filename="swiftsketch/sketch_diffusion.pt",
+        urls=("gdrive:19FryO99dCmz-Dw1jzeZITUI0uuksiOA-",),
+        download_sha256=None,
+        download_size=357_580_707,
+        stored_size_mb=144,
+        bundled=False,
+        kind="swiftsketch",
+    ),
+    ModelSpec(
+        key="swiftsketch:refine",
+        filename="swiftsketch/refinement_network.pt",
+        urls=("gdrive:1OrLzwaJXZ4SlDw3hqn71Yg1L01ytLv2x",),
+        download_sha256=None,
+        download_size=356_303_267,
+        stored_size_mb=144,
+        bundled=False,
+        kind="swiftsketch",
+    ),
+    ModelSpec(
         key="vgg16",
         filename="vgg/vgg16_features_fp16.pt",
         urls=("https://download.pytorch.org/models/vgg16-397923af.pth",),
@@ -147,14 +174,40 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Callable[[], bool] | None) -> None:
-    if url.startswith("gdrive:"):
-        import gdown  # optional, only used as a fallback at build time
+_GDRIVE_DOWNLOAD = "https://drive.usercontent.google.com/download"
 
-        gdown.download(id=url.split(":", 1)[1], output=str(dest), quiet=False)
-        return
+
+def _open(url: str):
     req = urllib.request.Request(url, headers={"User-Agent": "CLIPassoStudio"})
-    with urllib.request.urlopen(req, timeout=60) as src, open(dest, "wb") as out:
+    return urllib.request.urlopen(req, timeout=60)
+
+
+def _open_gdrive(file_id: str):
+    """Open a public Google Drive file for streaming.
+
+    Files larger than ~100 MB answer with a "can't scan this file for viruses" page first; its
+    download form (hidden inputs id / export / confirm / uuid) leads to the actual file.
+    """
+    url = f"{_GDRIVE_DOWNLOAD}?" + urllib.parse.urlencode({"id": file_id, "export": "download"})
+    for _ in range(3):
+        resp = _open(url)
+        if "text/html" not in resp.headers.get("Content-Type", ""):
+            return resp
+        page = resp.read().decode("utf-8", "replace")
+        resp.close()
+        form = re.search(r'<form[^>]*id="download-form"[^>]*action="([^"]+)"', page)
+        if not form:
+            raise RuntimeError("Google Drive refused the download (daily quota exceeded?) – try again later "
+                               "or download the file manually and use 'Import' on the Models page")
+        fields = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"', page))
+        url = html.unescape(form.group(1)) + "?" + urllib.parse.urlencode(
+            {k: html.unescape(v) for k, v in fields.items()})
+    raise RuntimeError("Google Drive did not start the download")
+
+
+def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Callable[[], bool] | None) -> None:
+    src = _open_gdrive(url.split(":", 1)[1]) if url.startswith("gdrive:") else _open(url)
+    with src, open(dest, "wb") as out:
         total = int(src.headers.get("Content-Length") or 0)
         done = 0
         while True:
@@ -226,11 +279,32 @@ def convert(spec: ModelSpec, raw: Path, dest: Path) -> None:
     elif spec.kind == "vgg":
         state = torch.load(str(raw), map_location="cpu", weights_only=True)
         state = _half({k: v for k, v in state.items() if k.startswith("features.")})
+    elif spec.kind == "swiftsketch":
+        state = _swiftsketch_checkpoint(raw)
     else:
         raise ValueError(spec.kind)
     tmp = dest.with_suffix(".tmp")
     torch.save(state, str(tmp))
     os.replace(tmp, dest)
+
+
+def _swiftsketch_checkpoint(raw: Path) -> dict:
+    """Official SwiftSketch zip (args.json, model*.pt, opt*.pt) -> {"args", "state_dict"}.
+
+    The optimizer state is dropped, as are the sinusoidal position tables (recomputed by the model).
+    """
+    with zipfile.ZipFile(raw) as zf:
+        names = zf.namelist()
+        args_name = next(n for n in names if n.rsplit("/", 1)[-1] == "args.json")
+        model_name = max((n for n in names if re.fullmatch(r"model\d+\.pt", n.rsplit("/", 1)[-1])),
+                         key=lambda n: int(re.sub(r"\D", "", n.rsplit("/", 1)[-1])))
+        args = json.loads(zf.read(args_name).decode("utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = zf.extract(model_name, tmp)
+            state = torch.load(path, map_location="cpu", weights_only=True)
+    state = {k: v.float() if torch.is_tensor(v) and v.is_floating_point() else v
+             for k, v in state.items() if not k.endswith("sequence_pos_encoder.pe")}
+    return {"args": args, "state_dict": state}
 
 
 def install(spec_key: str, dest_root: Path | None = None, progress: ProgressFn | None = None,
@@ -242,6 +316,14 @@ def install(spec_key: str, dest_root: Path | None = None, progress: ProgressFn |
     with tempfile.TemporaryDirectory(dir=dest_root) as tmp:
         raw = download_raw(spec, Path(tmp), progress, cancel)
         convert(spec, raw, dest)
+    return dest
+
+
+def install_from_file(spec_key: str, raw: str | Path, dest_root: Path | None = None) -> Path:
+    """Convert a manually downloaded checkpoint (e.g. when Google Drive's quota is exceeded)."""
+    spec = SPECS[spec_key]
+    dest = (dest_root or paths.downloaded_models_dir()) / spec.filename
+    convert(spec, Path(raw), dest)
     return dest
 
 

@@ -158,14 +158,180 @@ PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def default_settings() -> dict[str, Any]:
-    return {p.key: copy.deepcopy(p.default) for p in PARAMS}
+def _hardware(default_multiprocess: bool = False) -> tuple[Param, ...]:
+    return (
+        Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
+        Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
+              enabled_if=lambda s: s.get("device") != "cpu"),
+        Param("multiprocess", default_multiprocess, "bool", "hardware", cli="multiprocess"),
+        Param("num_threads", 0, "int", "hardware", minimum=0, maximum=256),
+    )
+
+
+# ------------------------------------------------------------------------ SwiftSketch
+# Options of SwiftSketch/generate.py (github.com/swiftsketch/SwiftSketch). Model, diffusion
+# and sketch options (layers, num_paths=32, diffusion_steps=50, ...) are read from the
+# checkpoint's args.json and therefore not user settings.
+SWIFT_PARAMS: tuple[Param, ...] = (
+    Param("num_sketches", 1, "int", "basics", minimum=1, maximum=32, advanced=False),
+    Param("seed", 20, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    Param("mask_object", True, "bool", "image", advanced=False),
+    Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
+    Param("guidance_param", 2.5, "float", "diffusion", cli="guidance_param", minimum=1.0, maximum=10.0, step=0.1,
+          decimals=2),
+    Param("use_refine", True, "bool", "diffusion", cli="use_refine"),
+    Param("save_diffusion_sketch", False, "bool", "diffusion", cli="save_diffusion_sketch_in_dict"),
+    Param("width", 2.0, "float", "strokes", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
+) + _hardware()
+
+SWIFT_GROUPS = ("basics", "image", "diffusion", "strokes", "hardware")
+
+SWIFT_EXCLUDED_ARGS: dict[str, str] = {
+    "model_path": "the app manages the checkpoints (Models page)",
+    "refine_model_path": "the app manages the checkpoints (Models page)",
+    "input_data": "input image is chosen in the GUI / passed as --target_file to the CLI",
+    "output_dir": "application setting (output folder)",
+    "generate_batch_size": "the app generates num_sketches samples per image",
+    "save_final_sketch_in_dict": "npy/npz dataset dictionaries are not used by the app",
+    "save_svg": "the SVG is always saved",
+    "cuda": "replaced by 'device' (--cuda False is accepted by the CLI)",
+    "device": "GPU index – replaced by 'gpunum' (--device <n> is accepted by the CLI)",
+    "batch_size": "training option, unused by generate.py",
+    "use_wandb": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_user": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_name": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_project_name": "Weights & Biases online logging is not part of the desktop app",
+    "experiment_name": "Weights & Biases online logging is not part of the desktop app",
+    "title": "Weights & Biases online logging is not part of the desktop app",
+}
+
+SWIFT_PRESETS: dict[str, dict[str, Any]] = {
+    "fast": {"num_sketches": 1},
+    "standard": {"num_sketches": 4},
+    "quality": {"num_sketches": 12},
+}
+
+# ---------------------------------------------------------------------- ControlSketch
+# Options of ControlSketch/config.py (github.com/swiftsketch/SwiftSketch).
+CONTROL_CONDITIONS = ("depth", "canny", "hed", "scribble", "seg", "normal")
+
+CONTROL_PARAMS: tuple[Param, ...] = (
+    Param("num_strokes", 32, "int", "basics", cli="num_strokes", minimum=1, maximum=256, advanced=False),
+    Param("num_iter", 2000, "int", "basics", cli="num_iter", minimum=1, maximum=20000, step=100, advanced=False),
+    Param("num_sketches", 1, "int", "basics", minimum=1, maximum=16, advanced=False),
+    Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    Param("caption", "none", "text", "basics", cli="caption", advanced=False),
+    Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
+    Param("object_size_ratio", 0.75, "float", "image", cli="object_size_ratio", minimum=0.1, maximum=1.0, step=0.05,
+          decimals=2),
+    Param("render_size", 512, "int", "image", cli="render_size", minimum=256, maximum=1024, step=64),
+    Param("output_svg_size", 512, "int", "image", cli="output_svg_size", minimum=64, maximum=4096, step=64),
+    Param("width", 2.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
+    Param("num_segments", 1, "int", "strokes", cli="num_segments", minimum=1, maximum=16),
+    Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4)),
+    Param("sort_final_sketch", True, "bool", "strokes", cli="sort_final_sketch"),
+    Param("use_init_method", True, "bool", "init", cli="use_init_method"),
+    Param("attn_model", "clip", "choice", "init", cli="attn_model", choices=("clip", "diffusion"),
+          enabled_if=_on("use_init_method")),
+    Param("object_name", "none", "text", "init", cli="object_name",
+          enabled_if=lambda s: bool(s.get("use_init_method")) and s.get("attn_model") == "diffusion"),
+    Param("condition", "depth", "choice", "sds", cli="condition", choices=CONTROL_CONDITIONS),
+    Param("conditioning_scale", 0.15, "float", "sds", cli="conditioning_scale", minimum=0.0, maximum=2.0, step=0.05,
+          decimals=2),
+    Param("diffusion_guidance_scale", 100, "int", "sds", cli="diffusion_guidance_scale", minimum=1, maximum=200),
+    Param("diffusion_timesteps", 1000, "int", "sds", cli="diffusion_timesteps", minimum=100, maximum=1000, step=50),
+    Param("lr", 0.8, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
+    Param("lr_scheduler", False, "bool", "optim", cli="lr_scheduler"),
+    Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
+) + _hardware()
+
+CONTROL_GROUPS = ("basics", "image", "strokes", "init", "sds", "optim", "hardware")
+
+CONTROL_EXCLUDED_ARGS: dict[str, str] = {
+    "target": "input image is chosen in the GUI / passed as --target_file to the CLI",
+    "save_svg_in_dict": "npy/npz dataset dictionaries are not used by the app",
+    "output_dir": "application setting (output folder)",
+    "use_cpu": "replaced by 'device' (--use_cpu 1 is accepted by the CLI)",
+    "use_wandb": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_user": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_name": "run folder name is generated by the app",
+    "wandb_project_name": "Weights & Biases online logging is not part of the desktop app",
+    "experiment_name": "Weights & Biases online logging is not part of the desktop app",
+    "batch_size": "always a single image",
+    "diffusion_model": "not used by the original code (Stable Diffusion 1.5 is hard-coded)",
+}
+
+# ControlSketch defaults that differ from config.py (documented in the README).
+CONTROL_DEFAULT_DEVIATIONS = {
+    "attn_model": "'clip' (bundled) instead of 'diffusion' (needs the 7 GB SDXL download)",
+}
+
+CONTROL_PRESETS: dict[str, dict[str, Any]] = {
+    "fast": {"num_iter": 500, "num_sketches": 1},
+    "standard": {"num_iter": 2000, "num_sketches": 1},
+    "quality": {"num_iter": 3000, "num_sketches": 3},
+}
+
+# ---------------------------------------------------------------------------- methods
+METHODS = ("clipasso", "swiftsketch", "controlsketch")
+DEFAULT_METHOD = "clipasso"
+
+METHOD_PARAMS: dict[str, tuple[Param, ...]] = {
+    "clipasso": PARAMS,
+    "swiftsketch": SWIFT_PARAMS,
+    "controlsketch": CONTROL_PARAMS,
+}
+METHOD_GROUPS: dict[str, tuple[str, ...]] = {
+    "clipasso": GROUPS,
+    "swiftsketch": SWIFT_GROUPS,
+    "controlsketch": CONTROL_GROUPS,
+}
+METHOD_PRESETS: dict[str, dict[str, dict[str, Any]]] = {
+    "clipasso": PRESETS,
+    "swiftsketch": SWIFT_PRESETS,
+    "controlsketch": CONTROL_PRESETS,
+}
+_BY_KEY: dict[str, dict[str, Param]] = {m: {p.key: p for p in ps} for m, ps in METHOD_PARAMS.items()}
+
+
+def method_of(settings: dict[str, Any] | None) -> str:
+    m = (settings or {}).get("method", DEFAULT_METHOD)
+    return m if m in METHODS else DEFAULT_METHOD
+
+
+def params_for(method: str) -> tuple[Param, ...]:
+    return METHOD_PARAMS[method]
+
+
+def param(method: str, key: str) -> Param:
+    return _BY_KEY[method][key]
+
+
+def default_settings(method: str = DEFAULT_METHOD) -> dict[str, Any]:
+    out = {p.key: copy.deepcopy(p.default) for p in METHOD_PARAMS[method]}
+    out["method"] = method
+    return out
 
 
 def apply_preset(settings: dict[str, Any], preset: str) -> dict[str, Any]:
     out = dict(settings)
-    out.update(PRESETS[preset])
+    out.update(METHOD_PRESETS[method_of(settings)][preset])
     return out
+
+
+def num_strokes(settings: dict[str, Any]) -> int:
+    """Number of strokes a run will produce (per stage for CLIPasso)."""
+    method = method_of(settings)
+    if method == "clipasso":
+        return int(settings.get("num_paths", 16))
+    if method == "controlsketch":
+        return int(settings.get("num_strokes", 32))
+    return 32  # SwiftSketch checkpoints are trained for 32 strokes
+
+
+def text_value(value: Any) -> str:
+    """'' for unset text parameters (stored as 'none' like in the original CLIPasso)."""
+    return "" if value in (None, "", "none") else str(value)
 
 
 def parse_layer_weights(value: str | Iterable[float]) -> list[float]:
@@ -218,11 +384,13 @@ def coerce(param: Param, value: Any) -> Any:
 
 
 def normalize(settings: dict[str, Any]) -> dict[str, Any]:
-    """Fill in defaults, coerce types and drop unknown keys."""
-    out = default_settings()
+    """Fill in defaults, coerce types and drop unknown keys (for the settings' method)."""
+    method = method_of(settings)
+    out = default_settings(method)
+    by_key = _BY_KEY[method]
     for key, value in settings.items():
-        if key in PARAMS_BY_KEY:
-            out[key] = coerce(PARAMS_BY_KEY[key], value)
+        if key in by_key:
+            out[key] = coerce(by_key[key], value)
     return out
 
 
@@ -231,19 +399,20 @@ def is_enabled(param: Param, settings: dict[str, Any]) -> bool:
 
 
 def changed_keys(settings: dict[str, Any]) -> list[str]:
-    defaults = default_settings()
+    defaults = default_settings(method_of(settings))
     return [k for k in defaults if settings.get(k) != defaults[k]]
 
 
 def to_cli_args(settings: dict[str, Any]) -> list[str]:
     """Command line (for ``CLIPassoStudio.exe --cli``) that reproduces ``settings``."""
-    args: list[str] = []
-    defaults = default_settings()
-    for p in PARAMS:
+    method = method_of(settings)
+    args: list[str] = [] if method == DEFAULT_METHOD else ["--method", method]
+    defaults = default_settings(method)
+    for p in METHOD_PARAMS[method]:
         value = settings.get(p.key, p.default)
         if value == defaults[p.key]:
             continue
-        flag = f"--{p.cli or p.key}"
+        flag = f"--{p.key}"
         if p.kind == "bool":
             args += [flag, str(int(bool(value)))]
         else:
