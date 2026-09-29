@@ -160,9 +160,38 @@ class MainWindow(QMainWindow):
 
     def _refresh_nav_icons(self):
         p = theme.current()
+        pending = len(self.controller.pending())
         for key, ic in NAV:
             b = self.nav_buttons[key]
-            b.setIcon(icons.icon(ic, p.text if b.isChecked() else p.muted))
+            color = p.text if b.isChecked() else p.muted
+            if key == "queue" and pending:
+                b.setIcon(QIcon(self._badged(ic, color, pending)))
+            else:
+                b.setIcon(icons.icon(ic, color))
+
+    @staticmethod
+    def _badged(name: str, color: str, count: int):
+        """Nav icon with a small count bubble in the top right corner."""
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QColor, QFont, QPainter
+
+        pm = icons.pixmap(name, color, 22)
+        dpr = pm.devicePixelRatio()
+        painter = QPainter(pm)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(theme.current().accent))
+        rect = QRectF(11, -1, 13, 13)
+        painter.drawEllipse(rect)
+        font = QFont(theme.FONT_FAMILY)
+        font.setPixelSize(9)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor("white"))
+        painter.drawText(rect, Qt.AlignCenter, str(count) if count < 10 else "9+")
+        painter.end()
+        pm.setDevicePixelRatio(dpr)
+        return pm
 
     def apply_theme(self, mode: str):
         theme.apply(QApplication.instance(), mode)
@@ -184,8 +213,8 @@ class MainWindow(QMainWindow):
 
     def _update_nav_badges(self):
         n = len(self.controller.pending())
-        text = tr("nav.queue") + (f" ({n})" if n else "")
-        self.nav_buttons["queue"].setText(text)
+        self.nav_buttons["queue"].setToolTip(tr("ui.queue.pending", n=n) if n else "")
+        self._refresh_nav_icons()
 
     def _on_job_event(self, job, kind, data):
         if kind == "iteration":
