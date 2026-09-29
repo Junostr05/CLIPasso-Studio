@@ -1,0 +1,30 @@
+CLIPasso Studio
+===============
+
+Deutsch
+-------
+CLIPasso Studio basiert auf "CLIPasso: Semantically-Aware Object Sketching"
+(Vinker et al., SIGGRAPH 2022, https://github.com/yael-vinker/CLIPasso) und steht –
+wie das Original – unter der Lizenz Creative Commons Namensnennung - Nicht-kommerziell -
+Weitergabe unter gleichen Bedingungen 4.0 International (CC BY-NC-SA 4.0).
+
+Die Nutzung ist nur für NICHT-KOMMERZIELLE Zwecke erlaubt.
+Lizenztext: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.de
+
+Enthaltene Komponenten (CLIP – MIT, U²-Net – Apache-2.0, DINO – Apache-2.0, PyTorch – BSD,
+Qt for Python – LGPL-3.0, Inter – OFL, Lucide – ISC u. a.) stehen unter ihren eigenen
+Lizenzen, siehe THIRD_PARTY_NOTICES.md im Installationsordner.
+
+English
+-------
+CLIPasso Studio is based on "CLIPasso: Semantically-Aware Object Sketching"
+(Vinker et al., SIGGRAPH 2022, https://github.com/yael-vinker/CLIPasso) and is – like the
+original – licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+International (CC BY-NC-SA 4.0).
+
+Use is permitted for NON-COMMERCIAL purposes only.
+Licence text: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+Bundled components (CLIP – MIT, U²-Net – Apache-2.0, DINO – Apache-2.0, PyTorch – BSD,
+Qt for Python – LGPL-3.0, Inter – OFL, Lucide – ISC, …) are subject to their own licences,
+see THIRD_PARTY_NOTICES.md in the installation folder.

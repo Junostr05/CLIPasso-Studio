@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+/models/
+/output_sketches/
+/_selftest_out/
+*.spec.bak
+clipasso_studio/gui/_build_info.py

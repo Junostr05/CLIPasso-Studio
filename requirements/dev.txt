@@ -1,0 +1,5 @@
+-r app.txt
+pytest>=8
+# reference implementations for the tests of engine/imaging.py
+scipy
+scikit-image

@@ -1,0 +1,182 @@
+name: Build CLIPasso Studio
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      gpu:
+        description: "Also build the GPU (CUDA) edition"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  PYTHON_VERSION: "3.11"
+  MODELS_CACHE_KEY: models-v2-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
+
+jobs:
+  test:
+    name: Tests (Linux, CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - name: System libraries for Qt
+        run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/torch-cpu.txt
+          pip install -r requirements/dev.txt
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: ${{ env.MODELS_CACHE_KEY }}
+      - name: Download models
+        run: python tools/fetch_models.py
+      - name: Unit tests
+        run: python -m pytest -q -m "not slow"
+      - name: Slow end-to-end tests (all options)
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        run: python -m pytest -q -m slow
+      - name: GUI smoke test (offscreen screenshots)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python tools/screenshots.py screenshots --pages studio,queue,gallery,models,settings,about
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+          retention-days: 14
+
+  build-windows:
+    name: Windows ${{ matrix.edition }}
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [cpu, gpu]
+    env:
+      EDITION: ${{ matrix.edition }}
+      # the GPU edition is only built for tags and manual runs (it takes long and is ~3 GB)
+      SKIP: ${{ matrix.edition == 'gpu' && !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.gpu) }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SKIP != 'true'
+      - uses: actions/setup-python@v5
+        if: env.SKIP != 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Disk space
+        if: env.SKIP != 'true'
+        shell: pwsh
+        run: Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}
+      - name: Install dependencies
+        if: env.SKIP != 'true'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/torch-${{ matrix.edition }}.txt
+          pip install -r requirements/app.txt -r requirements/build.txt
+          python -c "import torch; print('torch', torch.__version__, 'cuda build', torch.version.cuda)"
+      - name: Cache models
+        if: env.SKIP != 'true'
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: ${{ env.MODELS_CACHE_KEY }}
+      - name: Download models
+        if: env.SKIP != 'true'
+        run: python tools/fetch_models.py
+      - name: PyInstaller (onedir, for the installer)
+        if: env.SKIP != 'true'
+        shell: pwsh
+        env:
+          MODE: onedir
+        run: pyinstaller --noconfirm --clean --workpath build\onedir --distpath dist packaging\clipasso_studio.spec
+      - name: Self-test (onedir)
+        if: env.SKIP != 'true'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\CLIPassoStudio\CLIPassoStudio.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_onedir" -Wait -PassThru -NoNewWindow
+          Get-Content "$env:LOCALAPPDATA\CLIPassoStudio\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 40
+          Get-Content "$env:RUNNER_TEMP\selftest_onedir\selftest.json" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "self-test failed with exit code $($p.ExitCode)" }
+      - name: PyInstaller (onefile portable exe)
+        if: env.SKIP != 'true' && matrix.edition == 'cpu'
+        shell: pwsh
+        env:
+          MODE: onefile
+        run: |
+          Remove-Item -Recurse -Force build\onedir -ErrorAction SilentlyContinue
+          pyinstaller --noconfirm --workpath build\onefile --distpath dist packaging\clipasso_studio.spec
+      - name: Self-test (portable exe)
+        if: env.SKIP != 'true' && matrix.edition == 'cpu'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\CLIPassoStudio-CPU-Portable.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_onefile" -Wait -PassThru -NoNewWindow
+          Get-Content "$env:LOCALAPPDATA\CLIPassoStudio\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 20
+          Get-Content "$env:RUNNER_TEMP\selftest_onefile\selftest.json" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "portable self-test failed with exit code $($p.ExitCode)" }
+      - name: Inno Setup installer
+        if: env.SKIP != 'true'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          $ed = "${{ matrix.edition }}".ToUpper()
+          $version = (python -c "import clipasso_studio; print(clipasso_studio.__version__)")
+          & $iscc /Q "/DEdition=$ed" "/DAppVersion=$version" "/DSourceDir=$pwd\dist\CLIPassoStudio" "/DOutputDir=$pwd\release" packaging\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          if (Test-Path "dist\CLIPassoStudio-CPU-Portable.exe") { Move-Item "dist\CLIPassoStudio-CPU-Portable.exe" release\ }
+          Get-ChildItem release | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+          foreach ($f in Get-ChildItem release) { if ($f.Length -ge 2147483648) { throw "$($f.Name) is larger than 2 GiB" } }
+      - uses: actions/upload-artifact@v4
+        if: env.SKIP != 'true'
+        with:
+          name: CLIPassoStudio-${{ matrix.edition }}
+          path: release/*
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    name: GitHub release
+    needs: build-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: CLIPassoStudio-*
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: CLIPasso Studio ${{ github.ref_name }}
+          body_path: packaging/release_notes.md
+          files: artifacts/*
+          make_latest: true

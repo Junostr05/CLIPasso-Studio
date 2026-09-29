@@ -1,0 +1,17 @@
+[project]
+name = "clipasso-studio"
+version = "1.0.0"
+description = "Desktop app for CLIPasso: semantically-aware object sketching"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "CC-BY-NC-SA-4.0" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: long end-to-end runs of every option (need the models)"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["clipasso_studio/engine/clip_/model.py", "clipasso_studio/engine/clip_/simple_tokenizer.py",
+                  "clipasso_studio/engine/u2net", "clipasso_studio/engine/dino"]
