@@ -49,7 +49,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
-        self.setMinimumSize(1180, 760)
+        self.setMinimumSize(1080, 660)
+        self.resize(1440, 900)
         self.controller = JobController(self)
 
         root = QWidget()

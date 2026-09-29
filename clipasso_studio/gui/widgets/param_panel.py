@@ -418,6 +418,7 @@ class ParamPanel(QWidget):
         self._applying = False
         self._after_change()
         self._detect_preset()
+        self.settings_changed.emit(self.settings())
 
     def apply_preset(self, name: str):
         s = dict(self._settings)
@@ -426,11 +427,9 @@ class ParamPanel(QWidget):
         self.set_settings(s)
         self.presets.set_current(name)
         self._update_preset_hint()
-        self.settings_changed.emit(self.settings())
 
     def reset_all_fields(self):
         self.set_settings(schema.default_settings())
-        self.settings_changed.emit(self.settings())
 
     def _field_changed(self, key, value):
         if self._applying:

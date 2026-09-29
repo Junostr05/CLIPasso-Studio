@@ -46,7 +46,7 @@ class SketchCanvas(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(280, 280)
+        self.setMinimumSize(200, 200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.mode = "sketch"
         self._svg = None
@@ -138,9 +138,14 @@ class SketchCanvas(QWidget):
         else:
             p.setClipping(False)
             p.setPen(QColor("#9AA3B4"))
-            icon = icons.pixmap("brush", "#B8BECC", 42)
-            p.drawPixmap(int(rect.center().x() - 21), int(rect.center().y() - 40), icon)
-            p.drawText(rect.adjusted(20, 40, -20, 0), Qt.AlignCenter | Qt.TextWordWrap, self.placeholder)
+            size = int(min(42, rect.width() * 0.22))
+            if self.placeholder and rect.width() > 200:
+                icon = icons.pixmap("brush", "#B8BECC", size)
+                p.drawPixmap(int(rect.center().x() - size / 2), int(rect.center().y() - 40), icon)
+                p.drawText(rect.adjusted(20, 40, -20, 0), Qt.AlignCenter | Qt.TextWordWrap, self.placeholder)
+            else:
+                icon = icons.pixmap("hourglass", "#C9CED8", size)
+                p.drawPixmap(int(rect.center().x() - size / 2), int(rect.center().y() - size / 2), icon)
         p.end()
 
     def mousePressEvent(self, e):  # noqa: N802

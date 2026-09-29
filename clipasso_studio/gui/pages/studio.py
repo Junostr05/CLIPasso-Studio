@@ -88,8 +88,7 @@ class StudioPage(QWidget):
 
         # ------------------------------------------------------------- left pane
         left = QWidget()
-        left.setMinimumWidth(250)
-        left.setMaximumWidth(360)
+        left.setMinimumHeight(560)
         ll = QVBoxLayout(left)
         ll.setContentsMargins(0, 0, 0, 0)
         ll.setSpacing(14)
@@ -152,7 +151,14 @@ class StudioPage(QWidget):
             b.setStyleSheet("text-align: left;")
             self.result_card.body.addWidget(b)
         ll.addWidget(self.result_card, 2)
-        splitter.addWidget(left)
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QFrame.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setWidget(left)
+        left_scroll.setMinimumWidth(260)
+        left_scroll.setMaximumWidth(370)
+        splitter.addWidget(left_scroll)
 
         # ----------------------------------------------------------- center pane
         center = Card(margins=18, spacing=12)
@@ -715,6 +721,8 @@ class StudioPage(QWidget):
         self.pause_btn.setText(tr("ui.resume") if paused else tr("ui.pause"))
         self.pause_btn.setIcon(icons.icon("play" if paused else "pause", p.text))
         self.start_btn.setText(tr("ui.start_queue") if busy else tr("ui.start"))
+        self.start_btn.setIcon(icons.icon("list-plus" if busy else "play", p.on_accent))
+        self.queue_btn.setVisible(not busy)
         has_result = self._selected_run() is not None
         for b in self.export_btns.values():
             b.setEnabled(has_result)
