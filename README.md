@@ -87,7 +87,7 @@ python -m pytest -q                                       # Tests
 set MODE=onefile&& pyinstaller packaging\clipasso_studio.spec   # portable EXE
 ```
 
-Der komplette Windows-Build (beide Editionen, Installer, Selbsttest der EXE und Release) läuft in [`.github/workflows/build.yml`](.github/workflows/build.yml). Ein Tag `v*` erzeugt ein Release.
+Der komplette Windows-Build (beide Editionen, Installer, Selbsttest der EXE und Release) läuft in [`.github/workflows/build.yml`](.github/workflows/build.yml). Ein Tag `v*` oder ein manueller Lauf (*Run workflow* mit `release_tag`) erzeugt ein Release.
 
 ## Lizenz & Credits
 

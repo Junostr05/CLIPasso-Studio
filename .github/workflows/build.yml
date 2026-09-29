@@ -11,6 +11,10 @@ on:
         description: "Also build the GPU (CUDA) edition"
         type: boolean
         default: true
+      release_tag:
+        description: "Publish a GitHub release with this tag (e.g. v1.0.0); empty = no release"
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -159,8 +163,10 @@ jobs:
   release:
     name: GitHub release
     needs: build-windows
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -175,7 +181,9 @@ jobs:
           ls -la
       - uses: softprops/action-gh-release@v2
         with:
-          name: CLIPasso Studio ${{ github.ref_name }}
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: CLIPasso Studio ${{ env.TAG }}
           body_path: packaging/release_notes.md
           files: artifacts/*
           make_latest: true
