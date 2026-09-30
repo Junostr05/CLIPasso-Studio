@@ -436,7 +436,7 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
         if seeds is None:
             seeds = [s for s in job_seeds(settings) if s not in old]
         for r in old.values():  # the finished sketches, as if they had just been drawn
-            with open(r.best_svg, encoding="utf-8") as f:
+            with open(jobs.sketch_file(r.run_dir, r.best_svg), encoding="utf-8") as f:
                 svg = f.read()
             reporter.event("seed_done", seed=r.seed, best_loss=r.best_loss, best_iter=r.best_iter, status=r.status,
                            run_dir=r.run_dir, svg=svg, clip_score=r.clip_score, restored=True)

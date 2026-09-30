@@ -265,6 +265,27 @@ def summary_can_continue(summary: dict) -> bool:
     return summary.get("state") in ("running", "interrupted", "cancelled", "failed") and done < total
 
 
+EDITED_FILE = "edited.svg"  # a sketch touched up with the eraser of the studio (the original stays)
+
+
+def sketch_file(run_dir: str, original: str = "") -> str:
+    """The sketch of a run as it should be shown and exported: the edited one if there is one."""
+    edited = os.path.join(run_dir, EDITED_FILE) if run_dir else ""
+    if edited and os.path.isfile(edited):
+        return edited
+    return original or os.path.join(run_dir, "best_iter.svg")
+
+
+def best_sketch(summary: dict) -> str:
+    """The best sketch of a job summary, edited if it was touched up."""
+    for r in summary.get("runs", []):
+        if r.get("run_name") == summary.get("best_run") and r.get("run_dir"):
+            edited = os.path.join(r["run_dir"], EDITED_FILE)
+            if os.path.isfile(edited):
+                return edited
+    return summary.get("best_svg", "")
+
+
 def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResult],
                reporter=None) -> dict:
     """Pick the best sketch and copy it to ``<run>_best.svg`` like the original.

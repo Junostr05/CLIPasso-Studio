@@ -560,5 +560,9 @@
  "ui.brush.ink": "Tusche (Pinselstift)",
  "ui.brush.pencil": "Bleistift",
  "ui.brush.marker": "Marker",
- "ui.brush.tip": "Wie die Striche gezeichnet werden: einfache Linien, spitz zulaufende Tuschestriche, weiche Bleistiftlinien oder ein breiter Marker."
+ "ui.brush.tip": "Wie die Striche gezeichnet werden: einfache Linien, spitz zulaufende Tuschestriche, weiche Bleistiftlinien oder ein breiter Marker.",
+ "ui.eraser.tip": "Radierer: klicke auf Striche oder ziehe darüber, um sie zu entfernen (der Strich unter dem Mauszeiger wird rot). Das Original bleibt erhalten; Exporte nutzen die überarbeitete Skizze.",
+ "ui.eraser.undo": "Rückgängig (Strg+Z)",
+ "ui.eraser.redo": "Wiederholen (Strg+Y)",
+ "ui.eraser.revert": "Zurück zur Skizze, wie sie gezeichnet wurde"
 }

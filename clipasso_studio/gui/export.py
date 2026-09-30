@@ -12,6 +12,7 @@ from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
+from ..engine import jobs
 from .brush import stylize_svg
 
 ET.register_namespace("", "http://www.w3.org/2000/svg")
@@ -364,8 +365,9 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
         summary = json.load(f)
     cells = {}
     for r in summary.get("runs", []):
-        if os.path.isfile(r.get("best_svg", "")):
-            with open(r["best_svg"], encoding="utf-8") as f:
+        path = jobs.sketch_file(r.get("run_dir", ""), r.get("best_svg", ""))
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
                 cells[int(r["seed"])] = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
     if not cells:
         raise FileNotFoundError("no sketches in this job")

@@ -287,6 +287,9 @@ class MainWindow(QMainWindow):
         for seq in ("Ctrl+Shift+Return", "Ctrl+Shift+Enter"):
             add(seq, self._shortcut_queue)
         add("Ctrl+E", self._shortcut_export)
+        add("Ctrl+Z", self.studio.undo_edit)  # eraser (text fields keep their own undo)
+        for seq in ("Ctrl+Y", "Ctrl+Shift+Z"):
+            add(seq, self.studio.redo_edit)
         for i, (key, _) in enumerate(NAV):
             add(f"Ctrl+{i + 1}", lambda k=key: self.show_page(k))
 

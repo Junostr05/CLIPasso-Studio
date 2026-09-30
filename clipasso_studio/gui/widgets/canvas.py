@@ -43,6 +43,11 @@ class SketchCanvas(QWidget):
     """
 
     MODES = ("sketch", "compare", "attention", "mask", "condition", "matrix")
+    ERASER_REACH_PX = 6  # how close (screen pixels) the cursor has to be to a stroke
+
+    erase_begin = Signal()  # eraser: mouse pressed (one undo step per press)
+    erase = Signal(int)  # eraser: the stroke with this index is to be removed
+    erase_end = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -51,6 +56,11 @@ class SketchCanvas(QWidget):
         self.mode = "sketch"
         self._svg = None
         self._renderer = None
+        self._eraser = False
+        self._erasing = False
+        self._index = None  # strokes.StrokeIndex of the current SVG (built on demand)
+        self._hover: int | None = None
+        self._hover_renderer = None
         self._input: QPixmap | None = None
         self._attention: QPixmap | None = None
         self._mask: QPixmap | None = None
@@ -62,13 +72,64 @@ class SketchCanvas(QWidget):
 
     def set_mode(self, mode: str):
         self.mode = mode
-        self.setCursor(Qt.SplitHCursor if mode == "compare" else Qt.ArrowCursor)
+        self._update_cursor()
         self.update()
 
     def set_svg(self, svg: str | None):
         self._svg = svg
         self._renderer = svg_renderer(svg)
+        self._index = None
+        self._set_hover(None)
         self.update()
+
+    # ----------------------------------------------------------------- eraser
+    def set_eraser(self, on: bool):
+        self._eraser = bool(on)
+        self._erasing = False
+        self._set_hover(None)
+        self._update_cursor()
+
+    def eraser_active(self) -> bool:
+        return self._eraser and self.mode == "sketch" and self._svg is not None
+
+    def _update_cursor(self):
+        if self.mode == "compare":
+            self.setCursor(Qt.SplitHCursor)
+        elif self._eraser and self.mode == "sketch":
+            self.setCursor(Qt.CrossCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+    def _set_hover(self, index: int | None):
+        if index == self._hover:
+            return
+        self._hover = index
+        self._hover_renderer = None
+        if index is not None and self._svg:
+            from ..strokes import highlight
+
+            self._hover_renderer = svg_renderer(highlight(self._svg, index))
+        self.update()
+
+    def stroke_at(self, pos) -> int | None:
+        """Index of the stroke under a widget position (None: none / outside the sketch)."""
+        if not self._svg:
+            return None
+        rect = self._paper_rect()
+        if not rect.contains(pos):
+            return None
+        from ..strokes import StrokeIndex, view_box
+
+        if self._index is None:
+            try:
+                self._index = StrokeIndex(self._svg)
+                self._box = view_box(self._svg)
+            except Exception:
+                return None
+        x0, y0, w, h = self._box
+        sx = x0 + (pos.x() - rect.left()) / max(rect.width(), 1) * w
+        sy = y0 + (pos.y() - rect.top()) / max(rect.height(), 1) * h
+        return self._index.hit(sx, sy, self.ERASER_REACH_PX * w / max(rect.width(), 1))
 
     def svg(self) -> str | None:
         return self._svg
@@ -141,7 +202,7 @@ class SketchCanvas(QWidget):
             p.drawLine(QPointF(x + 4, cy), QPointF(x + 1, cy - 3))
             p.drawLine(QPointF(x + 4, cy), QPointF(x + 1, cy + 3))
         elif self._renderer:
-            self._renderer.render(p, rect)
+            (self._hover_renderer if self.eraser_active() and self._hover_renderer else self._renderer).render(p, rect)
         else:
             p.setClipping(False)
             p.setPen(QColor("#9AA3B4"))
@@ -159,13 +220,32 @@ class SketchCanvas(QWidget):
         if self.mode == "compare":
             self._drag = True
             self._update_split(e.position().x())
+        elif self.eraser_active() and e.button() == Qt.LeftButton:
+            self._erasing = True
+            self.erase_begin.emit()
+            hit = self.stroke_at(e.position())
+            if hit is not None:
+                self.erase.emit(hit)
 
     def mouseMoveEvent(self, e):  # noqa: N802
         if self._drag:
             self._update_split(e.position().x())
+        elif self.eraser_active():
+            hit = self.stroke_at(e.position())
+            if self._erasing and hit is not None:
+                self.erase.emit(hit)  # drag over strokes to remove several
+                hit = self.stroke_at(e.position())
+            self._set_hover(hit)
 
     def mouseReleaseEvent(self, e):  # noqa: N802
         self._drag = False
+        if self._erasing:
+            self._erasing = False
+            self.erase_end.emit()
+
+    def leaveEvent(self, e):  # noqa: N802
+        self._set_hover(None)
+        super().leaveEvent(e)
 
     def _update_split(self, x: float):
         rect = self._paper_rect()

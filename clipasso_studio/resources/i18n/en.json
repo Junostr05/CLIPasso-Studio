@@ -560,5 +560,9 @@
  "ui.brush.ink": "Ink (brush pen)",
  "ui.brush.pencil": "Pencil",
  "ui.brush.marker": "Marker",
- "ui.brush.tip": "How the strokes are drawn: plain lines, tapered ink strokes, soft pencil lines or a wide marker."
+ "ui.brush.tip": "How the strokes are drawn: plain lines, tapered ink strokes, soft pencil lines or a wide marker.",
+ "ui.eraser.tip": "Eraser: click or drag over strokes to remove them (the stroke under the cursor turns red). The original stays; exports use the touched-up sketch.",
+ "ui.eraser.undo": "Undo (Ctrl+Z)",
+ "ui.eraser.redo": "Redo (Ctrl+Y)",
+ "ui.eraser.revert": "Back to the sketch as it was drawn"
 }

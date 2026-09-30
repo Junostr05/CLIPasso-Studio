@@ -21,7 +21,7 @@ from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb, SketchCanvas
-from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label
+from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel
 
@@ -184,6 +184,25 @@ class StudioPage(QWidget):
         self.modes = SegmentedControl([(m, "") for m in SketchCanvas.MODES])
         self.modes.changed.connect(self._mode_changed)
         top.addWidget(self.modes)
+        # eraser: touch up the finished sketch (edited.svg, the original stays)
+        self.edit_tools = QWidget()
+        et = QHBoxLayout(self.edit_tools)
+        et.setContentsMargins(8, 0, 0, 0)
+        et.setSpacing(2)
+        self.eraser_btn = tool_button("eraser", "", 18, checkable=True)
+        self.eraser_btn.toggled.connect(self._toggle_eraser)
+        self.undo_btn = tool_button("undo-2", "", 18)
+        self.undo_btn.clicked.connect(self.undo_edit)
+        self.redo_btn = tool_button("redo-2", "", 18)
+        self.redo_btn.clicked.connect(self.redo_edit)
+        self.revert_btn = tool_button("rotate-ccw", "", 18)
+        self.revert_btn.clicked.connect(self.revert_edits)
+        for b in (self.eraser_btn, self.undo_btn, self.redo_btn, self.revert_btn):
+            et.addWidget(b)
+        top.addWidget(self.edit_tools)
+        self._edit_undo: dict[int, list[str]] = {}
+        self._edit_redo: dict[int, list[str]] = {}
+        self._edit_changed = False
         top.addStretch(1)
         self.stage_badge = label("", "badge")
         self.stage_badge.setVisible(False)
@@ -196,6 +215,9 @@ class StudioPage(QWidget):
         self.banner.action.connect(self._download_missing)
         center.body.addWidget(self.banner)
         self.canvas = SketchCanvas()
+        self.canvas.erase_begin.connect(self._erase_begin)
+        self.canvas.erase.connect(self._erase_stroke)
+        self.canvas.erase_end.connect(self._erase_end)
         center.body.addWidget(self.canvas, 1)
         self.matrix = MatrixView()  # SceneSketch: all cells of the abstraction matrix
         self.matrix.clicked.connect(self.select_seed)
@@ -489,6 +511,8 @@ class StudioPage(QWidget):
     # ================================================================ events
     def _reset_view(self):
         self.resume_banner.hide()
+        self._edit_undo.clear()
+        self._edit_redo.clear()
         self.canvas.clear()
         self.matrix.clear()
         self.chart.reset(1)
@@ -755,7 +779,7 @@ class StudioPage(QWidget):
             seed = r["seed"]
             self.seed_runs[seed] = r["run_dir"]
             try:
-                with open(r["best_svg"], encoding="utf-8") as f:
+                with open(jobs.sketch_file(r["run_dir"], r["best_svg"]), encoding="utf-8") as f:
                     self.seed_svgs[seed] = f.read()
             except OSError:
                 continue
@@ -842,7 +866,7 @@ class StudioPage(QWidget):
         run_dir = self.seed_runs.get(seed)
         if not run_dir:
             return None
-        svg = os.path.join(run_dir, "best_iter.svg")
+        svg = jobs.sketch_file(run_dir)
         return (svg, run_dir) if os.path.isfile(svg) else None
 
     def _matrix_exportable(self) -> bool:
@@ -1002,6 +1026,7 @@ class StudioPage(QWidget):
         has_result = self._selected_run() is not None
         for b in self.export_btns.values():
             b.setEnabled(has_result)
+        self._update_edit_tools()
         self.export_btns["matrix"].setVisible(self.view_method == "scenesketch")
         self.export_btns["matrix"].setEnabled(self._matrix_exportable())
         for b in (self.reuse_btn,):
@@ -1010,6 +1035,10 @@ class StudioPage(QWidget):
         self.result_hint.setText(tr("ui.result_hint_ready") if has_result else tr("ui.result_hint_empty"))
 
     def retranslate(self):
+        self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
+        self.undo_btn.setToolTip(tr("ui.eraser.undo"))
+        self.redo_btn.setToolTip(tr("ui.eraser.redo"))
+        self.revert_btn.setToolTip(tr("ui.eraser.revert"))
         self.title.setText(tr("ui.studio.title"))
         self.subtitle.setText(tr("ui.studio.subtitle"))
         if not self.device_badge.text():
@@ -1060,6 +1089,117 @@ class StudioPage(QWidget):
         self.canvas.set_mode(mode)
         self.canvas.setVisible(mode != "matrix")
         self.matrix.setVisible(mode == "matrix")
+        self._update_edit_tools()
+
+    # ------------------------------------------------------------------ eraser
+    def _editable_seed(self) -> int | None:
+        """The shown sketch if it can be edited: finished, and not part of the running job."""
+        seed = self.selected_seed if self.selected_seed is not None else self.best_seed
+        if seed is None or seed not in self.seed_svgs or not self.seed_runs.get(seed):
+            return None
+        job = self.controller.current
+        if job is not None and self.controller.is_busy() and job is self.view_job:
+            return None
+        if not os.path.isfile(os.path.join(self.seed_runs[seed], "best_iter.svg")):
+            return None
+        return seed
+
+    def _update_edit_tools(self):
+        seed = self._editable_seed()
+        show = self.modes.current() == "sketch" and seed is not None
+        self.edit_tools.setVisible(show)
+        if not show and self.eraser_btn.isChecked():
+            self.eraser_btn.setChecked(False)
+        if seed is not None:
+            self.undo_btn.setEnabled(bool(self._edit_undo.get(seed)))
+            self.redo_btn.setEnabled(bool(self._edit_redo.get(seed)))
+            self.revert_btn.setEnabled(os.path.isfile(os.path.join(self.seed_runs[seed], jobs.EDITED_FILE)))
+
+    def _toggle_eraser(self, on: bool):
+        self.canvas.set_eraser(on)
+
+    def _erase_begin(self):
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        self._edit_undo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._edit_redo[seed] = []
+        self._edit_changed = False
+
+    def _erase_stroke(self, index: int):
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        from .. import strokes
+
+        self._show_edited(seed, strokes.remove_strokes(self.seed_svgs[seed], [index]))
+        self._edit_changed = True
+
+    def _erase_end(self):
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        if not self._edit_changed:  # clicked next to every stroke: no undo step
+            stack = self._edit_undo.get(seed)
+            if stack:
+                stack.pop()
+        else:
+            self._save_edit(seed)
+        self._update_edit_tools()
+
+    def _show_edited(self, seed: int, svg: str):
+        self.seed_svgs[seed] = svg
+        if seed in self.thumbs:
+            self.thumbs[seed].set_svg(svg)
+        if self.view_method == "scenesketch":
+            self.matrix.set_cell(seed, svg)
+        if seed == (self.selected_seed if self.selected_seed is not None else self.best_seed):
+            self.canvas.set_svg(svg)
+
+    def _save_edit(self, seed: int):
+        run_dir = self.seed_runs[seed]
+        edited = os.path.join(run_dir, jobs.EDITED_FILE)
+        with open(os.path.join(run_dir, "best_iter.svg"), encoding="utf-8") as f:
+            original = f.read()
+        if self.seed_svgs[seed] == original:
+            if os.path.isfile(edited):
+                os.remove(edited)
+        else:
+            with open(edited, "w", encoding="utf-8") as f:
+                f.write(self.seed_svgs[seed])
+
+    def undo_edit(self):
+        seed = self._editable_seed()
+        if seed is None or not self._edit_undo.get(seed):
+            return
+        self._edit_redo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._show_edited(seed, self._edit_undo[seed].pop())
+        self._save_edit(seed)
+        self._update_edit_tools()
+
+    def redo_edit(self):
+        seed = self._editable_seed()
+        if seed is None or not self._edit_redo.get(seed):
+            return
+        self._edit_undo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._show_edited(seed, self._edit_redo[seed].pop())
+        self._save_edit(seed)
+        self._update_edit_tools()
+
+    def revert_edits(self):
+        """Back to the sketch as it was drawn (can be undone)."""
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        with open(os.path.join(self.seed_runs[seed], "best_iter.svg"), encoding="utf-8") as f:
+            original = f.read()
+        if original == self.seed_svgs[seed]:
+            return
+        self._edit_undo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._edit_redo[seed] = []
+        self._show_edited(seed, original)
+        self._save_edit(seed)
+        self._update_edit_tools()
 
     def sizeHint(self):  # noqa: N802
         return QSize(1400, 860)

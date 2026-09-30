@@ -276,7 +276,7 @@ class GalleryCard(Card):
         view = SketchCanvas()
         view.setFixedSize(196, 196)
         try:
-            with open(summary["best_svg"], encoding="utf-8") as f:
+            with open(jobs.best_sketch(summary), encoding="utf-8") as f:
                 view.set_svg(f.read())
         except (OSError, KeyError):
             pass

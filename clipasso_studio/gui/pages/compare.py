@@ -9,7 +9,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMessageBox, QProgressBar, QVBoxLayout, QWidget
 
 from ... import settings_schema as schema
-from ...engine import imaging
+from ...engine import imaging, jobs
 from .. import dialogs, icons, methods_ui, theme
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -84,9 +84,10 @@ class CompareCard(Card):
     def set_result(self, job_dir: str | None, summary: dict | None) -> None:
         self.job_dir = job_dir or ""
         self.best_svg = (summary or {}).get("best_svg", "")
+        self.sketch = jobs.best_sketch(summary) if summary else ""  # touched up with the eraser, if it was
         svg = None
-        if self.best_svg and os.path.isfile(self.best_svg):
-            with open(self.best_svg, encoding="utf-8") as f:
+        if self.sketch and os.path.isfile(self.sketch):
+            with open(self.sketch, encoding="utf-8") as f:
                 svg = f.read()
         self.canvas.set_svg(svg)
         score_v, time_v, strokes_v = (self.stat_values[k][0] for k in ("score", "time", "strokes"))
@@ -127,7 +128,7 @@ class CompareCard(Card):
         base = os.path.basename(self.best_svg).replace("_best.svg", "")
         if base in runs:
             run_dir = os.path.join(self.job_dir, base)
-        dlg = dialogs.ExportDialog("png", self.best_svg, run_dir, base, self)
+        dlg = dialogs.ExportDialog("png", self.sketch or self.best_svg, run_dir, base, self)
         dlg.exec()
 
     def retranslate(self):
