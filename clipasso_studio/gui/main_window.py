@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel, 
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, paths
-from . import icons, theme
+from . import dialogs, icons, theme
 from .app_settings import app_settings
 from .controller import JobController
 from .i18n import i18n, tr
@@ -263,6 +263,7 @@ class MainWindow(QMainWindow):
                 return
         app_settings().set("geometry", bytes(self.saveGeometry().toBase64()).decode())
         self.controller.shutdown()
+        dialogs.wait_for_threads()
         event.accept()
 
     def resizeEvent(self, e):  # noqa: N802

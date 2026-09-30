@@ -79,6 +79,10 @@ def main() -> int:
 
     def shoot(i=0):
         if i >= len(pages):
+            from clipasso_studio.gui import dialogs
+
+            dialogs.wait_for_threads()  # e.g. the hardware probe of the settings page
+            w.close()
             app.quit()
             return
         page, _, rest = pages[i].partition(":")

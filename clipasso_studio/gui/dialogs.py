@@ -73,8 +73,27 @@ class _Worker(QObject):
             self.failed.emit(str(exc))
 
 
+_threads: set = set()
+
+
+def wait_for_threads(timeout_ms: int = 60000) -> None:
+    """Wait for the background threads of :func:`run_in_thread` – Qt crashes when a still running
+    QThread is destroyed, e.g. when the app quits while the hardware probe imports PyTorch."""
+    for thread in list(_threads):
+        try:
+            if thread.isRunning():
+                # the worker's finished -> quit signal would be queued to this (blocked) main thread
+                thread.quit()
+                thread.wait(timeout_ms)
+        except RuntimeError:  # the C++ object is already gone
+            pass
+        _threads.discard(thread)
+
+
 def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=None, **kwargs):
     thread = QThread(parent)
+    _threads.add(thread)
+    thread.finished.connect(lambda t=thread: _threads.discard(t))
     worker = _Worker(fn, *args, **kwargs)
     worker.moveToThread(thread)
     thread.started.connect(worker.run)
@@ -84,8 +103,8 @@ def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=No
         worker.finished.connect(on_done)
     if on_error:
         worker.failed.connect(on_error)
-    worker.finished.connect(thread.quit)
-    worker.failed.connect(thread.quit)
+    worker.finished.connect(thread.quit, Qt.DirectConnection)  # QThread.quit is thread-safe
+    worker.failed.connect(thread.quit, Qt.DirectConnection)
     thread.finished.connect(worker.deleteLater)
     thread.finished.connect(thread.deleteLater)
     thread._worker = worker  # keep a reference
