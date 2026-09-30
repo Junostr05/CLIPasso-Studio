@@ -17,7 +17,7 @@ from ...engine import model_store
 from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
-from ..i18n import LANGUAGES, i18n, tr
+from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
 from ..widgets.canvas import IMAGE_FILTER, SketchCanvas
 from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 
@@ -545,6 +545,7 @@ class SettingsPage(QWidget):
         self.look.body.addWidget(self.look_title)
         self.lang_label = label("", None)
         self.lang = QComboBox()
+        self.lang.addItem("", AUTO)  # text set in retranslate()
         for code, name in LANGUAGES.items():
             self.lang.addItem(name, code)
         self.lang.setCurrentIndex(max(self.lang.findData(s.get("language")), 0))
@@ -653,6 +654,7 @@ class SettingsPage(QWidget):
         self.subtitle.setText(tr("ui.settings.subtitle"))
         self.look_title.setText(tr("ui.settings.appearance"))
         self.lang_label.setText(tr("ui.settings.language"))
+        self.lang.setItemText(0, tr("ui.settings.language_auto", lang=LANGUAGES[system_language()]))
         self.theme_label.setText(tr("ui.settings.theme"))
         for k in ("dark", "light", "system"):
             self.theme_seg.set_text(k, tr(f"ui.theme.{k}"))

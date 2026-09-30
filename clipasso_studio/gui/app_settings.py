@@ -7,8 +7,12 @@ from typing import Any
 
 from .. import paths
 
+# 2: "language" defaults to "auto" (2.0.1)
+SETTINGS_VERSION = 2
+
 DEFAULTS: dict[str, Any] = {
-    "language": "de",
+    "settings_version": SETTINGS_VERSION,
+    "language": "auto",
     "theme": "dark",
     "output_dir": str(paths.default_output_dir()),
     "keep_awake": True,
@@ -29,7 +33,12 @@ class AppSettings:
         try:
             stored = json.loads(self._path.read_text(encoding="utf-8"))
             if isinstance(stored, dict):
+                if not isinstance(stored.get("settings_version"), int) and stored.get("language") == "de":
+                    # up to 2.0.0 German was the fixed default and got written to the file with every
+                    # other setting, so a stored "de" was usually never chosen → follow the system language
+                    stored["language"] = "auto"
                 self.data.update(stored)
+                self.data["settings_version"] = SETTINGS_VERSION
         except (OSError, ValueError):
             pass
 

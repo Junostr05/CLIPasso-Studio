@@ -263,6 +263,7 @@
  "ui.settings.subtitle": "Sprache, Aussehen, Ordner und Verhalten der App.",
  "ui.settings.appearance": "Darstellung",
  "ui.settings.language": "Sprache",
+ "ui.settings.language_auto": "Automatisch – Systemsprache ({lang})",
  "ui.settings.theme": "Design",
  "ui.theme.dark": "Dunkel",
  "ui.theme.light": "Hell",

@@ -65,6 +65,13 @@ def test_language_switch(window):
     assert window.nav_buttons["gallery"].text() == "Galerie"
 
 
+def test_language_setting_offers_auto(window):
+    combo = window.pages["settings"].lang
+    assert [combo.itemData(i) for i in range(combo.count())] == ["auto", "de", "en"]
+    assert combo.currentData() == "auto"  # default: follow the system language
+    assert "(" in combo.itemText(0)  # names the detected language
+
+
 def test_pages_switch(window):
     for key in ("compare", "queue", "gallery", "models", "settings", "about", "studio"):
         window.show_page(key)

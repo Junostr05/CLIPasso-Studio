@@ -263,6 +263,7 @@
  "ui.settings.subtitle": "Language, appearance, folders and behaviour of the app.",
  "ui.settings.appearance": "Appearance",
  "ui.settings.language": "Language",
+ "ui.settings.language_auto": "Automatic – system language ({lang})",
  "ui.settings.theme": "Theme",
  "ui.theme.dark": "Dark",
  "ui.theme.light": "Light",

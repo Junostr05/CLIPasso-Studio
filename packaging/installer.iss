@@ -12,7 +12,7 @@
   #define OutputDir "..\release"
 #endif
 #ifndef AppVersion
-  #define AppVersion "2.0.0"
+  #define AppVersion "2.0.1"
 #endif
 
 #define AppName "CLIPasso Studio"
@@ -50,8 +50,9 @@ SlicesPerDisk=1
 #endif
 
 [Languages]
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+; Setup picks the Windows display language; the first entry is the fallback for all other languages
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
