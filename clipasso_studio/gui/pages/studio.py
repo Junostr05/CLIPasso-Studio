@@ -189,6 +189,9 @@ class StudioPage(QWidget):
         self.stage_badge.setVisible(False)
         top.addWidget(self.stage_badge)
         center.body.addLayout(top)
+        self.resume_banner = Banner()  # an interrupted / cancelled job is shown: "Continue"
+        self.resume_banner.action.connect(self.continue_viewed_job)
+        center.body.addWidget(self.resume_banner)
         self.banner = Banner()
         self.banner.action.connect(self._download_missing)
         center.body.addWidget(self.banner)
@@ -485,6 +488,7 @@ class StudioPage(QWidget):
 
     # ================================================================ events
     def _reset_view(self):
+        self.resume_banner.hide()
         self.canvas.clear()
         self.matrix.clear()
         self.chart.reset(1)
@@ -505,6 +509,26 @@ class StudioPage(QWidget):
         self.stage_badge.setVisible(False)
         self._set_status("ui.status.idle")
         self._update_buttons()
+
+    def _update_resume_banner(self, summary: dict | None = None):
+        job_dir = self.view_dir
+        if summary is None and job_dir:
+            summary = jobs.job_summary(job_dir)
+        busy = any(j.status in ("queued", "running", "paused") and job_dir and os.path.normcase(
+            os.path.abspath(j.resume_dir or j.job_dir or "-")) == os.path.normcase(os.path.abspath(job_dir))
+            for j in self.controller.jobs)
+        if not job_dir or summary is None or busy or not jobs.summary_can_continue(summary):
+            self.resume_banner.hide()
+            return
+        done, total = summary["progress"]
+        self.resume_banner.show_message(tr(f"ui.resume.{summary['state']}", done=done, total=total),
+                                        warn=True, button_text=tr("ui.continue"), icon_name="clock")
+        self.resume_banner.button.setIcon(icons.icon("play", theme.current().on_accent))
+
+    def continue_viewed_job(self):
+        if self.view_dir and self.controller.continue_job(self.view_dir) is not None:
+            self.resume_banner.hide()
+            self.toast.emit(tr("ui.resume.queued"), "info")
 
     def forget_job_dir(self, job_dir: str):
         """A job folder was deleted in the gallery: stop showing its results and its saved input."""
@@ -703,11 +727,9 @@ class StudioPage(QWidget):
 
     # ================================================================ results
     def show_job_dir(self, job_dir: str):
-        """Display a finished job from the gallery."""
-        try:
-            with open(os.path.join(job_dir, "job.json"), encoding="utf-8") as f:
-                summary = json.load(f)
-        except (OSError, ValueError):
+        """Display a job from the gallery (finished, or interrupted with the sketches done so far)."""
+        summary = jobs.job_summary(job_dir)
+        if summary is None:
             return
         if self.controller.is_busy():
             self.view_job = None
@@ -768,8 +790,10 @@ class StudioPage(QWidget):
             self.select_seed(self.best_seed)
         if isinstance(summary.get("settings"), dict):
             self.params.set_settings(summary["settings"])
-        self.progress.setValue(1000)
+        done, total = summary.get("progress") or (1, 1)
+        self.progress.setValue(int(1000 * done / max(total, 1)))
         self._fill_stats_from_summary(summary)
+        self._update_resume_banner(summary)
         self._sync_quick()
         self._update_estimate()
         self._set_status("ui.status.loaded", name=os.path.basename(os.path.normpath(job_dir)))

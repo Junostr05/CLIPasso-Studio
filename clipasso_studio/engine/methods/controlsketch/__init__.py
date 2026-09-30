@@ -24,7 +24,7 @@ from PIL import Image
 from torchvision import transforms
 
 from .... import settings_schema as schema
-from ... import imaging, masking, model_store
+from ... import checkpoint, imaging, masking, model_store
 from ...jobs import SeedResult
 from ...renderer import render_on_white
 from . import painter as P
@@ -215,9 +215,31 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     losses: list[float] = []
     start_time = time.time()
     active_time = 0.0
+    first_epoch = 0
+    ck = checkpoint.load(run_dir)
+    if ck is not None:  # continue an interrupted run where it stopped
+        for shape, points in zip(painter.shapes, ck["points"]):
+            shape.points = points.to(device)
+        optimizer = torch.optim.Adam(painter.parameters(), lr=float(s["lr"]), betas=(0.9, 0.9), eps=1e-6)
+        optimizer.load_state_dict(ck["optim"])
+        counter, first_epoch = int(ck["counter"]), int(ck["epoch"]) + 1
+        scores, losses = [tuple(x) for x in ck["scores"]], list(ck["losses"])
+        active_time = float(ck["active_time"])
+        start_time = time.time() - active_time
+        checkpoint.set_rng_state(ck["rng"])
+        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}")
+
+    def save_checkpoint(done_epoch: int):
+        checkpoint.save(run_dir, {"epoch": done_epoch, "counter": counter, "points": painter.points(),
+                                  "optim": optimizer.state_dict(), "scores": scores, "losses": losses,
+                                  "active_time": active_time})
+
+    saver = checkpoint.Timer()
     try:
-        for epoch in range(total):
+        for epoch in range(first_epoch, total):
             if control.should_stop():
+                if epoch > first_epoch or ck is not None:
+                    save_checkpoint(epoch - 1)  # "Continue" goes on from here
                 raise Cancelled()
             paused_at = time.time()
             control.wait_if_paused()
@@ -243,8 +265,12 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
                            elapsed=active_time, eta=per_it * (total - counter))
             if svg_text is not None:
                 reporter.event("preview", seed=seed, it=epoch, svg=svg_text)
+            if saver.due():
+                save_checkpoint(epoch)
     except Cancelled:
         status = "cancelled"
+    if status == "done":
+        checkpoint.remove(run_dir)
 
     # --------------------------------------------------------------- final sketch
     order = None

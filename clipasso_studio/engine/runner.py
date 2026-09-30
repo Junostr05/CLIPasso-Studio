@@ -44,7 +44,7 @@ class _EventControl:
 
 
 def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finish, q, stop_event, pause_event,
-                 threads):
+                 threads, resume=False):
     """Entry point of a worker process."""
     reporter = _QueueReporter(q, worker_id)
     try:
@@ -57,7 +57,7 @@ def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finis
 
         try:
             result = pipeline.run_job(settings, target, output_root, reporter, _EventControl(stop_event, pause_event),
-                                      job_dir=job_dir, seeds=seeds, finish=finish)
+                                      job_dir=job_dir, seeds=seeds, finish=finish, resume=resume)
             if not finish:
                 reporter.event("worker_results", results=[r.__dict__ for r in result])
         except ModelMissingError as exc:
@@ -81,6 +81,7 @@ class Job:
     parallel: bool = False
     failed: bool = False
     done: bool = False
+    resumed: dict = field(default_factory=dict)  # seed -> SeedResult finished before a "Continue"
 
 
 class JobRunner:
@@ -94,7 +95,8 @@ class JobRunner:
         self.job: Job | None = None
 
     # ----------------------------------------------------------------- control
-    def start(self, settings: dict, target: str, output_root: str) -> Job:
+    def start(self, settings: dict, target: str, output_root: str, job_dir: str = "") -> Job:
+        """Start a job; with ``job_dir`` an interrupted / cancelled job continues in its folder."""
         if self.is_running():
             raise RuntimeError("a job is already running")
         from .. import settings_schema as schema
@@ -102,12 +104,20 @@ class JobRunner:
         settings = schema.normalize(settings)
         os.makedirs(output_root, exist_ok=True)
         job = Job(settings=settings, target=target, output_root=output_root)
-        job.job_dir = jobs.make_job_dir(output_root, target, schema.method_of(settings))
+        resume = bool(job_dir)
+        if resume:
+            job.job_dir = job_dir
+            job.resumed = jobs.done_results(job_dir)
+        else:
+            job.job_dir = jobs.make_job_dir(output_root, target, schema.method_of(settings))
+        jobs.write_state(job.job_dir, target, settings, "running")
         job.started = time.time()
         self._queue = self._ctx.Queue()
         self._stop = self._ctx.Event()
         self._pause = self._ctx.Event()
         seeds = jobs.job_seeds(settings)
+        if resume and schema.method_of(settings) != "scenesketch":
+            seeds = [s for s in seeds if s not in job.resumed]
         n_workers = 1
         if settings.get("multiprocess") and len(seeds) > 1:
             n_workers = min(len(seeds), MAX_PARALLEL_WORKERS)
@@ -120,7 +130,7 @@ class JobRunner:
             p = self._ctx.Process(
                 target=_worker_main,
                 args=(wid, settings, target, output_root, job.job_dir, chunk, not job.parallel, self._queue,
-                      self._stop, self._pause, threads),
+                      self._stop, self._pause, threads, resume and wid == 0),
                 daemon=True,
             )
             p.start()
@@ -154,6 +164,8 @@ class JobRunner:
                     p.terminate()
             for p in self.job.workers:
                 p.join(timeout=5)
+            if not self.job.done:  # continues from its last checkpoint (Gallery / next start: "Continue")
+                jobs.set_status(self.job.job_dir, "interrupted")
             self.job.done = True
 
     def is_running(self) -> bool:
@@ -208,8 +220,8 @@ class JobRunner:
                     events.append(("error", {"message": f"worker process ended unexpectedly (exit codes {codes})",
                                              "traceback": ""}))
             if job.finished_workers >= len(job.workers):
-                if job.parallel and job.seed_results and not job.failed:
-                    results = [jobs.SeedResult(**r) for r in job.seed_results]
+                if job.parallel and (job.seed_results or job.resumed) and not job.failed:
+                    results = jobs.merge_results(job.resumed, [jobs.SeedResult(**r) for r in job.seed_results])
                     try:
                         summary = jobs.finish_job(job.job_dir, job.target, job.settings, results)
                         events.append(("job_done", {"job_dir": job.job_dir, "best_svg": summary["best_svg"],
@@ -220,4 +232,8 @@ class JobRunner:
                 job.done = True
                 if job.failed or not any(k == "job_done" for k, _ in events):
                     events.append(("job_failed" if job.failed else "job_ended", {"job_dir": job.job_dir}))
+                    stopped = self._stop is not None and self._stop.is_set()
+                    state = jobs.read_state(job.job_dir)
+                    if state and state.get("status") == "running":  # else finish_job has set it
+                        jobs.set_status(job.job_dir, "cancelled" if stopped else "failed")
         return events

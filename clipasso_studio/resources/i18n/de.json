@@ -540,5 +540,19 @@
  "ui.shortcut.queue": "Zur Warteschlange hinzufügen",
  "ui.shortcut.export": "Skizze als SVG exportieren",
  "ui.shortcut.pages": "Seite wechseln (Studio … Info)",
- "ui.paste_no_image": "In der Zwischenablage ist kein Bild."
+ "ui.paste_no_image": "In der Zwischenablage ist kein Bild.",
+ "ui.continue": "Fortsetzen",
+ "ui.later": "Später",
+ "ui.gallery.state_running": "Unterbrochen · {done} von {total}",
+ "ui.gallery.state_interrupted": "Unterbrochen · {done} von {total}",
+ "ui.gallery.state_cancelled": "Abgebrochen · {done} von {total}",
+ "ui.gallery.state_failed": "Wegen eines Fehlers gestoppt · {done} von {total}",
+ "ui.resume.running": "Dieser Auftrag wurde unterbrochen – {done} von {total} Skizzen sind fertig. Dort weitermachen, wo er aufgehört hat?",
+ "ui.resume.interrupted": "Dieser Auftrag wurde unterbrochen – {done} von {total} Skizzen sind fertig. Dort weitermachen, wo er aufgehört hat?",
+ "ui.resume.cancelled": "Dieser Auftrag wurde abgebrochen – {done} von {total} Skizzen sind fertig. Dort weitermachen, wo er aufgehört hat?",
+ "ui.resume.failed": "Dieser Auftrag wurde wegen eines Fehlers gestoppt – {done} von {total} Skizzen sind fertig. Fortsetzen versuchen?",
+ "ui.resume.queued": "Der Auftrag wird dort fortgesetzt, wo er aufgehört hat.",
+ "ui.resume.nothing": "Dieser Auftrag ist schon in der Warteschlange oder hat nichts mehr zu tun.",
+ "ui.resume.startup_title": "Unfertige Arbeit aus der letzten Sitzung ({n}): Die App wurde geschlossen oder ist abgestürzt, während sie lief.",
+ "ui.resume.startup_text": "Fertige Skizzen bleiben erhalten; der Rest geht ab dem letzten Zwischenstand weiter."
 }

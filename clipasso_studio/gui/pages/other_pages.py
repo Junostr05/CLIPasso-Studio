@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
 
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
-from ...engine import model_store
+from ...engine import jobs, model_store
 from .. import crash, dialogs, icons, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
@@ -51,23 +51,25 @@ def _status_role(status: str) -> str:
     return {"done": "badge-success", "failed": "badge-warning", "cancelled": "badge-warning"}.get(status, "badge")
 
 
-def scan_jobs() -> list[tuple[str, dict]]:
-    """Finished jobs in the output folder (job folder, job.json), newest first."""
+def scan_jobs(unfinished: bool = False) -> list[tuple[str, dict]]:
+    """Jobs in the output folder (job folder, summary), newest first: finished ones (job.json), and with
+    ``unfinished`` also interrupted ones that have no job.json yet."""
     root = app_settings().get("output_dir")
     items = []
     if not root or not os.path.isdir(root):
         return items
     for name in os.listdir(root):
         d = os.path.join(root, name)
-        f = os.path.join(d, "job.json")
-        if os.path.isfile(f):
-            try:
-                with open(f, encoding="utf-8") as fh:
-                    items.append((d, json.load(fh)))
-            except (OSError, ValueError):
-                continue
+        if not os.path.isfile(os.path.join(d, "job.json")) and not (
+                unfinished and os.path.isfile(os.path.join(d, jobs.STATE_FILE))):
+            continue
+        summary = jobs.job_summary(d)
+        if summary is not None:
+            items.append((d, summary))
     items.sort(key=lambda t: t[1].get("created", ""), reverse=True)
     return items
+
+
 
 
 def job_method(summary: dict) -> str:
@@ -300,6 +302,13 @@ class GalleryCard(Card):
             badges.addWidget(label(f"Loss {min(r.get('best_loss', 99) for r in runs):.3f}", "badge"))
         badges.addStretch(1)
         self.body.addLayout(badges)
+        self.can_continue = jobs.summary_can_continue(summary)
+        self.state_label = None
+        if self.can_continue:
+            done, total = summary["progress"]
+            self.state_label = label(tr(f"ui.gallery.state_{summary['state']}", done=done, total=total),
+                                     "badge-warning")
+            self.body.addWidget(self.state_label, 0, Qt.AlignLeft)
         tools = QHBoxLayout()
         tools.setSpacing(2)
         p = theme.current()
@@ -313,6 +322,11 @@ class GalleryCard(Card):
         self.delete.clicked.connect(lambda: self.action.emit("delete", self.job_dir))
         tools.addWidget(self.star)
         tools.addStretch(1)
+        self.cont = None
+        if self.can_continue:
+            self.cont = button(tr("ui.continue"), "play", "primary", size="sm")
+            self.cont.clicked.connect(lambda: self.action.emit("continue", self.job_dir))
+            tools.addWidget(self.cont)
         tools.addWidget(self.folder)
         tools.addWidget(self.delete)
         self.body.addLayout(tools)
@@ -326,6 +340,8 @@ class GalleryCard(Card):
     def contextMenuEvent(self, e):  # noqa: N802
         menu = QMenu(self)
         menu.addAction(icons.icon("brush"), tr("ui.gallery.open"), lambda: self.clicked.emit(self.job_dir))
+        if self.can_continue:
+            menu.addAction(icons.icon("play"), tr("ui.continue"), lambda: self.action.emit("continue", self.job_dir))
         menu.addAction(icons.icon("folder-open"), tr("ui.gallery.show_folder"),
                        lambda: self.action.emit("folder", self.job_dir))
         menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if self.favourite else "ui.gallery.favourite"),
@@ -339,6 +355,7 @@ class GalleryCard(Card):
 class GalleryPage(QWidget):
     open_job = Signal(str)
     job_deleted = Signal(str)
+    continue_job = Signal(str)
 
     SORTS = ("newest", "score")
 
@@ -396,7 +413,7 @@ class GalleryPage(QWidget):
         QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     def scan(self) -> list[tuple[str, dict]]:
-        return scan_jobs()
+        return scan_jobs(unfinished=True)
 
     def refresh(self):
         for c in self.cards:
@@ -422,6 +439,8 @@ class GalleryPage(QWidget):
     def _card_action(self, kind: str, job_dir: str):
         if kind == "folder":
             QDesktopServices.openUrl(QUrl.fromLocalFile(job_dir))
+        elif kind == "continue":
+            self.continue_job.emit(job_dir)
         elif kind == "favourite":
             card = next((c for c in self.cards if c.job_dir == job_dir), None)
             value = card.star.isChecked() if card else True

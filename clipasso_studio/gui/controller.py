@@ -33,6 +33,7 @@ class QueuedJob:
     finished: float = 0.0
     eta: float = float("nan")
     device: str = ""
+    resume_dir: str = ""  # "Continue": the interrupted job folder
 
     @property
     def name(self) -> str:
@@ -50,7 +51,10 @@ class QueuedJob:
         return sum(self.seed_progress.get(s, 0.0) for s in seeds) / len(seeds)
 
     def to_json(self) -> dict:
-        return {"target": self.target, "settings": self.settings}
+        data = {"target": self.target, "settings": self.settings}
+        if self.resume_dir:
+            data["resume_dir"] = self.resume_dir
+        return data
 
 
 def _keep_awake(on: bool) -> None:
@@ -84,8 +88,25 @@ class JobController(QObject):
         self._restore_queue()
 
     # ------------------------------------------------------------------ queue
-    def enqueue(self, target: str, settings: dict, start: bool = True) -> QueuedJob:
-        job = QueuedJob(target=target, settings=schema.normalize(settings))
+    def continue_job(self, job_dir: str, start: bool = True) -> QueuedJob | None:
+        """Queue an interrupted / cancelled job again: finished sketches are kept, the rest continues
+        from its checkpoints. None when there is nothing to continue or it is already queued."""
+        norm = os.path.normcase(os.path.abspath(job_dir))
+        for j in self.jobs:
+            if j.status in ("queued", "running", "paused") and norm in (
+                    os.path.normcase(os.path.abspath(j.resume_dir or "-")),
+                    os.path.normcase(os.path.abspath(j.job_dir or "-"))):
+                return None
+        state = jobs.read_state(job_dir)
+        if not state or not jobs.remaining_seeds(job_dir):
+            return None
+        target = jobs.reopen_input(job_dir, state.get("target", ""))
+        if not target:
+            return None
+        return self.enqueue(target, state["settings"], start=start, resume_dir=job_dir)
+
+    def enqueue(self, target: str, settings: dict, start: bool = True, resume_dir: str = "") -> QueuedJob:
+        job = QueuedJob(target=target, settings=schema.normalize(settings), resume_dir=resume_dir)
         self.jobs.append(job)
         self._persist_queue()
         self.queue_changed.emit()
@@ -126,7 +147,7 @@ class JobController(QObject):
             return None
         out = app_settings().get("output_dir")
         try:
-            self.runner.start(nxt.settings, nxt.target, out)
+            self.runner.start(nxt.settings, nxt.target, out, job_dir=nxt.resume_dir)
         except Exception as exc:  # e.g. output folder not writable
             nxt.status = "failed"
             nxt.message = str(exc)
@@ -216,6 +237,10 @@ class JobController(QObject):
         for item in app_settings().get("queue") or []:
             try:
                 if os.path.isfile(item["target"]):
-                    self.jobs.append(QueuedJob(target=item["target"], settings=schema.normalize(item["settings"])))
+                    resume = item.get("resume_dir", "")
+                    if resume and not os.path.isdir(resume):
+                        continue
+                    self.jobs.append(QueuedJob(target=item["target"], settings=schema.normalize(item["settings"]),
+                                               resume_dir=resume))
             except (KeyError, TypeError, ValueError):
                 continue

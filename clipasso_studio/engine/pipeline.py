@@ -23,7 +23,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .. import settings_schema as schema
-from . import imaging, masking
+from . import checkpoint, imaging, jobs, masking
 from .jobs import SeedResult, finish_job, job_seeds, make_job_dir, run_name_for  # noqa: F401
 
 
@@ -248,11 +248,49 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     status = "done"
     start = time.time()
     active_time = 0.0
+    first_epoch = 0
+    ck = checkpoint.load(run_dir)
+    if ck is not None:  # continue an interrupted run where it stopped
+        for s in range(1, int(ck["stage"]) + 1):
+            renderer.init_image(stage=s)  # the strokes added by later stages (positions come from the checkpoint)
+        for path, points in zip(renderer.shapes, ck["points"]):
+            path.points = points.to(args.device)
+        for group, color in zip(renderer.shape_groups, ck["colors"]):
+            group.stroke_color = color.to(group.stroke_color.device)
+        renderer.optimize_flag = list(ck["optimize_flag"])
+        optimizer.init_optimizers()
+        optimizer.points_optim.load_state_dict(ck["points_optim"])
+        if ck.get("color_optim") is not None and optimizer.optim_color:
+            optimizer.color_optim.load_state_dict(ck["color_optim"])
+        stage, counter, first_epoch = int(ck["stage"]), int(ck["counter"]), int(ck["epoch"]) + 1
+        best_loss, best_iter = ck["best_loss"], ck["best_iter"]
+        best_fc_loss, best_iter_fc, terminate = ck["best_fc_loss"], ck["best_iter_fc"], ck["terminate"]
+        configs_to_save = ck["configs"]
+        active_time = float(ck["active_time"])
+        start = time.time() - active_time
+        checkpoint.set_rng_state(ck["rng"])
+        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}")
+
+    def save_checkpoint(done_epoch: int):
+        checkpoint.save(run_dir, {
+            "epoch": done_epoch, "counter": counter, "stage": stage,
+            "points": [p.points.detach().cpu() for p in renderer.shapes],
+            "colors": [g.stroke_color.detach().cpu() for g in renderer.shape_groups],
+            "optimize_flag": list(renderer.optimize_flag),
+            "points_optim": optimizer.points_optim.state_dict(),
+            "color_optim": optimizer.color_optim.state_dict() if optimizer.optim_color else None,
+            "best_loss": best_loss, "best_iter": best_iter, "best_fc_loss": best_fc_loss,
+            "best_iter_fc": best_iter_fc, "terminate": terminate, "configs": configs_to_save,
+            "active_time": active_time})
+
+    saver = checkpoint.Timer()
     reporter.event("stage", seed=seed, name="optimizing")
-    epoch = -1
+    epoch = first_epoch - 1
     try:
-        for epoch in range(args.num_iter):
+        for epoch in range(first_epoch, args.num_iter):
             if control.should_stop():
+                if epoch > first_epoch or ck is not None:
+                    save_checkpoint(epoch - 1)  # "Continue" goes on from here
                 raise Cancelled()
             paused_at = time.time()
             control.wait_if_paused()
@@ -326,8 +364,12 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
                            elapsed=active_time, eta=per_it * (args.num_iter - counter))
             if svg_text is not None:
                 reporter.event("preview", seed=seed, it=epoch, svg=svg_text)
+            if saver.due():
+                save_checkpoint(epoch)
     except Cancelled:
         status = "cancelled"
+    if status == "done":
+        checkpoint.remove(run_dir)
 
     renderer.save_svg(run_dir, "final_svg")
     best_svg = os.path.join(run_dir, "best_iter.svg")
@@ -364,11 +406,13 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
 
 def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | None = None,
             control: Control | None = None, job_dir: str | None = None, seeds: list[int] | None = None,
-            finish: bool = True) -> dict | list[SeedResult]:
+            finish: bool = True, resume: bool = False) -> dict | list[SeedResult]:
     """Run the seeds of a job in this process (all seeds, or only ``seeds``).
 
     With ``finish=True`` the best sketch is selected afterwards (like run_object_sketching.py)
     and the job summary is returned; otherwise the list of seed results is returned.
+    With ``resume`` (an existing ``job_dir``) finished seeds are kept, the others continue from
+    their checkpoints, and the summary covers all of them.
     """
     reporter = reporter or Reporter()
     settings = schema.normalize(settings)
@@ -383,16 +427,35 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     method = schema.method_of(settings)
     impl = methods.get(method)
     job_dir = job_dir or make_job_dir(output_root, target, method)
+    if jobs.read_state(job_dir) is None:
+        jobs.write_state(job_dir, target, settings)
+    old: dict[int, SeedResult] = {}
+    if resume:
+        jobs.set_status(job_dir, "running")
+        old = jobs.done_results(job_dir)
+        if seeds is None:
+            seeds = [s for s in job_seeds(settings) if s not in old]
+        for r in old.values():  # the finished sketches, as if they had just been drawn
+            with open(r.best_svg, encoding="utf-8") as f:
+                svg = f.read()
+            reporter.event("seed_done", seed=r.seed, best_loss=r.best_loss, best_iter=r.best_iter, status=r.status,
+                           run_dir=r.run_dir, svg=svg, clip_score=r.clip_score, restored=True)
     seeds = list(seeds) if seeds is not None else job_seeds(settings)
     reporter.event("job_start", job_dir=job_dir, device=str(device), seeds=seeds, method=method)
     results = []
     if hasattr(impl, "run_cells"):  # SceneSketch: the items depend on each other and run together
-        results = impl.run_cells(settings, target, job_dir, seeds, reporter, control, device)
+        # finished cells are rebuilt from their saved parts in seconds, so all cells up to the last one run
+        cells = job_seeds(settings) if resume else seeds
+        results = impl.run_cells(settings, target, job_dir, cells, reporter, control, device)
+        for r in results:
+            jobs.save_result(r)
     for seed in seeds if not hasattr(impl, "run_cells") else ():
         if control and control.should_stop():
             break
         run_dir = os.path.join(job_dir, run_name_for(target, settings, seed))
-        results.append(impl.run_single(settings, target, run_dir, seed, reporter, control, device))
+        result = impl.run_single(settings, target, run_dir, seed, reporter, control, device)
+        jobs.save_result(result)
+        results.append(result)
     if not finish:
         return results
-    return finish_job(job_dir, target, settings, results, reporter)
+    return finish_job(job_dir, target, settings, jobs.merge_results(old, results), reporter)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, QUrl, Signal
@@ -11,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import dialogs, icons, shortcuts, theme, updates
+from . import dialogs, icons, methods_ui, shortcuts, theme, updates
 from .app_settings import app_settings
 from .controller import JobController
 from .i18n import i18n, tr
@@ -204,6 +205,7 @@ class MainWindow(QMainWindow):
         self.studio.open_queue.connect(lambda: self.show_page("queue"))
         self.gallery.open_job.connect(self._open_job)
         self.gallery.job_deleted.connect(self.studio.forget_job_dir)
+        self.gallery.continue_job.connect(self.continue_job)
         self.compare.open_job.connect(self._open_job)
         self.compare.toast.connect(self.toast.show_message)
         self.settings.theme_changed.connect(self.apply_theme)
@@ -226,6 +228,48 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         QTimer.singleShot(0, lambda: _dark_title_bar(self, theme.current().name == "dark"))
+
+    # ------------------------------------------------------ interrupted jobs
+    def continue_job(self, job_dir: str) -> bool:
+        job = self.controller.continue_job(job_dir)
+        if job is None:
+            self.toast.show_message(tr("ui.resume.nothing"), "info")
+            return False
+        self.toast.show_message(tr("ui.resume.queued"), "success")
+        self.show_page("studio" if self.controller.current is job else "queue")
+        return True
+
+    def check_interrupted_jobs(self) -> list[str]:
+        """After the start: offer to continue jobs that were running when the app was closed or crashed.
+        Asked once per job; afterwards the Gallery keeps offering "Continue"."""
+        from ..engine import jobs
+        from .pages.other_pages import scan_jobs
+
+        found = [(d, s) for d, s in scan_jobs(unfinished=True)
+                 if s.get("state") in ("running", "interrupted") and jobs.summary_can_continue(s)
+                 and not jobs.read_state(d).get("asked")]
+        if not found:
+            return []
+        for d, _ in found:
+            jobs.mark_asked(d)
+        lines = []
+        for d, s in found[:6]:
+            done, total = s["progress"]
+            name = os.path.splitext(os.path.basename(s.get("target", d)))[0]
+            lines.append(f"• {name} – {methods_ui.name(s.get('method', 'clipasso'))} ({done}/{total})")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(APP_NAME)
+        box.setText(tr("ui.resume.startup_title", n=len(found)))
+        box.setInformativeText(tr("ui.resume.startup_text") + "\n\n" + "\n".join(lines))
+        yes = box.addButton(tr("ui.continue"), QMessageBox.AcceptRole)
+        box.addButton(tr("ui.later"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is yes:
+            for d, _ in found:
+                self.controller.continue_job(d)
+            self.show_page("studio")
+        return [d for d, _ in found]
 
     # -------------------------------------------------------------- shortcuts
     def _install_shortcuts(self):

@@ -36,7 +36,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .... import settings_schema as schema
-from ... import imaging, model_store
+from ... import checkpoint, imaging, model_store
 from ...jobs import SeedResult
 from . import combine as C
 from .painter import MLPPainter, paths_to_svg, render_paths
@@ -221,9 +221,10 @@ def _initial_strokes(ctx: _Ctx, target: torch.Tensor, mask_t: torch.Tensor | Non
 # ----------------------------------------------------------------------------- training
 
 
-def _progress(ctx: _Ctx, loss: float, score=None, part: str = ""):
-    ctx.done_iters += 1
-    ctx.cell_done += 1
+def _progress(ctx: _Ctx, loss: float, score=None, part: str = "", count: bool = True):
+    if count:
+        ctx.done_iters += 1
+        ctx.cell_done += 1
     per_it = ctx.active / max(ctx.done_iters, 1)
     ctx.reporter.event("iteration", seed=ctx.cell, it=min(ctx.cell_done, ctx.cell_total) - 1, total=ctx.cell_total,
                        loss=loss, loss_eval=None, best_loss=None, best_iter=ctx.cell_done - 1, losses={"loss": loss},
@@ -239,12 +240,62 @@ def _preview_paths(ctx: _Ctx, part: str, paths, inputs) -> list:
     return C.combine(paths, ctx.preview_other, inputs["mask_canvas"], CANVAS)
 
 
+PART_FILE = "part.pt"
+
+
+def _paths_data(paths) -> list:
+    return [{"ncp": p.num_control_points, "points": p.points.detach().cpu(), "width": p.stroke_width.detach().cpu(),
+             "closed": p.is_closed} for p in paths]
+
+
+def _paths_from(data, device) -> list:
+    from ... import renderer
+
+    return [renderer.Path(d["ncp"], d["points"].to(device), d["width"], is_closed=d["closed"]) for d in data]
+
+
+def _save_part(res: RunResult) -> None:
+    """A finished part (one optimisation of the background or the object of a cell): continuing an
+    interrupted job loads it instead of computing it again."""
+    data = {"seed": res.seed, "points_init": res.points_init.cpu(), "paths": _paths_data(res.paths),
+            "state": res.state, "loss_eval": res.loss_eval, "evals": res.evals, "best_eval_index": res.best_eval_index,
+            "best_normalised_loss": res.best_normalised_loss, "seconds": res.seconds,
+            "frames": [(it, _paths_data(fr)) for it, fr in res.frames]}
+    tmp = os.path.join(res.run_dir, PART_FILE + ".tmp")
+    torch.save(data, tmp)
+    os.replace(tmp, os.path.join(res.run_dir, PART_FILE))
+
+
+def _load_part(run_dir: str, device) -> RunResult | None:
+    path = os.path.join(run_dir, PART_FILE)
+    if not os.path.isfile(path):
+        return None
+    try:
+        d = torch.load(path, map_location="cpu", weights_only=False)
+        return RunResult(seed=d["seed"], run_dir=run_dir, points_init=d["points_init"],
+                         paths=_paths_from(d["paths"], device), state=checkpoint.to_device(d["state"], device),
+                         loss_eval=d["loss_eval"], evals=d["evals"], best_eval_index=d["best_eval_index"],
+                         best_normalised_loss=d["best_normalised_loss"], seconds=d["seconds"],
+                         frames=[(it, _paths_from(fr, device)) for it, fr in d["frames"]])
+    except Exception:  # unreadable (e.g. written by an older version): compute it again
+        return None
+
+
 def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) -> RunResult:
     """One optimisation (``painterly_rendering.py`` with the SceneSketch options)."""
     from ...pipeline import set_seed
     from .loss import SceneLoss
 
     s, device = ctx.s, ctx.device
+    saved = _load_part(run_dir, device)
+    if saved is not None:  # finished before the job was interrupted
+        total = int(cfg.num_iter)
+        ctx.done_iters += total
+        ctx.cell_done += total
+        ctx.reporter.event("log", message=f"SceneSketch: {os.path.basename(os.path.dirname(run_dir))} "
+                                          f"(seed {seed}) restored")
+        _progress(ctx, min(saved.loss_eval) if saved.loss_eval else 0.0, None, cfg.name, count=False)
+        return saved
     os.makedirs(os.path.join(run_dir, "svg_logs"), exist_ok=True)
     set_seed(seed)
     if cfg.init_points is None:
@@ -363,9 +414,12 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
               "best_normalised_loss": best_normalised, "strokes": len(paths), "seconds": time.time() - started}
     with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
-    return RunResult(seed=seed, run_dir=run_dir, points_init=points_init.detach(), paths=paths, state=chosen,
-                     loss_eval=loss_eval, evals=evals, best_eval_index=best_index,
-                     best_normalised_loss=best_normalised, frames=frames, seconds=config["seconds"])
+    res = RunResult(seed=seed, run_dir=run_dir, points_init=points_init.detach(), paths=paths, state=chosen,
+                    loss_eval=loss_eval, evals=evals, best_eval_index=best_index,
+                    best_normalised_loss=best_normalised, frames=frames, seconds=config["seconds"])
+    if not ctx.cancelled:
+        _save_part(res)
+    return res
 
 
 def _path(points: torch.Tensor):

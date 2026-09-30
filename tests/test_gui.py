@@ -335,3 +335,64 @@ def test_shortcuts_and_paste(window, tmp_path):
     assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
     keys = [lbl.text() for lbl in window.about.key_labels]
     assert len(keys) == 6 and all(keys)
+
+
+def _interrupted_job(out, tmp_path):
+    import os
+
+    from PIL import Image
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    target = str(tmp_path / "horse.png")
+    Image.new("RGB", (40, 40), "white").save(target)
+    settings = {**schema.default_settings("swiftsketch"), "num_sketches": 3}
+    job = jobs.make_job_dir(out, target, "swiftsketch")
+    jobs.write_state(job, target, settings)
+    run = os.path.join(job, "horse_swiftsketch_32strokes_seed0")
+    os.makedirs(run)
+    with open(os.path.join(run, "best_iter.svg"), "w") as f:
+        f.write('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224">'
+                '<path d="M 10 10 L 100 100" stroke="black" fill="none"/></svg>')
+    jobs.save_result(jobs.SeedResult(seed=jobs.job_seeds(settings)[0], run_name=os.path.basename(run), run_dir=run,
+                                     best_loss=0.2,
+                                     best_iter=0, iterations_done=51, best_svg=os.path.join(run, "best_iter.svg"),
+                                     status="done", method="swiftsketch", clip_score=80.0))
+    return job
+
+
+def test_continue_an_interrupted_job(window, tmp_path, monkeypatch):
+    import os
+    import shutil
+
+    from PySide6.QtWidgets import QMessageBox
+
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    for d in os.listdir(out):
+        shutil.rmtree(os.path.join(out, d), ignore_errors=True)
+    job = _interrupted_job(out, tmp_path)
+    # the gallery lists it (no job.json yet) with its progress and a Continue button
+    window.show_page("gallery")
+    window.gallery.refresh()
+    card = next(c for c in window.gallery.cards if c.job_dir == job)
+    assert card.can_continue and card.cont is not None and "1" in card.state_label.text()
+    # the studio shows the finished sketch and offers to continue
+    window.studio.show_job_dir(job)
+    assert window.studio.resume_banner.isVisibleTo(window.studio) and len(window.studio.thumbs) == 1
+    # at the next start the user is asked once
+    asked = []
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: asked.append(self.text()) or 0)
+    assert window.check_interrupted_jobs() == [job] and asked
+    assert jobs.read_state(job)["status"] == "interrupted" and window.check_interrupted_jobs() == []
+    # continue: queued with its folder, not twice
+    controller = window.controller
+    queued = controller.continue_job(job, start=False)
+    assert queued is not None and queued.resume_dir == job and queued.to_json()["resume_dir"] == job
+    assert controller.continue_job(job, start=False) is None
+    controller.remove(queued.id)
+    window.show_page("studio")

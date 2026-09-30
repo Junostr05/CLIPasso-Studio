@@ -120,6 +120,151 @@ def reopen_input(job_dir: str, target: str) -> str | None:
     return copy
 
 
+STATE_FILE = "job_state.json"
+RESULT_FILE = "result.json"
+
+
+def write_state(job_dir: str, target: str, settings: dict, status: str = "running") -> None:
+    """``job_state.json``: what the job is meant to compute and whether it is still running – a job
+    whose state says "running" although nothing runs it was interrupted (app closed, crash)."""
+    path = os.path.join(job_dir, STATE_FILE)
+    state = read_state(job_dir) or {"created": time.strftime("%Y-%m-%d %H:%M:%S")}
+    state.update({"target": os.path.abspath(target), "settings": schema.normalize(settings),
+                  "method": schema.method_of(settings), "seeds": job_seeds(settings), "status": status})
+    if status == "running":
+        state.pop("asked", None)  # a new run that is interrupted again is offered again
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp, path)
+
+
+def read_state(job_dir: str) -> dict | None:
+    try:
+        with open(os.path.join(job_dir, STATE_FILE), encoding="utf-8") as f:
+            state = json.load(f)
+        return state if isinstance(state, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def set_status(job_dir: str, status: str) -> None:
+    state = read_state(job_dir)
+    if state is not None and state.get("status") != status:
+        write_state(job_dir, state["target"], state["settings"], status)
+
+
+def mark_asked(job_dir: str) -> None:
+    """The user was asked at the start whether to continue this interrupted job (only asked once)."""
+    state = read_state(job_dir)
+    if state is None:
+        return
+    state["asked"] = True
+    if state.get("status") == "running":
+        state["status"] = "interrupted"
+    path = os.path.join(job_dir, STATE_FILE)
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+    os.replace(path + ".tmp", path)
+
+
+def save_result(result: SeedResult) -> None:
+    """``result.json`` in the run folder: the seed is finished (or was cancelled)."""
+    if not result.run_dir or not os.path.isdir(result.run_dir):
+        return
+    with open(os.path.join(result.run_dir, RESULT_FILE), "w", encoding="utf-8") as f:
+        json.dump(result.__dict__, f, indent=2)
+
+
+def saved_results(job_dir: str) -> dict[int, SeedResult]:
+    """The results saved in a job folder, by seed (cell for SceneSketch)."""
+    out = {}
+    if not os.path.isdir(job_dir):
+        return out
+    for name in sorted(os.listdir(job_dir)):
+        path = os.path.join(job_dir, name, RESULT_FILE)
+        try:
+            with open(path, encoding="utf-8") as f:
+                result = SeedResult(**json.load(f))
+        except (OSError, ValueError, TypeError):
+            continue
+        if os.path.isfile(result.best_svg):
+            out[int(result.seed)] = result
+    return out
+
+
+def done_results(job_dir: str) -> dict[int, SeedResult]:
+    return {s: r for s, r in saved_results(job_dir).items() if r.status == "done"}
+
+
+def progress_of(job_dir: str) -> tuple[int, int]:
+    """(finished items, all items) of a job."""
+    state = read_state(job_dir)
+    seeds = state.get("seeds", []) if state else []
+    done = done_results(job_dir)
+    return sum(1 for s in seeds if s in done), len(seeds)
+
+
+def remaining_seeds(job_dir: str) -> list[int]:
+    state = read_state(job_dir) or {}
+    done = done_results(job_dir)
+    return [s for s in state.get("seeds", []) if s not in done]
+
+
+def can_continue(job_dir: str) -> bool:
+    """Interrupted, cancelled or failed with work left."""
+    state = read_state(job_dir)
+    return bool(state) and state.get("status") in ("running", "interrupted", "cancelled", "failed") \
+        and bool(remaining_seeds(job_dir))
+
+
+def merge_results(old: dict[int, SeedResult], new: list[SeedResult]) -> list[SeedResult]:
+    """Old results completed by the new ones (a seed computed again replaces its old result)."""
+    merged = dict(old)
+    for r in new:
+        if r is not None:
+            merged[int(r.seed)] = r
+    return [merged[s] for s in sorted(merged)]
+
+
+def job_summary(job_dir: str) -> dict | None:
+    """``job.json`` of a job – or, for a job interrupted before it was finished, the same information
+    built from its state and the sketches finished so far. Adds ``state`` (running / interrupted /
+    cancelled / failed / done) and ``progress`` ([finished, all])."""
+    summary = None
+    try:
+        with open(os.path.join(job_dir, "job.json"), encoding="utf-8") as f:
+            summary = json.load(f)
+    except (OSError, ValueError):
+        pass
+    state = read_state(job_dir)
+    if summary is None:
+        if state is None:
+            return None
+        results = list(saved_results(job_dir).values())
+        method = state.get("method") or schema.method_of(state.get("settings"))
+        best = None
+        if results:
+            scored = [r for r in results if r.clip_score is not None]
+            best = max(scored, key=lambda r: r.clip_score) if method != "clipasso" and scored \
+                else min(results, key=lambda r: r.best_loss)
+        summary = {"target": state.get("target", ""), "created": state.get("created", ""),
+                   "settings": state.get("settings", {}), "method": method,
+                   "clip_score": best.clip_score if best else None, "best_svg": best.best_svg if best else "",
+                   "best_run": best.run_name if best else "", "runs": [r.__dict__ for r in results]}
+    if state is not None:
+        summary["state"] = state.get("status", "done")
+        done, total = progress_of(job_dir)
+        summary["progress"] = [done, total]
+    return summary
+
+
+def summary_can_continue(summary: dict) -> bool:
+    """For a :func:`job_summary`: interrupted / cancelled / failed with work left."""
+    done, total = summary.get("progress") or (0, 0)
+    return summary.get("state") in ("running", "interrupted", "cancelled", "failed") and done < total
+
+
 def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResult],
                reporter=None) -> dict:
     """Pick the best sketch and copy it to ``<run>_best.svg`` like the original.
@@ -137,6 +282,12 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     else:
         best = min(results, key=lambda r: r.best_loss)
     best_copy = os.path.join(job_dir, f"{best.run_name}_best.svg")
+    for name in os.listdir(job_dir):  # a continued job may have another best sketch than before
+        if name.endswith(("_best.svg", "_best.png")) and not name.startswith(f"{best.run_name}_best."):
+            try:
+                os.remove(os.path.join(job_dir, name))
+            except OSError:
+                pass
     shutil.copyfile(best.best_svg, best_copy)
     png = os.path.join(best.run_dir, "best_iter.png")
     if os.path.isfile(png):
@@ -155,6 +306,9 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     }
     with open(os.path.join(job_dir, "job.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+    if read_state(job_dir) is not None:
+        all_done = all(r.status == "done" for r in results) and not remaining_seeds(job_dir)
+        set_status(job_dir, "done" if all_done else "cancelled")
     reporter.event("job_done", job_dir=job_dir, best_svg=best_copy, best_run=best.run_name, method=method,
                    clip_score=best.clip_score, runs=[r.__dict__ for r in results])
     return summary

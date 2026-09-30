@@ -96,6 +96,36 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
     return report
 
 
+def _selftest_resume(out_dir: str) -> dict:
+    """An interrupted CLIPasso job continues from its checkpoint (torch.save / load of the stroke and
+    optimiser state in the packaged app)."""
+    from . import paths
+    from .engine import checkpoint, jobs, pipeline
+
+    class Stop(pipeline.Control):
+        n = 0
+
+        def should_stop(self):
+            Stop.n += 1
+            return Stop.n > 3
+
+    settings = {"num_iter": 6, "num_sketches": 1, "num_paths": 4, "save_interval": 1, "eval_interval": 1}
+    sample = str(paths.resource("samples", "camel.png"))
+    try:
+        first = pipeline.run_job(settings, sample, os.path.join(out_dir, "resume"), control=Stop())
+        job_dir = os.path.dirname(first["best_svg"])
+        run_dir = first["runs"][0]["run_dir"]
+        had_checkpoint = os.path.isfile(checkpoint.path(run_dir))
+        done = pipeline.run_job(settings, sample, out_dir, job_dir=job_dir, resume=True)
+        ok = (had_checkpoint and done["runs"][0]["status"] == "done" and done["runs"][0]["iterations_done"] == 6
+              and jobs.read_state(job_dir)["status"] == "done" and not os.path.isfile(checkpoint.path(run_dir)))
+    except Exception as exc:  # reported, not raised: the other results still count
+        print(f"selftest: resume ERROR {exc!r}", flush=True)
+        ok = False
+    print(f"selftest: resume ok={ok}", flush=True)
+    return {"ok": ok}
+
+
 def selftest(out_dir: str | None = None) -> int:
     """Run tiny sketch jobs of all methods on a bundled sample image; exit code 0 = success."""
     import json
@@ -147,6 +177,7 @@ def selftest(out_dir: str | None = None) -> int:
     report = {"ok": ok, "seconds": round(time.time() - start, 1), "best_svg": summary["best_svg"]}
     print("selftest: clipasso " + json.dumps(report), flush=True)
     methods = _selftest_diffusion_methods(out_dir)
+    methods["resume"] = _selftest_resume(out_dir)
     report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
               "clipasso": {"ok": ok, "best_svg": summary["best_svg"]}, **methods}
     print("selftest: " + json.dumps(report), flush=True)
