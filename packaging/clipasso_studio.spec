@@ -34,7 +34,14 @@ datas = [
 for sub in ("clip", "u2net", "dino", "vgg"):
     datas.append((str(MODELS / sub), f"models/{sub}"))
 
-hiddenimports = collect_submodules("clipasso_studio") + ["PySide6.QtSvg"]
+# every module of the app, listed from the source tree (collect_submodules imports packages in a helper
+# process and silently skips a subtree when that fails)
+_pkg = ROOT / "clipasso_studio"
+hiddenimports = sorted({
+    ".".join(p.relative_to(ROOT).with_suffix("").parts[:-1] if p.name == "__init__.py"
+             else p.relative_to(ROOT).with_suffix("").parts)
+    for p in _pkg.rglob("*.py") if "__pycache__" not in p.parts
+}) + ["PySide6.QtSvg"]
 # ControlSketch: diffusers / transformers import their model classes lazily by name
 for pkg in ("transformers.models.auto", "transformers.models.clip", "transformers.models.dpt",
             "transformers.models.upernet", "transformers.models.convnext", "transformers.models.blip",
