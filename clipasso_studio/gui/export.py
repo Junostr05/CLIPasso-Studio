@@ -398,5 +398,47 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
     return len(cells)
 
 
+BATCH_FORMATS = ("svg", "svg1", "png")
+
+
+def _unique(path: str) -> str:
+    base, ext = os.path.splitext(path)
+    n, out = 2, path
+    while os.path.exists(out):
+        out = f"{base}_{n}{ext}"
+        n += 1
+    return out
+
+
+def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", size: int = 1024,
+                 stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
+                 style: str = "plain", progress=None, cancel=None) -> int:
+    """Export the best sketch (touched up, if it was) of several jobs into ``folder`` as
+    ``<image>_<method>.<ext>``; returns the number of files written."""
+    os.makedirs(folder, exist_ok=True)
+    written = 0
+    for n, (job_dir, summary) in enumerate(items):
+        if cancel and cancel():
+            raise InterruptedError("export cancelled")
+        src = jobs.best_sketch(summary)
+        if not src or not os.path.isfile(src):
+            continue
+        stem = os.path.splitext(os.path.basename(summary.get("target") or job_dir))[0]
+        method = summary.get("method") or "clipasso"
+        suffix = "_1layer" if fmt == "svg1" else ""
+        ext = "png" if fmt == "png" else "svg"
+        dest = _unique(os.path.join(folder, f"{stem}_{method}{suffix}.{ext}"))
+        if fmt == "png":
+            export_png(src, dest, size, stroke_color, width_scale, background, style)  # None: transparent
+        elif fmt == "svg1":
+            export_single_layer_svg(src, dest, stroke_color, width_scale)
+        else:
+            export_svg(src, dest, stroke_color, width_scale, background, style)
+        written += 1
+        if progress:
+            progress(n + 1, len(items))
+    return written
+
+
 def make_transparent_background(color: QColor) -> bool:
     return color.alpha() == 0 or color == Qt.transparent

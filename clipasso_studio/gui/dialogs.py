@@ -364,6 +364,153 @@ class ExportDialog(QDialog):
         super().reject()
 
 
+class BatchExportDialog(QDialog):
+    """Export the best sketch of many jobs at once (queue, gallery) into one folder."""
+
+    def __init__(self, items: list[tuple[str, dict]], parent=None):
+        super().__init__(parent)
+        self.items = items
+        self.folder = ""
+        self.written = 0
+        self.busy = False
+        self._cancel = False
+        self.setWindowTitle(tr("ui.batch.title"))
+        self.setMinimumWidth(440)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(14)
+        lay.addWidget(label(tr("ui.batch.title"), "h2"))
+        lay.addWidget(label(tr("ui.batch.desc", n=len(items)), "muted", wrap=True))
+        form = QFormLayout()
+        form.setSpacing(10)
+        self.format = QComboBox()
+        for key in export.BATCH_FORMATS:
+            self.format.addItem({"svg": "SVG", "svg1": tr("ui.export_svg1"), "png": "PNG"}[key], key)
+        self.format.currentIndexChanged.connect(self._format_changed)
+        form.addRow(tr("ui.batch.format"), self.format)
+        self.stroke = ColorButton("#000000")
+        form.addRow(tr("ui.stroke_color"), self.stroke)
+        self.width_scale = QDoubleSpinBox()
+        self.width_scale.setRange(0.1, 10.0)
+        self.width_scale.setSingleStep(0.1)
+        self.width_scale.setValue(1.0)
+        self.width_scale.setSuffix(" ×")
+        form.addRow(tr("ui.stroke_width_scale"), self.width_scale)
+        self.background = ColorButton("transparent", allow_transparent=True)
+        self.bg_label = label(tr("ui.background"), None)
+        form.addRow(self.bg_label, self.background)
+        self.size = QSpinBox()
+        self.size.setRange(64, 8192)
+        self.size.setSingleStep(128)
+        self.size.setValue(1024)
+        self.size.setSuffix(" px")
+        self.size_label = label(tr("ui.size"), None)
+        form.addRow(self.size_label, self.size)
+        self.style = QComboBox()
+        for key in brush.STYLES:
+            self.style.addItem(tr(f"ui.brush.{key}"), key)
+        self.style.setCurrentIndex(max(self.style.findData(app_settings().get("export_style", "plain")), 0))
+        self.style_label = label(tr("ui.brush.label"), None)
+        form.addRow(self.style_label, self.style)
+        lay.addLayout(form)
+        self.progress = QProgressBar()
+        self.progress.setVisible(False)
+        lay.addWidget(self.progress)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        self.cancel_btn = button(tr("ui.cancel"), variant="ghost")
+        self.cancel_btn.clicked.connect(self.reject)
+        self.ok = button(tr("ui.batch.choose_folder"), "folder-open", "primary")
+        self.ok.clicked.connect(self._choose)
+        self.ok.setEnabled(bool(items))
+        row.addWidget(self.cancel_btn)
+        row.addWidget(self.ok)
+        lay.addLayout(row)
+        self._format_changed()
+
+    def _format_changed(self):
+        fmt = self.format.currentData()
+        for w in (self.size, self.size_label):
+            w.setVisible(fmt == "png")
+        for w in (self.background, self.bg_label, self.style, self.style_label):
+            w.setVisible(fmt != "svg1")
+
+    def _choose(self):
+        start = app_settings().get("batch_export_dir") or os.path.expanduser("~")
+        folder = QFileDialog.getExistingDirectory(self, tr("ui.batch.choose_folder"), start)
+        if folder:
+            self.start(folder)
+
+    def start(self, folder: str):
+        self.folder = folder
+        app_settings().set("batch_export_dir", folder)
+        fmt = self.format.currentData()
+        stroke = self.stroke.color()
+        stroke = None if stroke.lower() == "#000000" else stroke
+        bg = self.background.color()
+        bg = None if bg == "transparent" else bg
+        self.busy, self._cancel = True, False
+        self.ok.setEnabled(False)
+        self.progress.setRange(0, max(len(self.items), 1))
+        self.progress.setValue(0)
+        self.progress.setVisible(True)
+
+        def prog(a, b):
+            if b > 0:
+                self.progress.setValue(a)
+
+        def done(result):
+            self.busy = False
+            self.written = int(result or 0)
+            if self._cancel:
+                super(BatchExportDialog, self).reject()
+            else:
+                self.accept()
+
+        def failed(msg):
+            self.busy = False
+            if self._cancel:
+                super(BatchExportDialog, self).reject()
+                return
+            self.ok.setEnabled(True)
+            self.progress.setVisible(False)
+            QMessageBox.warning(self, tr("ui.error"), msg)
+
+        run_in_thread(self, export.export_batch, self.items, folder, fmt=fmt, size=self.size.value(),
+                      stroke_color=stroke, width_scale=self.width_scale.value(), background=bg,
+                      style=self.style.currentData() if fmt != "svg1" else "plain", cancel=lambda: self._cancel,
+                      on_progress=prog, on_done=done, on_error=failed)
+
+    def reject(self):
+        if self.busy:
+            self._cancel = True
+            self.cancel_btn.setEnabled(False)
+            return
+        super().reject()
+
+
+def export_many(parent, items: list[tuple[str, dict]]) -> int:
+    """Batch export dialog; after it: a message with the folder. Returns the number of files."""
+    if not items:
+        info_box(parent, tr("ui.batch.title"), tr("ui.batch.nothing"))
+        return 0
+    dlg = BatchExportDialog(items, parent)
+    if dlg.exec() != QDialog.Accepted:
+        return 0
+    box = QMessageBox(parent)
+    box.setWindowTitle(tr("ui.batch.title"))
+    box.setText(tr("ui.batch.done", n=dlg.written, folder=dlg.folder))
+    open_btn = box.addButton(tr("ui.open_folder"), QMessageBox.ActionRole)
+    box.addButton(QMessageBox.Close)
+    box.exec()
+    if box.clickedButton() is open_btn:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        QDesktopServices.openUrl(QUrl.fromLocalFile(dlg.folder))
+    return dlg.written
+
+
 class ModelDownloadDialog(QDialog):
     """Downloads one or more optional models with a progress bar."""
 

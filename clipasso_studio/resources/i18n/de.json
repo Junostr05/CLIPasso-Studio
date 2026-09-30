@@ -576,5 +576,19 @@
  "ui.edit_image.rotate_right": "Nach rechts drehen",
  "ui.edit_image.flip": "Horizontal spiegeln",
  "ui.edit_image.reset": "Zurücksetzen",
- "ui.edit_image.apply": "Dieses Bild verwenden"
+ "ui.edit_image.apply": "Dieses Bild verwenden",
+ "ui.queue.add_folder": "Ordner hinzufügen",
+ "ui.queue.add_folder_tip": "Alle Bilder eines Ordners in die Warteschlange stellen (mit den aktuellen Einstellungen des Studios)",
+ "ui.queue.subfolders_q": "Auch die Bilder in den Unterordnern hinzufügen?",
+ "ui.queue.folder_empty": "In diesem Ordner wurden keine Bilder gefunden.",
+ "ui.batch.title": "Mehrere Skizzen exportieren",
+ "ui.batch.desc": "Die beste Skizze jedes der {n} Ergebnisse wird in einen Ordner exportiert (überarbeitete Skizzen in der bearbeiteten Fassung).",
+ "ui.batch.format": "Format",
+ "ui.batch.choose_folder": "Ordner wählen und exportieren …",
+ "ui.batch.done": "{n} Dateien exportiert nach\n{folder}",
+ "ui.batch.nothing": "Es gibt keine fertigen Ergebnisse zum Exportieren.",
+ "ui.batch.export_all": "Alle exportieren",
+ "ui.batch.export_all_tip": "Die fertigen Ergebnisse der Warteschlange auf einmal exportieren",
+ "ui.batch.export_shown": "Angezeigte exportieren",
+ "ui.batch.export_shown_tip": "Alle angezeigten Ergebnisse exportieren (mit den Filtern auswählen, z. B. Favoriten)"
 }

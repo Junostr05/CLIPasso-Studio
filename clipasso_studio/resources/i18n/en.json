@@ -576,5 +576,19 @@
  "ui.edit_image.rotate_right": "Rotate right",
  "ui.edit_image.flip": "Flip horizontally",
  "ui.edit_image.reset": "Reset",
- "ui.edit_image.apply": "Use this image"
+ "ui.edit_image.apply": "Use this image",
+ "ui.queue.add_folder": "Add folder",
+ "ui.queue.add_folder_tip": "Add every image of a folder to the queue (with the current settings of the studio)",
+ "ui.queue.subfolders_q": "Also add the images in its subfolders?",
+ "ui.queue.folder_empty": "No images found in this folder.",
+ "ui.batch.title": "Export several sketches",
+ "ui.batch.desc": "The best sketch of each of the {n} results is exported into one folder (touched-up sketches as edited).",
+ "ui.batch.format": "Format",
+ "ui.batch.choose_folder": "Choose folder and export …",
+ "ui.batch.done": "{n} files exported to\n{folder}",
+ "ui.batch.nothing": "There are no finished results to export.",
+ "ui.batch.export_all": "Export all",
+ "ui.batch.export_all_tip": "Export the finished results of the queue at once",
+ "ui.batch.export_shown": "Export shown",
+ "ui.batch.export_shown_tip": "Export every result shown (use the filters to choose, e.g. favourites)"
 }

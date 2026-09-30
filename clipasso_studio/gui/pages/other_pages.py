@@ -19,7 +19,7 @@ from .. import crash, dialogs, icons, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
-from ..widgets.canvas import IMAGE_FILTER, SketchCanvas
+from ..widgets.canvas import IMAGE_EXT, IMAGE_FILTER, SketchCanvas
 from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 
 try:
@@ -49,6 +49,20 @@ def _scroll(widget: QWidget) -> QScrollArea:
 
 def _status_role(status: str) -> str:
     return {"done": "badge-success", "failed": "badge-warning", "cancelled": "badge-warning"}.get(status, "badge")
+
+
+def image_files(folder: str, recursive: bool = False) -> list[str]:
+    """Images in a folder, sorted by name; folders of the app's own results are skipped."""
+    out = []
+    for dirpath, dirnames, filenames in os.walk(folder):
+        if os.path.isfile(os.path.join(dirpath, "job.json")) or os.path.isfile(os.path.join(dirpath, jobs.STATE_FILE)):
+            dirnames[:] = []
+            continue
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith((".", "_edited", "_pasted")))
+        out += [os.path.join(dirpath, f) for f in sorted(filenames, key=str.lower) if f.lower().endswith(IMAGE_EXT)]
+        if not recursive:
+            break
+    return out
 
 
 def scan_jobs(unfinished: bool = False) -> list[tuple[str, dict]]:
@@ -167,12 +181,18 @@ class QueuePage(QWidget):
         head.addLayout(lay, 1)
         self.add_btn = button("", "plus", "primary")
         self.add_btn.clicked.connect(self._add_images)
+        self.folder_btn = button("", "folder-open")
+        self.folder_btn.clicked.connect(self._add_folder)
+        self.export_btn = button("", "file-down", "ghost")
+        self.export_btn.clicked.connect(self._export_all)
         self.clear_btn = button("", "trash-2", "ghost")
         self.clear_btn.clicked.connect(controller.clear_finished)
         self.run_btn = button("", "play")
         self.run_btn.clicked.connect(lambda: controller.start_next())
         head.addWidget(self.clear_btn, 0, Qt.AlignBottom)
+        head.addWidget(self.export_btn, 0, Qt.AlignBottom)
         head.addWidget(self.run_btn, 0, Qt.AlignBottom)
+        head.addWidget(self.folder_btn, 0, Qt.AlignBottom)
         head.addWidget(self.add_btn, 0, Qt.AlignBottom)
         root.addLayout(head)
         opts = QHBoxLayout()
@@ -204,6 +224,38 @@ class QueuePage(QWidget):
         for p in paths_:
             self.controller.enqueue(p, self.settings_provider(), start=not self.controller.is_busy())
 
+    def _add_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, tr("ui.queue.add_folder"), os.path.expanduser("~"))
+        if not folder:
+            return
+        has_sub = any(e.is_dir() for e in os.scandir(folder))
+        recursive = has_sub and QMessageBox.question(
+            self, tr("ui.queue.add_folder"), tr("ui.queue.subfolders_q")) == QMessageBox.Yes
+        n = self.add_folder(folder, recursive)
+        if n == 0:
+            QMessageBox.information(self, tr("ui.queue.add_folder"), tr("ui.queue.folder_empty"))
+
+    def add_folder(self, folder: str, recursive: bool = False) -> int:
+        """Queue every image of a folder with the current settings (result folders of the app are
+        skipped). Returns the number of images."""
+        images = image_files(folder, recursive)
+        settings = self.settings_provider()
+        for p in images:
+            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        return len(images)
+
+    def finished_items(self) -> list[tuple[str, dict]]:
+        items = []
+        for j in self.controller.jobs:
+            if j.status in ("done", "cancelled") and j.job_dir:
+                summary = jobs.job_summary(j.job_dir)
+                if summary and jobs.best_sketch(summary):
+                    items.append((j.job_dir, summary))
+        return items
+
+    def _export_all(self):
+        dialogs.export_many(self, self.finished_items())
+
     def rebuild(self):
         for r in self.rows.values():
             r.setParent(None)
@@ -214,6 +266,7 @@ class QueuePage(QWidget):
             self.rows[job.id] = row
         self.empty.setVisible(not self.controller.jobs)
         self.run_btn.setEnabled(bool(self.controller.pending()) and not self.controller.is_busy())
+        self.export_btn.setEnabled(any(j.status in ("done", "cancelled") and j.job_dir for j in self.controller.jobs))
 
     def _on_event(self, job, kind, data):
         if kind in ("iteration", "seed_done", "job_done") and job.id in self.rows:
@@ -223,6 +276,10 @@ class QueuePage(QWidget):
         self.title.setText(tr("ui.queue.title"))
         self.subtitle.setText(tr("ui.queue.subtitle"))
         self.add_btn.setText(tr("ui.queue.add"))
+        self.folder_btn.setText(tr("ui.queue.add_folder"))
+        self.folder_btn.setToolTip(tr("ui.queue.add_folder_tip"))
+        self.export_btn.setText(tr("ui.batch.export_all"))
+        self.export_btn.setToolTip(tr("ui.batch.export_all_tip"))
         self.clear_btn.setText(tr("ui.queue.clear"))
         self.run_btn.setText(tr("ui.queue.run"))
         self.auto_label.setText(tr("ui.queue.auto"))
@@ -381,8 +438,11 @@ class GalleryPage(QWidget):
         self.sort.currentIndexChanged.connect(lambda _: self.refresh())
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self._open_folder)
+        self.export_btn = button("", "file-down", "ghost")
+        self.export_btn.clicked.connect(lambda: dialogs.export_many(self, self.shown_items()))
         self.refresh_btn = button("", "refresh-cw")
         self.refresh_btn.clicked.connect(self.refresh)
+        head.addWidget(self.export_btn, 0, Qt.AlignBottom)
         head.addWidget(self.folder_btn, 0, Qt.AlignBottom)
         head.addWidget(self.refresh_btn, 0, Qt.AlignBottom)
         root.addLayout(head)
@@ -428,6 +488,8 @@ class GalleryPage(QWidget):
         if self.SORTS[max(self.sort.currentIndex(), 0)] == "score":
             items.sort(key=lambda it: it[1].get("clip_score") if it[1].get("clip_score") is not None
                        else float("-inf"), reverse=True)
+        self._shown = [(d, s) for d, s in items if jobs.best_sketch(s)]
+        self.export_btn.setEnabled(bool(self._shown))
         for n, (job_dir, summary) in enumerate(items):
             card = GalleryCard(job_dir, summary)
             card.clicked.connect(self.open_job.emit)
@@ -435,6 +497,10 @@ class GalleryPage(QWidget):
             self.grid.addWidget(card, n // cols, n % cols)
             self.cards.append(card)
         self.empty.setVisible(not items)
+
+    def shown_items(self) -> list[tuple[str, dict]]:
+        """The results the gallery shows right now (filter, favourites, search) that have a sketch."""
+        return list(getattr(self, "_shown", []))
 
     def _card_action(self, kind: str, job_dir: str):
         if kind == "folder":
@@ -499,6 +565,8 @@ class GalleryPage(QWidget):
         self.sort.setCurrentIndex(index)
         self.sort.blockSignals(False)
         self.folder_btn.setText(tr("ui.open_folder"))
+        self.export_btn.setText(tr("ui.batch.export_shown"))
+        self.export_btn.setToolTip(tr("ui.batch.export_shown_tip"))
         self.refresh_btn.setText(tr("ui.refresh"))
         self.empty.setText(tr("ui.gallery.empty"))
 
