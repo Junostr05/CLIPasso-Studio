@@ -7,8 +7,12 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      cpu:
+        description: "Build the CPU edition (portable exe + installer)"
+        type: boolean
+        default: true
       gpu:
-        description: "Also build the GPU (CUDA) edition"
+        description: "Build the GPU (CUDA) edition"
         type: boolean
         default: true
       release_tag:
@@ -19,9 +23,10 @@ on:
 permissions:
   contents: write
 
+# pushes cancel older pushes of the same branch; manual (release) runs are never cancelled by pushes
 concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: build-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/') }}
 
 env:
   PYTHON_VERSION: "3.11"
@@ -81,7 +86,8 @@ jobs:
     env:
       EDITION: ${{ matrix.edition }}
       # the GPU edition is only built for tags and manual runs (it takes long and is ~3 GB)
-      SKIP: ${{ matrix.edition == 'gpu' && !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.gpu) }}
+      # the CPU edition can be skipped in manual runs (e.g. to add the GPU edition to an existing release)
+      SKIP: ${{ (matrix.edition == 'gpu' && !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.gpu)) || (matrix.edition == 'cpu' && github.event_name == 'workflow_dispatch' && !inputs.cpu) }}
     steps:
       - uses: actions/checkout@v4
         if: env.SKIP != 'true'
@@ -179,7 +185,10 @@ jobs:
       - name: Checksums
         run: |
           cd artifacts
-          sha256sum * > SHA256SUMS.txt
+          # one checksum file per edition, so a later GPU-only run does not replace the CPU checksums
+          for ed in CPU GPU; do
+            if ls CLIPassoStudio-$ed-* >/dev/null 2>&1; then sha256sum CLIPassoStudio-$ed-* > SHA256SUMS-$ed.txt; fi
+          done
           ls -la
       - uses: softprops/action-gh-release@v2
         with:
