@@ -162,6 +162,31 @@ def test_grad_norm_weights():
     assert compute_grad_norm_losses({"a": (w * 2).sum()}, model, None) == {"a": 1.0}
 
 
+@pytest.mark.parametrize("detach", [True, False])
+def test_ratio_loss_moves_strokes_only_in_the_original(detach):
+    from clipasso_studio.engine.methods.scenesketch.loss import SceneLoss
+
+    class DummyClip(torch.nn.Module):
+        visual = type("V", (), {"input_resolution": 224})()
+
+    position = torch.tensor(2.0, requires_grad=True)  # stands for the stroke positions
+
+    class FakeLayers(torch.nn.Module):
+        def forward(self, sketch, target, mode="train"):
+            return {"clip_vit_l8": position * 0.01}
+
+    loss = SceneLoss({8: 1.0}, torch.device("cpu"), width_optim=True, ratio=30.0, clip_model=DummyClip(),
+                     ratio_detach_clip=detach)
+    loss.clip_loss = FakeLayers()
+    widths = torch.tensor([0.9], requires_grad=True)
+    weighted, _, _ = loss(None, None, widths, torch.tensor(1.0), None, None, "train")
+    weighted["ratio_loss"].backward()
+    assert widths.grad is not None and float(widths.grad.abs().sum()) > 0
+    moved = position.grad is not None and float(position.grad.abs()) > 0
+    assert moved is (not detach)
+    assert ss.RATIO_DETACH_CLIP
+
+
 def test_best_normalised_iteration():
     evals = {"clip_vit_l8_original_eval": [1.0, 2.0, 3.0, 4.0], "width_loss_original_eval": [1.0, 0.5, 0.1, 0.09],
              "num_strokes": [64, 30, 5, 4]}

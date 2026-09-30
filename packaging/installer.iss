@@ -12,7 +12,7 @@
   #define OutputDir "..\release"
 #endif
 #ifndef AppVersion
-  #define AppVersion "2.1.0"
+  #define AppVersion "2.1.0b1"
 #endif
 
 #define AppName "CLIPasso Studio"

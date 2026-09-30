@@ -20,7 +20,7 @@ VSVersionInfo(
         StringStruct('LegalCopyright', 'CC BY-NC-SA 4.0 - based on CLIPasso by Vinker et al.'),
         StringStruct('OriginalFilename', 'CLIPassoStudio.exe'),
         StringStruct('ProductName', 'CLIPasso Studio'),
-        StringStruct('ProductVersion', '2.1.0')])
+        StringStruct('ProductVersion', '2.1.0-beta.1')])
     ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]

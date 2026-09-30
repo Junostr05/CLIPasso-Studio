@@ -15,8 +15,10 @@ sketched separately and combined. Every sketch has 64 strokes whose positions co
 
 The job's items ("seeds" for the rest of the app) are the cells of this matrix, numbered
 ``layer * 100 + level`` (level 0 = fidelity sketch). Deviations: PyTorch rasterizer instead of
-diffvg, LaMa port with float16 weights, vector (instead of raster) combination, and the
-simplification levels can be fewer than 8 (they then span the same range with larger steps).
+diffvg, LaMa port with float16 weights, vector (instead of raster) combination, the ratio loss
+does not move the strokes (``RATIO_DETACH_CLIP``), objects on a plain background skip the
+background sketch, and the simplification levels can be fewer than 8 (they then span the same
+range with larger steps).
 """
 
 from __future__ import annotations
@@ -44,6 +46,11 @@ SIMPLIFY_EVAL_INTERVAL = 100  # run_sketch.py defaults used by run_ratio.py
 SIMPLIFY_MIN_EVAL_ITER = 100
 PREVIEW_EVERY = 10  # live preview interval (iterations)
 PLAIN_STD = 0.03  # a background with less variation than this is plain (only the object is sketched)
+# The ratio loss (share of kept strokes vs. ratio x CLIP loss) only decides how many strokes remain. In the
+# original its CLIP term also pushes the stroke positions: when a level lowers the target ratio, the quickest
+# way to meet it is to make the sketch worse, and the strokes of objects visibly scramble (checked on the
+# ballerina: CLIP layer-8 loss 0.015 -> 0.030 at level 2, versus 0.017 with a clean, sparser sketch here).
+RATIO_DETACH_CLIP = True
 
 _cache: dict = {}
 
@@ -267,7 +274,7 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
     loss_fn = SceneLoss(cfg.layer_weights, device, num_augs=int(s["num_aug_clip"]),
                         loss_type=s["clip_conv_loss_type"], width_optim=cfg.width_optim,
                         width_loss_weight=float(s["width_loss_weight"]), ratio=cfg.ratio, gradnorm=cfg.gradnorm,
-                        clip_model=ctx.clip_model)
+                        clip_model=ctx.clip_model, ratio_detach_clip=RATIO_DETACH_CLIP)
     points_opt = torch.optim.Adam(painter.mlp.parameters(), lr=float(s["lr"]))
     width_opt = torch.optim.Adam(painter.mlp_width.parameters(), lr=float(s["width_lr"])) if cfg.width_optim else None
     if cfg.load_optim and states.get("points_opt") is not None:

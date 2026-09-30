@@ -116,7 +116,7 @@ class SceneLoss(nn.Module):
 
     def __init__(self, layer_weights: dict[int, float], device, num_augs: int = 4, loss_type: str = "L2",
                  width_optim: bool = False, width_loss_weight: float = 1.0, ratio: float = 0.0,
-                 gradnorm: bool = False, clip_model=None):
+                 gradnorm: bool = False, clip_model=None, ratio_detach_clip: bool = False):
         super().__init__()
         self.layer_weights = {int(k): float(v) for k, v in layer_weights.items() if v}
         self.clip_loss = CLIPLayersLoss(list(self.layer_weights), device, num_augs, loss_type, clip_model)
@@ -124,6 +124,7 @@ class SceneLoss(nn.Module):
         self.width_loss_weight = float(width_loss_weight)
         self.ratio = float(ratio)
         self.gradnorm = bool(gradnorm)
+        self.ratio_detach_clip = bool(ratio_detach_clip)
         self.new_weights: dict = {}
 
     def forward(self, sketch, target, widths=None, strokes_in_canvas=None, width_mlp=None, points_mlp=None,
@@ -153,6 +154,8 @@ class SceneLoss(nn.Module):
         if self.ratio:
             # the number of strokes should follow ``ratio`` x the CLIP loss
             clip_sum = sum(original[k] for k in clip_names)
+            if self.ratio_detach_clip:  # the ratio only sets how many strokes remain, never moves them
+                clip_sum = clip_sum.detach()
             weighted["ratio_loss"] = nn.functional.mse_loss(original["width_loss"], clip_sum * self.ratio)
         original = {k: v.clone().detach() for k, v in original.items()}
         return weighted, normalised, original

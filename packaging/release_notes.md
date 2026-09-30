@@ -1,3 +1,5 @@
+> **Experimental build (beta).** SceneSketch is new; this build is for trying it out while the last quality checks run. The final 2.1.0 follows shortly – it installs over this one.
+
 ## CLIPasso Studio 2.1 – SceneSketch: whole scenes
 
 **New: SceneSketch** ([CLIPascene](https://clipascene.github.io/CLIPascene/), ICCV 2023) as the fourth method. It sketches a whole scene with its background: the object in the foreground (U²-Net) and the background (filled in behind the object with LaMa) are sketched separately and combined. The result is a **matrix of sketches**: from precise to loose (fidelity: one column per CLIP layer) and from detailed to sparse (simplicity: strokes are removed step by step).

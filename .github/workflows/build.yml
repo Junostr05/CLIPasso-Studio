@@ -19,6 +19,10 @@ on:
         description: "Publish a GitHub release with this tag (e.g. v2.0.0); empty = no release"
         type: string
         default: ""
+      prerelease:
+        description: "Mark the release as a pre-release (experimental build, not 'latest')"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -197,4 +201,5 @@ jobs:
           name: CLIPasso Studio ${{ env.TAG }}
           body_path: packaging/release_notes.md
           files: artifacts/*
-          make_latest: true
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease }}
+          make_latest: ${{ !(github.event_name == 'workflow_dispatch' && inputs.prerelease) }}
