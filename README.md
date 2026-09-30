@@ -5,93 +5,93 @@
 <h1 align="center">CLIPasso Studio</h1>
 
 <p align="center">
-  Desktop-App, die Fotos in Vektor-Strichzeichnungen verwandelt – mit drei Verfahren in einer Oberfläche:<br>
+  A desktop app that turns photos into vector line drawings – with three methods in one interface:<br>
   <a href="https://github.com/yael-vinker/CLIPasso"><b>CLIPasso</b></a> (SIGGRAPH 2022) ·
   <a href="https://github.com/swiftsketch/SwiftSketch"><b>SwiftSketch</b></a> (SIGGRAPH 2025) ·
   <a href="https://github.com/swiftsketch/SwiftSketch"><b>ControlSketch</b></a><br>
-  Alle Optionen einstellbar, Live-Vorschau, Methodenvergleich, alles in einer EXE.
+  Every option adjustable, live preview, method comparison – all in a single exe.
 </p>
 
 <p align="center">
   <a href="https://github.com/Junostr05/CLIPasso-Studio/releases/latest"><b>⬇ Download (Windows)</b></a> ·
-  <a href="#die-drei-methoden">Methoden</a> ·
-  <a href="#funktionen">Funktionen</a> ·
-  <a href="#bedienung">Bedienung</a> ·
-  <a href="#english">English</a>
+  <a href="#the-three-methods">Methods</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#building-from-source">Build</a>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/methods_camel.png" width="820" alt="Ein Foto, drei Methoden">
+  <img src="docs/screenshots/methods_camel.png" width="820" alt="One photo, three methods">
 </p>
-<p align="center"><sub>Mit dieser App auf einer CPU erzeugt: CLIPasso (16 Striche, Preset „Schnell“, 11 Min.), SwiftSketch (32 Striche, 4 s pro Skizze), ControlSketch (32 Striche – nur 250 der 2000 Iterationen, 67 Min.; mit einer NVIDIA-GPU läuft der volle Durchlauf in wenigen Minuten).</sub></p>
+<p align="center"><sub>Made with this app on a CPU: CLIPasso (16 strokes, “Fast” preset, 11 min), SwiftSketch (32 strokes, 4 s per sketch), ControlSketch (32 strokes – only 250 of the 2000 iterations, 67 min; with an NVIDIA GPU the full run takes a few minutes).</sub></p>
 
-![Studio](docs/screenshots/studio_dark_de.png)
+![Studio](docs/screenshots/studio_dark_en.png)
 
 ## Download
 
-Auf der [Release-Seite](https://github.com/Junostr05/CLIPasso-Studio/releases/latest) liegen drei Varianten:
+The [releases page](https://github.com/Junostr05/CLIPasso-Studio/releases/latest) has three variants:
 
-| Datei | Beschreibung |
+| File | Description |
 |---|---|
-| **`CLIPassoStudio-CPU-Portable.exe`** | Eine einzige Datei: herunterladen, doppelklicken, fertig. Keine Installation, keine Python-Umgebung. Alles für CLIPasso ist enthalten; SwiftSketch und ControlSketch laden ihre Modelle beim ersten Einsatz (siehe unten). Beim Start wird kurz entpackt (15–40 s, mit Splash-Screen). |
-| **`CLIPassoStudio-CPU-Setup.exe`** | Dieselbe App als Installer: einmal installieren, danach schneller Start, Startmenü- und Desktop-Verknüpfung. Keine Admin-Rechte nötig. |
-| **`CLIPassoStudio-GPU-Setup.exe`** + `…-GPU-Setup-*.bin` | Edition für NVIDIA-Grafikkarten (CUDA 12.8: GeForce GTX 16xx / RTX 20xx oder neuer, Treiber ≥ 570). CLIPasso wird 10–50× schneller, **ControlSketch ist nur hiermit praktikabel**. Weil sie größer als 2 GB ist, besteht sie aus mehreren Dateien: **alle in denselben Ordner laden** und die `Setup.exe` starten. Ohne passende GPU rechnet sie automatisch auf der CPU. |
+| **`CLIPassoStudio-CPU-Portable.exe`** (≈ 1 GB) | A single file: download, double-click, done. No installation and no Python needed. Everything CLIPasso needs is included; SwiftSketch and ControlSketch download their models the first time you use them (see below). It unpacks itself on start (15–40 s, with a splash screen). |
+| **`CLIPassoStudio-CPU-Setup.exe`** (≈ 1 GB) | The same app as an installer: install once, then it starts quickly and gets Start menu and desktop shortcuts. No admin rights needed. |
+| **`CLIPassoStudio-GPU-Setup.exe`** + `…-GPU-Setup-*.bin` (≈ 3.5 GB) | Edition for NVIDIA graphics cards (CUDA 12.8: GeForce GTX 16xx / RTX 20xx or newer, driver ≥ 570). CLIPasso runs 10–50× faster, and **ControlSketch is only practical with this edition**. Because it is larger than 2 GB, it is split into several files: **download all of them into the same folder** and run the `Setup.exe`. Without a suitable GPU it automatically falls back to the CPU. |
 
-> Windows SmartScreen warnt eventuell vor einem „unbekannten Herausgeber“ (die EXE ist nicht signiert) → *Weitere Informationen* → *Trotzdem ausführen*.
+> Windows SmartScreen may warn about an “unknown publisher” (the exe is not signed) → *More info* → *Run anyway*.
 
-## Die drei Methoden
+## The three methods
 
-Oben im Studio wählst du die Methode per Klick; Parameter, Presets, Zeitschätzung und Hinweise passen sich an, die Einstellungen jeder Methode werden gemerkt.
+Pick the method at the top of the studio with one click. Parameters, presets, time estimate and hints adapt to it, and the settings of each method are remembered.
 
 | | **CLIPasso** | **SwiftSketch** | **ControlSketch** |
 |---|---|---|---|
-| Verfahren | Optimiert Bézier-Striche, bis CLIP die Skizze wie das Foto „sieht“ | Diffusionsmodell erzeugt 32 Striche in 50 Entrauschungsschritten, ein Refinement-Netz poliert sie | Optimiert Striche mit einem SDS-Loss aus Stable Diffusion 1.5, gesteuert von einem ControlNet (Tiefe, Kanten …) |
-| Tempo | CPU: Minuten · GPU: Sekunden–Minuten | **CPU: ~5 s pro Skizze** | GPU: ~5–10 min · CPU: viele Stunden |
-| Striche | frei wählbar (1–256), Mehrstufen-Training | fest 32 (so trainiert) | frei wählbar (Standard 32) |
-| Modelle | enthalten | ≈ 710 MB, beim ersten Einsatz | ≈ 3–4 GB (SD 1.5, ControlNet, Detektor, BLIP), beim ersten Einsatz |
-| Stärken | sehr anpassbar, Abstraktionsgrad, Text-Führung | blitzschnell, sauberer „Künstler“-Strich | sehr natürliche, detailreiche Skizzen |
+| How it works | Optimises Bézier strokes until CLIP “sees” the sketch like the photo | A diffusion model generates 32 strokes in 50 denoising steps, a refinement network polishes them | Optimises strokes with an SDS loss from Stable Diffusion 1.5, steered by a ControlNet (depth, edges …) |
+| Speed | CPU: minutes · GPU: seconds to minutes | **CPU: ~5 s per sketch** | GPU: ~5–10 min · CPU: ~10 hours |
+| Strokes | any number (1–256), multi-stage training | fixed at 32 (as trained) | any number (default 32) |
+| Models | included | ≈ 710 MB, downloaded on first use | ≈ 3–4 GB (SD 1.5, ControlNet, detector, BLIP), downloaded on first use |
+| Strengths | very configurable, level of abstraction, text guidance | lightning fast, clean “artist” strokes | very natural, detailed sketches |
 
 <p align="center">
-  <img src="docs/screenshots/camel_drawing.gif" width="260" alt="CLIPasso optimiert die Striche">
-  <img src="docs/screenshots/swiftsketch_camel.gif" width="260" alt="SwiftSketch entrauscht die Striche">
+  <img src="docs/screenshots/camel_drawing.gif" width="260" alt="CLIPasso optimising the strokes">
+  <img src="docs/screenshots/swiftsketch_camel.gif" width="260" alt="SwiftSketch denoising the strokes">
 </p>
-<p align="center"><sub>Links: CLIPasso optimiert die Striche. Rechts: SwiftSketch formt sie in 50 Entrauschungsschritten aus Rauschen (GIF-Export der App).</sub></p>
+<p align="center"><sub>Left: CLIPasso optimises the strokes. Right: SwiftSketch forms them out of noise in 50 denoising steps (GIF export of the app).</sub></p>
 
-**Welche passt zu meinem Bild?** Die Seite **Vergleich** zeichnet das aktuelle Bild mit allen gewählten Methoden (Standard-Preset oder deine Studio-Einstellungen), stellt die Ergebnisse nebeneinander – mit CLIP-Score, Rechenzeit und Strichzahl – und markiert die Methode mit dem höchsten CLIP-Score. Frühere Ergebnisse zum selben Bild werden automatisch angezeigt.
+**Which one suits my picture?** The **Compare** page sketches the current image with all selected methods (standard preset or your studio settings) and shows the results side by side – with CLIP score, compute time and stroke count – and highlights the method with the highest CLIP score. Earlier results for the same image are shown automatically.
 
-![Vergleich](docs/screenshots/compare_dark_de.png)
+![Compare](docs/screenshots/compare_dark_en.png)
 
-## Funktionen
+## Features
 
-- **Alle Optionen der Originale** in der Oberfläche, jeweils mit Tooltip, Reset und Suche:
-  - *CLIPasso*: jedes Argument von `run_object_sketching.py` und `config.py` (Striche, Iterationen, Seeds, Maske, Arbeitsauflösung, Strichbreite, Segmente, Kurventyp, Start-SVG, Saliency CLIP/DINO, XDoG, Softmax-Temperatur, Text-Ziel, CLIP-Modell, Conv-Loss, Layer-Gewichte, FC-Gewicht, CLIP-/Text-Führung, L2/LPIPS, Lernraten, Scheduler, Deckkraft, Mehrstufen-Training, Augmentierungen …).
-  - *SwiftSketch*: alle Optionen von `generate.py` – Guidance-Stärke, Refinement an/aus, Diffusions-Skizze zusätzlich speichern, Seitenverhältnis, Seed, dazu Hintergrund-Maske und Strichbreite.
-  - *ControlSketch*: alle Optionen von `config.py` – Striche, Iterationen, Prompt (oder automatisch per BLIP), ControlNet-Bedingung (Tiefe, Canny, HED, Scribble, Segmentierung, Normalen), ControlNet-/Guidance-Stärke, Zeitschritte, Objektgröße, Arbeits- und Ausgabeauflösung, Aufmerksamkeits-Initialisierung (CLIP oder SDXL mit Objektname), Strich-Sortierung, Lernrate …
-  - Per Test geprüft (`tests/test_settings.py`): jedes Original-Argument hat eine Einstellung mit demselben Standardwert.
-- **Live-Vorschau** für alle Methoden: die Skizze entsteht sichtbar (bei SwiftSketch jeder Entrauschungsschritt). Dazu Foto/Skizze-Schieberegler, Aufmerksamkeitskarte mit Startpunkten, Maske, bei ControlSketch das ControlNet-Bedingungsbild, Loss- bzw. CLIP-Score-Kurve, Restzeit und Miniaturen aller Seeds. **Mehrere Skizzen pro Bild – die beste wird automatisch gewählt** (CLIPasso: geringster Loss, SwiftSketch/ControlSketch: höchster CLIP-Score).
-- **Presets** (Schnell / Standard / Qualität) pro Methode, Import/Export der Einstellungen als JSON, „CLI-Befehl kopieren“.
-- **Export**: SVG (Strichfarbe, -stärke, Hintergrund), PNG in beliebiger Auflösung, **GIF/MP4 des Zeichenprozesses** – bei SwiftSketch, wie sich die Striche aus dem Rauschen formen. Abstraktionsreihe auf Knopfdruck (CLIPasso, ControlSketch).
-- **Warteschlange** für viele Bilder und Methoden gemischt, mit Pause/Abbruch, Benachrichtigung und Schutz vor dem Energiesparmodus. **Galerie** mit Methoden-Filter.
-- **Modelle**-Seite nach Methoden gruppiert: Download mit Fortschritt, Löschen, manueller Import der SwiftSketch-Gewichte (falls Google Drive das Tageskontingent erreicht).
-- **Dark/Light-Theme**, **Deutsch/Englisch** (live umschaltbar), Kommandozeilenmodus, der mit den Original-Argumenten aller drei Methoden kompatibel ist.
+- **Every option of the originals** in the interface, each with a tooltip, a reset button and search:
+  - *CLIPasso*: every argument of `run_object_sketching.py` and `config.py` (strokes, iterations, seeds, mask, working resolution, stroke width, segments, curve type, initial SVG, CLIP/DINO saliency, XDoG, softmax temperature, text target, CLIP model, conv loss, layer weights, FC weight, CLIP/text guidance, L2/LPIPS, learning rates, scheduler, opacity, multi-stage training, augmentations …).
+  - *SwiftSketch*: all options of `generate.py` – guidance strength, refinement on/off, also saving the diffusion sketch, aspect ratio, seed, plus background mask and stroke width.
+  - *ControlSketch*: all options of `config.py` – strokes, iterations, prompt (or automatic via BLIP), ControlNet condition (depth, Canny, HED, scribble, segmentation, normals), ControlNet and guidance strength, timesteps, object size, working and output resolution, attention initialisation (CLIP, or SDXL with an object name), stroke sorting, learning rate …
+  - Checked by a test (`tests/test_settings.py`): every original argument has a setting with the same default value.
+- **Live preview** for all methods: you watch the sketch being drawn (for SwiftSketch every denoising step). Plus a photo/sketch slider, the attention map with the stroke start points, the mask, the ControlNet condition image for ControlSketch, a loss or CLIP score curve, the remaining time and thumbnails of all seeds. **Several sketches per image – the best one is picked automatically** (CLIPasso: lowest loss; SwiftSketch and ControlSketch: highest CLIP score).
+- **Presets** (Fast / Standard / Quality) per method, import/export of the settings as JSON, “copy command line”.
+- **Export**: SVG (stroke colour, width, background), PNG at any resolution, **GIF/MP4 of the drawing process** – for SwiftSketch, how the strokes emerge from noise. Abstraction series with one click (CLIPasso, ControlSketch).
+- **Queue** for many images, also with mixed methods, with pause/cancel, a notification when done and protection against sleep mode. **Gallery** of all results with a method filter.
+- **Models** page grouped by method: download with progress, delete, manual import of the SwiftSketch weights (in case Google Drive hits its daily quota).
+- **Dark/light theme**, **English/German** interface (switchable at runtime), and a command-line mode that is compatible with the original arguments of all three methods.
 
 <p>
-  <img src="docs/screenshots/studio_controlsketch_dark_de.png" width="49%" alt="ControlSketch im Studio">
-  <img src="docs/screenshots/models_dark_de.png" width="49%" alt="Modelle">
+  <img src="docs/screenshots/studio_controlsketch_dark_en.png" width="49%" alt="ControlSketch in the studio">
+  <img src="docs/screenshots/studio_light_en.png" width="49%" alt="Light theme">
 </p>
 
-## Bedienung
+## Usage
 
-1. Methode oben wählen (fehlen Modelle, genügt ein Klick auf **Herunterladen** im Hinweisbalken).
-2. Bild per Drag & Drop in **Eingabebild** ziehen (oder *Öffnen* / *Beispiele*). Bei nicht-quadratischen Bildern **Seitenverhältnis erhalten** aktivieren.
-3. Preset wählen, bei Bedarf Parameter anpassen und auf **Skizze erstellen** klicken.
-4. Die beste Skizze (★) als SVG/PNG/GIF/MP4 exportieren. Die Ergebnisse liegen außerdem im Ausgabeordner (Standard: `Dokumente\CLIPasso Studio`) – pro Lauf `best_iter.svg`, `svg_logs/`, `config.json` (inkl. CLIP-Score) und `<run>_best.svg`.
+1. Choose the method at the top. If models are missing, one click on **Download** in the notice bar is enough.
+2. Drag an image onto **Input image** (or use *Open* / *Samples*). For non-square images, turn on **Keep aspect ratio**.
+3. Pick a preset, adjust parameters if you like, and click **Create sketch**.
+4. Export the best sketch (★) as SVG/PNG/GIF/MP4. The results are also saved in the output folder (default: `Documents\CLIPasso Studio`) – for every run `best_iter.svg`, `svg_logs/`, `config.json` (including the CLIP score) and `<run>_best.svg`.
 
-**Rechenzeit (CPU):** SwiftSketch ~5 s pro Skizze. CLIPasso: Preset *Schnell* 5–15 min, *Standard* 45–90 min. ControlSketch braucht auf der CPU mehrere Stunden pro Skizze – mit einer NVIDIA-GPU wenige Minuten.
+**Compute time (CPU):** SwiftSketch ~5 s per sketch. CLIPasso: *Fast* preset 5–15 min, *Standard* 45–90 min. ControlSketch needs about 10 hours per sketch on a CPU – a few minutes with an NVIDIA GPU.
 
-**CLIP-Score:** Kosinus-Ähnlichkeit (in %) der CLIP-ViT-B/32-Bildmerkmale von Skizze und (maskiertem) Eingabebild. Er ist für alle Methoden gleich berechnet und macht sie vergleichbar; die letzte Entscheidung trifft dein Geschmack.
+**CLIP score:** the cosine similarity (in %) of the CLIP ViT-B/32 image features of the sketch and the (masked) input image. It is computed the same way for every method, which makes them comparable – in the end, go with your taste.
 
-### Kommandozeile
+### Command line
 
 ```bat
 CLIPassoStudio.exe --cli --target_file camel.png --num_strokes 16 --mask_object 1 --num_sketches 3
@@ -100,56 +100,42 @@ CLIPassoStudio.exe --cli --method controlsketch --target camel.png --condition d
 CLIPassoStudio.exe --cli --method swiftsketch --help
 ```
 
-Fehlende Modelle werden im CLI-Modus automatisch heruntergeladen (`--no_download` verhindert das).
+In CLI mode, missing models are downloaded automatically (`--no_download` prevents that).
 
-## Wie es funktioniert / Unterschiede zu den Originalen
+## How it works / differences from the originals
 
-**CLIPasso** – der Code des Originals (Painter, Loss, Optimierung, Auswahl der besten Skizze), portiert auf Python 3.11 / PyTorch 2.11:
-- **Renderer:** Statt des C++/CUDA-Rasterizers *diffvg*, der sich unter Windows kaum bauen lässt, nutzt die App einen **differenzierbaren Bézier-Renderer in reinem PyTorch** (`clipasso_studio/engine/renderer.py`, Gradienten gegen Finite Differences getestet). Er wird von allen drei Methoden verwendet.
-- **Behobene Fehler des Originals**, damit jede Option funktioniert: `percep_loss` (L2/LPIPS) und `clip_text_guide` waren nicht angeschlossen, `lr_scheduler` rief eine fehlende Funktion auf, der „Cos“-Conv-Loss für ResNets stürzte ab, `num_stages` war im Hauptloop nicht umgesetzt, `mask_object_attention`, `augment_both`, `include_target_in_aug` und `aug_scale_min` hatten keine Wirkung.
+**CLIPasso** – the original code (painter, loss, optimisation, selection of the best sketch), ported to Python 3.11 / PyTorch 2.11:
+- **Renderer:** instead of the C++/CUDA rasteriser *diffvg*, which is hard to build on Windows, the app uses a **differentiable Bézier renderer in pure PyTorch** (`clipasso_studio/engine/renderer.py`, gradients tested against finite differences). All three methods use it.
+- **Bugs of the original fixed**, so that every option works: `percep_loss` (L2/LPIPS) and `clip_text_guide` were not wired up, `lr_scheduler` called a missing function, the “Cos” conv loss crashed for ResNets, `num_stages` was not implemented in the main loop, and `mask_object_attention`, `augment_both`, `include_target_in_aug` and `aug_scale_min` had no effect.
 
-**SwiftSketch** – eigene Implementierung (das Original-Repository hat keine Lizenzdatei, daher wird kein Code übernommen) von Transformer-Decoder, DDPM-Sampler (Cosinus-Schedule, x₀-Vorhersage, Classifier-free Guidance) und Refinement. Sie lädt die **offiziellen Gewichte der Autoren** unverändert; gegen den Original-Code geprüft: identische Netzausgaben (max. Abweichung 0,0) und Sampler-Schritte (≤ 1,4·10⁻⁶). Unterschied: Die Hintergrundmaske kommt von U²-Net statt BRIA RMBG-1.4 (dessen Lizenz ist nicht-kommerziell und der Zugang beschränkt).
+**SwiftSketch** – an independent implementation of the transformer decoder, the DDPM sampler (cosine schedule, x₀ prediction, classifier-free guidance) and the refinement step; the original repository has no licence file, so no code is copied. It loads the **authors' official weights** unchanged and was checked against the original code: identical network outputs (max. difference 0.0) and sampler steps (≤ 1.4·10⁻⁶). One difference: the background mask comes from U²-Net instead of BRIA RMBG-1.4, whose licence is non-commercial and whose download is gated.
 
-**ControlSketch** – ebenfalls eigene Implementierung auf Basis von 🤗 diffusers. Unterschiede zum Original:
-- Aufmerksamkeits-Initialisierung standardmäßig mit **CLIP** (enthalten) statt SDXL-Cross-Attention; SDXL (≈ 7 GB) ist wählbar, sobald ein Objektname angegeben ist.
-- Automatische Bildbeschreibung mit **BLIP** (0,9 GB) statt BLIP-2 OPT-2.7b (15 GB); ein eigener Prompt überspringt das.
-- Bedingungsbilder ohne OpenCV/controlnet_aux: Tiefe mit MiDaS DPT-Hybrid (dasselbe Netz), Canny als NumPy-Port von `cv2.Canny` (per Test mit OpenCV verglichen), HED als Port des Apache-2.0-Netzes, Segmentierung mit UperNet. **Normalen** werden wie in der Model Card von ControlNet 1.0 aus der Tiefe berechnet (das Original nutzt NormalBae + ControlNet 1.1).
-- U²-Net statt RMBG-1.4, K-Means in NumPy statt scikit-learn, PyTorch-Renderer statt diffvg; `lr_scheduler` fehlt, weil das Original ihn nicht verwendet.
+**ControlSketch** – also an independent implementation, built on 🤗 diffusers. Differences from the original:
+- By default the stroke initialisation uses **CLIP attention** (bundled) instead of SDXL cross-attention; SDXL (≈ 7 GB) can be selected as soon as an object name is given.
+- Automatic captions with **BLIP** (0.9 GB) instead of BLIP-2 OPT-2.7b (15 GB); entering your own prompt skips this.
+- Condition images without OpenCV/controlnet_aux: depth with MiDaS DPT-Hybrid (the same network), Canny as a NumPy port of `cv2.Canny` (compared with OpenCV in a test), HED as a port of the Apache-2.0 network, segmentation with UperNet. **Normals** are computed from the depth as described in the ControlNet 1.0 model card (the original uses NormalBae + ControlNet 1.1).
+- U²-Net instead of RMBG-1.4, K-means in NumPy instead of scikit-learn, the PyTorch renderer instead of diffvg; there is no `lr_scheduler` option because the original never uses it.
 
-Die Modelle von SwiftSketch und ControlSketch werden nicht mitgeliefert, sondern beim ersten Einsatz von den offiziellen Quellen geladen (Google Drive der Autoren bzw. Hugging Face mit festen Revisionen) und lokal gespeichert (ControlSketch-Modelle in float16).
+The SwiftSketch and ControlSketch models are not bundled: they are downloaded from the official sources on first use (the authors' Google Drive, and Hugging Face with pinned revisions) and stored locally (ControlSketch models in float16).
 
-## Selbst bauen
+## Building from source
 
 ```bash
 python -m venv .venv && .venv\Scripts\activate           # Python 3.11
-pip install -r requirements/torch-cpu.txt                 # oder torch-gpu.txt
+pip install -r requirements/torch-cpu.txt                 # or torch-gpu.txt
 pip install -r requirements/dev.txt -r requirements/build.txt
-python tools/fetch_models.py                              # ~800 MB mitgelieferte Modelle nach ./models
-python -m clipasso_studio                                 # App aus dem Quellcode starten
-python -m pytest -q                                       # Tests (SwiftSketch/ControlSketch mit Mini-Modellen)
-python -m clipasso_studio --selftest out                  # Kurzlauf aller drei Methoden
-set MODE=onefile&& pyinstaller packaging\clipasso_studio.spec   # portable EXE
+python tools/fetch_models.py                              # ~800 MB of bundled models into ./models
+python -m clipasso_studio                                 # run the app from source
+python -m pytest -q                                       # tests (SwiftSketch/ControlSketch with tiny models)
+python -m clipasso_studio --selftest out                  # short run of all three methods
+set MODE=onefile&& pyinstaller packaging\clipasso_studio.spec   # portable exe
 ```
 
-Der komplette Windows-Build (beide Editionen, Installer, Selbsttest der EXE und Release) läuft in [`.github/workflows/build.yml`](.github/workflows/build.yml). Ein manueller Lauf (*Run workflow* mit `release_tag`) erzeugt ein Release.
+The complete Windows build (both editions, installers, self-test of the exe and the release) runs in [`.github/workflows/build.yml`](.github/workflows/build.yml). A manual run (*Run workflow* with a `release_tag`) creates a release; the `cpu` and `gpu` switches build the editions separately.
 
-## Lizenz & Credits
+## Licence & credits
 
-- **CLIPasso** – Yael Vinker, Ehsan Pajouheshgar, Jessica Y. Bo, Roman Christian Bachmann, Amit Haim Bermano, Daniel Cohen-Or, Amir Zamir, Ariel Shamir: *CLIPasso: Semantically-Aware Object Sketching*, ACM TOG (SIGGRAPH 2022) – [Paper](https://arxiv.org/abs/2202.05822) · [Projekt](https://clipasso.github.io/clipasso/) · [Code](https://github.com/yael-vinker/CLIPasso).
-- **SwiftSketch / ControlSketch** – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 – [Paper](https://arxiv.org/abs/2502.08642) · [Projekt](https://swiftsketch.github.io/) · [Code](https://github.com/swiftsketch/SwiftSketch).
+- **CLIPasso** – Yael Vinker, Ehsan Pajouheshgar, Jessica Y. Bo, Roman Christian Bachmann, Amit Haim Bermano, Daniel Cohen-Or, Amir Zamir, Ariel Shamir: *CLIPasso: Semantically-Aware Object Sketching*, ACM TOG (SIGGRAPH 2022) – [Paper](https://arxiv.org/abs/2202.05822) · [Project](https://clipasso.github.io/clipasso/) · [Code](https://github.com/yael-vinker/CLIPasso).
+- **SwiftSketch / ControlSketch** – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 – [Paper](https://arxiv.org/abs/2502.08642) · [Project](https://swiftsketch.github.io/) · [Code](https://github.com/swiftsketch/SwiftSketch).
 
-Wie CLIPasso steht diese App unter **[CC BY-NC-SA 4.0](LICENSE)**, also **nur für nicht-kommerzielle Nutzung**. Die SwiftSketch-Gewichte stellen die Autoren ohne ausdrückliche Lizenz bereit (Forschung/private Nutzung); Stable Diffusion 1.5 und ControlNet stehen unter CreativeML OpenRAIL-M mit Nutzungsbeschränkungen. Alle Komponenten und Lizenzen: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
----
-
-## English
-
-**CLIPasso Studio** is a Windows desktop app that turns photos into vector line drawings with three methods in one interface: [CLIPasso](https://github.com/yael-vinker/CLIPasso) (SIGGRAPH 2022), [SwiftSketch](https://github.com/swiftsketch/SwiftSketch) (SIGGRAPH 2025) and ControlSketch.
-
-- **Download** from the [releases page](https://github.com/Junostr05/CLIPasso-Studio/releases/latest): the portable CPU exe (single file, no installation), the CPU installer, or the NVIDIA GPU edition (`CLIPassoStudio-GPU-Setup.exe` plus all `.bin` parts in one folder; GTX 16xx / RTX 20xx or newer, CUDA 12.8, driver ≥ 570).
-- **Pick the method** at the top of the studio: *CLIPasso* optimises strokes with CLIP (everything bundled, very configurable); *SwiftSketch* generates 32 strokes with a diffusion model in about 5 seconds on a CPU (≈ 710 MB of weights downloaded on first use); *ControlSketch* optimises strokes with Stable Diffusion 1.5 + ControlNet for very natural sketches (≈ 3–4 GB of models, practical only on an NVIDIA GPU).
-- The **Compare** page sketches the current image with several methods and shows the results side by side with their CLIP score, compute time and stroke count; the best one is highlighted.
-- **Every option** of the original scripts of all three methods is available in the GUI and in `CLIPassoStudio.exe --cli --method …` (original argument names; missing models are downloaded automatically).
-- **Live preview**, several sketches per image with automatic selection of the best, export to SVG/PNG/GIF/MP4, a mixed-method **queue**, a **gallery** with a method filter, a **models** page, dark/light theme, German/English UI.
-- SwiftSketch and ControlSketch are independent re-implementations (the original repository has no licence file); SwiftSketch loads the authors' official weights and reproduces the reference outputs. Differences to the originals are listed above (U²-Net instead of RMBG-1.4, BLIP instead of BLIP-2, CLIP attention as the default ControlSketch initialisation, condition detectors without OpenCV, pure-PyTorch rasteriser instead of diffvg).
-- **Licence:** CC BY-NC-SA 4.0, non-commercial use only, like CLIPasso. Downloaded models keep their own licences (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+Like CLIPasso, this app is licensed under **[CC BY-NC-SA 4.0](LICENSE)** – **non-commercial use only**. The SwiftSketch weights are provided by the authors without an explicit licence (research/personal use); Stable Diffusion 1.5 and ControlNet are licensed under CreativeML OpenRAIL-M, which comes with use restrictions. All components and licences: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
