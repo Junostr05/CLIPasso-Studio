@@ -564,5 +564,17 @@
  "ui.eraser.tip": "Eraser: click or drag over strokes to remove them (the stroke under the cursor turns red). The original stays; exports use the touched-up sketch.",
  "ui.eraser.undo": "Undo (Ctrl+Z)",
  "ui.eraser.redo": "Redo (Ctrl+Y)",
- "ui.eraser.revert": "Back to the sketch as it was drawn"
+ "ui.eraser.revert": "Back to the sketch as it was drawn",
+ "ui.edit_image.button": "Edit",
+ "ui.edit_image.tip": "Crop, rotate or flip the image (saved as a copy; the original stays)",
+ "ui.edit_image.title": "Edit the image",
+ "ui.edit_image.aspect_free": "Free crop",
+ "ui.edit_image.aspect_square": "Square 1:1",
+ "ui.edit_image.aspect_landscape": "Landscape 4:3",
+ "ui.edit_image.aspect_portrait": "Portrait 3:4",
+ "ui.edit_image.rotate_left": "Rotate left",
+ "ui.edit_image.rotate_right": "Rotate right",
+ "ui.edit_image.flip": "Flip horizontally",
+ "ui.edit_image.reset": "Reset",
+ "ui.edit_image.apply": "Use this image"
 }

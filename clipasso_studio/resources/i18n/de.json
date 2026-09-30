@@ -564,5 +564,17 @@
  "ui.eraser.tip": "Radierer: klicke auf Striche oder ziehe darüber, um sie zu entfernen (der Strich unter dem Mauszeiger wird rot). Das Original bleibt erhalten; Exporte nutzen die überarbeitete Skizze.",
  "ui.eraser.undo": "Rückgängig (Strg+Z)",
  "ui.eraser.redo": "Wiederholen (Strg+Y)",
- "ui.eraser.revert": "Zurück zur Skizze, wie sie gezeichnet wurde"
+ "ui.eraser.revert": "Zurück zur Skizze, wie sie gezeichnet wurde",
+ "ui.edit_image.button": "Bearbeiten",
+ "ui.edit_image.tip": "Bild zuschneiden, drehen oder spiegeln (als Kopie gespeichert; das Original bleibt)",
+ "ui.edit_image.title": "Bild bearbeiten",
+ "ui.edit_image.aspect_free": "Frei zuschneiden",
+ "ui.edit_image.aspect_square": "Quadrat 1:1",
+ "ui.edit_image.aspect_landscape": "Quer 4:3",
+ "ui.edit_image.aspect_portrait": "Hoch 3:4",
+ "ui.edit_image.rotate_left": "Nach links drehen",
+ "ui.edit_image.rotate_right": "Nach rechts drehen",
+ "ui.edit_image.flip": "Horizontal spiegeln",
+ "ui.edit_image.reset": "Zurücksetzen",
+ "ui.edit_image.apply": "Dieses Bild verwenden"
 }

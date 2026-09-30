@@ -111,8 +111,11 @@ class StudioPage(QWidget):
         self.samples_btn = button("", "images", "ghost")
         self.samples_menu = QMenu(self)
         self.samples_btn.setMenu(self.samples_menu)
+        self.edit_btn = button("", "crop", "ghost")
+        self.edit_btn.clicked.connect(self.edit_image)
         row.addWidget(self.open_btn)
         row.addWidget(self.samples_btn)
+        row.addWidget(self.edit_btn)
         row.addStretch(1)
         self.input_card.body.addLayout(row)
         # quick toggles mirrored from the parameter panel
@@ -334,6 +337,16 @@ class StudioPage(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("ui.choose_image"), start, IMAGE_FILTER)
         if path:
             self.set_image(path)
+
+    def edit_image(self):
+        """Crop / rotate / flip the input; the result is saved as a new file and used as the input."""
+        if not self.image_path or not os.path.isfile(self.image_path):
+            return
+        from ..image_edit import ImageEditDialog
+
+        dlg = ImageEditDialog(self.image_path, self)
+        if dlg.exec() and dlg.result_path:
+            self.set_image(dlg.result_path)
 
     def paste_image(self) -> bool:
         """Ctrl+V: an image, an image file or the path of an image from the clipboard. A pasted image is
@@ -1049,6 +1062,8 @@ class StudioPage(QWidget):
         self.drop.update()
         self.open_btn.setText(tr("ui.open"))
         self.samples_btn.setText(tr("ui.samples"))
+        self.edit_btn.setText(tr("ui.edit_image.button"))
+        self.edit_btn.setToolTip(tr("ui.edit_image.tip"))
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(f"param.{key}.label"))
             lbl.setToolTip(tr(f"param.{key}.help"))
