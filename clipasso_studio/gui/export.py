@@ -12,6 +12,8 @@ from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
+from .brush import stylize_svg
+
 ET.register_namespace("", "http://www.w3.org/2000/svg")
 
 
@@ -56,11 +58,11 @@ def qimage_to_pil(img: QImage) -> Image.Image:
 
 
 def export_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_scale: float = 1.0,
-               background: str | None = None) -> None:
+               background: str | None = None, style: str = "plain") -> None:
     with open(src_svg, encoding="utf-8") as f:
         svg = f.read()
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(restyle_svg(svg, stroke_color, width_scale, background))
+        f.write(stylize_svg(restyle_svg(svg, stroke_color, width_scale, background), style))
 
 
 def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: float = 1.0) -> str:
@@ -104,9 +106,9 @@ def export_single_layer_svg(src_svg: str, dest: str, stroke_color: str | None = 
 
 
 def export_png(src_svg: str, dest: str, size: int = 1024, stroke_color: str | None = None,
-               width_scale: float = 1.0, background: str | None = "#FFFFFF") -> None:
+               width_scale: float = 1.0, background: str | None = "#FFFFFF", style: str = "plain") -> None:
     with open(src_svg, encoding="utf-8") as f:
-        svg = restyle_svg(f.read(), stroke_color, width_scale)
+        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
     bg = QColor(background) if background else None
     svg_to_qimage(svg, size, bg).save(dest)
 
@@ -170,11 +172,11 @@ def _one_colour(svg: str) -> bool:
     return colours <= _BLACK
 
 
-def _ink(svg: str, size: int, width_scale: float) -> "np.ndarray":
+def _ink(svg: str, size: int, width_scale: float, style: str = "plain"):
     """Rendered strokes as palette steps 0 (background) .. INK_LEVELS - 1 (full stroke colour)."""
     import numpy as np
 
-    img = svg_to_qimage(restyle_svg(svg, "#000000", width_scale), size, QColor("#FFFFFF"))
+    img = svg_to_qimage(stylize_svg(restyle_svg(svg, "#000000", width_scale), style), size, QColor("#FFFFFF"))
     grey = np.asarray(qimage_to_pil(img).convert("L"), dtype=np.uint16)
     return (((255 - grey) * (INK_LEVELS - 1) + 127) // 255).astype(np.uint8)
 
@@ -196,7 +198,7 @@ def _ink_palette(stroke: QColor, background: QColor | None) -> tuple[list[int], 
 
 def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, stroke_color: str | None = None,
                      width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
-                     length: float | None = None, hold: float = 1.0) -> int:
+                     length: float | None = None, hold: float = 1.0, style: str = "plain") -> int:
     """GIF / WebP / MP4 of the drawing process (format from the file extension); returns the number
     of frames. The drawing takes ``length`` seconds (default: one drawn frame per 1/``fps`` s) plus
     ``hold`` seconds on the final sketch. ``progress(i, n)`` per drawn frame, ``progress(0, 0)`` while
@@ -230,8 +232,8 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
     def render(i):
         svg = read(i)
         if ink:
-            return _ink(svg, size, width_scale)
-        img = svg_to_qimage(restyle_svg(svg, stroke_color, width_scale), size, bg)
+            return _ink(svg, size, width_scale, style)
+        img = svg_to_qimage(stylize_svg(restyle_svg(svg, stroke_color, width_scale), style), size, bg)
         return qimage_to_pil(img).convert("RGBA" if bg is None else "RGB")
 
     try:
@@ -352,7 +354,7 @@ def matrix_sheet_svg(cells: dict[int, str], cell: int = 224, gap: int = 16, text
 
 def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: str | None = None,
                       width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None,
-                      cancel=None) -> int:
+                      cancel=None, style: str = "plain") -> int:
     """SceneSketch: every sketch of the matrix as SVG and PNG plus the overview sheet (matrix.svg /
     matrix.png) in one ZIP file. Returns the number of sketches."""
     import json
@@ -364,7 +366,7 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
     for r in summary.get("runs", []):
         if os.path.isfile(r.get("best_svg", "")):
             with open(r["best_svg"], encoding="utf-8") as f:
-                cells[int(r["seed"])] = restyle_svg(f.read(), stroke_color, width_scale)
+                cells[int(r["seed"])] = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
     if not cells:
         raise FileNotFoundError("no sketches in this job")
     bg = QColor(background) if background else None

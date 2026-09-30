@@ -7,11 +7,12 @@ import os
 import shiboken6
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QColorDialog, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout, QHBoxLayout,
-                               QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout,
+                               QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
 
 from ..engine import model_store
-from . import export, theme
+from . import brush, export, theme
+from .app_settings import app_settings
 from .i18n import tr
 from .widgets.common import button, label
 
@@ -202,6 +203,14 @@ class ExportDialog(QDialog):
         self.width_scale.setValue(1.0)
         self.width_scale.setSuffix(" ×")
         form.addRow(tr("ui.stroke_width_scale"), self.width_scale)
+        self.style = QComboBox()
+        for key in brush.STYLES:
+            self.style.addItem(tr(f"ui.brush.{key}"), key)
+        self.style.setToolTip(tr("ui.brush.tip"))
+        last = app_settings().get("export_style", "plain")
+        self.style.setCurrentIndex(max(self.style.findData(last), 0))
+        if fmt != "svg1":  # the plotter SVG stays plain lines
+            form.addRow(tr("ui.brush.label"), self.style)
         self.background = ColorButton("#FFFFFF" if fmt != "svg" else "transparent", allow_transparent=fmt in
                                       ("svg", "png", "webp", "matrix"))
         if fmt != "svg1":
@@ -278,13 +287,16 @@ class ExportDialog(QDialog):
         stroke = None if stroke.lower() == "#000000" else stroke
         bg = self.background.color()
         bg = None if bg == "transparent" else bg
+        style = self.style.currentData() if self.fmt != "svg1" else "plain"
+        app_settings().set("export_style", self.style.currentData())
         try:
             if self.fmt == "svg":
-                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg)
+                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style)
             elif self.fmt == "svg1":
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
             elif self.fmt == "png":
-                export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg)
+                export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg,
+                                  style)
             else:  # animations and the matrix run in the background
                 self.ok.setEnabled(False)
                 self.progress.setRange(0, 1)
@@ -306,7 +318,7 @@ class ExportDialog(QDialog):
                         self.progress.setValue(a)
 
                 common = {"size": self.size.value(), "stroke_color": stroke, "width_scale": self.width_scale.value(),
-                          "background": bg, "cancel": lambda: self._cancel, "on_progress": prog,
+                          "background": bg, "style": style, "cancel": lambda: self._cancel, "on_progress": prog,
                           "on_done": lambda _: self._finished(dest), "on_error": self._failed}
                 if self.fmt == "matrix":
                     run_in_thread(self, export.export_matrix_zip, self.run_dir, dest, **common)

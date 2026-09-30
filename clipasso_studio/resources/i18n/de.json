@@ -554,5 +554,11 @@
  "ui.resume.queued": "Der Auftrag wird dort fortgesetzt, wo er aufgehört hat.",
  "ui.resume.nothing": "Dieser Auftrag ist schon in der Warteschlange oder hat nichts mehr zu tun.",
  "ui.resume.startup_title": "Unfertige Arbeit aus der letzten Sitzung ({n}): Die App wurde geschlossen oder ist abgestürzt, während sie lief.",
- "ui.resume.startup_text": "Fertige Skizzen bleiben erhalten; der Rest geht ab dem letzten Zwischenstand weiter."
+ "ui.resume.startup_text": "Fertige Skizzen bleiben erhalten; der Rest geht ab dem letzten Zwischenstand weiter.",
+ "ui.brush.label": "Stil",
+ "ui.brush.plain": "Einfache Linien",
+ "ui.brush.ink": "Tusche (Pinselstift)",
+ "ui.brush.pencil": "Bleistift",
+ "ui.brush.marker": "Marker",
+ "ui.brush.tip": "Wie die Striche gezeichnet werden: einfache Linien, spitz zulaufende Tuschestriche, weiche Bleistiftlinien oder ein breiter Marker."
 }

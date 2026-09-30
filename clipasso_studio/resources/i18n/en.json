@@ -554,5 +554,11 @@
  "ui.resume.queued": "The job continues where it stopped.",
  "ui.resume.nothing": "This job is already queued or has nothing left to do.",
  "ui.resume.startup_title": "Unfinished work from the last session ({n}): the app was closed or crashed while it was running.",
- "ui.resume.startup_text": "Finished sketches are kept; the rest continues from the last checkpoint."
+ "ui.resume.startup_text": "Finished sketches are kept; the rest continues from the last checkpoint.",
+ "ui.brush.label": "Style",
+ "ui.brush.plain": "Plain lines",
+ "ui.brush.ink": "Ink (brush pen)",
+ "ui.brush.pencil": "Pencil",
+ "ui.brush.marker": "Marker",
+ "ui.brush.tip": "How the strokes are drawn: plain lines, tapered ink strokes, soft pencil lines or a wide marker."
 }

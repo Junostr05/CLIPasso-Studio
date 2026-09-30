@@ -229,7 +229,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         checkpoint.set_rng_state(ck["rng"])
         reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}")
 
-    def save_checkpoint(done_epoch: int):
+    def save_checkpoint(done_epoch: int, painter=painter, optimizer=optimizer):
         checkpoint.save(run_dir, {"epoch": done_epoch, "counter": counter, "points": painter.points(),
                                   "optim": optimizer.state_dict(), "scores": scores, "losses": losses,
                                   "active_time": active_time})
