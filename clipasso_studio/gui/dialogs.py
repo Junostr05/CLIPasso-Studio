@@ -511,6 +511,89 @@ def export_many(parent, items: list[tuple[str, dict]]) -> int:
     return dlg.written
 
 
+class UpdateDownloadDialog(QDialog):
+    """Downloads and verifies an update (installer or portable exe) with progress and cancel."""
+
+    def __init__(self, release: dict, parent=None, edition: str | None = None, mode: str | None = None,
+                 dest_dir=None):
+        super().__init__(parent)
+        from . import updates
+
+        self.release, self.edition, self.mode, self.dest_dir = release, edition, mode, dest_dir
+        self.path = ""
+        self.busy = False
+        self._cancel = False
+        files, _ = updates.update_files(release, *(updates.build_info() if edition is None else (edition, mode)))
+        total = sum(f["size"] for f in files) / 1e6
+        version = release.get("tag", "").lstrip("v")
+        self.setWindowTitle(tr("ui.update.install_title", version=version))
+        self.setMinimumWidth(440)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(12)
+        lay.addWidget(label(tr("ui.update.install_title", version=version), "h2"))
+        lay.addWidget(label(tr("ui.update.install_desc", mb=f"{total:.0f}"), "muted", wrap=True))
+        self.status = label("", "faint")
+        lay.addWidget(self.status)
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 1)
+        lay.addWidget(self.bar)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        self.cancel_btn = button(tr("ui.cancel"), variant="ghost")
+        self.cancel_btn.clicked.connect(self.reject)
+        row.addWidget(self.cancel_btn)
+        lay.addLayout(row)
+
+    def start(self):
+        from . import updates
+
+        self.busy = True
+        self.status.setText(tr("ui.update.downloading"))
+
+        def prog(a, b):
+            if b <= 0:
+                self.bar.setRange(0, 0)
+                self.status.setText(tr("ui.update.checking"))
+            else:
+                self.bar.setRange(0, 1000)
+                self.bar.setValue(int(1000 * a / b))
+                self.status.setText(tr("ui.update.progress", done=f"{a / 1e6:.0f}", total=f"{b / 1e6:.0f}"))
+
+        def done(path):
+            self.busy = False
+            self.path = path
+            if self._cancel:
+                super(UpdateDownloadDialog, self).reject()
+            else:
+                self.accept()
+
+        def failed(msg):
+            self.busy = False
+            if self._cancel:
+                super(UpdateDownloadDialog, self).reject()
+                return
+            QMessageBox.warning(self, tr("ui.error"), msg)
+            super(UpdateDownloadDialog, self).reject()
+
+        run_in_thread(self, updates.download_update, self.release, self.edition, self.mode, self.dest_dir,
+                      cancel=lambda: self._cancel, on_progress=prog, on_done=done, on_error=failed)
+
+    def exec(self):  # noqa: A003 – start the download together with the dialog
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(0, self.start)
+        return super().exec()
+
+    def reject(self):
+        if self.busy:  # the download stops; files downloaded so far are kept for the next try
+            self._cancel = True
+            self.cancel_btn.setEnabled(False)
+            self.status.setText(tr("ui.cancelling"))
+            return
+        super().reject()
+
+
 class ModelDownloadDialog(QDialog):
     """Downloads one or more optional models with a progress bar."""
 

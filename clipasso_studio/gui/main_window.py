@@ -36,6 +36,7 @@ class UpdateBar(QFrame):
     """"CLIPasso Studio x.y is available" – with Download, Skip this version and close."""
 
     skipped = Signal(str)
+    install_requested = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,7 +48,9 @@ class UpdateBar(QFrame):
         self.icon = QLabel()
         self.text = QLabel()
         self.text.setWordWrap(True)
-        self.download = button("", "download", "primary")
+        self.install = button("", "download", "primary")
+        self.install.clicked.connect(lambda: self.install_requested.emit(self.release))
+        self.download = button("", "external-link", "ghost")
         self.download.clicked.connect(self._download)
         self.skip = button("", None, "ghost")
         self.skip.clicked.connect(self._skip)
@@ -57,6 +60,7 @@ class UpdateBar(QFrame):
         lay.addWidget(self.text, 1)
         lay.addWidget(self.skip)
         lay.addWidget(self.download)
+        lay.addWidget(self.install)
         lay.addWidget(self.close_btn)
 
     def show_release(self, release: dict) -> None:
@@ -80,6 +84,12 @@ class UpdateBar(QFrame):
         self.icon.setPixmap(icons.pixmap("sparkles", p.accent_hover, 18))
         version = self.release.get("tag", "").lstrip("v")
         self.text.setText(tr("ui.update.available", version=version, current=__version__))
+        can = bool(self.release) and updates.can_install(self.release)
+        self.install.setVisible(can)
+        self.install.setText(tr("ui.update.install"))
+        self.download.setProperty("variant", "ghost" if can else "primary")
+        self.download.style().unpolish(self.download)
+        self.download.style().polish(self.download)
         self.download.setText(tr("ui.update.download"))
         self.skip.setText(tr("ui.update.skip"))
         self.close_btn.setToolTip(tr("ui.update.later"))
@@ -199,6 +209,7 @@ class MainWindow(QMainWindow):
         uw.setContentsMargins(24, 14, 24, 0)
         self.update_bar = UpdateBar(self.update_wrap)
         self.update_bar.skipped.connect(lambda tag: app_settings().set("skipped_version", tag))
+        self.update_bar.install_requested.connect(self.install_update)
         uw.addWidget(self.update_bar)
         self.update_wrap.hide()
         cv.addWidget(self.update_wrap)
@@ -244,6 +255,33 @@ class MainWindow(QMainWindow):
         if not self.close():
             return False
         program, args = restart_command()
+        QProcess.startDetached(program, args)
+        QApplication.quit()
+        return True
+
+    def install_update(self, release: dict) -> bool:
+        """Download the update, then close and run the installer (or start the new portable exe)."""
+        from PySide6.QtCore import QProcess
+
+        edition, mode = updates.build_info()
+        dlg = dialogs.UpdateDownloadDialog(release, self)
+        if dlg.exec() != dialogs.QDialog.Accepted or not dlg.path:
+            return False
+        version = release.get("tag", "").lstrip("v")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(APP_NAME)
+        box.setText(tr("ui.update.ready", version=version))
+        box.setInformativeText(tr(f"ui.update.ready_{mode}"))
+        now = box.addButton(tr("ui.update.install_now"), QMessageBox.AcceptRole)
+        box.addButton(tr("ui.later"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is not now:
+            return False
+        path = updates.place_portable(dlg.path, version) if mode == "portable" else dlg.path
+        program, args = updates.install_command(path, mode)
+        if not self.close():  # a running job: the user decided to keep it
+            return False
         QProcess.startDetached(program, args)
         QApplication.quit()
         return True

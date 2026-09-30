@@ -525,7 +525,7 @@
  "ui.settings.check_updates": "Beim Start nach einer neuen Version suchen",
  "ui.settings.logs_tip": "Fehlerprotokolle – häng sie an, wenn du ein Problem meldest.",
  "ui.update.available": "CLIPasso Studio {version} ist verfügbar – du hast {current}.",
- "ui.update.download": "Herunterladen",
+ "ui.update.download": "Release-Seite",
  "ui.update.skip": "Diese Version überspringen",
  "ui.update.later": "Beim nächsten Start erinnern",
  "ui.crash.title": "Etwas ist schiefgelaufen.",
@@ -595,5 +595,15 @@
  "ui.settings.ui_scale": "Größe der Oberfläche",
  "ui.settings.ui_scale_tip": "Macht die ganze Oberfläche kleiner oder größer – für kleine Laptop-Bildschirme oder große Monitore.",
  "ui.settings.restart_hint": "Die neue Größe gilt nach einem Neustart.",
- "ui.settings.restart": "Jetzt neu starten"
+ "ui.settings.restart": "Jetzt neu starten",
+ "ui.update.install": "Installieren",
+ "ui.update.install_title": "Update auf {version}",
+ "ui.update.install_desc": "Die neue Version wird heruntergeladen ({mb} MB) und geprüft. Heruntergeladene Modelle, Einstellungen und Ergebnisse bleiben erhalten.",
+ "ui.update.downloading": "Wird heruntergeladen …",
+ "ui.update.checking": "Download wird geprüft …",
+ "ui.update.progress": "{done} von {total} MB",
+ "ui.update.ready": "CLIPasso Studio {version} ist bereit zur Installation.",
+ "ui.update.ready_installed": "CLIPasso Studio wird geschlossen, installiert das Update und startet neu.",
+ "ui.update.ready_portable": "Die neue Version wird neben dieser gespeichert und jetzt gestartet; die alte exe kannst du danach löschen.",
+ "ui.update.install_now": "Jetzt installieren"
 }

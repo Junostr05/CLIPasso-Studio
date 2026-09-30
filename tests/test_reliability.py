@@ -166,3 +166,120 @@ def test_a_hard_crash_is_reported_at_the_next_start(qapp, tmp_path, monkeypatch)
         assert (mod.logs_dir() / mod.FAULT_LOG).stat().st_size == 0  # ready for this session
     finally:
         mod.uninstall()
+
+
+# ------------------------------------------------------------- update install
+RELEASE_ASSETS = ["CLIPassoStudio-CPU-Portable.exe", "CLIPassoStudio-CPU-Setup.exe", "CLIPassoStudio-GPU-Setup-1.bin",
+                  "CLIPassoStudio-GPU-Setup-2.bin", "CLIPassoStudio-GPU-Setup.exe", "SHA256SUMS-CPU.txt",
+                  "SHA256SUMS-GPU.txt"]
+
+
+def _release(base="http://x", sizes=None):
+    sizes = sizes or {}
+    return {"tag": "v9.0.0", "url": "https://example.invalid/r",
+            "assets": [{"name": n, "url": f"{base}/{n}", "size": sizes.get(n, 100)} for n in RELEASE_ASSETS]}
+
+
+def test_update_files_per_edition():
+    from clipasso_studio.gui import updates
+
+    names = lambda files: [f["name"] for f in files]  # noqa: E731
+    files, sums = updates.update_files(_release(), "gpu", "installed")
+    assert names(files) == ["CLIPassoStudio-GPU-Setup.exe", "CLIPassoStudio-GPU-Setup-1.bin",
+                            "CLIPassoStudio-GPU-Setup-2.bin"] and sums["name"] == "SHA256SUMS-GPU.txt"
+    assert names(updates.update_files(_release(), "cpu", "portable")[0]) == ["CLIPassoStudio-CPU-Portable.exe"]
+    assert updates.can_install(_release(), "cpu", "installed")
+    assert not updates.can_install(_release(), "gpu", "portable")  # there is no portable GPU edition
+    assert not updates.can_install(_release(), "dev", "dev")
+    sums_text = "a" * 64 + "  CLIPassoStudio-CPU-Setup.exe\n" + "B" * 64 + " *dist/x.bin\n"
+    assert updates.parse_sums(sums_text) == {"CLIPassoStudio-CPU-Setup.exe": "a" * 64, "x.bin": "b" * 64}
+
+
+class _Files(BaseHTTPRequestHandler):
+    files: dict = {}
+
+    def do_GET(self):  # noqa: N802
+        data = _Files.files.get(self.path.rsplit("/", 1)[-1])
+        if data is None:
+            self.send_response(404)
+            self.end_headers()
+            return
+        rng = self.headers.get("Range")
+        start = int(rng.split("=")[1].split("-")[0]) if rng else 0
+        body = data[start:]
+        self.send_response(206 if rng else 200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+def test_download_and_install_command(tmp_path):
+    import hashlib
+
+    from clipasso_studio.gui import updates
+
+    setup, part1, part2 = os.urandom(3000), os.urandom(2000), os.urandom(1000)
+    sums = "".join(f"{hashlib.sha256(d).hexdigest()}  {n}\n" for n, d in (
+        ("CLIPassoStudio-GPU-Setup.exe", setup), ("CLIPassoStudio-GPU-Setup-1.bin", part1),
+        ("CLIPassoStudio-GPU-Setup-2.bin", part2)))
+    _Files.files = {"CLIPassoStudio-GPU-Setup.exe": setup, "CLIPassoStudio-GPU-Setup-1.bin": part1,
+                    "CLIPassoStudio-GPU-Setup-2.bin": part2, "SHA256SUMS-GPU.txt": sums.encode()}
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Files)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}/dl"
+    try:
+        release = _release(base, {"CLIPassoStudio-GPU-Setup.exe": 3000, "CLIPassoStudio-GPU-Setup-1.bin": 2000,
+                                  "CLIPassoStudio-GPU-Setup-2.bin": 1000})
+        progress = []
+        path = updates.download_update(release, "gpu", "installed", tmp_path / "upd",
+                                       progress=lambda a, b: progress.append((a, b)))
+        assert path.endswith("CLIPassoStudio-GPU-Setup.exe") and open(path, "rb").read() == setup
+        assert (tmp_path / "upd" / "CLIPassoStudio-GPU-Setup-2.bin").read_bytes() == part2
+        assert progress[-1] == (6000, 6000)
+        # a corrupted file is refused and removed
+        _Files.files["CLIPassoStudio-GPU-Setup-1.bin"] = b"x" * 2000
+        with pytest.raises(RuntimeError, match="checksum"):
+            updates.download_update(release, "gpu", "installed", tmp_path / "bad")
+        assert not (tmp_path / "bad" / "CLIPassoStudio-GPU-Setup-1.bin").exists()
+    finally:
+        httpd.shutdown()
+    program, args = updates.install_command(path, "installed", app_dir=str(tmp_path))
+    assert program == path and "/SILENT" in args and "/UPDATE" in args and "/CURRENTUSER" in args
+    assert updates.install_command(path, "portable") == (path, [])
+    exe_dir = tmp_path / "app"
+    exe_dir.mkdir()
+    placed = updates.place_portable(path, "v9.0.0", exe=str(exe_dir / "CLIPassoStudio-CPU-Portable.exe"))
+    assert placed == str(exe_dir / "CLIPassoStudio-GPU-Setup-9.0.0.exe") and os.path.isfile(placed)
+
+
+def test_update_bar_offers_install(qapp, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    from clipasso_studio.gui import app_settings as settings_module
+    from clipasso_studio.gui import updates
+
+    settings_module._instance = None
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.main_window import MainWindow
+
+    app_settings().data.update(output_dir=str(tmp_path / "out"))
+    w = MainWindow()
+    w.show()
+    monkeypatch.setattr(updates, "build_info", lambda: ("cpu", "installed"))
+    w._update_found(json.dumps(_release()))
+    assert w.update_bar.install.isVisibleTo(w)
+    requested = []
+    monkeypatch.setattr(w, "install_update", lambda release: requested.append(release))
+    w.update_bar.install_requested.disconnect()
+    w.update_bar.install_requested.connect(w.install_update)
+    w.update_bar.install.click()
+    assert requested and requested[0]["tag"] == "v9.0.0"
+    monkeypatch.setattr(updates, "build_info", lambda: ("dev", "dev"))
+    w.update_bar.retranslate()
+    assert not w.update_bar.install.isVisibleTo(w)  # from source: only the release page
+    w.controller.shutdown()
+    w.close()
+    settings_module._instance = None

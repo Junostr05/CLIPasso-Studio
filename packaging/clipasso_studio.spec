@@ -23,7 +23,10 @@ if not (MODELS / "clip" / "RN101.pt").is_file():
     raise SystemExit(f"models not found in {MODELS} – run tools/fetch_models.py first")
 
 # build info shown in the app
-(ROOT / "clipasso_studio" / "gui" / "_build_info.py").write_text(f'EDITION = "{EDITION}"\n', encoding="utf-8")
+# MODE: the onefile exe is the portable edition, the onedir build goes into the installer
+INSTALL_MODE = "portable" if MODE == "onefile" else "installed"
+(ROOT / "clipasso_studio" / "gui" / "_build_info.py").write_text(
+    f'EDITION = "{EDITION}"\nMODE = "{INSTALL_MODE}"\n', encoding="utf-8")
 
 datas = [
     (str(ROOT / "clipasso_studio" / "resources"), "clipasso_studio/resources"),

@@ -30,7 +30,7 @@ DefaultDirName={autopf}\CLIPasso Studio {#Edition}
 DefaultGroupName=CLIPasso Studio
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=dialog commandline
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
@@ -67,3 +67,11 @@ Name: "{autodesktop}\CLIPasso Studio"; Filename: "{app}\{#AppExe}"; Tasks: deskt
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,CLIPasso Studio}"; Flags: nowait postinstall skipifsilent
+; an update installed from within the app (silent, /UPDATE) starts the new version right away
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: IsAppUpdate
+
+[Code]
+function IsAppUpdate: Boolean;
+begin
+  Result := WizardSilent and (Pos('/UPDATE', Uppercase(GetCmdTail)) > 0);
+end;
