@@ -156,7 +156,12 @@ def ensure_models(settings: dict, allow_download: bool = True) -> None:
         last = [-1]
 
         def progress(done, total, last=last):
-            pct = int(done * 100 / total) if total else 0
+            if total <= 0:  # downloaded, now checking / converting
+                if last[0] != "busy":
+                    last[0] = "busy"
+                    print("  preparing …", flush=True)
+                return
+            pct = int(done * 100 / total)
             if pct != last[0] and pct % 5 == 0:
                 last[0] = pct
                 print(f"  {pct:3d}%  {done / 1e6:.0f} MB", flush=True)

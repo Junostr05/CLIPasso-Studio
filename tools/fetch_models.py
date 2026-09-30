@@ -40,7 +40,7 @@ def main() -> int:
                 now = time.time()
                 if now - last[0] > 5:
                     last[0] = now
-                    pct = f"{100 * done / total:5.1f}%" if total else f"{done >> 20} MB"
+                    pct = f"{100 * done / total:5.1f}%" if total else "preparing …"
                     print(f"       {key}: {pct}", flush=True)
 
             model_store.install(key, dest_root=dest, progress=progress)

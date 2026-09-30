@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+import shiboken6
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QColorDialog, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout, QHBoxLayout,
                                QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
@@ -73,41 +74,86 @@ class _Worker(QObject):
             self.failed.emit(str(exc))
 
 
-_threads: set = set()
+class _Relay(QObject):
+    """One background job of :func:`run_in_thread`; calls its callbacks in the GUI thread.
+
+    PySide calls a plain Python function connected to a signal in the thread that emits the signal –
+    for the worker that is the background thread, and GUI calls from there (progress bars, closing a
+    dialog, message boxes) froze and crashed the app at the end of exports and downloads. The relay
+    lives in the GUI thread and receives the worker's signals as queued calls instead."""
+
+    def __init__(self, thread: QThread, worker: _Worker, owner, on_progress, on_done, on_error):
+        super().__init__()
+        self.thread, self.worker, self.owner = thread, worker, owner
+        self.on_progress, self.on_done, self.on_error = on_progress, on_done, on_error
+
+    def _owner_alive(self) -> bool:
+        return self.owner is None or shiboken6.isValid(self.owner)
+
+    @Slot(int, int)
+    def progress(self, done: int, total: int):
+        if self.on_progress and self._owner_alive():
+            self.on_progress(done, total)
+
+    @Slot(str)
+    def finished(self, result: str):
+        self._end(self.on_done, result)
+
+    @Slot(str)
+    def failed(self, message: str):
+        self._end(self.on_error, message)
+
+    def _end(self, callback, arg):
+        self.thread.wait(10000)  # the worker has returned; its thread ends right away
+        _running.discard(self)
+        _ended.append(self)  # released later, outside of this call (see _release_ended)
+        if callback and self._owner_alive():
+            callback(arg)
+
+
+# Python owns the thread, worker and relay of every job: no deleteLater and no lambda connections.
+# Deleting them through Qt's deferred delete ran PySide's Python cleanup in the GUI thread while the
+# next job's thread was running Python code, which crashed PySide 6.11 (the second export in a row).
+_running: set = set()
+_ended: list = []
+
+
+def _release_ended() -> None:
+    """Drop finished jobs (their threads have ended) – from the GUI thread, never inside their slots."""
+    _ended.clear()
 
 
 def wait_for_threads(timeout_ms: int = 60000) -> None:
     """Wait for the background threads of :func:`run_in_thread` – Qt crashes when a still running
     QThread is destroyed, e.g. when the app quits while the hardware probe imports PyTorch."""
-    for thread in list(_threads):
+    for job in list(_running):
         try:
-            if thread.isRunning():
-                # the worker's finished -> quit signal would be queued to this (blocked) main thread
-                thread.quit()
-                thread.wait(timeout_ms)
+            if job.thread.isRunning():
+                # the worker's finished -> quit call may not have happened yet
+                job.thread.quit()
+                job.thread.wait(timeout_ms)
         except RuntimeError:  # the C++ object is already gone
             pass
-        _threads.discard(thread)
+        _running.discard(job)
+    _release_ended()
 
 
 def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=None, **kwargs):
-    thread = QThread(parent)
-    _threads.add(thread)
-    thread.finished.connect(lambda t=thread: _threads.discard(t))
+    """Run ``fn(*args, progress=…, **kwargs)`` in a background thread. The callbacks are called in the
+    GUI thread (and skipped when ``parent`` has been deleted meanwhile); a progress total of 0 means
+    "busy, no measurable progress" (e.g. encoding)."""
+    _release_ended()
+    thread = QThread()
     worker = _Worker(fn, *args, **kwargs)
     worker.moveToThread(thread)
+    job = _Relay(thread, worker, parent, on_progress, on_done, on_error)  # lives in the GUI thread
     thread.started.connect(worker.run)
-    if on_progress:
-        worker.progress.connect(on_progress)
-    if on_done:
-        worker.finished.connect(on_done)
-    if on_error:
-        worker.failed.connect(on_error)
+    worker.progress.connect(job.progress)
+    worker.finished.connect(job.finished)
+    worker.failed.connect(job.failed)
     worker.finished.connect(thread.quit, Qt.DirectConnection)  # QThread.quit is thread-safe
     worker.failed.connect(thread.quit, Qt.DirectConnection)
-    thread.finished.connect(worker.deleteLater)
-    thread.finished.connect(thread.deleteLater)
-    thread._worker = worker  # keep a reference
+    _running.add(job)
     thread.start()
     return thread
 
@@ -162,18 +208,23 @@ class ExportDialog(QDialog):
             form.addRow(tr("ui.fps"), self.fps)
         lay.addLayout(form)
 
+        self.phase = label("", "faint")
+        self.phase.setVisible(False)
+        lay.addWidget(self.phase)
         self.progress = QProgressBar()
         self.progress.setVisible(False)
         lay.addWidget(self.progress)
         row = QHBoxLayout()
         row.addStretch(1)
-        cancel = button(tr("ui.cancel"), variant="ghost")
-        cancel.clicked.connect(self.reject)
+        self.cancel_btn = button(tr("ui.cancel"), variant="ghost")
+        self.cancel_btn.clicked.connect(self.reject)
         self.ok = button(tr("ui.save_as"), "download", "primary")
         self.ok.clicked.connect(self._save)
-        row.addWidget(cancel)
+        row.addWidget(self.cancel_btn)
         row.addWidget(self.ok)
         lay.addLayout(row)
+        self.busy = False  # an animation export is running in the background
+        self._cancel = False
 
     def _save(self):
         ext = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)"}[self.ext]
@@ -197,17 +248,27 @@ class ExportDialog(QDialog):
                 export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg)
             else:
                 self.ok.setEnabled(False)
+                self.progress.setRange(0, 1)
+                self.progress.setValue(0)
                 self.progress.setVisible(True)
+                self.phase.setText(tr("ui.export_rendering"))
+                self.phase.setVisible(True)
+                self.busy, self._cancel = True, False
 
                 def prog(a, b):
-                    self.progress.setMaximum(b)
-                    self.progress.setValue(a)
+                    if self._cancel:
+                        return
+                    if b <= 0:  # all frames drawn, the file is being encoded
+                        self.progress.setRange(0, 0)
+                        self.phase.setText(tr("ui.export_encoding", fmt=self.ext.upper()))
+                    else:
+                        self.progress.setRange(0, b)
+                        self.progress.setValue(a)
 
                 run_in_thread(self, export.export_animation, self.run_dir, dest, size=self.size.value(),
                               fps=self.fps.value(), stroke_color=stroke, width_scale=self.width_scale.value(),
-                              background=bg or "#FFFFFF", on_progress=prog,
-                              on_done=lambda _: self._finished(dest),
-                              on_error=lambda msg: self._failed(msg))
+                              background=bg or "#FFFFFF", cancel=lambda: self._cancel, on_progress=prog,
+                              on_done=lambda _: self._finished(dest), on_error=self._failed)
                 return
         except Exception as exc:
             self._failed(str(exc))
@@ -215,13 +276,36 @@ class ExportDialog(QDialog):
         self._finished(dest)
 
     def _finished(self, dest):
+        self.busy = False
+        if self._cancel:  # finished before the cancel request arrived: keep nothing half-wanted
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            super().reject()
+            return
         self.saved_path = dest
         self.accept()
 
     def _failed(self, msg):
+        self.busy = False
+        if self._cancel:
+            super().reject()
+            return
         self.ok.setEnabled(True)
+        self.cancel_btn.setEnabled(True)
         self.progress.setVisible(False)
+        self.phase.setVisible(False)
         QMessageBox.warning(self, tr("ui.error"), msg)
+
+    def reject(self):
+        if self.busy:  # stop the export; the dialog closes when the background work has ended
+            self._cancel = True
+            self.cancel_btn.setEnabled(False)
+            self.progress.setRange(0, 0)
+            self.phase.setText(tr("ui.cancelling"))
+            return
+        super().reject()
 
 
 class ModelDownloadDialog(QDialog):
@@ -254,9 +338,14 @@ class ModelDownloadDialog(QDialog):
         lay.addLayout(row)
         self._idx = 0
         self._cancel = False
+        self.busy = False  # a download is running in the background
 
     def reject(self):
         self._cancel = True
+        if self.busy:  # the dialog closes when the download has stopped
+            self.cancel_btn.setEnabled(False)
+            self.status.setText(tr("ui.cancelling"))
+            return
         super().reject()
 
     def _start(self):
@@ -268,22 +357,40 @@ class ModelDownloadDialog(QDialog):
             self.accept()
             return
         key = self.keys[self._idx]
-        self.status.setText(tr("ui.downloading", name=model_display_name(key)))
+        name = model_display_name(key)
+        self.status.setText(tr("ui.downloading", name=name))
+        self.bar.setRange(0, 1)
+        self.bar.setValue(0)
 
         def prog(a, b):
-            self.bar.setMaximum(max(b, 1))
-            self.bar.setValue(a)
+            if self._cancel:
+                return
+            if b <= 0:  # downloaded; checking and converting
+                self.bar.setRange(0, 0)
+                self.status.setText(tr("ui.preparing_model", name=name))
+            else:
+                self.bar.setRange(0, b)
+                self.bar.setValue(a)
 
         def done(_):
+            self.busy = False
+            if self._cancel:
+                super(ModelDownloadDialog, self).reject()
+                return
             self._idx += 1
             self._next()
 
+        self.busy = True
         run_in_thread(self, model_store.install, key, cancel=lambda: self._cancel, on_progress=prog, on_done=done,
-                      on_error=lambda msg: self._error(msg))
+                      on_error=self._error)
 
     def _error(self, msg):
+        self.busy = False
         if self._cancel:
+            super().reject()
             return
+        self.bar.setRange(0, 1)
+        self.bar.setValue(0)
         QMessageBox.warning(self, tr("ui.error"), msg)
         self.start_btn.setEnabled(True)
 

@@ -132,7 +132,15 @@ def animation_frames(run_dir: str, upto_best: bool = True) -> list[str]:
 
 def export_animation(run_dir: str, dest: str, size: int = 512, fps: int = 20, stroke_color: str | None = None,
                      width_scale: float = 1.0, background: str = "#FFFFFF", progress=None,
-                     max_frames: int = 300) -> int:
+                     max_frames: int = 300, cancel=None) -> int:
+    """GIF / MP4 of the drawing process. ``progress(i, n)`` per drawn frame, then ``progress(0, 0)``
+    while the file is encoded; ``cancel()`` returning True stops the export (InterruptedError) and
+    removes the unfinished file."""
+
+    def check():
+        if cancel and cancel():
+            raise InterruptedError("export cancelled")
+
     frames = animation_frames(run_dir)
     if not frames:
         raise FileNotFoundError("no intermediate SVGs (svg_logs) found")
@@ -141,6 +149,7 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: int = 20, st
         frames = [frames[int(i * step)] for i in range(max_frames)] + [frames[-1]]
     images = []
     for i, fr in enumerate(frames):
+        check()
         with open(fr, encoding="utf-8") as f:
             svg = restyle_svg(f.read(), stroke_color, width_scale)
         images.append(qimage_to_pil(svg_to_qimage(svg, size, QColor(background))).convert("RGB"))
@@ -148,16 +157,28 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: int = 20, st
             progress(i + 1, len(frames))
     hold = max(fps, 1)  # keep the final sketch visible for ~1 s
     images += [images[-1]] * hold
-    if dest.lower().endswith(".gif"):
-        images[0].save(dest, save_all=True, append_images=images[1:], duration=int(1000 / fps), loop=0,
-                       optimize=True)
-    else:
-        import imageio.v2 as imageio
-        import numpy as np
+    check()
+    if progress:
+        progress(0, 0)
+    try:
+        if dest.lower().endswith(".gif"):
+            images[0].save(dest, save_all=True, append_images=images[1:], duration=int(1000 / fps), loop=0,
+                           optimize=True)
+        else:
+            import imageio.v2 as imageio
+            import numpy as np
 
-        with imageio.get_writer(dest, fps=fps, codec="libx264", quality=8, macro_block_size=16) as w:
-            for im in images:
-                w.append_data(np.asarray(im))
+            with imageio.get_writer(dest, fps=fps, codec="libx264", quality=8, macro_block_size=16) as w:
+                for im in images:
+                    check()
+                    w.append_data(np.asarray(im))
+        check()
+    except BaseException:
+        try:
+            os.remove(dest)
+        except OSError:
+            pass
+        raise
     return len(images)
 
 

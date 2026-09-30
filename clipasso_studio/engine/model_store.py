@@ -373,6 +373,8 @@ def download_raw(spec: ModelSpec, workdir: Path, progress: ProgressFn | None = N
         except Exception as exc:  # try the next mirror
             errors.append(f"{url}: {exc}")
             continue
+        if progress:
+            progress(0, 0)  # downloaded; checking (and converting) takes a moment without measurable progress
         size = target.stat().st_size
         if spec.download_sha256:
             digest = _sha256(target)
@@ -519,6 +521,8 @@ def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
                 raise RuntimeError(f"Could not download {spec.key}: {f.remote} has {size} bytes, "
                                    f"expected {f.size}")
             done += f.size or size
+        if progress:
+            progress(0, 0)  # converting
         for f in files:
             _convert_hf_file(raw_dir / f.remote, out_dir / f.local, f)
             (raw_dir / f.remote).unlink()

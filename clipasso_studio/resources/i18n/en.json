@@ -496,5 +496,9 @@
  "ui.models.group.scenesketch": "SceneSketch",
  "ui.models.group_hint.scenesketch": "Downloaded on the first SceneSketch run that separates object and background.",
  "ui.models.purpose.lama": "LaMa inpainting – fills in the background behind the object.",
- "ui.compare.scene_cpu_warning": "SceneSketch takes hours per scene on the CPU. Compare with its “Fast” preset (one sketch, ≈ 20 min)?"
+ "ui.compare.scene_cpu_warning": "SceneSketch takes hours per scene on the CPU. Compare with its “Fast” preset (one sketch, ≈ 20 min)?",
+ "ui.export_rendering": "Drawing the frames …",
+ "ui.export_encoding": "Encoding the {fmt} …",
+ "ui.cancelling": "Cancelling …",
+ "ui.preparing_model": "Checking and preparing {name} …"
 }
