@@ -8,7 +8,7 @@ import os
 import sys
 import time
 
-from PySide6.QtCore import QSize, Qt, QUrl, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QPixmap
 from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
                                QScrollArea, QSplitter, QVBoxLayout, QWidget)
@@ -178,6 +178,7 @@ class StudioPage(QWidget):
         left_scroll.setWidget(left)
         left_scroll.setMinimumWidth(260)
         left_scroll.setMaximumWidth(370)
+        self.left_pane, self.left_scroll = left, left_scroll
         splitter.addWidget(left_scroll)
 
         # ----------------------------------------------------------- center pane
@@ -1047,6 +1048,17 @@ class StudioPage(QWidget):
         self.folder_btn.setEnabled(bool(self.view_dir) or bool(app_settings().get("output_dir")))
         self.result_hint.setText(tr("ui.result_hint_ready") if has_result else tr("ui.result_hint_empty"))
 
+    def showEvent(self, e):  # noqa: N802
+        super().showEvent(e)
+        QTimer.singleShot(0, self._fit_left_column)  # sizes are known once the page is styled and shown
+
+    def _fit_left_column(self):
+        """The left column is at least as wide as its content plus a vertical scroll bar – otherwise
+        the scroll bar (the column is taller than small windows) cuts off its right edge."""
+        need = self.left_pane.minimumSizeHint().width() + self.left_scroll.verticalScrollBar().sizeHint().width() + 4
+        self.left_scroll.setMinimumWidth(max(260, need))
+        self.left_scroll.setMaximumWidth(max(370, need))
+
     def retranslate(self):
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
         self.undo_btn.setToolTip(tr("ui.eraser.undo"))
@@ -1062,8 +1074,7 @@ class StudioPage(QWidget):
         self.drop.update()
         self.open_btn.setText(tr("ui.open"))
         self.samples_btn.setText(tr("ui.samples"))
-        self.edit_btn.setText(tr("ui.edit_image.button"))
-        self.edit_btn.setToolTip(tr("ui.edit_image.tip"))
+        self.edit_btn.setToolTip(tr("ui.edit_image.tip"))  # icon only: the row must fit the narrow column
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(f"param.{key}.label"))
             lbl.setToolTip(tr(f"param.{key}.help"))
@@ -1085,6 +1096,7 @@ class StudioPage(QWidget):
         self.picker.retranslate()
         self.picker.refresh_status(self.params.all_settings())
         self._set_view_method(self.view_method)
+        self._fit_left_column()
         self.stat_time.caption.setText(tr("ui.stat.elapsed"))
         self.stat_eta.caption.setText(tr("ui.stat.eta"))
         self.cancel_btn.setText(tr("ui.cancel"))

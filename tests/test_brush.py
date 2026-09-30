@@ -99,6 +99,7 @@ def test_styles_in_every_export(qapp, tmp_path, style):
     export.export_animation(str(run), str(tmp_path / "a.gif"), size=96, length=1.0, style=style)
     assert (tmp_path / "a.gif").stat().st_size > 0
     (tmp_path / "job").mkdir()
-    (tmp_path / "job" / "job.json").write_text(json.dumps({"runs": [{"seed": 800, "best_svg": str(run / "best_iter.svg")}]}))
+    runs = [{"seed": 800, "best_svg": str(run / "best_iter.svg")}]
+    (tmp_path / "job" / "job.json").write_text(json.dumps({"runs": runs}))
     export.export_matrix_zip(str(tmp_path / "job"), str(tmp_path / "m.zip"), size=64, style=style)
     assert (tmp_path / "m.zip").stat().st_size > 0

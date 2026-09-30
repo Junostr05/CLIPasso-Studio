@@ -15,8 +15,9 @@ SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox
 @pytest.fixture(scope="module")
 def window(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("appdata")
-    os.environ["XDG_DATA_HOME"] = str(tmp)
-    os.environ["LOCALAPPDATA"] = str(tmp)
+    env = pytest.MonkeyPatch()  # undone after the module: later tests use the real model folders
+    env.setenv("XDG_DATA_HOME", str(tmp))
+    env.setenv("LOCALAPPDATA", str(tmp))
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
@@ -35,6 +36,7 @@ def window(tmp_path_factory):
     yield w
     w.controller.shutdown()
     w.close()
+    env.undo()
 
 
 def _job(out, name, method="swiftsketch", edited=False):

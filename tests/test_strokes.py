@@ -46,8 +46,9 @@ def test_sketch_file_prefers_the_edited_sketch(tmp_path):
 @pytest.fixture(scope="module")
 def studio_window(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("appdata")
-    os.environ["XDG_DATA_HOME"] = str(tmp)
-    os.environ["LOCALAPPDATA"] = str(tmp)
+    env = pytest.MonkeyPatch()  # undone after the module: later tests use the real model folders
+    env.setenv("XDG_DATA_HOME", str(tmp))
+    env.setenv("LOCALAPPDATA", str(tmp))
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
@@ -67,6 +68,7 @@ def studio_window(tmp_path_factory):
     yield w
     w.controller.shutdown()
     w.close()
+    env.undo()
 
 
 def test_eraser_in_the_studio(studio_window, tmp_path):

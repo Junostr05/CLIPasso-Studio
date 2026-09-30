@@ -1,22 +1,20 @@
-## CLIPasso Studio 2.2 – no more freezes, a better gallery and export
+## CLIPasso Studio 2.3 – continue where it stopped, touch up, export in style
 
-**Fixed: the app froze and crashed at the end of an export or a model download.** The file was complete, the progress bar full – and then the app hung and closed. Two bugs in the background work were behind it (the finished work was handed back to the interface from the wrong thread, and cleaning up after one export could crash the next one); both are fixed. The last step is now visible as well: “Encoding the GIF …” / “Checking and preparing …” instead of a full bar that seems stuck, and *Cancel* works during exports and downloads.
+**Continue interrupted jobs.** A long run – SceneSketch “Standard” takes about 2 hours on a CPU, ControlSketch hours – no longer starts from zero when the app or the PC is closed, the app crashes or you cancel: the running sketch saves a checkpoint every 30 seconds, finished sketches are kept, and **Continue** (in the gallery, in the studio, or when the app starts) picks up exactly where it stopped.
 
-**Gallery**
-- Click a result to **continue working on it** in the studio – with its image and all settings. Every job now keeps a copy of its input image, so this also works after the original file was moved or deleted.
-- **Delete** results (to the recycle bin), **Show folder**, **favourites** (★) with a favourites filter, sorting by date or best CLIP score, search by image name and method. Right-click a card for the same actions.
+**Touch-ups**
+- **Eraser** in the sketch view: click or drag over strokes to remove them (the stroke under the cursor turns red), with undo / redo (Ctrl+Z / Ctrl+Y). The original sketch stays; exports and the gallery use the touched-up one.
+- **Crop, rotate, flip** the input image (“Edit” next to Open): free, square, 4:3 or 3:4 – saved as a copy, the original file is not changed.
+- **ControlSketch: “Remove background” can be switched off** to sketch the whole picture (like the original, it is on by default).
 
 **Export**
-- GIF, MP4 and the new **animated WebP**: set **how long the drawing takes** (and how long the finished sketch stays) – the frame rate adapts.
-- **GIFs about 2× smaller and 3× faster** to create (a small palette made for line drawings).
-- **Animated WebP**: smaller than GIF, with a transparent background if you like.
-- SceneSketch: **export the whole matrix** as one ZIP – every sketch as SVG and PNG plus an overview sheet.
+- **Brush styles**: plain lines, **ink** (tapered brush-pen strokes), **pencil** (soft graphite lines) or **marker** – for SVG, PNG, the animations and the SceneSketch matrix.
+- **Folder import**: add a whole folder of images to the queue.
+- **Export many at once**: all finished results of the queue, or everything the gallery shows (e.g. your favourites) – SVG, SVG · 1 layer or PNG into one folder.
 
-**Also new**
-- **Keyboard shortcuts**: Ctrl+V pastes an image from the clipboard, Ctrl+O opens one, Ctrl+Enter starts, Ctrl+Shift+Enter adds to the queue, Ctrl+E exports the SVG, Ctrl+1 … 7 switch pages (list on the About page).
-- **Interrupted model downloads continue** where they stopped (also after closing the app); a dropped connection is resumed automatically.
-- **Update notice** when a new version is available (Settings → switch off).
-- **Crash log**: an unexpected error is shown and saved to a log file (Settings → *Open log folder*); after a hard crash the next start tells you where the log is. Please attach it when you report a problem.
+**App**
+- **Updates with one click**: *Install* in the update notice downloads the new version, checks it and installs it (installed app: it restarts by itself; portable: the new exe is saved next to the old one).
+- **Interface size** 90–150 % (Settings → Appearance), for small laptop screens or large monitors.
 
 | File | For whom? |
 |---|---|
@@ -27,6 +25,6 @@
 **Notes**
 - Windows SmartScreen may warn on the first start (“Unknown publisher”) → *More info* → *Run anyway*.
 - CPU times: SwiftSketch ~5 s per sketch; CLIPasso “Fast” 5–15 min; SceneSketch “Fast” ≈ 20 min, “Standard” ≈ 2 h; ControlSketch several hours (GPU: a few minutes).
-- Updating: the installer versions install over the old version; downloaded models and settings are kept.
+- Updating: the installer versions install over the old version; downloaded models and settings are kept. One-click updates start with this version – 2.3 itself is downloaded once more by hand.
 - Licence: CC BY-NC-SA 4.0 – **non-commercial use only**. The downloaded models have their own licences (see THIRD_PARTY_NOTICES.md).
 - Checksums: `SHA256SUMS-CPU.txt` and `SHA256SUMS-GPU.txt`.

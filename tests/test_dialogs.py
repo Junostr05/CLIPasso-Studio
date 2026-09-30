@@ -15,8 +15,9 @@ SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox
 @pytest.fixture(scope="module")
 def qapp(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("appdata")
-    os.environ["XDG_DATA_HOME"] = str(tmp)
-    os.environ["LOCALAPPDATA"] = str(tmp)
+    env = pytest.MonkeyPatch()  # undone after the module: later tests use the real model folders
+    env.setenv("XDG_DATA_HOME", str(tmp))
+    env.setenv("LOCALAPPDATA", str(tmp))
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
@@ -24,6 +25,7 @@ def qapp(tmp_path_factory):
     from clipasso_studio.gui import dialogs
 
     dialogs.wait_for_threads()
+    env.undo()
 
 
 def _wait(app, condition, timeout=30.0):

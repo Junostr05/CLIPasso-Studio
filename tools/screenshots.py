@@ -4,7 +4,8 @@ Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR ...] [--theme dark|lig
                                    [--pages studio,studio:swiftsketch,compare,...]
 
 ``studio:<method>`` shows the studio with that method selected (and the given job of that method,
-if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``). All jobs must be in the same output folder, which the gallery / compare pages then show.
+if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``).
+All jobs must be in the same output folder, which the gallery / compare pages then show.
 """
 
 from __future__ import annotations
