@@ -102,12 +102,15 @@ class ExportDialog(QDialog):
         self.svg_path = svg_path
         self.run_dir = run_dir
         self.default_name = default_name
-        self.setWindowTitle(tr("ui.export_title", fmt=fmt.upper()))
+        # "svg1": all strokes as one path in one layer (for plotters / cutting machines)
+        self.ext = "svg" if fmt == "svg1" else fmt
+        title = tr("ui.export_svg1") if fmt == "svg1" else fmt.upper()
+        self.setWindowTitle(tr("ui.export_title", fmt=title))
         self.setMinimumWidth(420)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(22, 20, 22, 20)
         lay.setSpacing(14)
-        lay.addWidget(label(tr("ui.export_title", fmt=fmt.upper()), "h2"))
+        lay.addWidget(label(tr("ui.export_title", fmt=title), "h2"))
         lay.addWidget(label(tr(f"ui.export_desc.{fmt}"), "muted", wrap=True))
 
         form = QFormLayout()
@@ -123,13 +126,14 @@ class ExportDialog(QDialog):
         form.addRow(tr("ui.stroke_width_scale"), self.width_scale)
         self.background = ColorButton("#FFFFFF" if fmt != "svg" else "transparent", allow_transparent=fmt in
                                       ("svg", "png"))
-        form.addRow(tr("ui.background"), self.background)
+        if fmt != "svg1":
+            form.addRow(tr("ui.background"), self.background)
         self.size = QSpinBox()
         self.size.setRange(64, 8192)
         self.size.setSingleStep(128)
         self.size.setValue(1024 if fmt == "png" else 512)
         self.size.setSuffix(" px")
-        if fmt != "svg":
+        if fmt not in ("svg", "svg1"):
             form.addRow(tr("ui.size"), self.size)
         self.fps = QSpinBox()
         self.fps.setRange(1, 60)
@@ -153,13 +157,14 @@ class ExportDialog(QDialog):
         lay.addLayout(row)
 
     def _save(self):
-        ext = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)"}[self.fmt]
-        start = os.path.join(os.path.expanduser("~"), f"{self.default_name}.{self.fmt}")
+        ext = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)"}[self.ext]
+        suffix = "_1layer" if self.fmt == "svg1" else ""
+        start = os.path.join(os.path.expanduser("~"), f"{self.default_name}{suffix}.{self.ext}")
         dest, _ = QFileDialog.getSaveFileName(self, tr("ui.save_as"), start, ext)
         if not dest:
             return
-        if not dest.lower().endswith("." + self.fmt):
-            dest += "." + self.fmt
+        if not dest.lower().endswith("." + self.ext):
+            dest += "." + self.ext
         stroke = self.stroke.color()
         stroke = None if stroke.lower() == "#000000" else stroke
         bg = self.background.color()
@@ -167,6 +172,8 @@ class ExportDialog(QDialog):
         try:
             if self.fmt == "svg":
                 export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg)
+            elif self.fmt == "svg1":
+                export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
             elif self.fmt == "png":
                 export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg)
             else:
@@ -266,7 +273,7 @@ MODEL_NAMES = {
     "u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)",
     "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
     "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
-    "blip": "BLIP", "sdxl": "Stable Diffusion XL",
+    "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
 }
 
 

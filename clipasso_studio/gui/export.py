@@ -63,6 +63,46 @@ def export_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_s
         f.write(restyle_svg(svg, stroke_color, width_scale, background))
 
 
+def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: float = 1.0) -> str:
+    """All strokes as one path (one sub-path per stroke) in a single layer: no background, no
+    element per stroke. Plotter / cutter software (Cricut, Silhouette, laser tools) imports this as
+    one layer instead of one layer per stroke; Inkscape shows it as the layer "Strokes"."""
+    root = ET.fromstring(svg)
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+    ds, widths = [], []
+    for el in root.iter(f"{ns}path"):
+        d = (el.get("d") or "").strip()
+        if not d:
+            continue
+        ds.append(d)
+        try:
+            widths.append(float(el.get("stroke-width", "1")))
+        except ValueError:
+            pass
+    width = (sorted(widths)[len(widths) // 2] if widths else 1.0) * width_scale
+    w, h = root.get("width", "224"), root.get("height", "224")
+    view = root.get("viewBox") or f"0 0 {w} {h}"
+    ink = "http://www.inkscape.org/namespaces/inkscape"
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="{ink}" version="1.1" '
+        f'width="{w}" height="{h}" viewBox="{view}">\n'
+        '  <g id="strokes" inkscape:groupmode="layer" inkscape:label="Strokes">\n'
+        f'    <path d="{" ".join(ds)}" fill="none" stroke="{stroke_color or "#000000"}" '
+        f'stroke-width="{width:.4g}" stroke-linecap="round" stroke-linejoin="round"/>\n'
+        '  </g>\n'
+        '</svg>\n'
+    )
+
+
+def export_single_layer_svg(src_svg: str, dest: str, stroke_color: str | None = None,
+                            width_scale: float = 1.0) -> None:
+    with open(src_svg, encoding="utf-8") as f:
+        svg = f.read()
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(single_layer_svg(svg, stroke_color, width_scale))
+
+
 def export_png(src_svg: str, dest: str, size: int = 1024, stroke_color: str | None = None,
                width_scale: float = 1.0, background: str | None = "#FFFFFF") -> None:
     with open(src_svg, encoding="utf-8") as f:

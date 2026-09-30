@@ -386,7 +386,9 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     seeds = list(seeds) if seeds is not None else job_seeds(settings)
     reporter.event("job_start", job_dir=job_dir, device=str(device), seeds=seeds, method=method)
     results = []
-    for seed in seeds:
+    if hasattr(impl, "run_cells"):  # SceneSketch: the items depend on each other and run together
+        results = impl.run_cells(settings, target, job_dir, seeds, reporter, control, device)
+    for seed in seeds if not hasattr(impl, "run_cells") else ():
         if control and control.should_stop():
             break
         run_dir = os.path.join(job_dir, run_name_for(target, settings, seed))

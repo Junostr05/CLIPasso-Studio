@@ -274,24 +274,232 @@ CONTROL_PRESETS: dict[str, dict[str, Any]] = {
     "quality": {"num_iter": 3000, "num_sketches": 3},
 }
 
+# ------------------------------------------------------------------------ SceneSketch
+# Options of github.com/yael-vinker/SceneSketch (CLIPascene): config.py / run_sketch.py plus the
+# driver scripts (run_all.py, run_background.py, run_foreground.py, generate_fidelity_levels.py,
+# run_ratio.py). Defaults are the values the scripts pass, not the bare config.py defaults.
+SCENE_LAYERS = ("2", "3", "4", "7", "8", "11")  # CLIP ViT-B/32 layers of the paper's fidelity axis
+SCENE_ORIGINAL_LEVELS = 8  # simplification levels of get_ratios_dict (num_ratios=8)
+# min_div per layer: defaults of run_background.py / run_foreground.py for 2, 8, 11, the values
+# listed in their comments for 3, 4, 7
+SCENE_BACKGROUND_DIVS = {2: 0.35, 3: 0.45, 4: 0.45, 7: 0.45, 8: 0.5, 11: 0.85}
+SCENE_OBJECT_DIVS = {2: 0.4, 3: 0.45, 4: 0.45, 7: 0.4, 8: 0.5, 11: 0.9}
+
+
+def format_scene_divs(divs: dict[int, float]) -> str:
+    return ",".join(f"{k}:{v:g}" for k, v in divs.items())
+
+
+def parse_scene_divs(value: str, defaults: dict[int, float]) -> dict[int, float]:
+    """'2:0.35,8:0.5' -> {layer: step}; layers that are missing (or invalid) keep their default."""
+    out = dict(defaults)
+    for item in str(value or "").replace(";", ",").split(","):
+        layer, sep, div = item.partition(":")
+        try:
+            if sep and float(div) > 0:
+                out[int(layer)] = float(div)
+        except ValueError:
+            continue
+    return out
+
+
+def _scene_simplify(s: dict) -> bool:
+    return int(s.get("simplicity_levels", 0)) > 0
+
+
+SCENE_PARAMS: tuple[Param, ...] = (
+    Param("layers", "2_8_11", "flags", "basics", cli="layers", choices=SCENE_LAYERS, advanced=False),
+    Param("simplicity_levels", 8, "int", "basics", minimum=0, maximum=8, advanced=False),
+    Param("num_strokes", 64, "int", "basics", cli="num_strokes", minimum=4, maximum=256, advanced=False),
+    Param("num_sketches", 2, "int", "basics", cli="num_sketches", minimum=1, maximum=8, advanced=False),
+    Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    Param("split_scene", True, "bool", "image", advanced=False),
+    Param("resize_obj", True, "bool", "image", cli="resize_obj", enabled_if=_on("split_scene")),
+    Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
+    Param("num_iter", 1501, "int", "fidelity", cli="num_iter", minimum=1, maximum=20000, step=100),
+    Param("object_num_iter", 1000, "int", "fidelity", minimum=1, maximum=20000, step=100,
+          enabled_if=_on("split_scene")),
+    Param("eval_interval", 50, "int", "fidelity", cli="eval_interval", minimum=1, maximum=1000),
+    Param("min_eval_iter", 400, "int", "fidelity", cli="min_eval_iter", minimum=0, maximum=20000, step=50),
+    Param("simplify_num_iter", 401, "int", "simplify", minimum=1, maximum=10000, step=50, enabled_if=_scene_simplify),
+    Param("background_divs", format_scene_divs(SCENE_BACKGROUND_DIVS), "text", "simplify",
+          enabled_if=_scene_simplify),
+    Param("object_divs", format_scene_divs(SCENE_OBJECT_DIVS), "text", "simplify",
+          enabled_if=lambda s: _scene_simplify(s) and bool(s.get("split_scene"))),
+    Param("width_loss_weight", 1.0, "float", "simplify", cli="width_loss_weight", minimum=0.0, maximum=10.0, step=0.1,
+          decimals=2, enabled_if=_scene_simplify),
+    Param("width_lr", 0.00005, "float", "simplify", cli="width_lr", minimum=0.0000001, maximum=0.1, step=0.00001,
+          decimals=6, enabled_if=_scene_simplify),
+    Param("gumbel_temp", 0.2, "float", "simplify", cli="gumbel_temp", minimum=0.01, maximum=5.0, step=0.05, decimals=2,
+          enabled_if=_scene_simplify),
+    Param("width", 1.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
+    Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4)),
+    Param("attention_init", True, "bool", "init", cli="attention_init"),
+    Param("saliency_model", "clip", "choice", "init", cli="saliency_model", choices=("clip", "dino"),
+          enabled_if=_on("attention_init")),
+    Param("saliency_clip_model", "ViT-B/32", "choice", "init", cli="saliency_clip_model", choices=CLIP_MODELS,
+          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+    Param("xdog_intersec", True, "bool", "init", cli="xdog_intersec",
+          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+    Param("softmax_temp", 0.3, "float", "init", cli="softmax_temp", minimum=0.01, maximum=10.0, step=0.05,
+          decimals=2, enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+    Param("mask_object_attention", False, "bool", "init", cli="mask_object_attention",
+          enabled_if=lambda s: bool(s.get("attention_init")) and bool(s.get("split_scene"))),
+    Param("clip_conv_loss_type", "L2", "choice", "loss", cli="clip_conv_loss_type", choices=("L2", "Cos", "L1")),
+    Param("num_aug_clip", 4, "int", "loss", cli="num_aug_clip", minimum=0, maximum=32),
+    Param("lr", 0.0001, "float", "optim", cli="lr", minimum=0.0000001, maximum=1.0, step=0.00005, decimals=6),
+    Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
+) + _hardware(multiprocess=False)
+
+SCENE_GROUPS = ("basics", "image", "fidelity", "simplify", "strokes", "init", "loss", "optim", "hardware")
+
+SCENE_EXCLUDED_ARGS: dict[str, str] = {
+    "target": "input image is chosen in the GUI / passed as --target_file to the CLI",
+    "target_file": "input image is chosen in the GUI / passed as --target_file to the CLI",
+    "im_name": "input image is chosen in the GUI (--im_name is accepted by the CLI)",
+    "output_dir": "application setting (output folder)",
+    "output_pref": "application setting (output folder)",
+    "test_name": "run folder names are generated by the app",
+    "object_or_background": "both parts are sketched automatically (see split_scene)",
+    "layer_opt": "replaced by 'layers' (--layer_opt is accepted by the CLI)",
+    "min_div": "per layer in background_divs / object_divs",
+    "divs": "per part: background_divs / object_divs",
+    "mask_object": "set per part like the scripts: 1 for the object, 0 for the background",
+    "num_paths": "alias of num_strokes (run_sketch.py passes --num_strokes as --num_paths)",
+    "num_stages": "not used with the MLP strokes",
+    "num_segments": "the stroke MLP works on single-segment strokes (as in all scripts)",
+    "lr_scheduler": "not used by the original code",
+    "color_lr": "stroke opacity is not optimised with the MLP strokes",
+    "color_vars_threshold": "stroke opacity is not optimised with the MLP strokes",
+    "force_sparse": "stroke opacity is not optimised with the MLP strokes",
+    "batch_size": "always a single image",
+    "image_scale": "fixed at 224 (CLIP input size), as in all scripts",
+    "loss_mask": "not used by the scripts",
+    "dilated_mask": "only used by the unused mask losses",
+    "mask_cls": "only used by the unused mask losses",
+    "mask_attention": "only used by the unused mask losses",
+    "clip_mask_loss": "not used by the scripts",
+    "clip_conv_loss": "always on",
+    "clip_conv_layer_weights": "derived from the fidelity layer like the scripts (objects add layer 4 at 0.5)",
+    "clip_model_name": "ViT-B/32 – the fidelity layers refer to its 12 transformer blocks",
+    "clip_fc_loss_weight": "0 in run_sketch.py (the original loss crashes with other values)",
+    "clip_text_guide": "not supported by the original loss",
+    "text_target": "only used by the unsupported text guidance",
+    "percep_loss": "not supported by the original loss",
+    "perceptual_weight": "not supported by the original loss",
+    "train_with_clip": "not supported by the original loss",
+    "clip_weight": "not supported by the original loss",
+    "start_clip": "not supported by the original loss",
+    "include_target_in_aug": "not used by the SceneSketch loss",
+    "augment_both": "not used by the SceneSketch loss (always both)",
+    "augemntations": "always 'affine' (noise is not used with the MLP strokes)",
+    "noise_thresh": "noise is not used with the MLP strokes",
+    "aug_scale_min": "not used by the original code (crop scale 0.8)",
+    "mlp_train": "always 1 (run_sketch.py)",
+    "width_optim": "set per stage: on for the simplification levels",
+    "optimize_points": "always 1 in the scripts",
+    "switch_loss": "not used by the scripts",
+    "width_loss_type": "L1 (L1_hinge is deprecated in the original)",
+    "path_svg": "managed between the levels like run_ratio.py",
+    "mlp_width_weights_path": "managed between the levels like run_ratio.py",
+    "mlp_points_weights_path": "managed between the levels like run_ratio.py",
+    "load_points_opt_weights": "managed between the levels like run_ratio.py",
+    "width_weights_lst": "computed from the fidelity sketch like run_ratio.py",
+    "ratio_loss": "computed from the fidelity sketch like run_ratio.py",
+    "gradnorm": "set per stage like the scripts",
+    "multiprocess": "not offered (every process would hold its own CLIP model)",
+    "use_gpu": "replaced by 'device'",
+    "cpu": "replaced by 'device' (-cpu is accepted by the CLI)",
+    "colab": "Jupyter/Colab display only",
+    "display": "Jupyter display only; the GUI shows live progress",
+    "display_logs": "Jupyter display only",
+    "use_wandb": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_user": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_name": "Weights & Biases online logging is not part of the desktop app",
+    "wandb_project_name": "Weights & Biases online logging is not part of the desktop app",
+    "run_u2net": "the object mask always comes from U2Net",
+    "top_path": "input image is chosen in the GUI",
+}
+
+# Defaults that differ from config.py because the scripts pass other values (documented in the README).
+SCENE_DEFAULT_DEVIATIONS = {
+    "num_strokes": "64 like all scripts (config.py: 16)",
+    "num_sketches": "2 like generate_fidelity_levels.py / run_ratio.py (run_sketch.py: 1)",
+    "num_iter": "1501 like generate_fidelity_levels.py for the background",
+    "lr": "1e-4 like run_sketch.py (config.py: 1.0)",
+    "width_lr": "5e-5 like run_sketch.py (config.py: 1e-4)",
+    "save_interval": "100 like run_sketch.py (config.py: 10)",
+    "eval_interval": "50 like generate_fidelity_levels.py (config.py: 20)",
+    "min_eval_iter": "400 like generate_fidelity_levels.py (config.py: 100)",
+    "resize_obj": "1 like run_foreground.py for the object (config.py: 0)",
+    "width_loss_weight": "1 like run_ratio.py (config.py: 0)",
+}
+
+SCENE_PRESETS: dict[str, dict[str, Any]] = {
+    "fast": {"layers": "8", "simplicity_levels": 0, "num_sketches": 1, "num_iter": 501, "object_num_iter": 500,
+             "min_eval_iter": 300},
+    "standard": {"layers": "8", "simplicity_levels": 4, "num_sketches": 1, "num_iter": 1001, "object_num_iter": 800,
+                 "min_eval_iter": 400, "simplify_num_iter": 401},
+    "quality": {"layers": "2_8_11", "simplicity_levels": 8, "num_sketches": 2, "num_iter": 1501,
+                "object_num_iter": 1000, "min_eval_iter": 400, "simplify_num_iter": 401},
+}
+
+
+def scene_layers(settings: dict) -> list[int]:
+    layers = sorted({int(p) for p in str(settings.get("layers", "")).split("_") if p.isdigit()})
+    return layers or [8]
+
+
+def scene_cell_id(layer: int, level: int) -> int:
+    """Items of a SceneSketch job: one per (fidelity layer, simplicity level)."""
+    return int(layer) * 100 + int(level)
+
+
+def scene_cells(settings: dict) -> list[int]:
+    levels = int(settings.get("simplicity_levels", 0))
+    return [scene_cell_id(layer, level) for layer in scene_layers(settings) for level in range(levels + 1)]
+
+
+def scene_cell_iterations(settings: dict, cell: int) -> int:
+    layer, level = divmod(int(cell), 100)
+    n = int(settings.get("num_sketches", 1))
+    split = bool(settings.get("split_scene", True))
+    if level == 0:
+        obj = int(settings.get("object_num_iter", 1000))
+        if layer < 8:
+            obj = max(int(round(obj * 0.6)), 1)
+        return n * (int(settings.get("num_iter", 1501)) + (obj if split else 0))
+    return n * (2 if split else 1) * int(settings.get("simplify_num_iter", 401))
+
+
+def scene_run_name(target: str, layer: int, level: int) -> str:
+    import os
+
+    name = os.path.splitext(os.path.basename(target))[0]
+    return f"{name}_scenesketch_L{layer}_level{level}"
+
+
 # ---------------------------------------------------------------------------- methods
-METHODS = ("clipasso", "swiftsketch", "controlsketch")
+METHODS = ("clipasso", "swiftsketch", "controlsketch", "scenesketch")
 DEFAULT_METHOD = "clipasso"
 
 METHOD_PARAMS: dict[str, tuple[Param, ...]] = {
     "clipasso": PARAMS,
     "swiftsketch": SWIFT_PARAMS,
     "controlsketch": CONTROL_PARAMS,
+    "scenesketch": SCENE_PARAMS,
 }
 METHOD_GROUPS: dict[str, tuple[str, ...]] = {
     "clipasso": GROUPS,
     "swiftsketch": SWIFT_GROUPS,
     "controlsketch": CONTROL_GROUPS,
+    "scenesketch": SCENE_GROUPS,
 }
 METHOD_PRESETS: dict[str, dict[str, dict[str, Any]]] = {
     "clipasso": PRESETS,
     "swiftsketch": SWIFT_PRESETS,
     "controlsketch": CONTROL_PRESETS,
+    "scenesketch": SCENE_PRESETS,
 }
 _BY_KEY: dict[str, dict[str, Param]] = {m: {p.key: p for p in ps} for m, ps in METHOD_PARAMS.items()}
 
@@ -328,6 +536,8 @@ def num_strokes(settings: dict[str, Any]) -> int:
         return int(settings.get("num_paths", 16))
     if method == "controlsketch":
         return int(settings.get("num_strokes", 32))
+    if method == "scenesketch":
+        return int(settings.get("num_strokes", 64))
     return 32  # SwiftSketch checkpoints are trained for 32 strokes
 
 

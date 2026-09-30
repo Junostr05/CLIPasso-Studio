@@ -37,7 +37,7 @@ def _ensure_streams(log_name: str) -> None:
 
 
 def _selftest_diffusion_methods(out_dir: str) -> dict:
-    """SwiftSketch and ControlSketch end to end with tiny random networks (no downloads) in this process;
+    """SwiftSketch, ControlSketch and SceneSketch end to end with tiny random networks (no downloads);
     checks that every diffusers / transformers class the methods load is importable."""
     from . import paths
     from . import settings_schema as schema
@@ -67,6 +67,18 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
     finally:
         sds.load_sd15 = load_sd15
         controlsketch.release_models()
+    from .engine.methods.scenesketch import lama
+
+    load_lama = lama.load_lama
+    lama.load_lama = tiny.tiny_lama
+    try:
+        s = {**schema.default_settings("scenesketch"), "layers": "8", "simplicity_levels": 1, "num_sketches": 1,
+             "num_iter": 4, "object_num_iter": 4, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
+             "save_interval": 2, "num_strokes": 8}
+        results["scenesketch"] = pipeline.run_job(s, str(paths.resource("samples", "ballerina.jpg")), out_dir,
+                                                  pipeline.PrintReporter())
+    finally:
+        lama.load_lama = load_lama
     # classes that are only loaded with downloaded models
     from diffusers import DDIMScheduler, StableDiffusionXLPipeline  # noqa: F401
     from transformers import (BlipForConditionalGeneration, BlipProcessor, CLIPTextModel,  # noqa: F401

@@ -76,7 +76,12 @@ class MainWindow(QMainWindow):
         brand = label("CLIPasso", "faint")
         brand.setAlignment(Qt.AlignCenter)
         sv.addWidget(brand)
-        sv.addSpacing(14)
+        self.byline = label("By: Junostr05", "faint")  # app idea, GUI vision and UI/UX direction
+        self.byline.setObjectName("Byline")
+        self.byline.setAlignment(Qt.AlignCenter)
+        self.byline.setStyleSheet("font-size: 9px;")
+        sv.addWidget(self.byline)
+        sv.addSpacing(12)
         self.nav_group = QButtonGroup(self)
         self.nav_buttons: dict[str, QToolButton] = {}
         for key, ic in NAV:

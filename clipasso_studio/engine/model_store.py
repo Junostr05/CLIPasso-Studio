@@ -4,7 +4,8 @@ All checkpoints are stored as plain ``state_dict`` files (no TorchScript) so the
 ``torch.load(weights_only=True)`` inside the frozen app. U2Net, DINO and VGG are stored
 in float16 to keep the executable small and converted back to float32 when loaded.
 SwiftSketch checkpoints are downloaded from the authors' Google Drive on first use and
-stored as ``{"args": <args.json>, "state_dict": ...}`` in float32.
+stored as ``{"args": <args.json>, "state_dict": ...}`` in float32; the LaMa inpainting network of
+SceneSketch comes as TorchScript and is converted to a float16 state dict.
 """
 
 from __future__ import annotations
@@ -227,6 +228,19 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         bundled=False,
         kind="swiftsketch",
     ),
+    # LaMa (big-lama, Apache-2.0) for the SceneSketch background; the file is the TorchScript export
+    # distributed by IOPaint / lama-cleaner, stored as a float16 state dict for the port in
+    # engine/methods/scenesketch/lama.py
+    ModelSpec(
+        key="lama",
+        filename="scenesketch/big-lama_fp16.pt",
+        urls=("https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt",),
+        download_sha256="344c77bbcb158f17dd143070d1e789f38a66c04202311ae3a258ef66667a9ea9",
+        download_size=205_669_692,
+        stored_size_mb=103,
+        bundled=False,
+        kind="lama",
+    ),
     ModelSpec(
         key="vgg16",
         filename="vgg/vgg16_features_fp16.pt",
@@ -406,6 +420,9 @@ def convert(spec: ModelSpec, raw: Path, dest: Path) -> None:
         state = _half({k: v for k, v in state.items() if k.startswith("features.")})
     elif spec.kind == "swiftsketch":
         state = _swiftsketch_checkpoint(raw)
+    elif spec.kind == "lama":
+        model = torch.jit.load(str(raw), map_location="cpu")
+        state = _half({k[len("generator."):]: v for k, v in model.state_dict().items() if k.startswith("generator.")})
     else:
         raise ValueError(spec.kind)
     tmp = dest.with_suffix(".tmp")

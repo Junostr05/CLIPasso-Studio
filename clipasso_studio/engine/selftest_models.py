@@ -72,3 +72,11 @@ def tiny_sd15_loader(condition: str, device):
     unet, controlnet, vae = tiny_sd()
     return (unet.to(device), controlnet.to(device), vae.to(device), TinyTokenizer(),
             tiny_text_encoder().to(device), alphas_cumprod_from_config({}))
+
+
+def tiny_lama(device="cpu"):
+    """LaMa generator with the big-lama structure but 8 base channels and one residual block."""
+    from .methods.scenesketch.lama import LamaGenerator
+
+    torch.manual_seed(0)
+    return LamaGenerator(ngf=8, n_blocks=1).eval().to(device)

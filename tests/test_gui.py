@@ -72,6 +72,42 @@ def test_language_setting_offers_auto(window):
     assert "(" in combo.itemText(0)  # names the detected language
 
 
+def test_scenesketch_in_the_studio(window):
+    from clipasso_studio.gui.widgets.canvas import MatrixView
+
+    studio = window.studio
+    studio.params.set_method("scenesketch")
+    assert studio.params.method() == "scenesketch"
+    assert studio.params.settings()["layers"] == "8"  # starts with the standard preset, not the 3 x 9 matrix
+    assert not studio.modes._buttons["matrix"].isHidden()
+    assert studio.modes._buttons["condition"].text() == "Background" or studio.modes._buttons[
+        "condition"].text() == "Hintergrund"
+    assert studio.series_btn.isHidden()
+    studio.modes.set_current("matrix")
+    studio._mode_changed("matrix")
+    assert studio.matrix.isVisibleTo(studio) and not studio.canvas.isVisibleTo(studio)
+    studio.params.set_method("clipasso")
+    assert studio.modes.current() == "sketch" and studio.modes._buttons["matrix"].isHidden()
+    assert studio.canvas.isVisibleTo(studio)
+
+    m = MatrixView()
+    m.resize(300, 400)
+    m.set_layout([2, 8], 2)
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
+           '<path d="M 10 10 L 200 200" stroke="black" fill="none"/></svg>')
+    m.set_cell(801, svg)
+    clicked = []
+    m.clicked.connect(clicked.append)
+    center = m._cell_rect(1, 1).center()
+    assert m._cell_at(center) == 801 and m._cell_at(m._cell_rect(0, 2).center()) == 202
+    m.grab()  # paints without errors
+
+
+def test_single_layer_export_button(window):
+    assert "svg1" in window.studio.export_btns
+    assert window.studio.export_btns["svg1"].text() in ("SVG · 1 layer", "SVG · 1 Ebene")
+
+
 def test_pages_switch(window):
     for key in ("compare", "queue", "gallery", "models", "settings", "about", "studio"):
         window.show_page(key)

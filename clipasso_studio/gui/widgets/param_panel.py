@@ -384,6 +384,10 @@ class ParamPanel(QWidget):
         super().__init__(parent)
         self._method = schema.DEFAULT_METHOD
         self._per_method = {m: schema.normalize(schema.default_settings(m)) for m in schema.METHODS}
+        # SceneSketch's paper settings (the full 3 x 9 matrix) take hours even on a GPU: start with its
+        # standard preset (one column); the paper settings are the "Quality" preset
+        self._per_method["scenesketch"] = schema.normalize(
+            schema.apply_preset(schema.default_settings("scenesketch"), "standard"))
         self._settings = dict(self._per_method[self._method])
         self._preset = "standard"
         self._applying = False

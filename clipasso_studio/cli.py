@@ -3,12 +3,13 @@
     CLIPassoStudio.exe --cli --target_file camel.png --num_strokes 16 --mask_object 1
     CLIPassoStudio.exe --cli --method swiftsketch --input_data camel.png --guidance_param 2.5
     CLIPassoStudio.exe --cli --method controlsketch --target camel.png --condition depth
+    CLIPassoStudio.exe --cli --method scenesketch --im_name ballerina --layers 2,8,11
 
 ``--method`` (default ``clipasso``) selects the method; every argument of the original
-``run_object_sketching.py`` / ``config.py`` (CLIPasso), ``generate.py`` (SwiftSketch) and
-``ControlSketch/config.py`` is accepted (except the Jupyter / Weights & Biases ones, which are
-ignored), so commands from the original READMEs keep working. ``--method X --help`` lists the
-options of method X.
+``run_object_sketching.py`` / ``config.py`` (CLIPasso), ``generate.py`` (SwiftSketch),
+``ControlSketch/config.py`` and the SceneSketch scripts is accepted (except the Jupyter / Weights &
+Biases ones, which are ignored), so commands from the original READMEs keep working.
+``--method X --help`` lists the options of method X.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ METHOD_TITLES = {
     "clipasso": "CLIPasso: semantically-aware object sketching",
     "swiftsketch": "SwiftSketch: a diffusion model for image-to-vector sketch generation",
     "controlsketch": "ControlSketch: SDS-based vector sketching with Stable Diffusion + ControlNet",
+    "scenesketch": "SceneSketch (CLIPascene): scene sketching with different types and levels of abstraction",
 }
 
 # arguments of the original scripts that are accepted for compatibility and ignored
@@ -38,6 +40,11 @@ _IGNORED = {
                       ("--batch_size", int),
                       ("--use_wandb", int), ("--wandb_user", str), ("--wandb_name", str),
                       ("--wandb_project_name", str), ("--experiment_name", str)),
+    "scenesketch": (("--output_pref", str), ("--test_name", str), ("--object_or_background", str),
+                    ("--min_div", float), ("--divs", str), ("--mask_object", int), ("--mlp_train", int),
+                    ("--width_optim", int), ("--gradnorm", int), ("--run_u2net", int), ("--top_path", str),
+                    ("--use_gpu", int), ("--multiprocess", int), ("--display_logs", int), ("--use_wandb", int),
+                    ("--wandb_user", str), ("--wandb_name", str), ("--wandb_project_name", str)),
 }
 
 
@@ -72,7 +79,7 @@ def build_parser(method: str = schema.DEFAULT_METHOD) -> argparse.ArgumentParser
     parser = argparse.ArgumentParser(prog="CLIPassoStudio --cli", description=f"{METHOD_TITLES[method]} (CLI mode)")
     parser.add_argument("--method", choices=schema.METHODS, default=method,
                         help="sketching method (default: clipasso); --method X --help lists its options")
-    parser.add_argument("--target_file", "--target", "--input_data", dest="target_file", required=True,
+    parser.add_argument("--target_file", "--target", "--input_data", "--im_name", dest="target_file", required=True,
                         help="input image (path, or a file name inside ./target_images)")
     parser.add_argument("--output_dir", default=None, help="output folder (default: ./output_sketches)")
     parser.add_argument("-cpu", "--cpu", action="store_true", help="force CPU")
@@ -86,6 +93,10 @@ def build_parser(method: str = schema.DEFAULT_METHOD) -> argparse.ArgumentParser
         parser.add_argument("--cuda", type=str, default=None, help=argparse.SUPPRESS)
     if method == "controlsketch":
         parser.add_argument("--use_cpu", type=int, default=None, help="1 = force CPU")
+    if method == "scenesketch":
+        parser.add_argument("--num_paths", type=int, dest="num_strokes", help="alias of --num_strokes")
+        parser.add_argument("--layer_opt", type=int, default=None,
+                            help="a single fidelity layer (like generate_fidelity_levels.py / run_ratio.py)")
     for p in schema.params_for(method):
         if method == "clipasso" and p.key == "num_paths":
             parser.add_argument("--num_paths", type=int, dest="num_paths")
@@ -111,6 +122,8 @@ def settings_from_args(ns: argparse.Namespace) -> dict:
             settings["gpunum"] = int(value)
             continue
         settings[p.key] = schema.coerce(p, value)
+    if getattr(ns, "layer_opt", None) is not None:
+        settings["layers"] = schema.coerce(schema.param(method, "layers"), str(ns.layer_opt))
     force_cpu = ns.cpu or getattr(ns, "use_gpu", None) == 0 or getattr(ns, "use_cpu", None) == 1
     if str(getattr(ns, "cuda", None)).lower() in ("0", "false", "no"):
         force_cpu = True
@@ -122,9 +135,10 @@ def settings_from_args(ns: argparse.Namespace) -> dict:
 def resolve_target(name: str) -> str:
     if os.path.isfile(name):
         return name
-    candidate = os.path.join(os.getcwd(), "target_images", name)
-    if os.path.isfile(candidate):
-        return candidate
+    for candidate in (os.path.join(os.getcwd(), "target_images", name),
+                      os.path.join(os.getcwd(), "target_images", "scene", f"{name}.png")):  # SceneSketch --im_name
+        if os.path.isfile(candidate):
+            return candidate
     raise SystemExit(f"{name} does not exist!")
 
 

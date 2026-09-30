@@ -4,7 +4,7 @@ Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR ...] [--theme dark|lig
                                    [--pages studio,studio:swiftsketch,compare,...]
 
 ``studio:<method>`` shows the studio with that method selected (and the given job of that method,
-if any). All jobs must be in the same output folder, which the gallery / compare pages then show.
+if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``). All jobs must be in the same output folder, which the gallery / compare pages then show.
 """
 
 from __future__ import annotations
@@ -81,7 +81,8 @@ def main() -> int:
         if i >= len(pages):
             app.quit()
             return
-        page, _, method = pages[i].partition(":")
+        page, _, rest = pages[i].partition(":")
+        method, _, view = rest.partition(":")
         name = pages[i].replace(":", "_")
         w.show_page(page)
         if page == "studio":
@@ -91,7 +92,8 @@ def main() -> int:
                 w.studio.image_path = w.studio.image_path  # keep the job's image for the compare page
             else:
                 w.studio.params.set_method(method)
-            w.studio.modes.set_current("sketch")
+            w.studio.modes.set_current(view or "sketch")
+            w.studio._mode_changed(view or "sketch")
             w.studio.params.expand_all(False)
             for sec in ("basics", "image", "init", "diffusion", "sds"):
                 if sec in w.studio.params.sections and (sec != "sds" or method == "controlsketch"):

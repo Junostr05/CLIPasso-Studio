@@ -19,7 +19,7 @@ from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
-from ..widgets.canvas import IMAGE_FILTER, ImageDropZone, LossChart, SeedThumb, SketchCanvas
+from ..widgets.canvas import IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb, SketchCanvas
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel
@@ -142,6 +142,11 @@ class StudioPage(QWidget):
             b.clicked.connect(lambda _=False, f=fmt: self.export(f))
             grid.addWidget(b, i // 2, i % 2)
             self.export_btns[fmt] = b
+        # extra: plain single-layer SVG (one path with all strokes) for plotters / cutting machines
+        b = button("", "pen-tool", "ghost")
+        b.clicked.connect(lambda _=False: self.export("svg1"))
+        grid.addWidget(b, 2, 0, 1, 2)
+        self.export_btns["svg1"] = b
         self.result_card.body.addLayout(grid)
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self.open_folder)
@@ -179,6 +184,11 @@ class StudioPage(QWidget):
         center.body.addWidget(self.banner)
         self.canvas = SketchCanvas()
         center.body.addWidget(self.canvas, 1)
+        self.matrix = MatrixView()  # SceneSketch: all cells of the abstraction matrix
+        self.matrix.clicked.connect(self.select_seed)
+        self.matrix.activated.connect(self._open_cell)
+        self.matrix.setVisible(False)
+        center.body.addWidget(self.matrix, 1)
 
         self.status = label("", "h3")
         status_row = QHBoxLayout()
@@ -343,7 +353,7 @@ class StudioPage(QWidget):
         self.picker.refresh_status(self.params.all_settings())
         self._sync_quick()
         self.reuse_btn.setVisible(method == "clipasso")
-        self.series_btn.setVisible(method != "swiftsketch")
+        self.series_btn.setVisible(method in ("clipasso", "controlsketch"))
         if not self.controller.is_busy() and not self.view_dir:
             self._set_view_method(method)
         self._update_banner()
@@ -359,12 +369,17 @@ class StudioPage(QWidget):
         self.chart.setVisible(method != "swiftsketch")
         self.chart.empty_text_key = "ui.loss_chart_empty" if loss else "ui.score_chart_empty"
         self.chart.update()
+        scene = method == "scenesketch"
         self.modes.set_visible("attention", method != "swiftsketch")
-        self.modes.set_visible("condition", method == "controlsketch")
-        if self.modes.current() in ("attention", "condition") and not (
-                method == "controlsketch" or (method == "clipasso" and self.modes.current() == "attention")):
+        self.modes.set_visible("condition", method in ("controlsketch", "scenesketch"))
+        self.modes.set_text("condition", tr("ui.mode.background") if scene else tr("ui.mode.condition"))
+        self.modes.set_visible("matrix", scene)
+        current = self.modes.current()
+        allowed = {"sketch", "compare", "mask"} | ({"attention"} if method != "swiftsketch" else set()) | (
+            {"condition"} if method in ("controlsketch", "scenesketch") else set()) | ({"matrix"} if scene else set())
+        if current not in allowed:
             self.modes.set_current("sketch")
-            self.canvas.set_mode("sketch")
+            self._mode_changed("sketch")
 
     def _update_banner(self):
         missing = self.params.missing_models()
@@ -434,6 +449,7 @@ class StudioPage(QWidget):
     # ================================================================ events
     def _reset_view(self):
         self.canvas.clear()
+        self.matrix.clear()
         self.chart.reset(1)
         for t in self.thumbs.values():
             t.setParent(None)
@@ -459,6 +475,9 @@ class StudioPage(QWidget):
                 continue
             t = SeedThumb(seed)
             t.clicked.connect(self.select_seed)
+            if self.view_method == "scenesketch":
+                t.set_caption(self._cell_label(seed))
+                t.setToolTip(tr("ui.cell_tip", layer=seed // 100, level=seed % 100))
             self.thumb_row.insertWidget(self.thumb_row.count() - 1, t)
             self.thumbs[seed] = t
         self.thumb_area.setVisible(len(self.thumbs) > 1)
@@ -469,6 +488,7 @@ class StudioPage(QWidget):
         if seed != self.selected_seed and self.controller.is_busy():
             self.chart.reset(self.chart.total)  # the chart shows the selected sketch only
         self.selected_seed = seed
+        self.matrix.set_selected(seed)
         for s, t in self.thumbs.items():
             t.set_selected(s == seed)
         self.canvas.set_svg(self.seed_svgs.get(seed))
@@ -487,6 +507,7 @@ class StudioPage(QWidget):
         self.canvas.set_input(self._square_input(QPixmap(job.target)))
         self._set_view_method(schema.method_of(job.settings))
         self.chart.reset(methods_ui.iterations(job.settings))
+        self._setup_matrix(job.settings)
         self._ensure_thumbs(job.seeds)
         self._set_status("ui.status.starting")
         self._update_buttons()
@@ -519,6 +540,8 @@ class StudioPage(QWidget):
             self.seed_svgs[seed] = data["svg"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
+            if self.view_method == "scenesketch":
+                self.matrix.set_cell(seed, data["svg"])
             if seed == self.selected_seed:
                 self.canvas.set_svg(data["svg"])
         elif kind == "seed_done":
@@ -528,7 +551,9 @@ class StudioPage(QWidget):
                 self.seed_scores[seed] = data["clip_score"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
-                self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score")))
+                self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score"), seed))
+            if self.view_method == "scenesketch":
+                self.matrix.set_cell(seed, data["svg"])
             if seed == self.selected_seed:
                 self.canvas.set_svg(data["svg"])
             if not methods_ui.uses_loss(self.view_method) and self.seed_scores:
@@ -545,6 +570,7 @@ class StudioPage(QWidget):
                 t.set_best(s == self.best_seed)
                 if s == self.best_seed:
                     t.set_caption(f"★ {t.caption.text()}")
+            self.matrix.set_best(self.best_seed)
             if self.best_seed is not None:
                 self.select_seed(self.best_seed)
         elif kind == "warning":
@@ -570,7 +596,7 @@ class StudioPage(QWidget):
         self.stat_time.value.setText(imaging.eta_string(data["elapsed"]))
         remaining_seeds = sum(1 for s in job.seeds if job.seed_progress.get(s, 0) < 1.0) - 1
         eta = data["eta"]
-        if not job.settings.get("multiprocess") and remaining_seeds > 0:
+        if not data.get("eta_job") and not job.settings.get("multiprocess") and remaining_seeds > 0:
             eta += remaining_seeds * data["elapsed"] / max(it, 1) * total
         self.stat_eta.value.setText(imaging.eta_string(eta))
         self.chart.total = total
@@ -590,7 +616,8 @@ class StudioPage(QWidget):
             self._set_status("ui.status.paused")
         else:
             n = job.seeds.index(data["seed"]) + 1 if data["seed"] in job.seeds else 1
-            self._set_status("ui.status.optimizing", n=n, total=len(job.seeds))
+            part = data.get("part")
+            self._set_status(f"ui.status.scene_{part}" if part else "ui.status.optimizing", n=n, total=len(job.seeds))
 
     def _job_finished(self, job: QueuedJob):
         if job is not self.view_job:
@@ -640,6 +667,7 @@ class StudioPage(QWidget):
             self.drop.set_image(src)
             self.canvas.set_input(self._square_input(QPixmap(src)))
         runs = summary.get("runs", [])
+        self._setup_matrix(summary.get("settings") or {})
         self._ensure_thumbs([r["seed"] for r in runs])
         for r in runs:
             seed = r["seed"]
@@ -650,17 +678,23 @@ class StudioPage(QWidget):
             except OSError:
                 continue
             self.thumbs[seed].set_svg(self.seed_svgs[seed])
-            self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score")))
+            self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score"), seed))
+            if self.view_method == "scenesketch":
+                self.matrix.set_cell(seed, self.seed_svgs[seed])
             if r.get("clip_score") is not None:
                 self.seed_scores[seed] = r["clip_score"]
             cond = next((os.path.join(r["run_dir"], f) for f in os.listdir(r["run_dir"])
                          if f.endswith("_condition.png")), None) if os.path.isdir(r["run_dir"]) else None
+            if self.view_method == "scenesketch" and os.path.isfile(os.path.join(job_dir, "background.png")):
+                cond = os.path.join(job_dir, "background.png")
             if cond:
                 self.canvas.set_condition(QPixmap(cond))
             attn = os.path.join(r["run_dir"], "attention_map.png")
             if os.path.isfile(attn):
                 self.seed_attn[seed] = QPixmap(attn)
             mask = os.path.join(r["run_dir"], "mask.png")
+            if not os.path.isfile(mask):
+                mask = os.path.join(job_dir, "mask.png")
             if os.path.isfile(mask):
                 self.canvas.set_mask(QPixmap(mask))
             if r["run_name"] == summary.get("best_run"):
@@ -669,6 +703,7 @@ class StudioPage(QWidget):
             t.set_best(s == self.best_seed)
             if s == self.best_seed:
                 t.set_caption(f"★ {t.caption.text()}")
+        self.matrix.set_best(self.best_seed)
         if self.best_seed is not None:
             self.select_seed(self.best_seed)
         if isinstance(summary.get("settings"), dict):
@@ -807,7 +842,8 @@ class StudioPage(QWidget):
         self._status_key = (key, fmt)
         self.status.setText(tr(key, **fmt))
         busy = key in ("ui.status.optimizing", "ui.status.loading", "ui.status.init", "ui.status.starting",
-                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models")
+                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models") or \
+            key.startswith("ui.status.scene_")
         self.stage_badge.setVisible(busy)
         if busy:
             self.stage_badge.setText(tr("ui.live"))
@@ -829,12 +865,33 @@ class StudioPage(QWidget):
         if s.get("multiprocess") and sketches > 1:
             sketches = math.ceil(sketches / min(sketches, 4)) * 1.6
         secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
+        if method == "scenesketch":
+            secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * len(
+                schema.scene_cells(s))
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))
 
-    def _seed_caption(self, best_loss, clip_score) -> str:
+    def _seed_caption(self, best_loss, clip_score, seed: int | None = None) -> str:
+        if self.view_method == "scenesketch" and seed is not None:
+            score = f"  {clip_score:.0f}" if clip_score is not None else ""
+            return self._cell_label(seed) + score
         if methods_ui.uses_loss(self.view_method) or clip_score is None:
             return f"{best_loss:.3f}" if best_loss is not None else ""
         return f"{clip_score:.1f}"
+
+    @staticmethod
+    def _cell_label(cell: int) -> str:
+        return tr("ui.cell_caption", layer=cell // 100, level=cell % 100)
+
+    def _setup_matrix(self, settings: dict):
+        if schema.method_of(settings) == "scenesketch":
+            self.matrix.set_layout(schema.scene_layers(settings), int(settings.get("simplicity_levels", 0)))
+        else:
+            self.matrix.clear()
+
+    def _open_cell(self, cell: int):
+        self.select_seed(cell)
+        self.modes.set_current("sketch")
+        self._mode_changed("sketch")
 
     def _update_buttons(self):
         busy = self.controller.is_busy()
@@ -873,6 +930,8 @@ class StudioPage(QWidget):
             lbl.setText(tr(f"param.{key}.label"))
             lbl.setToolTip(tr(f"param.{key}.help"))
         self.result_title.setText(tr("ui.result"))
+        self.export_btns["svg1"].setText(tr("ui.export_svg1"))
+        self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
         self.folder_btn.setText(tr("ui.open_folder"))
         self.reuse_btn.setText(tr("ui.use_as_initial"))
         self.reuse_btn.setToolTip(tr("ui.use_as_initial_tip"))
@@ -902,6 +961,8 @@ class StudioPage(QWidget):
 
     def _mode_changed(self, mode: str):
         self.canvas.set_mode(mode)
+        self.canvas.setVisible(mode != "matrix")
+        self.matrix.setVisible(mode == "matrix")
 
     def sizeHint(self):  # noqa: N802
         return QSize(1400, 860)

@@ -42,7 +42,7 @@ class SketchCanvas(QWidget):
     In "compare" mode a draggable divider reveals the photo on the left and the sketch on the right.
     """
 
-    MODES = ("sketch", "compare", "attention", "mask", "condition")
+    MODES = ("sketch", "compare", "attention", "mask", "condition", "matrix")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -171,6 +171,117 @@ class SketchCanvas(QWidget):
         rect = self._paper_rect()
         self._split = min(max((x - rect.left()) / max(rect.width(), 1), 0.0), 1.0)
         self.update()
+
+
+class MatrixView(QWidget):
+    """SceneSketch's abstraction matrix: one column per fidelity layer, one row per simplicity level.
+    Cells are identified like the job items (``layer * 100 + level``); a click selects one."""
+
+    clicked = Signal(int)
+    activated = Signal(int)  # double click
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(200, 200)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.layers: list[int] = []
+        self.levels = 0
+        self._renderers: dict[int, QSvgRenderer] = {}
+        self.selected: int | None = None
+        self.best: int | None = None
+        self.setCursor(Qt.PointingHandCursor)
+
+    def set_layout(self, layers: list[int], levels: int):
+        self.layers, self.levels = list(layers), int(levels)
+        self._renderers.clear()
+        self.selected = self.best = None
+        self.update()
+
+    def clear(self):
+        self.set_layout([], 0)
+
+    def set_cell(self, cell: int, svg: str | None):
+        r = svg_renderer(svg)
+        if r:
+            self._renderers[int(cell)] = r
+        self.update()
+
+    def set_selected(self, cell: int | None):
+        self.selected = cell
+        self.update()
+
+    def set_best(self, cell: int | None):
+        self.best = cell
+        self.update()
+
+    def _geometry(self):
+        cols, rows = max(len(self.layers), 1), self.levels + 1
+        head, side, gap = 22, 26, 8
+        size = min((self.width() - side - gap * (cols + 1)) / cols, (self.height() - head - gap * (rows + 1)) / rows)
+        size = max(size, 16)
+        total_w = side + cols * size + (cols + 1) * gap
+        x0 = (self.width() - total_w) / 2 + side
+        y0 = head + (self.height() - head - rows * size - (rows + 1) * gap) / 2
+        return x0, y0, size, gap
+
+    def _cell_rect(self, col: int, row: int) -> QRectF:
+        x0, y0, size, gap = self._geometry()
+        return QRectF(x0 + gap + col * (size + gap), y0 + gap + row * (size + gap), size, size)
+
+    def paintEvent(self, event):  # noqa: N802
+        pal = theme.current()
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        if not self.layers:
+            p.setPen(QColor(pal.faint))
+            p.drawText(self.rect(), Qt.AlignCenter | Qt.TextWordWrap, tr("ui.matrix.empty"))
+            p.end()
+            return
+        x0, y0, size, gap = self._geometry()
+        p.setPen(QColor(pal.muted))
+        for c, layer in enumerate(self.layers):
+            r = self._cell_rect(c, 0)
+            p.drawText(QRectF(r.left(), y0 - 20, r.width(), 18), Qt.AlignCenter, f"L{layer}")
+        for row in range(self.levels + 1):
+            r = self._cell_rect(0, row)
+            p.drawText(QRectF(r.left() - 30, r.top(), 24, r.height()), Qt.AlignRight | Qt.AlignVCenter, str(row))
+        for c, layer in enumerate(self.layers):
+            for row in range(self.levels + 1):
+                cell = layer * 100 + row
+                r = self._cell_rect(c, row)
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(pal.paper))
+                p.drawRoundedRect(r, 6, 6)
+                renderer = self._renderers.get(cell)
+                if renderer:
+                    renderer.render(p, r.adjusted(2, 2, -2, -2))
+                if cell in (self.selected, self.best):
+                    color = pal.success if cell == self.best and cell != self.selected else pal.accent
+                    p.setPen(QPen(QColor(color), 2))
+                    p.setBrush(Qt.NoBrush)
+                    p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 6, 6)
+        p.end()
+
+    def _cell_at(self, pos) -> int | None:
+        for c, layer in enumerate(self.layers):
+            for row in range(self.levels + 1):
+                if self._cell_rect(c, row).contains(pos):
+                    return layer * 100 + row
+        return None
+
+    def mouseReleaseEvent(self, e):  # noqa: N802
+        cell = self._cell_at(e.position())
+        if cell is not None and cell in self._renderers:
+            self.clicked.emit(cell)
+
+    def mouseDoubleClickEvent(self, e):  # noqa: N802
+        cell = self._cell_at(e.position())
+        if cell is not None and cell in self._renderers:
+            self.activated.emit(cell)
+
+    def mouseMoveEvent(self, e):  # noqa: N802
+        cell = self._cell_at(e.position())
+        self.setToolTip(tr("ui.cell_tip", layer=cell // 100, level=cell % 100) if cell is not None else "")
 
 
 class LossChart(QWidget):

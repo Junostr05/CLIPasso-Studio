@@ -64,3 +64,30 @@ def test_export_animation(qapp, run_dir, tmp_path, ext):
     n = export.export_animation(str(run_dir), str(dest), size=128, fps=10)
     assert dest.is_file() and dest.stat().st_size > 0
     assert n == 3 + 10  # frames up to the best iteration + 1 s hold
+
+
+def test_single_layer_svg(tmp_path, qapp):
+    import xml.etree.ElementTree as ET
+
+    from clipasso_studio.gui.export import export_single_layer_svg, single_layer_svg, svg_to_qimage
+
+    many = SVG.format(y=10).replace("</g>", '<path d="M 100 100 L 150 120" fill="none" stroke="rgb(0, 0, 0)" '
+                                            'stroke-width="2.5"/>\n</g>')
+    out = single_layer_svg(many, stroke_color="#ff0000", width_scale=2.0)
+    root = ET.fromstring(out)
+    ns = "{http://www.w3.org/2000/svg}"
+    paths = list(root.iter(f"{ns}path"))
+    groups = list(root.iter(f"{ns}g"))
+    assert len(paths) == 1 and len(groups) == 1  # one path in one layer
+    assert groups[0].get("{http://www.inkscape.org/namespaces/inkscape}groupmode") == "layer"
+    d = paths[0].get("d")
+    assert d.count("M ") == 2 and "C 40 10 60 90 80 50" in d and "L 150 120" in d
+    assert paths[0].get("stroke") == "#ff0000" and paths[0].get("fill") == "none"
+    assert paths[0].get("stroke-width") == "5"  # median width 2.5 x 2
+    assert root.find(f"{ns}rect") is None and root.get("viewBox") == "0 0 224 224"
+    src = tmp_path / "in.svg"
+    src.write_text(many)
+    dest = tmp_path / "out.svg"
+    export_single_layer_svg(str(src), str(dest))
+    img = svg_to_qimage(dest.read_text(), 64, None)
+    assert not img.isNull()

@@ -180,7 +180,7 @@ class ComparePage(QWidget):
         self.method_labels: dict[str, QLabel] = {}
         for m in schema.METHODS:
             sw = ToggleSwitch()
-            sw.setChecked(True)
+            sw.setChecked(m != "scenesketch")  # scenes only; takes much longer
             lbl = label(methods_ui.name(m), None)
             toggles.addWidget(sw)
             toggles.addWidget(lbl)
@@ -251,8 +251,12 @@ class ComparePage(QWidget):
             res = QMessageBox.question(self, methods_ui.name("controlsketch"), tr("ui.compare.cpu_warning"))
             if res != QMessageBox.Yes:
                 methods.remove("controlsketch")
+        if "scenesketch" in methods and not self.use_studio.isChecked() and not methods_ui.has_cuda():
+            res = QMessageBox.question(self, methods_ui.name("scenesketch"), tr("ui.compare.scene_cpu_warning"))
+            if res == QMessageBox.Yes:
+                settings["scenesketch"] = schema.normalize(schema.apply_preset(settings["scenesketch"], "fast"))
         # fastest first, so the first results arrive early
-        order = sorted(methods, key=lambda m: ("swiftsketch", "clipasso", "controlsketch").index(m))
+        order = sorted(methods, key=lambda m: ("swiftsketch", "clipasso", "controlsketch", "scenesketch").index(m))
         for m in order:
             self.controller.enqueue(image, settings[m], start=not self.controller.is_busy())
         self.toast.emit(tr("ui.compare.queued", n=len(order)), "success")

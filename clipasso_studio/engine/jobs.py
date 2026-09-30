@@ -33,7 +33,10 @@ class SeedResult:
 
 
 def job_seeds(settings: dict) -> list[int]:
-    """Seeds like run_object_sketching.py: 0, 1000, 2000, ... (offset by ``seed``)."""
+    """Items of a job: seeds like run_object_sketching.py (0, 1000, 2000, ... offset by ``seed``);
+    for SceneSketch the cells of the abstraction matrix (``layer * 100 + level``)."""
+    if schema.method_of(settings) == "scenesketch":
+        return schema.scene_cells(settings)
     base = int(settings.get("seed", 0))
     return [base + i * 1000 for i in range(int(settings.get("num_sketches", 1)))]
 
@@ -42,6 +45,8 @@ def run_name_for(target: str, settings: dict, seed: int) -> str:
     """Run folder name; CLIPasso keeps the original naming (<name>_<N>strokes_seed<S>)."""
     test_name = os.path.splitext(os.path.basename(target))[0]
     method = schema.method_of(settings)
+    if method == "scenesketch":
+        return schema.scene_run_name(target, seed // 100, seed % 100)
     prefix = test_name if method == "clipasso" else f"{test_name}_{method}"
     return f"{prefix}_{schema.num_strokes(settings)}strokes_seed{seed}"
 

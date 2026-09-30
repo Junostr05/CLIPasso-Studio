@@ -366,6 +366,7 @@ MODEL_PURPOSE = {
     "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
     "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
     "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
+    "lama": "ui.models.purpose.lama",
 }
 
 
@@ -377,6 +378,8 @@ def model_group(key: str) -> str:
         return "clipasso"
     if key.startswith("swiftsketch:"):
         return "swiftsketch"
+    if key == "lama":
+        return "scenesketch"
     return "controlsketch"
 
 
@@ -488,7 +491,7 @@ class ModelsPage(QWidget):
         self.list_lay.setSpacing(8)
         self.rows = []
         self.group_titles: dict[str, tuple[QLabel, QLabel]] = {}
-        for group in ("bundled", "clipasso", "swiftsketch", "controlsketch"):
+        for group in ("bundled", "clipasso", "swiftsketch", "controlsketch", "scenesketch"):
             title = label("", "h2")
             hint = label("", "faint", wrap=True)
             if group != "bundled":
@@ -696,8 +699,10 @@ class AboutPage(QWidget):
         t = QVBoxLayout()
         self.name = label(APP_NAME, "title")
         self.version = label("", "muted")
+        self.byline = label("", "faint")
         t.addWidget(self.name)
         t.addWidget(self.version)
+        t.addWidget(self.byline)
         top.addLayout(t, 1)
         hero.body.addLayout(top)
         self.desc = label("", None, wrap=True)
@@ -709,7 +714,10 @@ class AboutPage(QWidget):
                               ("SwiftSketch · ControlSketch", (
                                   ("ui.about.paper", "https://arxiv.org/abs/2502.08642"),
                                   ("ui.about.project", "https://swiftsketch.github.io/"),
-                                  ("ui.about.code", "https://github.com/swiftsketch/SwiftSketch")))):
+                                  ("ui.about.code", "https://github.com/swiftsketch/SwiftSketch"))),
+                              ("SceneSketch", (("ui.about.paper", "https://arxiv.org/abs/2211.17256"),
+                                               ("ui.about.project", "https://clipascene.github.io/CLIPascene/"),
+                                               ("ui.about.code", "https://github.com/yael-vinker/SceneSketch")))):
             links = QHBoxLayout()
             name = label(method, "h3")
             name.setMinimumWidth(190)
@@ -748,6 +756,7 @@ class AboutPage(QWidget):
 
     def retranslate(self):
         self.version.setText(tr("ui.about.version", version=__version__, edition=tr(f"ui.edition.{EDITION}")))
+        self.byline.setText(tr("ui.about.byline"))
         self.desc.setText(tr("ui.about.desc"))
         for b in self.link_buttons:
             b.setText(tr(b.property("i18n")))

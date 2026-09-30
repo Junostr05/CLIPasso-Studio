@@ -11,6 +11,8 @@ CLIPasso Studio bundles or is derived from the following works.
 | **VGG16** feature weights (torchvision) | https://github.com/pytorch/vision | BSD-3-Clause (code); ImageNet-trained weights | LPIPS perceptual loss |
 | **SwiftSketch** and **ControlSketch** (method; `clipasso_studio/engine/methods/swiftsketch/` and `controlsketch/` are independent re-implementations written from the paper and the public code, which has no licence file) | https://github.com/swiftsketch/SwiftSketch – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 | method description (paper) | SwiftSketch / ControlSketch sketching |
 | **SwiftSketch model weights** (not bundled – downloaded by the user from the authors' Google Drive on first use) | https://github.com/swiftsketch/SwiftSketch | no explicit licence – research / personal use | SwiftSketch diffusion + refinement networks |
+| **SceneSketch / CLIPascene** (code ported to `clipasso_studio/engine/methods/scenesketch/`; sample images `resources/samples/ballerina.jpg` and `house.jpg` from the repository) | https://github.com/yael-vinker/SceneSketch – Yael Vinker, Yuval Alaluf, Daniel Cohen-Or, Ariel Shamir: *CLIPascene: Scene Sketching with Different Types and Levels of Abstraction*, ICCV 2023 | MIT (see below) | SceneSketch sketching, sample scenes |
+| **LaMa** big-lama inpainting network (generator ported to `scenesketch/lama.py`; weights not bundled – the TorchScript export distributed by IOPaint is downloaded on first use and converted) | https://github.com/advimman/lama – Roman Suvorov et al. (Samsung AI); export: https://github.com/Sanster/IOPaint | Apache-2.0 | SceneSketch background |
 | **Stable Diffusion v1.5** (not bundled – downloaded on first use) | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 – Runway, CompVis, Stability AI | CreativeML OpenRAIL-M (use restrictions apply) | ControlSketch SDS loss |
 | **ControlNet 1.0** models `lllyasviel/sd-controlnet-*` (not bundled) and the **HED** annotator (`ControlNetHED_Apache2` network in `controlsketch/conditions.py`, weights `lllyasviel/Annotators/ControlNetHED.pth`, not bundled) | https://github.com/lllyasviel/ControlNet – Lvmin Zhang | OpenRAIL (models), Apache-2.0 (HED annotator) | ControlSketch conditions |
 | **MiDaS DPT-Hybrid** `Intel/dpt-hybrid-midas` (not bundled) | https://huggingface.co/Intel/dpt-hybrid-midas – Intel ISL | Apache-2.0 | depth / normal condition |
@@ -40,3 +42,29 @@ Because it is derived from CLIPasso, CLIPasso Studio is distributed under the
 The LGPL-licensed Qt libraries are dynamically linked. In the installed (onedir) edition they
 are separate DLL files that can be replaced; the complete source code of this application is
 available in its public repository.
+
+## SceneSketch licence
+
+```
+MIT License
+
+Copyright (c) 2023 yael-vinker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
