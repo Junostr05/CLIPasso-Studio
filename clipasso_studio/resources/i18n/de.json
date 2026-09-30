@@ -521,5 +521,16 @@
  "ui.export_matrix": "Ganze Matrix (ZIP)",
  "ui.export_matrix_tip": "Alle Skizzen der SceneSketch-Matrix als SVG und PNG plus eine Übersicht – in einer ZIP-Datei.",
  "ui.export_desc.matrix": "Jede Skizze der Matrix als SVG und PNG (L<Ebene>_level<n>), dazu matrix.svg / matrix.png mit allen in einer Übersicht.",
- "ui.export_matrix_title": "Ganze Matrix exportieren"
+ "ui.export_matrix_title": "Ganze Matrix exportieren",
+ "ui.settings.check_updates": "Beim Start nach einer neuen Version suchen",
+ "ui.settings.logs_tip": "Fehlerprotokolle – häng sie an, wenn du ein Problem meldest.",
+ "ui.update.available": "CLIPasso Studio {version} ist verfügbar – du hast {current}.",
+ "ui.update.download": "Herunterladen",
+ "ui.update.skip": "Diese Version überspringen",
+ "ui.update.later": "Beim nächsten Start erinnern",
+ "ui.crash.title": "Etwas ist schiefgelaufen.",
+ "ui.crash.text": "CLIPasso Studio läuft weiter, aber die letzte Aktion wurde eventuell nicht abgeschlossen. Die Details wurden gespeichert in:\n{path}",
+ "ui.crash.open_logs": "Log-Ordner öffnen",
+ "ui.crash.last_time": "CLIPasso Studio wurde beim letzten Mal unerwartet beendet.",
+ "ui.crash.last_time_text": "Ein Protokoll wurde gespeichert – es hilft, die Ursache zu finden:\n{path}"
 }

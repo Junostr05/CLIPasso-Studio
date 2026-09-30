@@ -32,6 +32,9 @@ def run_gui(argv: list[str] | None = None) -> int:
             pass
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(argv if argv is not None else sys.argv)
+    from . import crash
+
+    crash.install()  # crash log + error dialog; a hard crash of the last session is reported below
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ID)
     app.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
@@ -51,4 +54,8 @@ def run_gui(argv: list[str] | None = None) -> int:
     app._main_window = window
     window.show()
     _close_splash()
+    from PySide6.QtCore import QTimer
+
+    QTimer.singleShot(1200, lambda: crash.show_previous_crash(window))
+    QTimer.singleShot(4000, window.start_update_check)
     return app.exec()

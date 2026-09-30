@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import model_store
-from .. import dialogs, icons, methods_ui, theme
+from .. import crash, dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
@@ -714,6 +714,11 @@ class SettingsPage(QWidget):
         self.notify.setChecked(bool(s.get("notify")))
         self.notify.toggled.connect(lambda v: s.set("notify", v))
         self.behaviour.body.addLayout(self._row(self.notify_label, self.notify))
+        self.updates_label = label("", None)
+        self.updates = ToggleSwitch()
+        self.updates.setChecked(bool(s.get("check_updates")))
+        self.updates.toggled.connect(lambda v: s.set("check_updates", v))
+        self.behaviour.body.addLayout(self._row(self.updates_label, self.updates))
         col.addWidget(self.behaviour)
 
         self.system = Card()
@@ -722,6 +727,9 @@ class SettingsPage(QWidget):
         self.system_info = label("", "mono", wrap=True)
         self.system_info.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.system.body.addWidget(self.system_info)
+        self.logs_btn = button("", "folder-open", "ghost")
+        self.logs_btn.clicked.connect(crash.open_logs_folder)
+        self.system.body.addWidget(self.logs_btn, 0, Qt.AlignLeft)
         col.addWidget(self.system)
         col.addStretch(1)
         root.addWidget(_scroll(host), 1)
@@ -792,6 +800,9 @@ class SettingsPage(QWidget):
         self.behaviour_title.setText(tr("ui.settings.behaviour"))
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))
+        self.updates_label.setText(tr("ui.settings.check_updates"))
+        self.logs_btn.setText(tr("ui.crash.open_logs"))
+        self.logs_btn.setToolTip(tr("ui.settings.logs_tip"))
         self.system_title.setText(tr("ui.settings.system"))
         edition = tr(f"ui.edition.{EDITION}")
         info = [f"{APP_NAME} {__version__} · {edition}",

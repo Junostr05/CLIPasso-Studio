@@ -18,6 +18,7 @@ import re
 import shutil
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -341,13 +342,19 @@ def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Cal
         offset = 0
     elif offset:
         req = urllib.request.Request(url, headers={"User-Agent": "CLIPassoStudio", "Range": f"bytes={offset}-"})
-        src = urllib.request.urlopen(req, timeout=60)
+        try:
+            src = urllib.request.urlopen(req, timeout=60)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 416:  # nothing left to download: the file is already complete
+                return
+            raise
         if src.status != 206:  # server ignored the range
             offset = 0
     else:
         src = _open(url)
     with src, open(dest, "ab" if offset else "wb") as out:
-        total = int(src.headers.get("Content-Length") or 0) + offset
+        length = int(src.headers.get("Content-Length") or 0)
+        total = length + offset
         done = offset
         while True:
             if cancel and cancel():
@@ -359,19 +366,54 @@ def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Cal
             done += len(buf)
             if progress:
                 progress(done, total)
+    if length and done < total:  # http.client ends a dropped connection like a finished download
+        raise ConnectionError(f"connection lost after {done} of {total} bytes")
+
+
+def partial_dir(dest_root: Path | None = None) -> Path:
+    """Where unfinished downloads wait until they are resumed."""
+    return (dest_root or paths.downloaded_models_dir()) / ".partial"
+
+
+def _safe_name(key: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", key)
 
 
 def download_raw(spec: ModelSpec, workdir: Path, progress: ProgressFn | None = None,
-                 cancel: Callable[[], bool] | None = None) -> Path:
+                 cancel: Callable[[], bool] | None = None, attempts: int = 3) -> Path:
+    """Download the checkpoint of ``spec`` to ``workdir/<key>.part`` and verify it.
+
+    An interrupted download (network error, cancel, app closed) continues from the partial file the
+    next time (HTTP range request; Google Drive starts over); network errors are retried ``attempts``
+    times per mirror before the next mirror is tried."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    target = workdir / f"{_safe_name(spec.key)}.part"
+    meta = target.with_suffix(".json")
     errors = []
     for url in spec.urls:
-        target = workdir / "download.bin"
+        info = {"url": url, "size": spec.download_size, "sha256": spec.download_sha256}
         try:
-            _download_url(url, target, progress, cancel)
-        except InterruptedError:
-            raise
-        except Exception as exc:  # try the next mirror
-            errors.append(f"{url}: {exc}")
+            same = json.loads(meta.read_text(encoding="utf-8")) == info
+        except (OSError, ValueError):
+            same = False
+        if not same:  # a different file: start over
+            target.unlink(missing_ok=True)
+            meta.write_text(json.dumps(info), encoding="utf-8")
+        failure = None
+        for attempt in range(attempts):
+            offset = target.stat().st_size if target.exists() else 0
+            try:
+                _download_url(url, target, progress, cancel, offset=offset)
+                failure = None
+                break
+            except InterruptedError:
+                raise  # cancelled: the partial file stays for the next attempt
+            except Exception as exc:  # network error: try again from where it stopped
+                failure = exc
+                if attempt < attempts - 1:
+                    time.sleep(min(2 ** attempt, 8))
+        if failure is not None:
+            errors.append(f"{url}: {failure}")
             continue
         if progress:
             progress(0, 0)  # downloaded; checking (and converting) takes a moment without measurable progress
@@ -380,12 +422,19 @@ def download_raw(spec: ModelSpec, workdir: Path, progress: ProgressFn | None = N
             digest = _sha256(target)
             if digest != spec.download_sha256:
                 errors.append(f"{url}: sha256 mismatch ({digest})")
+                target.unlink(missing_ok=True)
                 continue
         elif abs(size - spec.download_size) > 1024:
             errors.append(f"{url}: unexpected size {size}")
+            target.unlink(missing_ok=True)
             continue
         return target
     raise RuntimeError(f"Could not download {spec.key}:\n" + "\n".join(errors))
+
+
+def _drop_partial(raw: Path) -> None:
+    raw.unlink(missing_ok=True)
+    raw.with_suffix(".json").unlink(missing_ok=True)
 
 
 def _half(state: dict) -> dict:
@@ -459,17 +508,23 @@ def install(spec_key: str, dest_root: Path | None = None, progress: ProgressFn |
     if spec.kind == "hf":
         return _install_hf(spec, dest_root, progress, cancel)
     dest = dest_root / spec.filename
-    with tempfile.TemporaryDirectory(dir=dest_root) as tmp:
-        raw = download_raw(spec, Path(tmp), progress, cancel)
-        convert(spec, raw, dest)
+    raw = download_raw(spec, partial_dir(dest_root), progress, cancel)
+    convert(spec, raw, dest)
+    _drop_partial(raw)
     return dest
 
 
-def _hf_download(url: str, target: Path, progress: ProgressFn | None, cancel, attempts: int = 4) -> None:
-    """Download with up to ``attempts`` tries, resuming interrupted transfers."""
+def _hf_download(url: str, target: Path, progress: ProgressFn | None, cancel, attempts: int = 4,
+                 size: int | None = None) -> None:
+    """Download with up to ``attempts`` tries, resuming interrupted transfers (also a partial file
+    left by an earlier, interrupted install)."""
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() and (not size or target.stat().st_size > size):
+        target.unlink()  # unknown or impossible size: start over
     for attempt in range(attempts):
-        offset = target.stat().st_size if target.exists() and attempt else 0
+        offset = target.stat().st_size if target.exists() else 0
+        if size and offset == size:
+            return
         try:
             _download_url(url, target, progress, cancel, offset=offset)
             return
@@ -508,14 +563,21 @@ def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
     dest = (dest_root / spec.filename).parent
     dest.parent.mkdir(parents=True, exist_ok=True)
     total = sum(f.size or 0 for f in files) or 1
+    # the raw files wait in the partial folder, so an interrupted install continues where it stopped
+    raw_dir = partial_dir(dest_root) / _safe_name(spec.key)
+    stamp = raw_dir / "revision.txt"
+    if raw_dir.exists() and (not stamp.is_file() or stamp.read_text(encoding="utf-8") != revision):
+        shutil.rmtree(raw_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    stamp.write_text(revision, encoding="utf-8")
     with tempfile.TemporaryDirectory(dir=dest.parent) as tmp:
-        raw_dir, out_dir = Path(tmp) / "raw", Path(tmp) / "out"
+        out_dir = Path(tmp) / "out"
         done = 0
         for f in files:
             target = raw_dir / f.remote
             base = done
             prog = (lambda d, t, base=base: progress(min(base + d, total), total)) if progress else None
-            _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel)
+            _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel, size=f.size)
             size = target.stat().st_size
             if f.size and size != f.size:
                 raise RuntimeError(f"Could not download {spec.key}: {f.remote} has {size} bytes, "
@@ -531,6 +593,7 @@ def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
         if dest.exists():
             shutil.rmtree(dest)
         os.replace(out_dir, dest)
+    shutil.rmtree(raw_dir, ignore_errors=True)
     return dest / "manifest.json"
 
 

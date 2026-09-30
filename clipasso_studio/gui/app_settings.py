@@ -17,6 +17,8 @@ DEFAULTS: dict[str, Any] = {
     "output_dir": str(paths.default_output_dir()),
     "keep_awake": True,
     "notify": True,
+    "check_updates": True,
+    "skipped_version": "",
     "last_params": None,
     "last_preset": "standard",
     "last_image": "",

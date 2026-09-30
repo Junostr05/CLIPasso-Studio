@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import sys
 
-from PySide6.QtCore import QByteArray, QSize, Qt, QTimer
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
-from .. import APP_NAME, paths
-from . import dialogs, icons, theme
+from .. import APP_NAME, __version__, paths
+from . import dialogs, icons, theme, updates
 from .app_settings import app_settings
 from .controller import JobController
 from .i18n import i18n, tr
 from .pages.compare import ComparePage
 from .pages.other_pages import AboutPage, GalleryPage, ModelsPage, QueuePage, SettingsPage
 from .pages.studio import StudioPage
-from .widgets.common import Toast, label
+from .widgets.common import Toast, button, label, tool_button
 
 NAV = (
     ("studio", "brush"),
@@ -28,6 +29,59 @@ NAV = (
     ("settings", "settings"),
     ("about", "info"),
 )
+
+
+class UpdateBar(QFrame):
+    """"CLIPasso Studio x.y is available" – with Download, Skip this version and close."""
+
+    skipped = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("Banner")
+        self.release: dict = {}
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(12, 8, 8, 8)
+        lay.setSpacing(10)
+        self.icon = QLabel()
+        self.text = QLabel()
+        self.text.setWordWrap(True)
+        self.download = button("", "download", "primary")
+        self.download.clicked.connect(self._download)
+        self.skip = button("", None, "ghost")
+        self.skip.clicked.connect(self._skip)
+        self.close_btn = tool_button("x")
+        self.close_btn.clicked.connect(self.hide_bar)
+        lay.addWidget(self.icon, 0, Qt.AlignVCenter)
+        lay.addWidget(self.text, 1)
+        lay.addWidget(self.skip)
+        lay.addWidget(self.download)
+        lay.addWidget(self.close_btn)
+
+    def show_release(self, release: dict) -> None:
+        self.release = release
+        self.retranslate()
+        self.parentWidget().show()
+
+    def hide_bar(self) -> None:
+        self.parentWidget().hide()
+
+    def _download(self):
+        QDesktopServices.openUrl(QUrl(self.release.get("url") or updates.RELEASES_PAGE))
+        self.hide_bar()
+
+    def _skip(self):
+        self.skipped.emit(self.release.get("tag", ""))
+        self.hide_bar()
+
+    def retranslate(self):
+        p = theme.current()
+        self.icon.setPixmap(icons.pixmap("sparkles", p.accent_hover, 18))
+        version = self.release.get("tag", "").lstrip("v")
+        self.text.setText(tr("ui.update.available", version=version, current=__version__))
+        self.download.setText(tr("ui.update.download"))
+        self.skip.setText(tr("ui.update.skip"))
+        self.close_btn.setToolTip(tr("ui.update.later"))
 
 
 def _dark_title_bar(window: QWidget, dark: bool) -> None:
@@ -129,7 +183,20 @@ class MainWindow(QMainWindow):
                       "models": self.models, "settings": self.settings, "about": self.about}
         for p in self.pages.values():
             self.stack.addWidget(p)
-        h.addWidget(self.stack, 1)
+        content = QWidget()
+        cv = QVBoxLayout(content)
+        cv.setContentsMargins(0, 0, 0, 0)
+        cv.setSpacing(0)
+        self.update_wrap = QWidget()
+        uw = QVBoxLayout(self.update_wrap)
+        uw.setContentsMargins(24, 14, 24, 0)
+        self.update_bar = UpdateBar(self.update_wrap)
+        self.update_bar.skipped.connect(lambda tag: app_settings().set("skipped_version", tag))
+        uw.addWidget(self.update_bar)
+        self.update_wrap.hide()
+        cv.addWidget(self.update_wrap)
+        cv.addWidget(self.stack, 1)
+        h.addWidget(content, 1)
         self.setCentralWidget(root)
 
         self.toast = Toast(root)
@@ -158,6 +225,20 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         QTimer.singleShot(0, lambda: _dark_title_bar(self, theme.current().name == "dark"))
+
+    # ---------------------------------------------------------------- updates
+    def start_update_check(self, url: str = updates.RELEASES_API):
+        """Look for a newer release in the background (if enabled in the settings)."""
+        if app_settings().get("check_updates"):
+            dialogs.run_in_thread(self, updates.check, url=url, on_done=self._update_found)
+
+    def _update_found(self, text: str):
+        try:
+            release = json.loads(text) if text else None
+        except ValueError:
+            release = None
+        if release and release.get("tag") != app_settings().get("skipped_version"):
+            self.update_bar.show_release(release)
 
     # ---------------------------------------------------------------- actions
     def show_page(self, key: str):
@@ -249,6 +330,8 @@ class MainWindow(QMainWindow):
     def retranslate(self):
         for key, _ in NAV:
             self.nav_buttons[key].setText(tr(f"nav.{key}"))
+        if self.update_bar.release:
+            self.update_bar.retranslate()
         self._update_nav_badges()
         self._refresh_nav_icons()
 
