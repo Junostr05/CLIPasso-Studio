@@ -214,18 +214,27 @@ class MatrixView(QWidget):
         self.best = cell
         self.update()
 
-    def _geometry(self):
-        cols, rows = max(len(self.layers), 1), self.levels + 1
-        head, side, gap = 22, 26, 8
-        size = min((self.width() - side - gap * (cols + 1)) / cols, (self.height() - head - gap * (rows + 1)) / rows)
-        size = max(size, 16)
-        total_w = side + cols * size + (cols + 1) * gap
-        x0 = (self.width() - total_w) / 2 + side
-        y0 = head + (self.height() - head - rows * size - (rows + 1) * gap) / 2
-        return x0, y0, size, gap
+    _HEAD, _SIDE, _GAP = 22, 30, 8
 
-    def _cell_rect(self, col: int, row: int) -> QRectF:
-        x0, y0, size, gap = self._geometry()
+    def _cell_size(self, cols: int, rows: int) -> float:
+        return min((self.width() - self._SIDE - self._GAP * (cols + 1)) / cols,
+                   (self.height() - self._HEAD - self._GAP * (rows + 1)) / rows)
+
+    def _geometry(self):
+        """(x0, y0, cell size, gap, transposed). Layers are columns and levels rows like in the paper,
+        unless the grid is transposed because that gives larger cells (e.g. one tall column in a wide view)."""
+        layers, levels = max(len(self.layers), 1), self.levels + 1
+        transposed = self._cell_size(levels, layers) > self._cell_size(layers, levels)
+        cols, rows = (levels, layers) if transposed else (layers, levels)
+        size = max(self._cell_size(cols, rows), 16)
+        total_w = self._SIDE + cols * size + (cols + 1) * self._GAP
+        x0 = (self.width() - total_w) / 2 + self._SIDE
+        y0 = self._HEAD + (self.height() - self._HEAD - rows * size - (rows + 1) * self._GAP) / 2
+        return x0, y0, size, self._GAP, transposed
+
+    def _cell_rect(self, layer_index: int, level: int) -> QRectF:
+        x0, y0, size, gap, transposed = self._geometry()
+        col, row = (level, layer_index) if transposed else (layer_index, level)
         return QRectF(x0 + gap + col * (size + gap), y0 + gap + row * (size + gap), size, size)
 
     def paintEvent(self, event):  # noqa: N802
@@ -237,14 +246,16 @@ class MatrixView(QWidget):
             p.drawText(self.rect(), Qt.AlignCenter | Qt.TextWordWrap, tr("ui.matrix.empty"))
             p.end()
             return
-        x0, y0, size, gap = self._geometry()
+        _, y0, _, _, transposed = self._geometry()
         p.setPen(QColor(pal.muted))
-        for c, layer in enumerate(self.layers):
-            r = self._cell_rect(c, 0)
-            p.drawText(QRectF(r.left(), y0 - 20, r.width(), 18), Qt.AlignCenter, f"L{layer}")
-        for row in range(self.levels + 1):
-            r = self._cell_rect(0, row)
-            p.drawText(QRectF(r.left() - 30, r.top(), 24, r.height()), Qt.AlignRight | Qt.AlignVCenter, str(row))
+        head = [str(level) for level in range(self.levels + 1)] if transposed else [f"L{l}" for l in self.layers]
+        side = [f"L{l}" for l in self.layers] if transposed else [str(level) for level in range(self.levels + 1)]
+        for i, text in enumerate(head):
+            r = self._cell_rect(0, i) if transposed else self._cell_rect(i, 0)
+            p.drawText(QRectF(r.left(), y0 - 20, r.width(), 18), Qt.AlignCenter, text)
+        for i, text in enumerate(side):
+            r = self._cell_rect(i, 0) if transposed else self._cell_rect(0, i)
+            p.drawText(QRectF(r.left() - 34, r.top(), 28, r.height()), Qt.AlignRight | Qt.AlignVCenter, text)
         for c, layer in enumerate(self.layers):
             for row in range(self.levels + 1):
                 cell = layer * 100 + row
@@ -254,7 +265,10 @@ class MatrixView(QWidget):
                 p.drawRoundedRect(r, 6, 6)
                 renderer = self._renderers.get(cell)
                 if renderer:
+                    p.save()
+                    p.setClipRect(r)  # strokes may run past the edge of the scene
                     renderer.render(p, r.adjusted(2, 2, -2, -2))
+                    p.restore()
                 if cell in (self.selected, self.best):
                     color = pal.success if cell == self.best and cell != self.selected else pal.accent
                     p.setPen(QPen(QColor(color), 2))

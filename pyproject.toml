@@ -1,6 +1,6 @@
 [project]
 name = "clipasso-studio"
-version = "2.1.0b1"
+version = "2.1.0"
 description = "Desktop app for vector sketching from photos: CLIPasso, SwiftSketch, ControlSketch and SceneSketch"
 readme = "README.md"
 requires-python = ">=3.10"

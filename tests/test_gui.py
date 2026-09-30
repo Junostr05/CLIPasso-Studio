@@ -100,7 +100,15 @@ def test_scenesketch_in_the_studio(window):
     m.clicked.connect(clicked.append)
     center = m._cell_rect(1, 1).center()
     assert m._cell_at(center) == 801 and m._cell_at(m._cell_rect(0, 2).center()) == 202
+    assert not m._geometry()[4]  # 2 layers x 3 levels in a tall view: layers are columns
     m.grab()  # paints without errors
+    # one column of 5 levels in a wide, low view: shown as a row, with larger cells
+    m.resize(600, 280)
+    m.set_layout([8], 4)
+    assert m._geometry()[4] and m._geometry()[2] > 100
+    assert m._cell_at(m._cell_rect(0, 3).center()) == 803
+    assert m._cell_rect(0, 3).left() > m._cell_rect(0, 2).right()
+    m.grab()
 
 
 def test_single_layer_export_button(window):
@@ -197,8 +205,13 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
     (run / "best_iter.svg").write_text(svg)
     (job / "camel_swiftsketch_32strokes_seed20_best.svg").write_text(svg)
     (run / "config.json").write_text(json.dumps({"seconds": 4.2, "clip_score": 81.5}))
+    from PIL import Image
+
+    target = tmp_path / "horse.png"
+    Image.new("RGB", (30, 20), "white").save(target)
+    Image.new("RGB", (30, 20), "white").save(job / "source.png")
     settings = schema.default_settings("swiftsketch")
-    summary = {"target": "camel.png", "created": "2026-09-29 12:00:00", "settings": settings, "method": "swiftsketch",
+    summary = {"target": str(target), "created": "2026-09-29 12:00:00", "settings": settings, "method": "swiftsketch",
                "clip_score": 81.5, "best_svg": str(job / "camel_swiftsketch_32strokes_seed20_best.svg"),
                "best_run": run.name, "runs": [{"seed": 20, "run_name": run.name, "run_dir": str(run),
                                                 "best_loss": 0.185, "best_iter": 50, "iterations_done": 51,
@@ -208,6 +221,7 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
     studio = window.studio
     studio.show_job_dir(str(job))
     assert studio.params.method() == "swiftsketch"
+    assert studio.file_label.text().startswith("horse.png") and "30×20" in studio.file_label.text()
     assert studio.stat_loss.value.text() == "81.5"
     assert studio.stat_loss.caption.text() in ("CLIP-Score", "CLIP score")
     assert studio.thumbs[20].caption.text().endswith("81.5")

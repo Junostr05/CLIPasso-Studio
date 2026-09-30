@@ -665,7 +665,9 @@ class StudioPage(QWidget):
         if os.path.isfile(src):
             self.image_path = target if os.path.isfile(target) else src
             self.drop.set_image(src)
-            self.canvas.set_input(self._square_input(QPixmap(src)))
+            pm = QPixmap(src)
+            self.file_label.setText(f"{os.path.basename(self.image_path)}  ·  {pm.width()}×{pm.height()} px")
+            self.canvas.set_input(self._square_input(pm))
         runs = summary.get("runs", [])
         self._setup_matrix(summary.get("settings") or {})
         self._ensure_thumbs([r["seed"] for r in runs])
