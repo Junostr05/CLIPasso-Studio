@@ -121,7 +121,7 @@ jobs:
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "dist\CLIPassoStudio\CLIPassoStudio.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_onedir" -Wait -PassThru -NoNewWindow
-          Get-Content "$env:LOCALAPPDATA\CLIPassoStudio\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 40
+          Get-Content "$env:RUNNER_TEMP\selftest_onedir\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 120
           Get-Content "$env:RUNNER_TEMP\selftest_onedir\selftest.json" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "self-test failed with exit code $($p.ExitCode)" }
       - name: PyInstaller (onefile portable exe)
@@ -137,7 +137,7 @@ jobs:
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "dist\CLIPassoStudio-CPU-Portable.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_onefile" -Wait -PassThru -NoNewWindow
-          Get-Content "$env:LOCALAPPDATA\CLIPassoStudio\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 20
+          Get-Content "$env:RUNNER_TEMP\selftest_onefile\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 120
           Get-Content "$env:RUNNER_TEMP\selftest_onefile\selftest.json" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "portable self-test failed with exit code $($p.ExitCode)" }
       - name: Inno Setup installer

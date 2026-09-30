@@ -118,6 +118,8 @@ def selftest(out_dir: str | None = None) -> int:
                 print("selftest: ERROR " + data.get("message", "") + "\n" + data.get("traceback", ""), flush=True)
             elif kind == "job_done":
                 summary = data
+            elif kind not in ("preview", "input", "attention", "seed_done", "stage"):
+                print(f"selftest: {kind} {data}", flush=True)
         time.sleep(0.2)
     if runner.is_running():
         runner.kill()
@@ -139,6 +141,29 @@ def selftest(out_dir: str | None = None) -> int:
     with open(os.path.join(out_dir, "selftest.json"), "w", encoding="utf-8") as f:
         json.dump(report, f)
     return 0 if report["ok"] else 1
+
+
+class _Tee:
+    """Write to several streams (console and the self-test log file)."""
+
+    def __init__(self, *streams):
+        self.streams = [st for st in streams if st is not None]
+
+    def write(self, text):
+        for st in self.streams:
+            try:
+                st.write(text)
+                st.flush()
+            except Exception:
+                pass
+        return len(text)
+
+    def flush(self):
+        for st in self.streams:
+            try:
+                st.flush()
+            except Exception:
+                pass
 
 
 def _close_splash() -> None:
@@ -166,6 +191,15 @@ def main(argv: list[str] | None = None) -> int:
         _ensure_streams("selftest.log")
         idx = argv.index("--selftest")
         out = argv[idx + 1] if len(argv) > idx + 1 and not argv[idx + 1].startswith("-") else None
+        if out is None:
+            import tempfile
+
+            out = tempfile.mkdtemp(prefix="clipasso_selftest_")
+        os.makedirs(out, exist_ok=True)
+        # the console of a windowed exe is not captured by CI runners: keep a copy in <out>/selftest.log
+        log = open(os.path.join(out, "selftest.log"), "a", encoding="utf-8", errors="replace")
+        sys.stdout = _Tee(sys.stdout, log)
+        sys.stderr = _Tee(sys.stderr, log)
         try:
             return selftest(out)
         except Exception:
