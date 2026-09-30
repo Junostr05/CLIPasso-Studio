@@ -51,8 +51,11 @@ def studio_window(tmp_path_factory):
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
+    from clipasso_studio.gui import app_settings as settings_module
     from clipasso_studio.gui import theme
     from clipasso_studio.gui.app_settings import app_settings
+
+    settings_module._instance = None  # fresh settings: other test modules may have changed the shared ones
 
     app_settings().data["output_dir"] = str(tmp / "out")
     theme.apply(app, "dark")
