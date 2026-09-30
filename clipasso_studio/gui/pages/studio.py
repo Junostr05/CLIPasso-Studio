@@ -6,9 +6,10 @@ import json
 import math
 import os
 import sys
+import time
 
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QPixmap
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QPixmap
 from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
                                QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
@@ -19,7 +20,7 @@ from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
-from ..widgets.canvas import IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb, SketchCanvas
+from ..widgets.canvas import IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb, SketchCanvas
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel
@@ -308,6 +309,32 @@ class StudioPage(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("ui.choose_image"), start, IMAGE_FILTER)
         if path:
             self.set_image(path)
+
+    def paste_image(self) -> bool:
+        """Ctrl+V: an image, an image file or the path of an image from the clipboard. A pasted image is
+        saved to <output folder>/_pasted first, so it stays available like any other input."""
+        data = QGuiApplication.clipboard().mimeData()
+        if data is not None:
+            for url in data.urls() if data.hasUrls() else []:
+                path = url.toLocalFile()
+                if path.lower().endswith(IMAGE_EXT) and os.path.isfile(path):
+                    self.set_image(path)
+                    return True
+            if data.hasImage():
+                img = QImage(data.imageData())
+                if not img.isNull():
+                    folder = os.path.join(app_settings().get("output_dir"), "_pasted")
+                    os.makedirs(folder, exist_ok=True)
+                    path = os.path.join(folder, time.strftime("pasted-%Y%m%d-%H%M%S.png"))
+                    if img.save(path):
+                        self.set_image(path)
+                        return True
+            text = data.text().strip().strip('"') if data.hasText() else ""
+            if text.lower().endswith(IMAGE_EXT) and os.path.isfile(text):
+                self.set_image(text)
+                return True
+        self.toast.emit(tr("ui.paste_no_image"), "info")
+        return False
 
     def set_image(self, path: str):
         if not path or not os.path.isfile(path):

@@ -306,3 +306,32 @@ def test_gallery_favourites_sorting_and_delete(window, tmp_path):
     QApplication.processEvents()
     assert [c.job_dir for c in gallery.cards] == [b]
     window.show_page("studio")
+
+
+def test_shortcuts_and_paste(window, tmp_path):
+    import os
+
+    from PySide6.QtGui import QColor, QGuiApplication, QImage
+
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    window.shortcuts["Ctrl+2"].activated.emit()
+    assert window.stack.currentWidget() is window.compare
+    clip = QGuiApplication.clipboard()
+    img = QImage(64, 48, QImage.Format_RGB32)
+    img.fill(QColor("white"))
+    clip.setImage(img)
+    window.shortcuts["Ctrl+V"].activated.emit()
+    assert window.stack.currentWidget() is studio
+    assert os.path.dirname(studio.image_path) == os.path.join(app_settings().get("output_dir"), "_pasted")
+    assert QImage(studio.image_path).size() == img.size()
+    other = tmp_path / "pasted path.png"
+    img.save(str(other))
+    clip.setText(f'"{other}"')  # a copied file path (Windows adds quotes)
+    assert studio.paste_image() and studio.image_path == str(other)
+    clip.setText("just some text")
+    assert not studio.paste_image() and studio.image_path == str(other)
+    assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
+    keys = [lbl.text() for lbl in window.about.key_labels]
+    assert len(keys) == 6 and all(keys)

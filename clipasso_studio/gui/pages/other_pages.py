@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import model_store
-from .. import crash, dialogs, icons, methods_ui, theme
+from .. import crash, dialogs, icons, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
@@ -877,6 +877,23 @@ class AboutPage(QWidget):
         self.credits.body.addWidget(self.credits_text)
         col.addWidget(self.credits)
 
+        self.keys = Card()
+        self.keys_title = label("", "h2")
+        self.keys.body.addWidget(self.keys_title)
+        self.keys_grid = QGridLayout()
+        self.keys_grid.setHorizontalSpacing(18)
+        self.keys_grid.setVerticalSpacing(6)
+        self.key_labels = []
+        for row, (seq, _) in enumerate(shortcuts.SHORTCUTS):
+            key = label(shortcuts.native(seq) + (" … 7" if seq == "Ctrl+1" else ""), "mono")
+            text = label("", "muted")
+            self.keys_grid.addWidget(key, row, 0)
+            self.keys_grid.addWidget(text, row, 1)
+            self.key_labels.append(text)
+        self.keys_grid.setColumnStretch(1, 1)
+        self.keys.body.addLayout(self.keys_grid)
+        col.addWidget(self.keys)
+
         self.license = Card()
         self.license_title = label("", "h2")
         self.license_text = label("", "muted", wrap=True)
@@ -898,6 +915,9 @@ class AboutPage(QWidget):
             b.setText(tr(b.property("i18n")))
         self.credits_title.setText(tr("ui.about.credits"))
         self.credits_text.setText(tr("ui.about.credits_text"))
+        self.keys_title.setText(tr("ui.shortcuts"))
+        for text, (_, key) in zip(self.key_labels, shortcuts.SHORTCUTS):
+            text.setText(tr(key))
         self.license_title.setText(tr("ui.about.license"))
         self.license_text.setText(tr("ui.about.license_text"))
 

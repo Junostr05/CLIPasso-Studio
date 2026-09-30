@@ -532,5 +532,13 @@
  "ui.crash.text": "CLIPasso Studio keeps running, but the last action may not have finished. The details were saved in:\n{path}",
  "ui.crash.open_logs": "Open log folder",
  "ui.crash.last_time": "CLIPasso Studio closed unexpectedly last time.",
- "ui.crash.last_time_text": "A log was saved – it helps to find the cause:\n{path}"
+ "ui.crash.last_time_text": "A log was saved – it helps to find the cause:\n{path}",
+ "ui.shortcuts": "Keyboard shortcuts",
+ "ui.shortcut.open": "Open an image",
+ "ui.shortcut.paste": "Paste an image from the clipboard",
+ "ui.shortcut.start": "Create sketch",
+ "ui.shortcut.queue": "Add to the queue",
+ "ui.shortcut.export": "Export the sketch as SVG",
+ "ui.shortcut.pages": "Switch pages (Studio … About)",
+ "ui.paste_no_image": "The clipboard contains no image."
 }

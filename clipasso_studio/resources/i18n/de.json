@@ -532,5 +532,13 @@
  "ui.crash.text": "CLIPasso Studio läuft weiter, aber die letzte Aktion wurde eventuell nicht abgeschlossen. Die Details wurden gespeichert in:\n{path}",
  "ui.crash.open_logs": "Log-Ordner öffnen",
  "ui.crash.last_time": "CLIPasso Studio wurde beim letzten Mal unerwartet beendet.",
- "ui.crash.last_time_text": "Ein Protokoll wurde gespeichert – es hilft, die Ursache zu finden:\n{path}"
+ "ui.crash.last_time_text": "Ein Protokoll wurde gespeichert – es hilft, die Ursache zu finden:\n{path}",
+ "ui.shortcuts": "Tastenkürzel",
+ "ui.shortcut.open": "Bild öffnen",
+ "ui.shortcut.paste": "Bild aus der Zwischenablage einfügen",
+ "ui.shortcut.start": "Skizze erstellen",
+ "ui.shortcut.queue": "Zur Warteschlange hinzufügen",
+ "ui.shortcut.export": "Skizze als SVG exportieren",
+ "ui.shortcut.pages": "Seite wechseln (Studio … Info)",
+ "ui.paste_no_image": "In der Zwischenablage ist kein Bild."
 }

@@ -6,12 +6,12 @@ import json
 import sys
 
 from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import dialogs, icons, theme, updates
+from . import dialogs, icons, shortcuts, theme, updates
 from .app_settings import app_settings
 from .controller import JobController
 from .i18n import i18n, tr
@@ -216,6 +216,7 @@ class MainWindow(QMainWindow):
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = QSystemTrayIcon(self.windowIcon(), self)
 
+        self._install_shortcuts()
         self.retranslate()
         self.show_page("studio")
         geo = app_settings().get("geometry")
@@ -225,6 +226,48 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         QTimer.singleShot(0, lambda: _dark_title_bar(self, theme.current().name == "dark"))
+
+    # -------------------------------------------------------------- shortcuts
+    def _install_shortcuts(self):
+        self.shortcuts: dict[str, QShortcut] = {}
+
+        def add(sequence, handler):
+            sc = QShortcut(QKeySequence(sequence), self)
+            sc.activated.connect(handler)
+            self.shortcuts[sequence] = sc
+
+        add("Ctrl+O", self._shortcut_open)
+        add("Ctrl+V", self._shortcut_paste)  # text fields keep their own Ctrl+V (Qt gives it to them first)
+        for seq in ("Ctrl+Return", "Ctrl+Enter"):
+            add(seq, self._shortcut_start)
+        for seq in ("Ctrl+Shift+Return", "Ctrl+Shift+Enter"):
+            add(seq, self._shortcut_queue)
+        add("Ctrl+E", self._shortcut_export)
+        for i, (key, _) in enumerate(NAV):
+            add(f"Ctrl+{i + 1}", lambda k=key: self.show_page(k))
+
+    def _shortcut_open(self):
+        self.show_page("studio")
+        self.studio.browse_image()
+
+    def _shortcut_paste(self):
+        if self.studio.paste_image():
+            self.show_page("studio")
+
+    def _shortcut_start(self):
+        if self.studio.start_btn.isEnabled():
+            self.show_page("studio")
+            self.studio.start()
+
+    def _shortcut_queue(self):
+        if self.studio.image_path:
+            self.show_page("studio")
+            self.studio.add_to_queue()
+
+    def _shortcut_export(self):
+        if self.studio.export_btns["svg"].isEnabled():
+            self.show_page("studio")
+            self.studio.export("svg")
 
     # ---------------------------------------------------------------- updates
     def start_update_check(self, url: str = updates.RELEASES_API):
@@ -305,7 +348,11 @@ class MainWindow(QMainWindow):
 
     def _update_nav_badges(self):
         n = len(self.controller.pending())
-        self.nav_buttons["queue"].setToolTip(tr("ui.queue.pending", n=n) if n else "")
+        for i, (key, _) in enumerate(NAV):
+            tip = shortcuts.with_key(tr(f"nav.{key}"), f"Ctrl+{i + 1}")
+            if key == "queue" and n:
+                tip = f"{tr('ui.queue.pending', n=n)}\n{tip}"
+            self.nav_buttons[key].setToolTip(tip)
         self._refresh_nav_icons()
 
     def _on_job_event(self, job, kind, data):
@@ -330,6 +377,10 @@ class MainWindow(QMainWindow):
     def retranslate(self):
         for key, _ in NAV:
             self.nav_buttons[key].setText(tr(f"nav.{key}"))
+        self.studio.open_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.open"), "Ctrl+O"))
+        self.studio.start_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.start"), "Ctrl+Return"))
+        self.studio.queue_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.queue"), "Ctrl+Shift+Return"))
+        self.studio.export_btns["svg"].setToolTip(shortcuts.with_key(tr("ui.shortcut.export"), "Ctrl+E"))
         if self.update_bar.release:
             self.update_bar.retranslate()
         self._update_nav_badges()
