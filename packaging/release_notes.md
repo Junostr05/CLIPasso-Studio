@@ -1,17 +1,22 @@
-## CLIPasso Studio 2.1 – SceneSketch: whole scenes
+## CLIPasso Studio 2.2 – no more freezes, a better gallery and export
 
-**New: SceneSketch** ([CLIPascene](https://clipascene.github.io/CLIPascene/), ICCV 2023) as the fourth method. It sketches a whole scene with its background: the object in the foreground (U²-Net) and the background (filled in behind the object with LaMa) are sketched separately and combined. The result is a **matrix of sketches**: from precise to loose (fidelity: one column per CLIP layer) and from detailed to sparse (simplicity: strokes are removed step by step).
+**Fixed: the app froze and crashed at the end of an export or a model download.** The file was complete, the progress bar full – and then the app hung and closed. Two bugs in the background work were behind it (the finished work was handed back to the interface from the wrong thread, and cleaning up after one export could crash the next one); both are fixed. The last step is now visible as well: “Encoding the GIF …” / “Checking and preparing …” instead of a full bar that seems stuck, and *Cancel* works during exports and downloads.
 
-- The new **Matrix** view in the studio shows every sketch of the matrix; click one to select it for export, double-click to open it.
-- Presets: *Fast* (one scene sketch), *Standard* (one column with 4 simplification levels), *Quality* (the full 3 × 9 matrix of the paper – hours, even on a GPU).
-- All options of the original scripts are available (fidelity layers, simplification steps, iterations, …), and the command line accepts the original arguments (`--method scenesketch --im_name … --layers 2,8,11`).
-- Two sample scenes from the SceneSketch repository (ballerina, house).
-- The LaMa inpainting model (≈ 200 MB) is downloaded the first time you use SceneSketch.
-- Objects on a plain background are sketched without a (pointless) background sketch.
+**Gallery**
+- Click a result to **continue working on it** in the studio – with its image and all settings. Every job now keeps a copy of its input image, so this also works after the original file was moved or deleted.
+- **Delete** results (to the recycle bin), **Show folder**, **favourites** (★) with a favourites filter, sorting by date or best CLIP score, search by image name and method. Right-click a card for the same actions.
+
+**Export**
+- GIF, MP4 and the new **animated WebP**: set **how long the drawing takes** (and how long the finished sketch stays) – the frame rate adapts.
+- **GIFs about 2× smaller and 3× faster** to create (a small palette made for line drawings).
+- **Animated WebP**: smaller than GIF, with a transparent background if you like.
+- SceneSketch: **export the whole matrix** as one ZIP – every sketch as SVG and PNG plus an overview sheet.
 
 **Also new**
-- **SVG · 1 layer** export: all strokes as one path in a single layer – for plotters, cutting machines (Cricut, Silhouette) and laser software, which otherwise import every stroke as its own layer.
-- The app starts in the language of Windows (German or English) – since 2.0.1.
+- **Keyboard shortcuts**: Ctrl+V pastes an image from the clipboard, Ctrl+O opens one, Ctrl+Enter starts, Ctrl+Shift+Enter adds to the queue, Ctrl+E exports the SVG, Ctrl+1 … 7 switch pages (list on the About page).
+- **Interrupted model downloads continue** where they stopped (also after closing the app); a dropped connection is resumed automatically.
+- **Update notice** when a new version is available (Settings → switch off).
+- **Crash log**: an unexpected error is shown and saved to a log file (Settings → *Open log folder*); after a hard crash the next start tells you where the log is. Please attach it when you report a problem.
 
 | File | For whom? |
 |---|---|
@@ -21,7 +26,7 @@
 
 **Notes**
 - Windows SmartScreen may warn on the first start (“Unknown publisher”) → *More info* → *Run anyway*.
-- CPU times: SwiftSketch ~5 s per sketch; CLIPasso “Fast” 5–15 min; SceneSketch “Fast” ≈ 20 min; ControlSketch several hours (GPU: a few minutes).
+- CPU times: SwiftSketch ~5 s per sketch; CLIPasso “Fast” 5–15 min; SceneSketch “Fast” ≈ 20 min, “Standard” ≈ 2 h; ControlSketch several hours (GPU: a few minutes).
 - Updating: the installer versions install over the old version; downloaded models and settings are kept.
 - Licence: CC BY-NC-SA 4.0 – **non-commercial use only**. The downloaded models have their own licences (see THIRD_PARTY_NOTICES.md).
 - Checksums: `SHA256SUMS-CPU.txt` and `SHA256SUMS-GPU.txt`.

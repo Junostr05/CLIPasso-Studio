@@ -80,15 +80,18 @@ Pick the method at the top of the studio with one click. Parameters, presets, ti
   - Checked by a test (`tests/test_settings.py`): every original argument has a setting with the same default value.
 - **Live preview** for all methods: you watch the sketch being drawn (for SwiftSketch every denoising step). Plus a photo/sketch slider, the attention map with the stroke start points, the mask, the ControlNet condition image for ControlSketch, a loss or CLIP score curve, the remaining time and thumbnails of all seeds. **Several sketches per image – the best one is picked automatically** (CLIPasso: lowest loss; SwiftSketch and ControlSketch: highest CLIP score).
 - **Presets** (Fast / Standard / Quality) per method, import/export of the settings as JSON, “copy command line”.
-- **Export**: SVG (stroke colour, width, background), **SVG · 1 layer** (all strokes as one path in a single layer – for plotters, cutting machines such as Cricut or Silhouette, and laser software), PNG at any resolution, **GIF/MP4 of the drawing process** – for SwiftSketch, how the strokes emerge from noise. Abstraction series with one click (CLIPasso, ControlSketch); SceneSketch makes its own matrix.
-- **Queue** for many images, also with mixed methods, with pause/cancel, a notification when done and protection against sleep mode. **Gallery** of all results with a method filter.
-- **Models** page grouped by method: download with progress, delete, manual import of the SwiftSketch weights (in case Google Drive hits its daily quota).
-- **Dark/light theme**, **English/German** interface (follows the Windows language, switchable at runtime), and a command-line mode that is compatible with the original arguments of all four methods.
+- **Export**: SVG (stroke colour, width, background), **SVG · 1 layer** (all strokes as one path in a single layer – for plotters, cutting machines such as Cricut or Silhouette, and laser software), PNG at any resolution, **GIF / MP4 / animated WebP of the drawing process** – you set how long the drawing takes and the frame rate follows (for SwiftSketch: how the strokes emerge from noise). SceneSketch: the **whole matrix** as one ZIP (every sketch as SVG and PNG plus an overview sheet). Abstraction series with one click (CLIPasso, ControlSketch).
+- **Queue** for many images, also with mixed methods, with pause/cancel, a notification when done and protection against sleep mode.
+- **Gallery** of all results: click one to continue working on it in the studio – with its image and settings (every job keeps a copy of its input image, so this works even after the original was moved or deleted). Favourites, sorting, search, method filter, “Show folder” and delete (to the recycle bin).
+- **Models** page grouped by method: download with progress, delete, manual import of the SwiftSketch weights (in case Google Drive hits its daily quota). Interrupted downloads continue where they stopped.
+- **Dark/light theme**, **English/German** interface (follows the Windows language, switchable at runtime), keyboard shortcuts (Ctrl+V pastes an image, Ctrl+Enter starts), and a command-line mode that is compatible with the original arguments of all four methods.
+- **Update notice** when a new version is out (can be switched off) and a **crash log**: unexpected errors are shown and saved in a log file that you can attach to a bug report.
 
 <p>
-  <img src="docs/screenshots/studio_scenesketch_dark_en.png" width="32.5%" alt="SceneSketch's matrix view in the studio">
-  <img src="docs/screenshots/studio_controlsketch_dark_en.png" width="32.5%" alt="ControlSketch in the studio">
-  <img src="docs/screenshots/studio_light_en.png" width="32.5%" alt="Light theme">
+  <img src="docs/screenshots/studio_scenesketch_dark_en.png" width="49%" alt="SceneSketch's matrix view in the studio">
+  <img src="docs/screenshots/studio_controlsketch_dark_en.png" width="49%" alt="ControlSketch in the studio">
+  <img src="docs/screenshots/gallery_dark_en.png" width="49%" alt="Gallery with favourites and card actions">
+  <img src="docs/screenshots/studio_light_en.png" width="49%" alt="Light theme">
 </p>
 
 ## Usage
