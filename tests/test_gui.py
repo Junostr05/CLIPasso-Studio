@@ -153,7 +153,8 @@ def test_method_switch_rebuilds_the_panel_and_remembers_settings(window):
     studio.picker.cards["controlsketch"].clicked.emit("controlsketch")
     assert panel.method() == "controlsketch"
     assert set(panel.fields) == {p.key for p in schema.CONTROL_PARAMS}
-    assert not studio.quick["mask_object"][1].isVisibleTo(studio)  # ControlSketch always masks
+    assert studio.quick["mask_object"][1].isVisibleTo(studio)  # background removal can be switched off
+    assert studio.quick["mask_object"][1].isChecked()  # on by default, like the original
     assert studio.quick["fix_scale"][1].isVisibleTo(studio)
     assert panel.fields["caption"].warning.isVisibleTo(panel)  # empty caption -> BLIP hint
 

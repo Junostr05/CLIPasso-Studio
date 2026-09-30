@@ -281,3 +281,34 @@ def test_sdxl_attention_with_a_tiny_pipeline():
     assert attn.shape == (48, 48)
     assert float(attn.min()) >= 0 and abs(float(attn.max()) - 1) < 1e-5
     assert S.token_index(tok, "a portrait of a camel") == 5
+
+
+def test_without_background_removal_the_whole_picture_is_sketched(tmp_path, monkeypatch):
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import masking
+    from clipasso_studio.engine.methods import controlsketch
+
+    img = Image.new("RGB", (120, 80), (30, 120, 200))  # a "background" colour everywhere
+    path = tmp_path / "scene.png"
+    img.save(path)
+
+    def no_u2net(*a, **k):
+        raise AssertionError("U2Net must not run without background removal")
+
+    monkeypatch.setattr(masking, "u2net_soft_mask", no_u2net)
+    s = schema.normalize({**schema.default_settings("controlsketch"), "mask_object": False, "render_size": 256})
+    inp = controlsketch.prepare_input(s, str(path), torch.device("cpu"))
+    assert inp["info"] is None and inp["canvas"].size == (256, 256)
+    assert float(inp["mask"].min()) == 1.0  # everything counts as "object"
+    r, g, b = inp["canvas"].getpixel((128, 128))
+    assert abs(r - 30) < 3 and abs(b - 200) < 3  # the background is kept, not whitened
+    assert schema.default_settings("controlsketch")["mask_object"] is True  # default: like the original
+
+
+def test_mask_toggle_in_the_parameters():
+    from clipasso_studio import settings_schema as schema
+
+    p = next(p for p in schema.params_for("controlsketch") if p.key == "mask_object")
+    assert p.default is True and not p.cli and not p.advanced
+    ratio = next(p for p in schema.params_for("controlsketch") if p.key == "object_size_ratio")
+    assert ratio.enabled_if({"mask_object": True}) and not ratio.enabled_if({"mask_object": False})

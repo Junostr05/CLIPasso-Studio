@@ -223,9 +223,11 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("num_sketches", 1, "int", "basics", minimum=1, maximum=16, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     Param("caption", "none", "text", "basics", cli="caption", advanced=False),
+    # not in the original, which always removes the background (RMBG); off = the whole picture is sketched
+    Param("mask_object", True, "bool", "image", advanced=False),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("object_size_ratio", 0.75, "float", "image", cli="object_size_ratio", minimum=0.1, maximum=1.0, step=0.05,
-          decimals=2),
+          decimals=2, enabled_if=_on("mask_object")),
     Param("render_size", 512, "int", "image", cli="render_size", minimum=256, maximum=1024, step=64),
     Param("output_svg_size", 512, "int", "image", cli="output_svg_size", minimum=64, maximum=4096, step=64),
     Param("width", 2.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),

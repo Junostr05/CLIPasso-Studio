@@ -67,8 +67,12 @@ def prepare_input(s: dict, target: str, device):
 
     size = int(s["render_size"])
     image = load_rgb(target)
-    matte = masking.u2net_soft_mask(device, image)
-    image = masking.apply_soft_mask(image, matte)
+    masked = bool(s.get("mask_object", True))
+    if masked:
+        matte = masking.u2net_soft_mask(device, image)
+        image = masking.apply_soft_mask(image, matte)
+    else:  # the whole picture, background included
+        matte = np.ones((image.height, image.width), dtype=np.float32)
     if s["fix_scale"]:
         image = imaging.fix_image_scale(image)
         h, w = matte.shape
@@ -79,6 +83,8 @@ def prepare_input(s: dict, target: str, device):
         matte = padded
     image = image.resize((size, size), Image.BICUBIC)
     mask = F.interpolate(torch.from_numpy(matte)[None, None], (size, size))[0, 0]
+    if not masked:  # no object to shrink: the picture fills the canvas
+        return {"full": image, "full_mask": mask, "canvas": image, "mask": mask, "info": None}
     canvas_img, canvas_mask, info = P.shrink_object(image, mask, float(s["object_size_ratio"]))
     return {"full": image, "full_mask": mask, "canvas": canvas_img, "mask": canvas_mask, "info": info}
 
@@ -123,7 +129,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     out_size = int(s["output_svg_size"])
     condition = s["condition"]
     stamp = (os.path.abspath(target), os.path.getmtime(target), str(device), s["fix_scale"], size,
-             s["object_size_ratio"])
+             s["object_size_ratio"], s["mask_object"])
 
     # --------------------------------------------------------------- input
     reporter.event("stage", seed=seed, name="loading")
@@ -275,7 +281,9 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     # --------------------------------------------------------------- final sketch
     order = None
     if s["sort_final_sketch"]:
-        order = P.sort_by_contour_and_attn(painter, inp["mask"], attn if attn is not None
+        # without a mask there is no object outline to start with: sorted by attention only
+        outline = inp["mask"] if s["mask_object"] else torch.zeros_like(inp["mask"])
+        order = P.sort_by_contour_and_attn(painter, outline, attn if attn is not None
                                            else torch.zeros(size, size))
     shapes, groups = P.output_scene(painter, inp["info"], out_size, order)
     from ... import svg_io

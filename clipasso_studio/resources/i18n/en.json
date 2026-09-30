@@ -590,5 +590,6 @@
  "ui.batch.export_all": "Export all",
  "ui.batch.export_all_tip": "Export the finished results of the queue at once",
  "ui.batch.export_shown": "Export shown",
- "ui.batch.export_shown_tip": "Export every result shown (use the filters to choose, e.g. favourites)"
+ "ui.batch.export_shown_tip": "Export every result shown (use the filters to choose, e.g. favourites)",
+ "param.controlsketch.mask_object.help": "Removes the background with U²-Net and sketches only the object, scaled to “Object size” (like the original, which always does this). Off: the whole picture including the background is sketched."
 }

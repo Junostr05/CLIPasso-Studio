@@ -590,5 +590,6 @@
  "ui.batch.export_all": "Alle exportieren",
  "ui.batch.export_all_tip": "Die fertigen Ergebnisse der Warteschlange auf einmal exportieren",
  "ui.batch.export_shown": "Angezeigte exportieren",
- "ui.batch.export_shown_tip": "Alle angezeigten Ergebnisse exportieren (mit den Filtern auswählen, z. B. Favoriten)"
+ "ui.batch.export_shown_tip": "Alle angezeigten Ergebnisse exportieren (mit den Filtern auswählen, z. B. Favoriten)",
+ "param.controlsketch.mask_object.help": "Entfernt den Hintergrund mit U²-Net und skizziert nur das Objekt, skaliert auf „Objektgröße“ (wie das Original, das das immer tut). Aus: das ganze Bild samt Hintergrund wird skizziert."
 }
