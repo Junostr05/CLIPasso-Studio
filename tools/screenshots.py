@@ -28,11 +28,19 @@ def main() -> int:
     ap.add_argument("--lang", default="de")
     ap.add_argument("--pages", default="studio,compare,queue,gallery,models,settings,about")
     ap.add_argument("--size", default="1480x920")
+    ap.add_argument("--models", default="", help="folder of downloaded models to show as installed")
     args = ap.parse_args()
 
     # isolated user data so the real settings are untouched
     os.environ["XDG_DATA_HOME"] = tempfile.mkdtemp()
     os.environ["LOCALAPPDATA"] = os.environ["XDG_DATA_HOME"]
+    if args.models:
+        from clipasso_studio import paths as _paths
+
+        target = _paths.user_data_dir() / "models"
+        if target.exists():
+            target.rmdir()
+        os.symlink(os.path.abspath(args.models), target)
 
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication

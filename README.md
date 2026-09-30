@@ -23,7 +23,7 @@
 <p align="center">
   <img src="docs/screenshots/methods_camel.png" width="820" alt="Ein Foto, drei Methoden">
 </p>
-<p align="center"><sub>Mit dieser App erzeugt (CPU): Eingabe, CLIPasso (16 Striche), SwiftSketch (32 Striche, 4 Sekunden), ControlSketch (32 Striche).</sub></p>
+<p align="center"><sub>Mit dieser App auf einer CPU erzeugt: CLIPasso (16 Striche, Preset „Schnell“, 11 Min.), SwiftSketch (32 Striche, 4 s pro Skizze), ControlSketch (32 Striche – nur 250 der 2000 Iterationen, 67 Min.; mit einer NVIDIA-GPU läuft der volle Durchlauf in wenigen Minuten).</sub></p>
 
 ![Studio](docs/screenshots/studio_dark_de.png)
 
@@ -50,6 +50,12 @@ Oben im Studio wählst du die Methode per Klick; Parameter, Presets, Zeitschätz
 | Striche | frei wählbar (1–256), Mehrstufen-Training | fest 32 (so trainiert) | frei wählbar (Standard 32) |
 | Modelle | enthalten | ≈ 710 MB, beim ersten Einsatz | ≈ 3–4 GB (SD 1.5, ControlNet, Detektor, BLIP), beim ersten Einsatz |
 | Stärken | sehr anpassbar, Abstraktionsgrad, Text-Führung | blitzschnell, sauberer „Künstler“-Strich | sehr natürliche, detailreiche Skizzen |
+
+<p align="center">
+  <img src="docs/screenshots/camel_drawing.gif" width="260" alt="CLIPasso optimiert die Striche">
+  <img src="docs/screenshots/swiftsketch_camel.gif" width="260" alt="SwiftSketch entrauscht die Striche">
+</p>
+<p align="center"><sub>Links: CLIPasso optimiert die Striche. Rechts: SwiftSketch formt sie in 50 Entrauschungsschritten aus Rauschen (GIF-Export der App).</sub></p>
 
 **Welche passt zu meinem Bild?** Die Seite **Vergleich** zeichnet das aktuelle Bild mit allen gewählten Methoden (Standard-Preset oder deine Studio-Einstellungen), stellt die Ergebnisse nebeneinander – mit CLIP-Score, Rechenzeit und Strichzahl – und markiert die Methode mit dem höchsten CLIP-Score. Frühere Ergebnisse zum selben Bild werden automatisch angezeigt.
 
