@@ -142,11 +142,20 @@ class StudioPage(QWidget):
             b.clicked.connect(lambda _=False, f=fmt: self.export(f))
             grid.addWidget(b, i // 2, i % 2)
             self.export_btns[fmt] = b
+        b = button("WebP", "film")
+        b.clicked.connect(lambda _=False: self.export("webp"))
+        grid.addWidget(b, 2, 0)
+        self.export_btns["webp"] = b
         # extra: plain single-layer SVG (one path with all strokes) for plotters / cutting machines
         b = button("", "pen-tool", "ghost")
         b.clicked.connect(lambda _=False: self.export("svg1"))
-        grid.addWidget(b, 2, 0, 1, 2)
+        grid.addWidget(b, 2, 1)
         self.export_btns["svg1"] = b
+        # SceneSketch: every sketch of the matrix at once
+        b = button("", "layers", "ghost")
+        b.clicked.connect(lambda _=False: self.export("matrix"))
+        grid.addWidget(b, 3, 0, 1, 2)
+        self.export_btns["matrix"] = b
         self.result_card.body.addLayout(grid)
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self.open_folder)
@@ -785,12 +794,20 @@ class StudioPage(QWidget):
         svg = os.path.join(run_dir, "best_iter.svg")
         return (svg, run_dir) if os.path.isfile(svg) else None
 
+    def _matrix_exportable(self) -> bool:
+        return (self.view_method == "scenesketch" and len(self.seed_runs) > 1 and bool(self.view_dir)
+                and os.path.isfile(os.path.join(self.view_dir, "job.json")))
+
     def export(self, fmt: str):
         sel = self._selected_run()
         if not sel:
             return
         svg, run_dir = sel
         name = os.path.basename(run_dir)
+        if fmt == "matrix":
+            if not self._matrix_exportable():
+                return
+            run_dir, name = self.view_dir, os.path.basename(os.path.normpath(self.view_dir))
         dlg = dialogs.ExportDialog(fmt, svg, run_dir, name, self)
         if dlg.exec():
             self.toast.emit(tr("ui.exported", path=getattr(dlg, "saved_path", "")), "success")
@@ -934,6 +951,8 @@ class StudioPage(QWidget):
         has_result = self._selected_run() is not None
         for b in self.export_btns.values():
             b.setEnabled(has_result)
+        self.export_btns["matrix"].setVisible(self.view_method == "scenesketch")
+        self.export_btns["matrix"].setEnabled(self._matrix_exportable())
         for b in (self.reuse_btn,):
             b.setEnabled(has_result)
         self.folder_btn.setEnabled(bool(self.view_dir) or bool(app_settings().get("output_dir")))
@@ -956,6 +975,9 @@ class StudioPage(QWidget):
         self.result_title.setText(tr("ui.result"))
         self.export_btns["svg1"].setText(tr("ui.export_svg1"))
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
+        self.export_btns["webp"].setToolTip(tr("ui.export_webp_tip"))
+        self.export_btns["matrix"].setText(tr("ui.export_matrix"))
+        self.export_btns["matrix"].setToolTip(tr("ui.export_matrix_tip"))
         self.folder_btn.setText(tr("ui.open_folder"))
         self.reuse_btn.setText(tr("ui.use_as_initial"))
         self.reuse_btn.setToolTip(tr("ui.use_as_initial_tip"))

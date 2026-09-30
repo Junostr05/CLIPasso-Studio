@@ -158,8 +158,20 @@ def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=No
     return thread
 
 
+ANIMATIONS = ("gif", "mp4", "webp")
+EXTENSIONS = {"svg1": "svg", "matrix": "zip"}
+FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
+           "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)"}
+
+
+def default_animation_length(frames: int) -> float:
+    """Seconds for the drawing: like the old 20 fps, but between 2 and 10 s."""
+    return round(min(10.0, max(2.0, frames / 20)) * 2) / 2
+
+
 class ExportDialog(QDialog):
-    """Options for exporting a sketch (SVG, PNG, GIF, MP4)."""
+    """Options for exporting a sketch (SVG, PNG, GIF, MP4, WebP) or a SceneSketch matrix (ZIP; then
+    ``run_dir`` is the job folder)."""
 
     def __init__(self, fmt: str, svg_path: str, run_dir: str, default_name: str, parent=None):
         super().__init__(parent)
@@ -168,14 +180,15 @@ class ExportDialog(QDialog):
         self.run_dir = run_dir
         self.default_name = default_name
         # "svg1": all strokes as one path in one layer (for plotters / cutting machines)
-        self.ext = "svg" if fmt == "svg1" else fmt
-        title = tr("ui.export_svg1") if fmt == "svg1" else fmt.upper()
-        self.setWindowTitle(tr("ui.export_title", fmt=title))
+        self.ext = EXTENSIONS.get(fmt, fmt)
+        title = {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix")}.get(fmt, fmt.upper())
+        heading = tr("ui.export_matrix_title") if fmt == "matrix" else tr("ui.export_title", fmt=title)
+        self.setWindowTitle(heading)
         self.setMinimumWidth(420)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(22, 20, 22, 20)
         lay.setSpacing(14)
-        lay.addWidget(label(tr("ui.export_title", fmt=title), "h2"))
+        lay.addWidget(label(heading, "h2"))
         lay.addWidget(label(tr(f"ui.export_desc.{fmt}"), "muted", wrap=True))
 
         form = QFormLayout()
@@ -190,22 +203,38 @@ class ExportDialog(QDialog):
         self.width_scale.setSuffix(" ×")
         form.addRow(tr("ui.stroke_width_scale"), self.width_scale)
         self.background = ColorButton("#FFFFFF" if fmt != "svg" else "transparent", allow_transparent=fmt in
-                                      ("svg", "png"))
+                                      ("svg", "png", "webp", "matrix"))
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
         self.size = QSpinBox()
         self.size.setRange(64, 8192)
         self.size.setSingleStep(128)
-        self.size.setValue(1024 if fmt == "png" else 512)
+        self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
         if fmt not in ("svg", "svg1"):
             form.addRow(tr("ui.size"), self.size)
-        self.fps = QSpinBox()
-        self.fps.setRange(1, 60)
-        self.fps.setValue(20)
-        self.fps.setSuffix(" fps")
-        if fmt in ("gif", "mp4"):
-            form.addRow(tr("ui.fps"), self.fps)
+        # animations: the length of the drawing is set, the frame rate follows from it
+        self.frames = len(export.animation_frames(run_dir)) if fmt in ANIMATIONS else 0
+        self.length = QDoubleSpinBox()
+        self.length.setRange(0.5, 300.0)
+        self.length.setSingleStep(0.5)
+        self.length.setDecimals(1)
+        self.length.setSuffix(" s")
+        self.length.setValue(default_animation_length(self.frames))
+        self.hold = QDoubleSpinBox()
+        self.hold.setRange(0.0, 10.0)
+        self.hold.setSingleStep(0.5)
+        self.hold.setDecimals(1)
+        self.hold.setSuffix(" s")
+        self.hold.setValue(1.0)
+        self.timing = label("", "faint")
+        if fmt in ANIMATIONS:
+            form.addRow(tr("ui.export_length"), self.length)
+            form.addRow(tr("ui.export_hold"), self.hold)
+            form.addRow("", self.timing)
+            for w in (self.length, self.hold, self.size):
+                w.valueChanged.connect(self._update_timing)
+            self._update_timing()
         lay.addLayout(form)
 
         self.phase = label("", "faint")
@@ -226,9 +255,19 @@ class ExportDialog(QDialog):
         self.busy = False  # an animation export is running in the background
         self._cancel = False
 
+    def _update_timing(self):
+        idx, durations = export.animation_plan(self.frames, self.length.value(), hold=self.hold.value(),
+                                               fmt=self.fmt, size=self.size.value())
+        if not idx:
+            self.timing.setText("")
+            return
+        fps = export.MP4_FPS if self.fmt == "mp4" else len(idx) / self.length.value()
+        self.timing.setText(tr("ui.export_timing", fps=f"{fps:.0f}" if fps >= 10 else f"{fps:.1f}",
+                               frames=len(idx), total=f"{sum(durations) / 1000:.1f}"))
+
     def _save(self):
-        ext = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)"}[self.ext]
-        suffix = "_1layer" if self.fmt == "svg1" else ""
+        ext = FILTERS[self.ext]
+        suffix = {"svg1": "_1layer", "matrix": "_matrix"}.get(self.fmt, "")
         start = os.path.join(os.path.expanduser("~"), f"{self.default_name}{suffix}.{self.ext}")
         dest, _ = QFileDialog.getSaveFileName(self, tr("ui.save_as"), start, ext)
         if not dest:
@@ -246,7 +285,7 @@ class ExportDialog(QDialog):
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
             elif self.fmt == "png":
                 export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg)
-            else:
+            else:  # animations and the matrix run in the background
                 self.ok.setEnabled(False)
                 self.progress.setRange(0, 1)
                 self.progress.setValue(0)
@@ -260,15 +299,20 @@ class ExportDialog(QDialog):
                         return
                     if b <= 0:  # all frames drawn, the file is being encoded
                         self.progress.setRange(0, 0)
-                        self.phase.setText(tr("ui.export_encoding", fmt=self.ext.upper()))
+                        self.phase.setText(tr("ui.export_encoding", fmt={"webp": "WebP"}.get(self.ext,
+                                                                                          self.ext.upper())))
                     else:
                         self.progress.setRange(0, b)
                         self.progress.setValue(a)
 
-                run_in_thread(self, export.export_animation, self.run_dir, dest, size=self.size.value(),
-                              fps=self.fps.value(), stroke_color=stroke, width_scale=self.width_scale.value(),
-                              background=bg or "#FFFFFF", cancel=lambda: self._cancel, on_progress=prog,
-                              on_done=lambda _: self._finished(dest), on_error=self._failed)
+                common = {"size": self.size.value(), "stroke_color": stroke, "width_scale": self.width_scale.value(),
+                          "background": bg, "cancel": lambda: self._cancel, "on_progress": prog,
+                          "on_done": lambda _: self._finished(dest), "on_error": self._failed}
+                if self.fmt == "matrix":
+                    run_in_thread(self, export.export_matrix_zip, self.run_dir, dest, **common)
+                else:
+                    run_in_thread(self, export.export_animation, self.run_dir, dest, length=self.length.value(),
+                                  hold=self.hold.value(), **common)
                 return
         except Exception as exc:
             self._failed(str(exc))

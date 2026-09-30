@@ -207,8 +207,8 @@
  "ui.export_title": "Export {fmt}",
  "ui.export_desc.svg": "Vector graphic – scales without loss, ideal for plotters, Illustrator or Inkscape.",
  "ui.export_desc.png": "Raster image in any resolution.",
- "ui.export_desc.gif": "Animation of how the sketch evolves during optimisation.",
- "ui.export_desc.mp4": "Video of how the sketch evolves during optimisation.",
+ "ui.export_desc.gif": "Animation of how the sketch is drawn. Set how long the drawing takes – the frame rate adapts.",
+ "ui.export_desc.mp4": "Video of how the sketch is drawn. Set how long the drawing takes – the video is made at 30 fps.",
  "ui.export_svg1": "SVG · 1 layer",
  "ui.export_svg1_tip": "Plain SVG: all strokes as one path in a single layer – for plotters, cutting machines (Cricut, Silhouette) and laser software, which would otherwise import every stroke as its own layer.",
  "ui.export_desc.svg1": "All strokes merged into one path in a single layer, without background – imported as one layer by plotter, cutter and laser software.",
@@ -512,5 +512,14 @@
  "ui.gallery.delete_permanently_q": "“{name}” could not be moved to the recycle bin. Delete it permanently?",
  "ui.gallery.sort_newest": "Newest first",
  "ui.gallery.sort_score": "Best CLIP score",
- "ui.saved_copy": "saved copy"
+ "ui.saved_copy": "saved copy",
+ "ui.export_desc.webp": "Animated WebP of how the sketch is drawn – much smaller than a GIF and with a transparent background if you like; plays in all current browsers.",
+ "ui.export_webp_tip": "Animated WebP: smaller than a GIF, transparent background possible",
+ "ui.export_length": "Length of the drawing",
+ "ui.export_hold": "Then show the sketch for",
+ "ui.export_timing": "≈ {fps} fps · {frames} frames · {total} s in total",
+ "ui.export_matrix": "Whole matrix (ZIP)",
+ "ui.export_matrix_tip": "Every sketch of the SceneSketch matrix as SVG and PNG, plus an overview sheet – in one ZIP file.",
+ "ui.export_desc.matrix": "Every sketch of the matrix as SVG and PNG (L<layer>_level<n>), plus matrix.svg / matrix.png with all of them in one overview.",
+ "ui.export_matrix_title": "Export the whole matrix"
 }

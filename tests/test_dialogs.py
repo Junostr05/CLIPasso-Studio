@@ -117,7 +117,7 @@ def _run_dir(tmp_path, frames=3):
     return run
 
 
-@pytest.mark.parametrize("fmt", ["gif", "mp4"])
+@pytest.mark.parametrize("fmt", ["gif", "mp4", "webp"])
 def test_animation_export_runs_to_the_end(qapp, tmp_path, monkeypatch, fmt):
     from PySide6.QtWidgets import QDialog, QFileDialog
 
@@ -207,3 +207,44 @@ def test_model_download_dialog_cancel_stops_before_the_next_model(qapp, monkeypa
     time.sleep(0.2)
     qapp.processEvents()
     assert calls == ["u2net"]
+
+
+def test_export_dialog_length_sets_the_frame_rate(qapp, tmp_path):
+    from clipasso_studio.gui import dialogs
+
+    run = _run_dir(tmp_path, frames=40)
+    dlg = dialogs.ExportDialog("gif", str(run / "best_iter.svg"), str(run), "out")
+    assert dlg.length.value() == 2.0  # 40 frames: like 20 fps, at least 2 s
+    dlg.length.setValue(4.0)
+    dlg.hold.setValue(0.0)
+    assert dlg.timing.text().startswith("≈ 10 fps") and "40" in dlg.timing.text()
+    mp4 = dialogs.ExportDialog("mp4", str(run / "best_iter.svg"), str(run), "out")
+    mp4.length.setValue(3.0)
+    mp4.hold.setValue(1.0)
+    assert mp4.timing.text().startswith("≈ 30 fps") and "120" in mp4.timing.text()
+
+
+def test_matrix_export_dialog(qapp, tmp_path, monkeypatch):
+    import json
+    import zipfile
+
+    from PySide6.QtWidgets import QDialog, QFileDialog
+
+    from clipasso_studio.gui import dialogs
+
+    job = tmp_path / "scene_job"
+    runs = []
+    for cell in (800, 801):
+        run = job / f"cell{cell}"
+        run.mkdir(parents=True)
+        (run / "best_iter.svg").write_text(SVG.format(y=40 + cell % 100 * 50))
+        runs.append({"seed": cell, "run_dir": str(run), "best_svg": str(run / "best_iter.svg")})
+    (job / "job.json").write_text(json.dumps({"method": "scenesketch", "runs": runs}))
+    dest = tmp_path / "m.zip"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(dest), ""))
+    dlg = dialogs.ExportDialog("matrix", runs[0]["best_svg"], str(job), "scene_job")
+    dlg.size.setValue(128)
+    dlg._save()
+    _wait(qapp, lambda: dlg.result() == QDialog.Accepted)
+    with zipfile.ZipFile(dest) as z:
+        assert {"L8_level0.svg", "L8_level1.png", "matrix.png"} <= set(z.namelist())

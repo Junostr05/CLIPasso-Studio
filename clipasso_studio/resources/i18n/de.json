@@ -207,8 +207,8 @@
  "ui.export_title": "{fmt} exportieren",
  "ui.export_desc.svg": "Vektorgrafik – verlustfrei skalierbar, ideal für Plotter, Illustrator oder Inkscape.",
  "ui.export_desc.png": "Rastergrafik in beliebiger Auflösung.",
- "ui.export_desc.gif": "Animation, wie die Skizze während der Optimierung entsteht.",
- "ui.export_desc.mp4": "Video, wie die Skizze während der Optimierung entsteht.",
+ "ui.export_desc.gif": "Animation, wie die Skizze gezeichnet wird. Du stellst ein, wie lange das Zeichnen dauert – die Bildrate passt sich an.",
+ "ui.export_desc.mp4": "Video, wie die Skizze gezeichnet wird. Du stellst ein, wie lange das Zeichnen dauert – das Video hat 30 fps.",
  "ui.export_svg1": "SVG · 1 Ebene",
  "ui.export_svg1_tip": "Einfaches SVG: alle Striche als ein Pfad in einer einzigen Ebene – für Plotter, Schneideplotter (Cricut, Silhouette) und Lasersoftware, die sonst jeden Strich als eigene Ebene importieren.",
  "ui.export_desc.svg1": "Alle Striche zu einem Pfad in einer einzigen Ebene zusammengefasst, ohne Hintergrund – Plotter-, Schneide- und Lasersoftware importiert es als eine Ebene.",
@@ -512,5 +512,14 @@
  "ui.gallery.delete_permanently_q": "„{name}“ konnte nicht in den Papierkorb verschoben werden. Endgültig löschen?",
  "ui.gallery.sort_newest": "Neueste zuerst",
  "ui.gallery.sort_score": "Bester CLIP-Score",
- "ui.saved_copy": "gespeicherte Kopie"
+ "ui.saved_copy": "gespeicherte Kopie",
+ "ui.export_desc.webp": "Animiertes WebP, wie die Skizze gezeichnet wird – viel kleiner als ein GIF, auf Wunsch mit transparentem Hintergrund; läuft in allen aktuellen Browsern.",
+ "ui.export_webp_tip": "Animiertes WebP: kleiner als ein GIF, transparenter Hintergrund möglich",
+ "ui.export_length": "Dauer der Zeichnung",
+ "ui.export_hold": "Danach Skizze zeigen für",
+ "ui.export_timing": "≈ {fps} fps · {frames} Bilder · {total} s insgesamt",
+ "ui.export_matrix": "Ganze Matrix (ZIP)",
+ "ui.export_matrix_tip": "Alle Skizzen der SceneSketch-Matrix als SVG und PNG plus eine Übersicht – in einer ZIP-Datei.",
+ "ui.export_desc.matrix": "Jede Skizze der Matrix als SVG und PNG (L<Ebene>_level<n>), dazu matrix.svg / matrix.png mit allen in einer Übersicht.",
+ "ui.export_matrix_title": "Ganze Matrix exportieren"
 }
