@@ -771,6 +771,25 @@ class SettingsPage(QWidget):
         self.theme_seg.set_current(s.get("theme"))
         self.theme_seg.changed.connect(self._theme_changed)
         self.look.body.addLayout(self._row(self.theme_label, self.theme_seg))
+        from ..app import UI_SCALES
+
+        self.scale_label = label("", None)
+        self.scale = QComboBox()
+        for v in UI_SCALES:
+            self.scale.addItem(f"{round(v * 100)} %", v)
+        current = float(s.get("ui_scale", 1.0))
+        self.scale.setCurrentIndex(min(range(len(UI_SCALES)), key=lambda i: abs(UI_SCALES[i] - current)))
+        self.scale.currentIndexChanged.connect(self._scale_changed)
+        self.look.body.addLayout(self._row(self.scale_label, self.scale))
+        self.restart_row = QHBoxLayout()
+        self.restart_hint = label("", "faint")
+        self.restart_btn = button("", "refresh-cw", "primary", size="sm")
+        self.restart_btn.clicked.connect(lambda: self.window().restart_app())
+        self.restart_row.addWidget(self.restart_hint, 1)
+        self.restart_row.addWidget(self.restart_btn)
+        self.look.body.addLayout(self.restart_row)
+        self._started_scale = current
+        self._show_restart()
         col.addWidget(self.look)
 
         self.files = Card()
@@ -838,6 +857,15 @@ class SettingsPage(QWidget):
         app_settings().set("language", code)
         i18n.set_language(code)
 
+    def _scale_changed(self, _index):
+        app_settings().set("ui_scale", float(self.scale.currentData()))
+        self._show_restart()
+
+    def _show_restart(self):
+        pending = abs(float(self.scale.currentData()) - self._started_scale) > 1e-3
+        self.restart_hint.setVisible(pending)
+        self.restart_btn.setVisible(pending)
+
     def _theme_changed(self, mode):
         app_settings().set("theme", mode)
         self.theme_changed.emit(mode)
@@ -879,6 +907,10 @@ class SettingsPage(QWidget):
         self.lang_label.setText(tr("ui.settings.language"))
         self.lang.setItemText(0, tr("ui.settings.language_auto", lang=LANGUAGES[system_language()]))
         self.theme_label.setText(tr("ui.settings.theme"))
+        self.scale_label.setText(tr("ui.settings.ui_scale"))
+        self.scale.setToolTip(tr("ui.settings.ui_scale_tip"))
+        self.restart_hint.setText(tr("ui.settings.restart_hint"))
+        self.restart_btn.setText(tr("ui.settings.restart"))
         for k in ("dark", "light", "system"):
             self.theme_seg.set_text(k, tr(f"ui.theme.{k}"))
         self.files_title.setText(tr("ui.settings.files"))

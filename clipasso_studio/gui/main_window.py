@@ -108,6 +108,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
         self.setMinimumSize(1080, 660)
         self.resize(1440, 900)
+        if float(app_settings().get("ui_scale", 1.0)) > 1.0:  # larger interface: still fit the screen
+            screen = QApplication.primaryScreen()
+            if screen is not None:
+                avail = screen.availableGeometry()
+                self.setMinimumSize(min(1080, int(avail.width() * 0.9)), min(660, int(avail.height() * 0.85)))
+                self.resize(min(1440, int(avail.width() * 0.95)), min(900, int(avail.height() * 0.9)))
         self.controller = JobController(self)
 
         root = QWidget()
@@ -228,6 +234,19 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         QTimer.singleShot(0, lambda: _dark_title_bar(self, theme.current().name == "dark"))
+
+    def restart_app(self) -> bool:
+        """Close (asks if a job is running) and start again, e.g. for a new interface size."""
+        from PySide6.QtCore import QProcess
+
+        from .app import restart_command
+
+        if not self.close():
+            return False
+        program, args = restart_command()
+        QProcess.startDetached(program, args)
+        QApplication.quit()
+        return True
 
     # ------------------------------------------------------ interrupted jobs
     def continue_job(self, job_dir: str) -> bool:

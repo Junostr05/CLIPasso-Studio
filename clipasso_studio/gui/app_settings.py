@@ -18,6 +18,7 @@ DEFAULTS: dict[str, Any] = {
     "keep_awake": True,
     "notify": True,
     "check_updates": True,
+    "ui_scale": 1.0,  # interface size (applied at the start via QT_SCALE_FACTOR)
     "skipped_version": "",
     "last_params": None,
     "last_preset": "standard",
