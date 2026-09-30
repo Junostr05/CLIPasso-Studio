@@ -62,7 +62,62 @@ def make_job_dir(output_root: str, target: str, method: str = "clipasso") -> str
         n += 1
         path = Path(output_root) / f"{test_name}_{stamp}-{n}"
     path.mkdir(parents=True)
+    save_input(str(path), target)
     return str(path)
+
+
+INPUT_DIR = "input"
+
+
+def save_input(job_dir: str, target: str) -> str | None:
+    """Copy the input image into the job folder (``input/<file name>``) when the job starts, so the
+    job can be reopened and continued even after the original file was moved or deleted."""
+    dest = os.path.join(job_dir, INPUT_DIR, os.path.basename(target))
+    if os.path.isfile(dest):
+        return dest
+    try:
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copyfile(target, dest)
+    except OSError:
+        return None
+    return dest
+
+
+def saved_input(job_dir: str, target: str = "") -> str | None:
+    """The copy of the input image in a job folder – ``input/<name>``, or ``source.<ext>`` of
+    CLIPasso Studio 2.1 and older."""
+    folder = os.path.join(job_dir, INPUT_DIR)
+    if os.path.isdir(folder):
+        files = sorted(os.listdir(folder))
+        name = os.path.basename(target)
+        if name in files:
+            return os.path.join(folder, name)
+        if files:
+            return os.path.join(folder, files[0])
+    if os.path.isdir(job_dir):
+        old = next((f for f in sorted(os.listdir(job_dir)) if f.startswith("source.")), None)
+        if old:
+            return os.path.join(job_dir, old)
+    return None
+
+
+def reopen_input(job_dir: str, target: str) -> str | None:
+    """The image to continue a job with: the original while it exists, otherwise the saved copy.
+    An old ``source.<ext>`` copy is copied to ``input/<original name>`` first, so that new runs from it
+    are named after the image and not "source"."""
+    if target and os.path.isfile(target):
+        return target
+    copy = saved_input(job_dir, target)
+    if copy and os.path.basename(copy).startswith("source.") and target:
+        name = os.path.splitext(os.path.basename(target))[0] + os.path.splitext(copy)[1]
+        dest = os.path.join(job_dir, INPUT_DIR, name)
+        try:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.copyfile(copy, dest)
+            return dest
+        except OSError:
+            return copy
+    return copy
 
 
 def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResult],
@@ -86,10 +141,7 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     png = os.path.join(best.run_dir, "best_iter.png")
     if os.path.isfile(png):
         shutil.copyfile(png, os.path.join(job_dir, f"{best.run_name}_best.png"))
-    try:
-        shutil.copyfile(target, os.path.join(job_dir, "source" + os.path.splitext(target)[1].lower()))
-    except OSError:
-        pass
+    save_input(job_dir, target)  # normally already done when the job folder was created
     summary = {
         "target": os.path.abspath(target),
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),

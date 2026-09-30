@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import os
 import platform
+import shutil
 
-from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QFile, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
+                               QMenu, QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
@@ -228,12 +229,46 @@ class QueuePage(QWidget):
 
 
 # ==================================================================== gallery
+def set_favourite(job_dir: str, value: bool) -> None:
+    """Mark a job as favourite (stored in its job.json)."""
+    path = os.path.join(job_dir, "job.json")
+    with open(path, encoding="utf-8") as f:
+        summary = json.load(f)
+    if value:
+        summary["favourite"] = True
+    else:
+        summary.pop("favourite", None)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+
+def move_to_trash(path: str) -> bool:
+    """Move a file or folder to the recycle bin; False when the system does not allow it."""
+    try:
+        res = QFile.moveToTrash(path)
+    except Exception:
+        return False
+    ok = res[0] if isinstance(res, tuple) else bool(res)
+    return bool(ok) and not os.path.exists(path)
+
+
+def _job_matches(job_dir: str, summary: dict, query: str) -> bool:
+    if not query:
+        return True
+    method = job_method(summary)
+    hay = " ".join((os.path.basename(job_dir), os.path.basename(summary.get("target", "")), method,
+                    methods_ui.name(method))).lower()
+    return all(word in hay for word in query.split())
+
+
 class GalleryCard(Card):
     clicked = Signal(str)
+    action = Signal(str, str)  # (kind, job folder): "folder", "favourite", "delete"
 
     def __init__(self, job_dir: str, summary: dict, parent=None):
         super().__init__(parent, margins=12, spacing=8)
         self.job_dir = job_dir
+        self.favourite = bool(summary.get("favourite"))
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedWidth(220)
         view = SketchCanvas()
@@ -245,7 +280,9 @@ class GalleryCard(Card):
             pass
         self.body.addWidget(view)
         name = os.path.splitext(os.path.basename(summary.get("target", job_dir)))[0]
-        self.body.addWidget(label(name, "h3"))
+        title = label(name, "h3")
+        title.setToolTip(job_dir)
+        self.body.addWidget(title)
         s = summary.get("settings", {})
         method = job_method(summary)
         self.method = method
@@ -263,15 +300,47 @@ class GalleryCard(Card):
             badges.addWidget(label(f"Loss {min(r.get('best_loss', 99) for r in runs):.3f}", "badge"))
         badges.addStretch(1)
         self.body.addLayout(badges)
+        tools = QHBoxLayout()
+        tools.setSpacing(2)
+        p = theme.current()
+        self.star = tool_button("star", tr("ui.gallery.favourite"), 16, checkable=True)
+        self.star.setIcon(icons.icon("star", p.muted, active_color=p.warning))
+        self.star.setChecked(self.favourite)
+        self.star.toggled.connect(lambda on: self.action.emit("favourite", self.job_dir))
+        self.folder = tool_button("folder-open", tr("ui.gallery.show_folder"), 16)
+        self.folder.clicked.connect(lambda: self.action.emit("folder", self.job_dir))
+        self.delete = tool_button("trash-2", tr("ui.gallery.delete"), 16)
+        self.delete.clicked.connect(lambda: self.action.emit("delete", self.job_dir))
+        tools.addWidget(self.star)
+        tools.addStretch(1)
+        tools.addWidget(self.folder)
+        tools.addWidget(self.delete)
+        self.body.addLayout(tools)
         self.body.addStretch(1)
         self.setFixedHeight(self.sizeHint().height())
 
     def mouseReleaseEvent(self, e):  # noqa: N802
-        self.clicked.emit(self.job_dir)
+        if e.button() == Qt.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.clicked.emit(self.job_dir)
+
+    def contextMenuEvent(self, e):  # noqa: N802
+        menu = QMenu(self)
+        menu.addAction(icons.icon("brush"), tr("ui.gallery.open"), lambda: self.clicked.emit(self.job_dir))
+        menu.addAction(icons.icon("folder-open"), tr("ui.gallery.show_folder"),
+                       lambda: self.action.emit("folder", self.job_dir))
+        menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if self.favourite else "ui.gallery.favourite"),
+                       self.star.toggle)
+        menu.addSeparator()
+        menu.addAction(icons.icon("trash-2", theme.current().danger), tr("ui.gallery.delete"),
+                       lambda: self.action.emit("delete", self.job_dir))
+        menu.exec(e.globalPos())
 
 
 class GalleryPage(QWidget):
     open_job = Signal(str)
+    job_deleted = Signal(str)
+
+    SORTS = ("newest", "score")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -284,19 +353,30 @@ class GalleryPage(QWidget):
         head.addLayout(lay, 1)
         self.search = QLineEdit()
         self.search.setClearButtonEnabled(True)
-        self.search.setFixedWidth(220)
+        self.search.setFixedWidth(240)
         self.search.textChanged.connect(self.refresh)
         self.filter = SegmentedControl([("all", "")] + [(m, methods_ui.name(m)) for m in schema.METHODS])
         self.filter.changed.connect(lambda _: self.refresh())
+        self.fav_btn = button("", "star", "ghost")
+        self.fav_btn.setCheckable(True)
+        self.fav_btn.toggled.connect(lambda _: self.refresh())
+        self.sort = QComboBox()
+        self.sort.currentIndexChanged.connect(lambda _: self.refresh())
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self._open_folder)
         self.refresh_btn = button("", "refresh-cw")
         self.refresh_btn.clicked.connect(self.refresh)
-        head.addWidget(self.filter, 0, Qt.AlignBottom)
-        head.addWidget(self.search, 0, Qt.AlignBottom)
         head.addWidget(self.folder_btn, 0, Qt.AlignBottom)
         head.addWidget(self.refresh_btn, 0, Qt.AlignBottom)
         root.addLayout(head)
+        tools = QHBoxLayout()
+        tools.setSpacing(10)
+        tools.addWidget(self.filter)
+        tools.addWidget(self.fav_btn)
+        tools.addWidget(self.sort)
+        tools.addStretch(1)
+        tools.addWidget(self.search)
+        root.addLayout(tools)
         self.host = QWidget()
         self.grid = QGridLayout(self.host)
         self.grid.setContentsMargins(0, 0, 8, 0)
@@ -324,19 +404,56 @@ class GalleryPage(QWidget):
         self.cards.clear()
         q = self.search.text().lower().strip()
         cols = max(1, (self.width() - 60) // 236)
-        n = 0
         wanted = self.filter.current() or "all"
-        for job_dir, summary in self.scan():
-            if q and q not in job_dir.lower():
-                continue
-            if wanted != "all" and job_method(summary) != wanted:
-                continue
+        items = [(d, s) for d, s in self.scan()
+                 if _job_matches(d, s, q) and (wanted == "all" or job_method(s) == wanted)
+                 and (not self.fav_btn.isChecked() or s.get("favourite"))]
+        if self.SORTS[max(self.sort.currentIndex(), 0)] == "score":
+            items.sort(key=lambda it: it[1].get("clip_score") if it[1].get("clip_score") is not None
+                       else float("-inf"), reverse=True)
+        for n, (job_dir, summary) in enumerate(items):
             card = GalleryCard(job_dir, summary)
             card.clicked.connect(self.open_job.emit)
+            card.action.connect(self._card_action)
             self.grid.addWidget(card, n // cols, n % cols)
             self.cards.append(card)
-            n += 1
-        self.empty.setVisible(n == 0)
+        self.empty.setVisible(not items)
+
+    def _card_action(self, kind: str, job_dir: str):
+        if kind == "folder":
+            QDesktopServices.openUrl(QUrl.fromLocalFile(job_dir))
+        elif kind == "favourite":
+            card = next((c for c in self.cards if c.job_dir == job_dir), None)
+            value = card.star.isChecked() if card else True
+            try:
+                set_favourite(job_dir, value)
+            except (OSError, ValueError) as exc:
+                QMessageBox.warning(self, tr("ui.error"), str(exc))
+                return
+            if card:
+                card.favourite = value
+            if self.fav_btn.isChecked() and not value:
+                QTimer.singleShot(0, self.refresh)
+        elif kind == "delete":
+            self.delete_job(job_dir)
+
+    def delete_job(self, job_dir: str, confirm: bool = True) -> bool:
+        name = os.path.basename(os.path.normpath(job_dir))
+        if confirm and QMessageBox.question(self, tr("ui.gallery.delete"),
+                                            tr("ui.gallery.delete_q", name=name)) != QMessageBox.Yes:
+            return False
+        if not move_to_trash(job_dir):
+            if confirm and QMessageBox.question(self, tr("ui.gallery.delete"),
+                                                tr("ui.gallery.delete_permanently_q", name=name)) != QMessageBox.Yes:
+                return False
+            try:
+                shutil.rmtree(job_dir)
+            except OSError as exc:
+                QMessageBox.warning(self, tr("ui.error"), str(exc))
+                return False
+        self.job_deleted.emit(job_dir)
+        QTimer.singleShot(0, self.refresh)  # not from within the card that asked
+        return True
 
     def showEvent(self, e):  # noqa: N802
         super().showEvent(e)
@@ -354,6 +471,14 @@ class GalleryPage(QWidget):
         self.subtitle.setText(tr("ui.gallery.subtitle"))
         self.search.setPlaceholderText(tr("ui.gallery.search"))
         self.filter.set_text("all", tr("ui.gallery.all"))
+        self.fav_btn.setText(tr("ui.gallery.favourites"))
+        self.fav_btn.setToolTip(tr("ui.gallery.favourites_tip"))
+        index = max(self.sort.currentIndex(), 0)
+        self.sort.blockSignals(True)
+        self.sort.clear()
+        self.sort.addItems([tr(f"ui.gallery.sort_{k}") for k in self.SORTS])
+        self.sort.setCurrentIndex(index)
+        self.sort.blockSignals(False)
         self.folder_btn.setText(tr("ui.open_folder"))
         self.refresh_btn.setText(tr("ui.refresh"))
         self.empty.setText(tr("ui.gallery.empty"))

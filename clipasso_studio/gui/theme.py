@@ -165,6 +165,7 @@ QPushButton[variant="danger"]:hover {{ background: {p.danger}; color: white; }}
 QPushButton[variant="danger"]:disabled {{ border-color: {p.border}; color: {p.faint}; background: transparent; }}
 QPushButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
 QPushButton[variant="ghost"]:hover {{ background: {p.surface2}; border-color: {p.border}; }}
+QPushButton:checked, QPushButton[variant="ghost"]:checked {{ background: {p.accent_soft}; border-color: {p.accent}; }}
 QPushButton[size="lg"] {{ padding: 11px 20px; font-size: 14px; border-radius: 11px; }}
 
 QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 4px; }}

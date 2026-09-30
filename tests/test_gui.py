@@ -226,3 +226,83 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
     assert studio.stat_loss.caption.text() in ("CLIP-Score", "CLIP score")
     assert studio.thumbs[20].caption.text().endswith("81.5")
     assert not studio.chart.isVisibleTo(studio)
+
+
+def _fake_job(out, name, target, clip, method="swiftsketch", created="2026-09-29 12:00:00"):
+    import json
+    import os
+
+    from PIL import Image
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    job = os.path.join(out, name)
+    run = os.path.join(job, f"{name}_run")
+    os.makedirs(os.path.join(run, "svg_logs"))
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224"><path d="M 10 10 C 20 20 30 30 40 40" ' \
+          'stroke="rgb(0,0,0)" stroke-width="2" fill="none"/></svg>'
+    for p in (os.path.join(run, "best_iter.svg"), os.path.join(job, f"{name}_run_best.svg")):
+        with open(p, "w") as f:
+            f.write(svg)
+    if not os.path.isfile(target):
+        Image.new("RGB", (30, 20), "white").save(target)
+    jobs.save_input(job, target)
+    summary = {"target": target, "created": created, "settings": schema.default_settings(method), "method": method,
+               "clip_score": clip, "best_svg": os.path.join(job, f"{name}_run_best.svg"), "best_run": f"{name}_run",
+               "runs": [{"seed": 0, "run_name": f"{name}_run", "run_dir": run, "best_loss": 0.2, "best_iter": 0,
+                         "iterations_done": 1, "best_svg": os.path.join(run, "best_iter.svg"), "status": "done",
+                         "method": method, "clip_score": clip, "seconds": 1.0}]}
+    with open(os.path.join(job, "job.json"), "w") as f:
+        json.dump(summary, f)
+    return job
+
+
+def test_gallery_favourites_sorting_and_delete(window, tmp_path):
+    import json
+    import os
+
+    from clipasso_studio.gui.app_settings import app_settings
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    for d in os.listdir(out):  # other tests' jobs
+        import shutil
+
+        shutil.rmtree(os.path.join(out, d), ignore_errors=True)
+    a = _fake_job(out, "rose_swiftsketch_1", str(tmp_path / "rose.png"), 70.0, created="2026-09-29 12:00:00")
+    b = _fake_job(out, "crab_swiftsketch_2", str(tmp_path / "crab.png"), 85.0, created="2026-09-29 13:00:00")
+    gallery = window.gallery
+    window.show_page("gallery")
+    gallery.refresh()
+    assert [c.job_dir for c in gallery.cards] == [b, a]  # newest first
+    gallery.sort.setCurrentIndex(1)  # best CLIP score
+    assert [c.job_dir for c in gallery.cards] == [b, a]
+    gallery.search.setText("rose")
+    assert [c.job_dir for c in gallery.cards] == [a]
+    gallery.search.setText("")
+
+    card = next(c for c in gallery.cards if c.job_dir == a)
+    card.star.setChecked(True)  # favourite -> stored in job.json
+    with open(os.path.join(a, "job.json")) as f:
+        assert json.load(f)["favourite"] is True
+    gallery.fav_btn.setChecked(True)
+    assert [c.job_dir for c in gallery.cards] == [a]
+    gallery.fav_btn.setChecked(False)
+    gallery.sort.setCurrentIndex(0)
+
+    # open a result whose original image is gone: the studio continues with the saved copy
+    os.remove(str(tmp_path / "rose.png"))
+    window.studio.show_job_dir(a)
+    assert window.studio.image_path == os.path.join(a, "input", "rose.png")
+    assert "rose.png" in window.studio.file_label.text() and window.studio.start_btn.isEnabled()
+
+    # delete it from the gallery: the folder is gone and the studio forgets it
+    assert gallery.delete_job(a, confirm=False)
+    assert not os.path.exists(a)
+    assert window.studio.view_dir == "" and window.studio.image_path == ""
+    from PySide6.QtWidgets import QApplication
+
+    QApplication.processEvents()
+    assert [c.job_dir for c in gallery.cards] == [b]
+    window.show_page("studio")

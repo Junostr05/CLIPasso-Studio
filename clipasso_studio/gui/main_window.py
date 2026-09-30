@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
         self.studio.toast.connect(self.toast.show_message)
         self.studio.open_queue.connect(lambda: self.show_page("queue"))
         self.gallery.open_job.connect(self._open_job)
+        self.gallery.job_deleted.connect(self.studio.forget_job_dir)
         self.compare.open_job.connect(self._open_job)
         self.compare.toast.connect(self.toast.show_message)
         self.settings.theme_changed.connect(self.apply_theme)

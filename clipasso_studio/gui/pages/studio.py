@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QM
 
 from ... import paths
 from ... import settings_schema as schema
-from ...engine import imaging
+from ...engine import imaging, jobs
 from .. import dialogs, icons, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
@@ -307,6 +307,7 @@ class StudioPage(QWidget):
         self.drop.set_image(path)
         pm = QPixmap(path)
         self.file_label.setText(f"{os.path.basename(path)}  ·  {pm.width()}×{pm.height()} px")
+        self.file_label.setToolTip(path)
         app_settings().set("last_image", path)
         if not self.controller.is_busy():
             self._reset_view()
@@ -468,6 +469,23 @@ class StudioPage(QWidget):
         self.stage_badge.setVisible(False)
         self._set_status("ui.status.idle")
         self._update_buttons()
+
+    def forget_job_dir(self, job_dir: str):
+        """A job folder was deleted in the gallery: stop showing its results and its saved input."""
+        root = os.path.normcase(os.path.abspath(job_dir))
+
+        def inside(path: str) -> bool:
+            return bool(path) and os.path.normcase(os.path.abspath(path)).startswith(root + os.sep)
+
+        if self.view_dir and os.path.normcase(os.path.abspath(self.view_dir)) == root:
+            self._reset_view()
+        if inside(self.image_path):
+            self.image_path = ""
+            self.drop.set_image(None)
+            self.file_label.setText("")
+            self.file_label.setToolTip("")
+            self.canvas.set_input(None)
+            self._update_buttons()
 
     def _ensure_thumbs(self, seeds: list[int]):
         for seed in seeds:
@@ -661,12 +679,16 @@ class StudioPage(QWidget):
         self.view_dir = job_dir
         self._set_view_method(summary.get("method") or schema.method_of(summary.get("settings")))
         target = summary.get("target", "")
-        src = next((os.path.join(job_dir, f) for f in os.listdir(job_dir) if f.startswith("source.")), target)
-        if os.path.isfile(src):
-            self.image_path = target if os.path.isfile(target) else src
+        src = jobs.reopen_input(job_dir, target)  # the original, or the copy saved with the job
+        if src and os.path.isfile(src):
+            self.image_path = src
             self.drop.set_image(src)
             pm = QPixmap(src)
-            self.file_label.setText(f"{os.path.basename(self.image_path)}  ·  {pm.width()}×{pm.height()} px")
+            text = f"{os.path.basename(src)}  ·  {pm.width()}×{pm.height()} px"
+            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(target or "")):
+                text += f"  ·  {tr('ui.saved_copy')}"
+            self.file_label.setText(text)
+            self.file_label.setToolTip(src)
             self.canvas.set_input(self._square_input(pm))
         runs = summary.get("runs", [])
         self._setup_matrix(summary.get("settings") or {})
