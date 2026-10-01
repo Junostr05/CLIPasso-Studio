@@ -94,6 +94,10 @@ def load_sd15(condition: str, device):
         m.requires_grad_(False)
         m.eval()
         m.to(device)
+    # channels-last convolutions: on a CPU measured 1.15x for the VAE (the UNet gains nothing there);
+    # on a GPU for all three (fp16 tensor cores)
+    for m in (vae, unet, controlnet) if torch.device(device).type == "cuda" else (vae,):
+        m.to(memory_format=torch.channels_last)
     config = json.loads((root / "scheduler" / "scheduler_config.json").read_text(encoding="utf-8"))
     return unet, controlnet, vae, tokenizer, text_encoder, alphas_cumprod_from_config(config)
 

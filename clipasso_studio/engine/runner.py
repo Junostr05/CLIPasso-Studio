@@ -89,6 +89,8 @@ def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finis
     try:
         import torch
 
+        # the same input sizes all the time: let cuDNN pick its fastest convolution algorithms
+        torch.backends.cudnn.benchmark = True
         if threads:
             torch.set_num_threads(int(threads))
         elif share > 1:  # torch starts with one thread per physical core
