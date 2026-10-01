@@ -15,7 +15,27 @@ SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="112" viewBox
 def qapp():
     from PySide6.QtWidgets import QApplication
 
-    return QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication([])
+    yield app
+    from clipasso_studio.gui import dialogs
+
+    dialogs.release_clipboard()  # like at the app's exit: no Python-made clipboard data left for Qt
+
+
+def test_release_clipboard_keeps_the_picture(qapp, tmp_path):
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio.gui import dialogs, export
+
+    src = tmp_path / "s.svg"
+    src.write_text(SVG)
+    QGuiApplication.clipboard().setMimeData(export.sketch_mime(str(src), 64))
+    dialogs.release_clipboard()
+    clip = QGuiApplication.clipboard()
+    assert not clip.mimeData().hasFormat(export.CLIPBOARD_MARK) and clip.image().width() == 64
+    QGuiApplication.clipboard().setText("someone else's")
+    dialogs.release_clipboard()  # not ours: untouched
+    assert QGuiApplication.clipboard().text() == "someone else's"
 
 
 @pytest.fixture

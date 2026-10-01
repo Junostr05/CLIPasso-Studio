@@ -61,6 +61,9 @@ def run_gui(argv: list[str] | None = None) -> int:
     from . import crash
 
     crash.install()  # crash log + error dialog; a hard crash of the last session is reported below
+    from . import dialogs
+
+    app.aboutToQuit.connect(dialogs.release_clipboard)  # a copied sketch stays, without crashing at exit
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ID)
     app.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))

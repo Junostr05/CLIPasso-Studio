@@ -263,6 +263,20 @@ def copy_sketch(svg_path: str) -> None:
     QGuiApplication.clipboard().setMimeData(data)
 
 
+def release_clipboard() -> None:
+    """At exit: a sketch copied by the app is replaced by a copy Qt owns (the image). Qt deletes the
+    clipboard data after Python has shut down, and a QMimeData made in Python crashes then; the
+    picture stays on the clipboard after the app is closed."""
+    cb = QGuiApplication.clipboard()
+    data = cb.mimeData()
+    if data is not None and data.hasFormat(export.CLIPBOARD_MARK):
+        image = cb.image()
+        if image.isNull():
+            cb.clear()
+        else:
+            cb.setImage(image)
+
+
 def _stroke_count(svg_path: str) -> int:
     try:
         with open(svg_path, encoding="utf-8") as f:

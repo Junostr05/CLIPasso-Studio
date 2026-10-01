@@ -146,6 +146,9 @@ def export_pdf(src_svg: str, dest: str, width_cm: float = PDF_WIDTH_CM, stroke_c
     p.end()
 
 
+CLIPBOARD_MARK = "application/x-clipasso-studio"  # recognises our own clipboard content
+
+
 def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None, width_scale: float = 1.0,
                 background: str | None = "#FFFFFF", style: str = "plain"):
     """Clipboard content of a sketch: a PNG image and the SVG (``image/svg+xml``). No plain text –
@@ -158,6 +161,7 @@ def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None
     data.setImageData(svg_to_qimage(svg, size, QColor(background) if background else None))
     with_bg = stylize_svg(restyle_svg(svg, None, 1.0, background), "plain") if background else svg
     data.setData("image/svg+xml", QByteArray(with_bg.encode("utf-8")))
+    data.setData(CLIPBOARD_MARK, QByteArray(b"1"))
     return data
 
 
