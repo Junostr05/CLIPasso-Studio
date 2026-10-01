@@ -187,10 +187,17 @@ def animation_frames(run_dir: str, upto_best: bool = True) -> list[str]:
 
 MP4_FPS = 30
 MIN_FRAME_MS = 20  # GIF / WebP: browsers slow shorter GIF frame delays down to 100 ms
-MAX_FRAMES = 600
-MAX_FRAME_BYTES = 300_000_000  # the drawn frames wait in memory (1 byte per pixel) until they are encoded
+MAX_FRAMES = 5000  # e.g. every iteration of a CLIPasso sketch (save step 1)
+MAX_FRAME_BYTES = 800_000_000  # the drawn frames wait in memory (1 byte per pixel) until they are encoded
 INK_LEVELS = 8  # palette steps from the background to the stroke colour (anti-aliased edges)
 _BLACK = {"#000", "#000000", "black", "rgb(0,0,0)"}
+
+
+def every_step_length(n: int, fmt: str = "gif") -> float:
+    """Seconds of a "drawing process" animation that shows each of its ``n`` saved steps once (as fast
+    as the format allows: 50 frames a second for GIF / WebP, 30 for MP4)."""
+    per_frame = 1.0 / MP4_FPS if fmt == "mp4" else MIN_FRAME_MS / 1000
+    return round(max(n, 1) * per_frame + 0.049, 1)
 
 
 def animation_plan(n: int, length: float | None = None, fps: float = 20.0, hold: float = 1.0,

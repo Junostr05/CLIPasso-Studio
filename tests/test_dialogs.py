@@ -302,3 +302,24 @@ def test_export_dialog_remembers_the_last_choices(qapp, tmp_path, monkeypatch):
     assert os.path.dirname(starts[0]) == str(tmp_path / "exports")
     assert s.get("export_dir") == str(tmp_path / "elsewhere") and s.get("export_last_format") == "png"
     assert os.path.isfile(tmp_path / "elsewhere" / "sketch.png")
+
+
+def test_every_saved_step_gets_a_frame(qapp, tmp_path):
+    """Fine "drawing process" animations: a step saved every iteration -> one frame per step."""
+    from clipasso_studio.gui import dialogs, export
+
+    run = _run_dir(tmp_path, frames=700)  # more than the old limit of 600 frames
+    dlg = dialogs.ExportDialog("gif", str(run / "best_iter.svg"), str(run), "out")
+    assert dlg.every_step.isVisibleTo(dlg)
+    assert len(export.animation_plan(700, dlg.length.value(), hold=0, fmt="gif", size=512)[0]) < 700  # default
+    dlg.every_step.click()
+    assert dlg.length.value() == export.every_step_length(700, "gif") == 14.0
+    assert "700" in dlg.timing.text()
+    idx, _ = export.animation_plan(700, dlg.length.value(), hold=0, fmt="gif", size=512)
+    assert idx == list(range(700))
+    mp4 = dialogs.ExportDialog("mp4", str(run / "best_iter.svg"), str(run), "out")
+    mp4.every_step.click()
+    idx, _ = export.animation_plan(700, mp4.length.value(), hold=0, fmt="mp4", size=512)
+    assert sorted(set(idx)) == list(range(700))
+    mp4.mode.setCurrentIndex(mp4.mode.findData("strokes"))
+    assert not mp4.every_step.isVisibleTo(mp4)  # only for the drawing process

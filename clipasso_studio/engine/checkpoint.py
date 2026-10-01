@@ -69,17 +69,28 @@ def remove(run_dir: str) -> None:
 
 
 class Timer:
-    """When the next checkpoint is due."""
+    """When the next checkpoint (or live preview) is due."""
 
-    def __init__(self, interval: float = INTERVAL_S):
+    def __init__(self, interval: float = INTERVAL_S, due_now: bool = False):
         self.interval = interval
-        self.last = time.time()
+        self.last = 0.0 if due_now else time.time()
 
     def due(self) -> bool:
         if time.time() - self.last >= self.interval:
             self.last = time.time()
             return True
         return False
+
+
+PREVIEW_S = 0.25  # at most four live previews a second (intermediate steps can be saved every iteration)
+SCORE_EVERY = 100  # iterations between CLIP scores while optimising (they cost a CLIP pass each)
+
+
+def score_interval(save_interval: int, every: int = SCORE_EVERY) -> int:
+    """Iterations between CLIP scores: about ``every``, on a saved step (the save interval alone
+    decides how fine the "drawing process" animation is, not how often the score is computed)."""
+    save_interval = max(int(save_interval), 1)
+    return save_interval * max(1, -(-every // save_interval))
 
 
 def to_device(obj, device):

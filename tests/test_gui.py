@@ -512,3 +512,16 @@ def test_scenesketch_reset_goes_back_to_the_standard_preset(window):
     panel.set_method("clipasso")
     panel.reset_all_fields()
     assert panel.settings()["num_iter"] == schema.default_settings("clipasso")["num_iter"]
+
+
+def test_save_step_is_in_the_basics_with_the_number_of_steps(window):
+    panel = window.studio.params
+    for method, steps in (("clipasso", 201), ("controlsketch", 21)):
+        panel.set_method(method)
+        panel.reset_all_fields()
+        field = panel.fields["save_interval"]
+        assert field.param.group == "basics" and str(steps) in field.warning.text()
+        field.set_value(1, emit=True)
+        assert str(panel.settings()["num_iter"] + 1) in field.warning.text()  # every iteration
+        panel.reset_all_fields()
+    panel.set_method("clipasso")

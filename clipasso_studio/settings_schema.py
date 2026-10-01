@@ -135,7 +135,7 @@ PARAMS: tuple[Param, ...] = (
           step=0.05, decimals=2, enabled_if=_on("force_sparse")),
     Param("num_stages", 1, "int", "optim", cli="num_stages", minimum=1, maximum=16),
     Param("eval_interval", 10, "int", "optim", cli="eval_interval", minimum=1, maximum=1000),
-    Param("save_interval", 10, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
+    Param("save_interval", 10, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
     # ----------------------------------------------------------------- augment
     Param("augemntations", "affine", "flags", "augment", cli="augemntations", choices=("affine", "noise")),
     Param("num_aug_clip", 4, "int", "augment", cli="num_aug_clip", minimum=0, maximum=32),
@@ -277,7 +277,7 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("diffusion_guidance_scale", 100, "int", "sds", cli="diffusion_guidance_scale", minimum=1, maximum=200),
     Param("diffusion_timesteps", 1000, "int", "sds", cli="diffusion_timesteps", minimum=100, maximum=1000, step=50),
     Param("lr", 0.8, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
-    Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
+    Param("save_interval", 100, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
 ) + _hardware(multiprocess=False)
 
 CONTROL_GROUPS = ("basics", "image", "strokes", "init", "sds", "optim", "hardware")
@@ -383,7 +383,7 @@ SCENE_PARAMS: tuple[Param, ...] = (
     Param("clip_conv_loss_type", "L2", "choice", "loss", cli="clip_conv_loss_type", choices=("L2", "Cos", "L1")),
     Param("num_aug_clip", 4, "int", "loss", cli="num_aug_clip", minimum=0, maximum=32),
     Param("lr", 0.0001, "float", "optim", cli="lr", minimum=0.0000001, maximum=1.0, step=0.00005, decimals=6),
-    Param("save_interval", 100, "int", "optim", cli="save_interval", minimum=1, maximum=1000),
+    Param("save_interval", 100, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
 ) + _hardware(multiprocess=False)
 
 SCENE_GROUPS = ("basics", "image", "fidelity", "simplify", "strokes", "init", "loss", "optim", "hardware")

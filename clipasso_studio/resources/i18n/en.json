@@ -92,8 +92,8 @@
  "param.num_stages.help": "Multi-stage drawing: every stage adds new strokes and freezes the previous ones. Total = strokes × stages.",
  "param.eval_interval.label": "Evaluation interval",
  "param.eval_interval.help": "Every how many iterations the loss is evaluated without augmentation and the best sketch is saved.",
- "param.save_interval.label": "Save interval",
- "param.save_interval.help": "Every how many iterations an intermediate state (SVG) is saved for the preview and animation.",
+ "param.save_interval.label": "Save a step every … iterations",
+ "param.save_interval.help": "How often an intermediate state is saved. The animation “drawing process” shows these steps: 1 = every iteration (the finest animation, a little more disk space), 10 = every tenth (paper).",
  "param.augemntations.label": "Augmentations",
  "param.augemntations.help": "Random distortions so CLIP compares robust features: affine (perspective + crop, paper) and noise on the control points.",
  "param.augemntations.choice.affine": "Affine",
@@ -389,7 +389,7 @@
  "param.diffusion_timesteps.label": "Max. diffusion timestep",
  "param.diffusion_timesteps.help": "Upper bound of the random noise timesteps (between 50 and min(950, value)). Original: 1000.",
  "param.controlsketch.lr.help": "Step size for moving the control points (in pixels). Original: 0.8.",
- "param.controlsketch.save_interval.help": "Every how many iterations an intermediate state (SVG) is saved and the CLIP score is computed.",
+ "param.controlsketch.save_interval.help": "How often an intermediate state is saved. The animation “drawing process” shows these steps: 1 = every iteration (the finest animation, a little more disk space), 100 = every hundredth (paper). The CLIP score is computed about every 100 iterations either way.",
  "ui.gallery.all": "All",
  "ui.models.group.bundled": "Included",
  "ui.models.group.clipasso": "CLIPasso · optional",
@@ -479,7 +479,7 @@
  "param.scenesketch.mask_object_attention.help": "Place the initial strokes of the object only inside the object mask. Original: off.",
  "param.scenesketch.lr.label": "Learning rate (positions)",
  "param.scenesketch.lr.help": "Learning rate of the network that moves the strokes (SceneSketch optimises an MLP instead of the points directly). Original: 0.0001.",
- "param.scenesketch.save_interval.help": "Every how many iterations an intermediate state is saved (preview, animation, CLIP score). Original: 100.",
+ "param.scenesketch.save_interval.help": "How often an intermediate state of each part is saved. The animation “drawing process” shows these steps: 1 = every iteration (the finest animation, more disk space with many parts), 100 = every hundredth (original). The CLIP score is computed about every 100 iterations either way.",
  "ui.status.scene_mask": "Finding the foreground object …",
  "ui.status.scene_inpaint": "Filling in the background behind the object (LaMa) …",
  "ui.status.scene_background": "Sketch {n} of {total}: drawing the background …",
@@ -725,5 +725,8 @@
  "ui.mask.not_cached": "The mask was not found in the cache",
  "ui.seed": "Seed {seed}",
  "ui.settings.gpu_unsupported": "not supported by this build → CPU",
- "ui.settings.gpu_none": "no usable NVIDIA GPU/driver found → CPU"
+ "ui.settings.gpu_none": "no usable NVIDIA GPU/driver found → CPU",
+ "ui.save_interval_note": "≈ {n} steps per sketch for the “drawing process” animation",
+ "ui.export_every_step": "Every step",
+ "ui.export_every_step_tip": "Sets the length so that each saved step of the drawing process gets its own frame. How many steps there are is set before the run: “Save a step every … iterations” (1 = every iteration)."
 }

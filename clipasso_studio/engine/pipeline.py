@@ -283,6 +283,7 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
             "active_time": active_time})
 
     saver = checkpoint.Timer()
+    previews = checkpoint.Timer(checkpoint.PREVIEW_S, due_now=True)
     reporter.event("stage", seed=seed, name="optimizing")
     epoch = first_epoch - 1
     try:
@@ -363,7 +364,7 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
                            loss_eval=loss_eval_value, best_loss=float(best_loss), best_iter=best_iter,
                            losses={k: float(v.item()) for k, v in losses_dict.items()},
                            elapsed=active_time, eta=per_it * (args.num_iter - counter))
-            if svg_text is not None:
+            if svg_text is not None and (previews.due() or epoch == args.num_iter - 1):
                 reporter.event("preview", seed=seed, it=epoch, svg=svg_text)
             if saver.due():
                 save_checkpoint(epoch)

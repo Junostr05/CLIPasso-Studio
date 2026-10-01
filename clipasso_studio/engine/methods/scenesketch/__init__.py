@@ -339,6 +339,8 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
     total = int(cfg.num_iter)
     min_eval = min(int(cfg.min_eval_iter), max(total - 1, 0))
     save_interval = max(int(s["save_interval"]), 1)
+    score_every = checkpoint.score_interval(save_interval)  # the CLIP score about every 100 iterations
+    previews = checkpoint.Timer(checkpoint.PREVIEW_S, due_now=True)
     best_loss, best_state, best_index = float("inf"), None, 0
     checkpoints: dict[int, dict] = {}
     loss_eval: list[float] = []
@@ -388,10 +390,11 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
                     best_state = _snapshot(painter, points_opt, None)
         ctx.active += time.time() - t0
         score = None
-        if epoch % PREVIEW_EVERY == 0 or kept is not None:
+        scoring = kept is not None and epoch % score_every == 0
+        if (epoch % PREVIEW_EVERY == 0 or kept is not None) and (previews.due() or scoring):
             shown = _preview_paths(ctx, cfg.name, kept if kept is not None else painter.kept_paths(), inputs)
             svg = paths_to_svg(shown, CANVAS)
-            if kept is not None and epoch % save_interval == 0:
+            if scoring:
                 score = _score_paths(ctx, shown, inputs)
             ctx.reporter.event("preview", seed=ctx.cell, it=ctx.cell_done, svg=svg)
         _progress(ctx, float(loss.item()), score, cfg.name)

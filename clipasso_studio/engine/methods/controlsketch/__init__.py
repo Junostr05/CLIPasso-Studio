@@ -219,6 +219,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     reporter.event("stage", seed=seed, name="optimizing")
     total = int(s["num_iter"]) + 1
     interval = max(int(s["save_interval"]), 1)
+    score_every = checkpoint.score_interval(interval)  # the CLIP score about every 100 iterations
     status = "done"
     counter = 0
     scores: list[tuple[int, float]] = []
@@ -246,6 +247,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
                                   "active_time": active_time})
 
     saver = checkpoint.Timer()
+    previews = checkpoint.Timer(checkpoint.PREVIEW_S, due_now=True)
     try:
         for epoch in range(first_epoch, total):
             if control.should_stop():
@@ -266,15 +268,16 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
                 svg_text = P.output_svg(painter, inp["info"], out_size)
                 with open(os.path.join(svg_logs, f"svg_iter{epoch}.svg"), "w", encoding="utf-8") as f:
                     f.write(svg_text)
-                score = round(scorer.score_tensors(sketch.detach().float().cpu(), target_t.float().cpu()), 2)
-                scores.append((epoch, score))
+                if epoch % score_every == 0 or epoch == total - 1:
+                    score = round(scorer.score_tensors(sketch.detach().float().cpu(), target_t.float().cpu()), 2)
+                    scores.append((epoch, score))
             counter += 1
             active_time = time.time() - start_time
             per_it = active_time / counter
             reporter.event("iteration", seed=seed, it=epoch, total=total, loss=losses[-1], loss_eval=None,
                            best_loss=None, best_iter=epoch, losses={"sds": losses[-1]}, score=score,
                            elapsed=active_time, eta=per_it * (total - counter))
-            if svg_text is not None:
+            if svg_text is not None and (previews.due() or score is not None):
                 reporter.event("preview", seed=seed, it=epoch, svg=svg_text)
             if saver.due():
                 save_checkpoint(epoch)

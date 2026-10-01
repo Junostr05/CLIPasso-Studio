@@ -408,8 +408,17 @@ class ExportDialog(QDialog):
         self.hold.setSuffix(" s")
         self.hold.setValue(1.0)
         self.timing = label("", "faint")
+        # "drawing process": one frame for every saved step (fine animations, see the save step setting)
+        self.every_step = button(tr("ui.export_every_step"), variant="ghost", size="sm")
+        self.every_step.setToolTip(tr("ui.export_every_step_tip"))
+        self.every_step.clicked.connect(self._every_step)
+        length_row = QWidget()
+        row_lay = QHBoxLayout(length_row)
+        row_lay.setContentsMargins(0, 0, 0, 0)
+        row_lay.addWidget(self.length, 1)
+        row_lay.addWidget(self.every_step)
         if fmt in TIMED:
-            form.addRow(tr("ui.export_length"), self.length)
+            form.addRow(tr("ui.export_length"), length_row)
             form.addRow(tr("ui.export_hold"), self.hold)
             form.addRow("", self.timing)
             for w in (self.length, self.hold, self.size):
@@ -450,6 +459,10 @@ class ExportDialog(QDialog):
             return export.default_drawing_length(self.strokes)
         return default_animation_length(self.process_frames)
 
+    def _every_step(self):
+        """The length at which every saved step of the drawing process gets its own frame."""
+        self.length.setValue(min(self.length.maximum(), export.every_step_length(self.process_frames, self.ext)))
+
     def _mode_changed(self):
         self.length.blockSignals(True)
         self.length.setValue(self._default_length())
@@ -458,6 +471,7 @@ class ExportDialog(QDialog):
 
     def _update_timing(self):
         self.frames = self._frames()
+        self.every_step.setVisible(self.fmt in ANIMATIONS and not self._drawing() and self.process_frames > 1)
         if self.fmt == "svganim":
             self.timing.setText(tr("ui.export_timing_svg", strokes=self.strokes,
                                    total=f"{self.length.value() + self.hold.value():.1f}"))

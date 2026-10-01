@@ -210,3 +210,12 @@ def test_runner_kill_and_continue(tmp_path):
     summary = json.load(open(os.path.join(job2.job_dir, "job.json")))
     assert [r["seed"] for r in summary["runs"]] == [0, 1000] and all(r["status"] == "done" for r in summary["runs"])
     assert jobs.read_state(job2.job_dir)["status"] == "done"
+
+
+def test_score_interval_follows_the_save_step():
+    from clipasso_studio.engine import checkpoint
+
+    assert checkpoint.score_interval(100) == 100  # the paper setting: unchanged
+    assert checkpoint.score_interval(1) == 100  # every iteration saved, scored about every 100
+    assert checkpoint.score_interval(30) == 120  # on a saved step
+    assert checkpoint.score_interval(250) == 250

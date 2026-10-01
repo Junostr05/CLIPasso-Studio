@@ -554,6 +554,9 @@ class ParamPanel(QWidget):
         s = self._settings
         for key, f in self.fields.items():
             f.set_enabled_state(schema.is_enabled(f.param, s))
+        if "save_interval" in self.fields and "num_iter" in s:  # how fine the "drawing process" animation is
+            steps = int(s["num_iter"]) // max(int(s["save_interval"]), 1) + 1
+            self.fields["save_interval"].set_warning(tr("ui.save_interval_note", n=steps))
         if self._method == "clipasso":
             self._after_change_clipasso(s)
         elif self._method == "controlsketch":
