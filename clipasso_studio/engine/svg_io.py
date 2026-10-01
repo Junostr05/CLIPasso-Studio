@@ -71,7 +71,7 @@ def scene_to_svg(canvas_width, canvas_height, shapes, shape_groups, background: 
         for sid in group.shape_ids.tolist():
             shape = shapes[int(sid)]
             width = float(shape.stroke_width.detach().cpu()) * width_scale
-            ET.SubElement(g, "path", {
+            attrs = {
                 "d": path_to_d(shape),
                 "fill": "none",
                 "stroke": f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})",
@@ -79,9 +79,15 @@ def scene_to_svg(canvas_width, canvas_height, shapes, shape_groups, background: 
                 "stroke-width": _fmt(width),
                 "stroke-linecap": "round",
                 "stroke-linejoin": "round",
-            })
+            }
+            if getattr(shape, "fixed", False):
+                attrs[FIXED_ATTR] = "1"
+            ET.SubElement(g, "path", attrs)
     ET.indent(root)
     return ET.tostring(root, encoding="unicode")
+
+
+FIXED_ATTR = "data-fixed"  # strokes drawn by hand in the studio (Path.fixed)
 
 
 def save_svg(filename, canvas_width, canvas_height, shapes, shape_groups, **kwargs) -> None:
@@ -179,6 +185,7 @@ def load_svg(filename: str, device=None):
         if color is None:
             color = [0.0, 0.0, 0.0, opacity]
         width = _float(attrs.get("stroke-width"), 1.0) * (sx + sy) / 2
+        fixed = attrs.get(FIXED_ATTR) in ("1", "true")
         for segs, closed in _segments_from_d(d):
             pts = [segs[0][0]]
             ncp = []
@@ -192,7 +199,7 @@ def load_svg(filename: str, device=None):
             points = torch.tensor([[(p.real - vx) * sx, (p.imag - vy) * sy] for p in pts], dtype=torch.float32,
                                   device=device)
             shapes.append(Path(torch.tensor(ncp, dtype=torch.int32), points, torch.tensor(width, device=device),
-                               is_closed=closed))
+                               is_closed=closed, fixed=fixed))
             groups.append(ShapeGroup(torch.tensor([len(shapes) - 1]), fill_color=None,
                                      stroke_color=torch.tensor(color, dtype=torch.float32, device=device)))
     return canvas_w, canvas_h, shapes, groups

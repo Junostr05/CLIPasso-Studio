@@ -281,6 +281,9 @@ class JobRunner:
             job.resumed = jobs.done_results(job_dir)
         else:
             job.job_dir = jobs.make_job_dir(output_root, target, schema.method_of(settings))
+        if schema.method_of(settings) == "clipasso" and schema.text_value(settings.get("path_svg")):
+            settings = {**settings, "path_svg": jobs.save_init_svg(job.job_dir, settings["path_svg"])}
+            job.settings = settings
         jobs.write_state(job.job_dir, target, settings, "running")
         job.started = time.time()
         seeds = jobs.job_seeds(settings)

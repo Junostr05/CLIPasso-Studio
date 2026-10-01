@@ -22,6 +22,7 @@ DEFAULTS: dict[str, Any] = {
     "notify": True,
     "check_updates": True,
     "ui_scale": 1.0,  # interface size (applied at the start via QT_SCALE_FACTOR)
+    "canvas_style": "plain",  # brush style the sketches are shown in (brush.STYLES)
     "keep_models_loaded": True,  # the worker stays open between jobs with its models (runner keep_warm)
     "parallel_sketches": "auto",  # "auto": the sketches of a job in parallel on a big CPU (runner.plan_workers)
     "skipped_version": "",

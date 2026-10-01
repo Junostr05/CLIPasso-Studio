@@ -552,3 +552,122 @@ def test_turbo_switch_estimate_and_dropped_sketches(window):
     studio.view_method = "clipasso"
     assert studio._seed_caption(0.25, None, 0, pruned=True) == tr("ui.seed_pruned", value="0.250")
     assert studio._seed_caption(0.25, None, 0) == "0.250"
+
+
+def test_brush_style_in_the_canvas(window):
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.widgets.canvas import MatrixView, SeedThumb, SketchCanvas
+
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+           '<path d="M 10 10 C 30 30 60 30 90 90" fill="none" stroke="#000000" stroke-width="3"/>'
+           '<path d="M 10 90 C 30 60 60 60 90 10" fill="none" stroke="#000000" stroke-width="3"/></svg>')
+    canvas = SketchCanvas()
+    canvas.resize(200, 200)
+    canvas.set_svg(svg)
+    plain = canvas.grab().toImage()
+    canvas.set_style("ink")
+    assert canvas.svg() == svg  # the eraser keeps working on the raw strokes
+    assert canvas.grab().toImage() != plain
+    canvas.set_eraser(True)
+    canvas._set_hover(1)
+    assert canvas._hover_renderer is not None  # the hovered stroke is highlighted in the same style
+    assert canvas.grab().toImage() != plain
+    canvas.set_eraser(False)
+    canvas.set_style("plain")
+    assert canvas.grab().toImage() == plain
+
+    matrix = MatrixView()
+    matrix.set_layout([8], 0)
+    matrix.set_cell(800, svg)
+    before = matrix._renderers[800]
+    matrix.set_style("pencil")
+    assert matrix._renderers[800] is not before and matrix._svgs[800] == svg
+
+    studio = window.studio
+    studio._ensure_thumbs([0, 1000])
+    studio.style_actions["marker"].trigger()
+    assert app_settings().get("canvas_style") == "marker" and app_settings().get("export_style") == "marker"
+    assert studio.canvas.style() == "marker" and studio.matrix._style == "marker"
+    assert all(t.view.style() == "marker" for t in studio.thumbs.values())
+    studio._ensure_thumbs([2000])
+    assert studio.thumbs[2000].view.style() == "marker"  # also for sketches that appear later
+    assert isinstance(studio.thumbs[2000], SeedThumb) and "Marker" in studio.style_btn.toolTip()
+    studio.set_canvas_style("plain")
+    assert studio.style_actions["plain"].isChecked()
+
+
+def test_pen_draws_strokes_and_continue_with_clipasso(window, tmp_path, monkeypatch):
+    import json
+
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtTest import QTest
+
+    from clipasso_studio.gui import strokes
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.widgets.canvas import SketchCanvas
+
+    canvas = SketchCanvas()
+    canvas.resize(240, 240)
+    canvas.show()
+    canvas.set_svg('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
+                   '<path d="M 10 10 C 20 20 30 30 40 40" fill="none" stroke="#000" stroke-width="2"/></svg>')
+    drawn = []
+    canvas.pen_stroke.connect(drawn.append)
+    canvas.set_pen(True)
+    assert canvas.pen_active() and not canvas.eraser_active()
+    QTest.mousePress(canvas, Qt.LeftButton, pos=QPoint(20, 20))
+    for x in range(24, 220, 8):
+        QTest.mouseMove(canvas, QPoint(x, 20 + x // 2))
+    canvas.grab()  # the stroke being drawn is painted
+    QTest.mouseRelease(canvas, Qt.LeftButton, pos=QPoint(220, 120))
+    assert len(drawn) == 1 and len(drawn[0]) > 10
+    x0, y0 = drawn[0][0]
+    assert 10 < x0 < 20 and 10 < y0 < 20  # sketch coordinates (the paper is the canvas minus a margin)
+    canvas.set_eraser(True)
+    assert not canvas.pen_active()
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "pen_job", str(tmp_path / "pen.png"), 30.0)
+    with open(os.path.join(job, "job_state.json"), "w") as f:
+        json.dump({"target": str(tmp_path / "pen.png"), "settings": {}, "status": "done"}, f)
+    studio = window.studio
+    studio.show_job_dir(job)
+    seed = studio._editable_seed()
+    assert seed is not None and studio.edit_tools.isVisibleTo(studio)
+    studio.pen_btn.setChecked(True)
+    assert studio.canvas.pen_active()
+    studio.eraser_btn.setChecked(True)
+    assert not studio.pen_btn.isChecked() and studio.canvas.eraser_active()
+    studio.eraser_btn.setChecked(False)
+    studio._pen_stroke([(100, 100), (120, 140), (150, 120)])
+    edited = os.path.join(job, "pen_job_run", "edited.svg")
+    assert os.path.isfile(edited) and strokes.fixed_count(open(edited).read()) == 1
+    studio.undo_edit()
+    assert not os.path.isfile(edited)
+    studio.redo_edit()
+    assert strokes.count(studio.seed_svgs[seed]) == 2
+
+    from PIL import Image
+
+    Image.new("RGB", (224, 224), "white").save(os.path.join(job, "pen_job_run", "input.png"))
+    image, settings = studio.continue_job(seed, 3, 101, True)
+    assert os.path.basename(image) == "pen.png" and os.path.isfile(image)
+    assert os.path.dirname(os.path.dirname(image)) == os.path.join(out, "_continued")
+    assert settings["method"] == "clipasso" and settings["num_paths"] == 2 + 3 and settings["num_iter"] == 101
+    assert settings["num_sketches"] == 1 and not settings["mask_object"] and not settings["fix_scale"]
+    assert strokes.fixed_count(open(settings["path_svg"]).read()) == 1
+    _, loose = studio.continue_job(seed, 0, 101, False)
+    assert strokes.fixed_count(open(loose["path_svg"]).read()) == 0
+
+    from clipasso_studio.gui import dialogs
+
+    dlg = dialogs.ContinueDialog(2, 1)
+    assert dlg.keep.isChecked() and dlg.values() == (4, 501, True) and "6" in dlg.summary.text()
+    assert not dialogs.ContinueDialog(2, 0).keep.isEnabled()
+    queued = []
+    monkeypatch.setattr(dialogs.ContinueDialog, "exec", lambda self: dialogs.QDialog.Accepted)
+    monkeypatch.setattr(studio.controller, "enqueue", lambda image, settings, start: queued.append(settings))
+    studio.continue_with_clipasso()
+    assert queued and queued[0]["num_paths"] == 2 + 4
+    studio.revert_edits()

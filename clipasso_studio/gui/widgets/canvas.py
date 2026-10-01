@@ -24,6 +24,18 @@ def svg_renderer(svg: str | bytes | None) -> QSvgRenderer | None:
     return r if r.isValid() else None
 
 
+def styled(svg: str | None, style: str) -> str | None:
+    """The sketch as it is shown in the brush ``style`` (the raw SVG if it cannot be styled)."""
+    if not svg or style == "plain":
+        return svg
+    from ..brush import stylize_svg
+
+    try:
+        return stylize_svg(svg, style)
+    except Exception:  # (an SVG the brush cannot parse is shown as it is)
+        return svg
+
+
 def render_svg_image(svg: str, size: int, background: QColor | None = QColor("white")) -> QImage:
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(background if background is not None else Qt.transparent)
@@ -68,6 +80,8 @@ class SketchCanvas(QWidget):
     """Paper-like canvas showing the sketch (SVG), the input, the attention map or the mask.
 
     In "compare" mode a draggable divider reveals the photo on the left and the sketch on the right.
+    Brush styles (``set_style``) only change how the sketch is shown: ``svg()`` stays the raw sketch, which
+    the eraser edits and hits.
     """
 
     MODES = ("sketch", "compare", "attention", "mask", "condition", "matrix")
@@ -76,6 +90,7 @@ class SketchCanvas(QWidget):
     erase_begin = Signal()  # eraser: mouse pressed (one undo step per press)
     erase = Signal(int)  # eraser: the stroke with this index is to be removed
     erase_end = Signal()
+    pen_stroke = Signal(list)  # pen: a stroke was drawn, [(x, y), ...] in sketch coordinates
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,9 +98,12 @@ class SketchCanvas(QWidget):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.mode = "sketch"
         self._svg = None
+        self._style = "plain"
         self._renderer = None
         self._eraser = False
         self._erasing = False
+        self._pen = False
+        self._drawing: list[QPointF] | None = None  # the stroke being drawn (widget positions)
         self._index = None  # strokes.StrokeIndex of the current SVG (built on demand)
         self._hover: int | None = None
         self._hover_renderer = None
@@ -105,25 +123,54 @@ class SketchCanvas(QWidget):
 
     def set_svg(self, svg: str | None):
         self._svg = svg
-        self._renderer = svg_renderer(svg)
+        self._renderer = svg_renderer(styled(svg, self._style))
         self._index = None
         self._set_hover(None)
         self.update()
+
+    def set_style(self, style: str):
+        """Brush style the sketch is shown in (``brush.STYLES``)."""
+        if style == self._style:
+            return
+        self._style = style
+        self._renderer = svg_renderer(styled(self._svg, style))
+        hover, self._hover = self._hover, None
+        self._set_hover(hover)
+        self.update()
+
+    def style(self) -> str:
+        return self._style
 
     # ----------------------------------------------------------------- eraser
     def set_eraser(self, on: bool):
         self._eraser = bool(on)
         self._erasing = False
+        if on:
+            self._pen = False
         self._set_hover(None)
         self._update_cursor()
 
     def eraser_active(self) -> bool:
         return self._eraser and self.mode == "sketch" and self._svg is not None
 
+    # ----------------------------------------------------------------- pen
+    def set_pen(self, on: bool):
+        """Draw own strokes into the sketch (``pen_stroke`` per stroke)."""
+        self._pen = bool(on)
+        self._drawing = None
+        if on:
+            self._eraser = self._erasing = False
+            self._set_hover(None)
+        self._update_cursor()
+        self.update()
+
+    def pen_active(self) -> bool:
+        return self._pen and self.mode == "sketch" and self._svg is not None
+
     def _update_cursor(self):
         if self.mode == "compare":
             self.setCursor(Qt.SplitHCursor)
-        elif self._eraser and self.mode == "sketch":
+        elif (self._eraser or self._pen) and self.mode == "sketch":
             self.setCursor(Qt.CrossCursor)
         else:
             self.setCursor(Qt.ArrowCursor)
@@ -136,8 +183,17 @@ class SketchCanvas(QWidget):
         if index is not None and self._svg:
             from ..strokes import highlight
 
-            self._hover_renderer = svg_renderer(highlight(self._svg, index))
+            self._hover_renderer = svg_renderer(styled(highlight(self._svg, index), self._style))
         self.update()
+
+    def to_sketch(self, pos) -> tuple[float, float]:
+        """A widget position in the coordinates of the sketch (its viewBox)."""
+        from ..strokes import view_box
+
+        rect = self._paper_rect()
+        x0, y0, w, h = view_box(self._svg) if self._svg else (0.0, 0.0, 1.0, 1.0)
+        return (x0 + (pos.x() - rect.left()) / max(rect.width(), 1) * w,
+                y0 + (pos.y() - rect.top()) / max(rect.height(), 1) * h)
 
     def stroke_at(self, pos) -> int | None:
         """Index of the stroke under a widget position (None: none / outside the sketch)."""
@@ -154,9 +210,8 @@ class SketchCanvas(QWidget):
                 self._box = view_box(self._svg)
             except Exception:
                 return None
-        x0, y0, w, h = self._box
-        sx = x0 + (pos.x() - rect.left()) / max(rect.width(), 1) * w
-        sy = y0 + (pos.y() - rect.top()) / max(rect.height(), 1) * h
+        w = self._box[2]
+        sx, sy = self.to_sketch(pos)
         return self._index.hit(sx, sy, self.ERASER_REACH_PX * w / max(rect.width(), 1))
 
     def svg(self) -> str | None:
@@ -232,6 +287,9 @@ class SketchCanvas(QWidget):
             p.drawLine(QPointF(x + 4, cy), QPointF(x + 1, cy + 3))
         elif self._renderer:
             (self._hover_renderer if self.eraser_active() and self._hover_renderer else self._renderer).render(p, rect)
+            if self._drawing and len(self._drawing) > 1:  # the stroke being drawn with the pen
+                p.setPen(QPen(QColor(pal.accent), 2.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                p.drawPolyline(self._drawing)
         else:
             p.setClipping(False)
             p.setPen(QColor("#9AA3B4"))
@@ -249,6 +307,8 @@ class SketchCanvas(QWidget):
         if self.mode == "compare":
             self._drag = True
             self._update_split(e.position().x())
+        elif self.pen_active() and e.button() == Qt.LeftButton and self._paper_rect().contains(e.position()):
+            self._drawing = [e.position()]
         elif self.eraser_active() and e.button() == Qt.LeftButton:
             self._erasing = True
             self.erase_begin.emit()
@@ -259,6 +319,12 @@ class SketchCanvas(QWidget):
     def mouseMoveEvent(self, e):  # noqa: N802
         if self._drag:
             self._update_split(e.position().x())
+        elif self._drawing is not None:
+            pos = e.position()
+            last = self._drawing[-1]
+            if abs(pos.x() - last.x()) + abs(pos.y() - last.y()) >= 1.5:
+                self._drawing.append(pos)
+                self.update()
         elif self.eraser_active():
             hit = self.stroke_at(e.position())
             if self._erasing and hit is not None:
@@ -268,6 +334,11 @@ class SketchCanvas(QWidget):
 
     def mouseReleaseEvent(self, e):  # noqa: N802
         self._drag = False
+        if self._drawing is not None:
+            drawn, self._drawing = self._drawing, None
+            self.update()
+            if len(drawn) > 1:
+                self.pen_stroke.emit([self.to_sketch(q) for q in drawn])
         if self._erasing:
             self._erasing = False
             self.erase_end.emit()
@@ -296,6 +367,8 @@ class MatrixView(QWidget):
         self.layers: list[int] = []
         self.levels = 0
         self._renderers: dict[int, QSvgRenderer] = {}
+        self._svgs: dict[int, str] = {}  # the raw sketches (for another brush style)
+        self._style = "plain"
         self.selected: int | None = None
         self.best: int | None = None
         self.setCursor(Qt.PointingHandCursor)
@@ -303,6 +376,7 @@ class MatrixView(QWidget):
     def set_layout(self, layers: list[int], levels: int):
         self.layers, self.levels = list(layers), int(levels)
         self._renderers.clear()
+        self._svgs.clear()
         self.selected = self.best = None
         self.update()
 
@@ -310,9 +384,21 @@ class MatrixView(QWidget):
         self.set_layout([], 0)
 
     def set_cell(self, cell: int, svg: str | None):
-        r = svg_renderer(svg)
+        r = svg_renderer(styled(svg, self._style))
         if r:
             self._renderers[int(cell)] = r
+            self._svgs[int(cell)] = svg
+        self.update()
+
+    def set_style(self, style: str):
+        """Brush style of the cells (see :meth:`SketchCanvas.set_style`)."""
+        if style == self._style:
+            return
+        self._style = style
+        for cell, svg in self._svgs.items():
+            r = svg_renderer(styled(svg, style))
+            if r:
+                self._renderers[cell] = r
         self.update()
 
     def set_selected(self, cell: int | None):
@@ -596,6 +682,9 @@ class SeedThumb(QFrame):
 
     def set_svg(self, svg: str):
         self.view.set_svg(svg)
+
+    def set_style(self, style: str):
+        self.view.set_style(style)
 
     def set_caption(self, text: str):
         self.caption.setText(text)

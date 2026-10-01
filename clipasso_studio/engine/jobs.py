@@ -85,6 +85,20 @@ def save_input(job_dir: str, target: str) -> str | None:
     return dest
 
 
+INIT_SVG = "init.svg"  # the start sketch of a job (path_svg), kept in its input folder
+
+
+def save_init_svg(job_dir: str, path_svg: str) -> str:
+    """Copy the start sketch (``path_svg``) into the job folder and return the copy, so the job can be
+    continued even after the original was changed or deleted (the copy is never replaced)."""
+    dest = os.path.join(job_dir, INPUT_DIR, INIT_SVG)
+    if os.path.isfile(dest) or not os.path.isfile(path_svg):
+        return dest if os.path.isfile(dest) else path_svg
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.copyfile(path_svg, dest)
+    return dest
+
+
 EDITED_MASK_FILE = "mask-edited.png"  # the user's mask of the input, kept with the job
 
 
@@ -127,7 +141,7 @@ def saved_input(job_dir: str, target: str = "") -> str | None:
     CLIPasso Studio 2.1 and older."""
     folder = os.path.join(job_dir, INPUT_DIR)
     if os.path.isdir(folder):
-        files = sorted(os.listdir(folder))
+        files = sorted(f for f in os.listdir(folder) if f != INIT_SVG)
         name = os.path.basename(target)
         if name in files:
             return os.path.join(folder, name)

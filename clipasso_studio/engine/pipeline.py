@@ -268,6 +268,11 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     active_time = 0.0
     first_epoch = 0
     ck = checkpoint.load(run_dir)
+    if ck is not None and len(ck["points"]) != len(renderer.shapes) + int(ck["stage"]) * args.num_paths:
+        # written for other strokes (e.g. another start sketch): this seed starts again
+        reporter.event("log", message=f"seed {seed}: the saved state does not fit – starting again",
+                       code="checkpoint_mismatch", seed=seed)
+        ck = None
     if ck is not None:  # continue an interrupted run where it stopped
         for s in range(1, int(ck["stage"]) + 1):
             renderer.init_image(stage=s)  # the strokes added by later stages (positions come from the checkpoint)
@@ -476,6 +481,8 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     method = schema.method_of(settings)
     impl = methods.get(method)
     job_dir = job_dir or make_job_dir(output_root, target, method)
+    if method == "clipasso" and schema.text_value(settings.get("path_svg")):
+        settings["path_svg"] = jobs.save_init_svg(job_dir, settings["path_svg"])
     if jobs.read_state(job_dir) is None:
         jobs.write_state(job_dir, target, settings)
     old: dict[int, SeedResult] = {}

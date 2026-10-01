@@ -740,5 +740,20 @@
  "param.scenesketch.turbo.help": "Schneller, mit leicht anderem Ergebnis: Die CLIP-Merkmale des augmentierten Bildes werden nur einmal berechnet, bei zwei oder mehr Skizzen pro Teil rechnet nach einem Viertel der Iterationen nur die bessere weiter, und eine Treue-Skizze endet, sobald sie kaum noch besser wird.",
  "ui.log.plateau": "Skizze {seed} wurde kaum noch besser – bei Iteration {it} beendet (Turbo-Modus)",
  "ui.seed_pruned": "{value} · aussortiert",
- "ui.models.purpose.taesd": "Kleiner Autoencoder für den Turbo-Modus von ControlSketch (statt des Stable-Diffusion-VAE)."
+ "ui.models.purpose.taesd": "Kleiner Autoencoder für den Turbo-Modus von ControlSketch (statt des Stable-Diffusion-VAE).",
+ "ui.canvas_style.tip": "Pinselstil der Anzeige: {style} – auch während die Skizze berechnet wird; der Export übernimmt ihn",
+ "ui.log.checkpoint_mismatch": "Skizze {seed}: Der gespeicherte Zwischenstand passt nicht – beginnt neu",
+ "ui.pen.tip": "Stift: eigene Striche in die Skizze zeichnen (sie bleiben, wie sie sind, wenn CLIPasso weiterrechnet)",
+ "ui.continue.tip": "Mit CLIPasso weiterrechnen …",
+ "ui.continue.title": "Mit CLIPasso weiterrechnen",
+ "ui.continue.desc": "Startet einen neuen CLIPasso-Job mit dieser Skizze als Anfang: Ihre Striche werden weiter verbessert, und es können neue dazukommen. Die ursprüngliche Skizze bleibt unverändert.",
+ "ui.continue.new": "Neue Striche",
+ "ui.continue.iterations": "Iterationen",
+ "ui.continue.keep": "Meine {n} gezeichneten Striche festhalten",
+ "ui.continue.keep_tip": "Mit dem Stift gezeichnete Striche bleiben genau so, wie sie sind; nur die übrigen Striche bewegen sich.",
+ "ui.continue.summary": "{old} vorhandene + {new} neue = {total} Striche",
+ "ui.continue.start": "Starten",
+ "ui.continue.no_input": "Das Eingabebild dieser Skizze (input.png) fehlt – Weiterrechnen ist nicht möglich.",
+ "ui.continue.queued": "In die Warteschlange gestellt – CLIPasso rechnet die Skizze weiter",
+ "ui.continue.started": "CLIPasso rechnet die Skizze weiter"
 }

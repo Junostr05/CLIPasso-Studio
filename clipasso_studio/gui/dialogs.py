@@ -7,8 +7,9 @@ import os
 import shiboken6
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QGuiApplication
-from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
+                               QFormLayout, QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout,
+                               QWidget)
 
 from ..engine import model_store
 from . import brush, export, theme
@@ -605,6 +606,63 @@ class ExportDialog(QDialog):
             self.phase.setText(tr("ui.cancelling"))
             return
         super().reject()
+
+
+class ContinueDialog(QDialog):
+    """Continue a sketch with CLIPasso: how many new strokes, how long, and whether the strokes drawn by
+    hand stay where they are."""
+
+    NEW_STROKES = 4
+    ITERATIONS = 501
+
+    def __init__(self, strokes: int, fixed: int, parent=None):
+        super().__init__(parent)
+        self.strokes = strokes
+        self.setWindowTitle(tr("ui.continue.title"))
+        self.setMinimumWidth(420)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(14)
+        lay.addWidget(label(tr("ui.continue.title"), "h2"))
+        lay.addWidget(label(tr("ui.continue.desc"), "muted", wrap=True))
+        form = QFormLayout()
+        form.setSpacing(10)
+        self.new = QSpinBox()
+        self.new.setRange(0, 128)
+        self.new.setValue(self.NEW_STROKES)
+        self.new.valueChanged.connect(self._update)
+        form.addRow(tr("ui.continue.new"), self.new)
+        self.iterations = QSpinBox()
+        self.iterations.setRange(1, 20000)
+        self.iterations.setSingleStep(100)
+        self.iterations.setValue(self.ITERATIONS)
+        form.addRow(tr("ui.continue.iterations"), self.iterations)
+        lay.addLayout(form)
+        self.keep = QCheckBox(tr("ui.continue.keep", n=fixed))
+        self.keep.setChecked(fixed > 0)
+        self.keep.setEnabled(fixed > 0)
+        self.keep.setToolTip(tr("ui.continue.keep_tip"))
+        lay.addWidget(self.keep)
+        self.summary = label("", "faint", wrap=True)
+        lay.addWidget(self.summary)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        cancel = button(tr("ui.cancel"), variant="ghost")
+        cancel.clicked.connect(self.reject)
+        self.ok = button(tr("ui.continue.start"), "play", "primary")
+        self.ok.clicked.connect(self.accept)
+        row.addWidget(cancel)
+        row.addWidget(self.ok)
+        lay.addLayout(row)
+        self._update()
+
+    def _update(self):
+        self.summary.setText(tr("ui.continue.summary", old=self.strokes, new=self.new.value(),
+                                total=self.strokes + self.new.value()))
+
+    def values(self) -> tuple[int, int, bool]:
+        """(new strokes, iterations, keep the strokes drawn by hand)"""
+        return self.new.value(), self.iterations.value(), self.keep.isChecked()
 
 
 class BatchExportDialog(QDialog):

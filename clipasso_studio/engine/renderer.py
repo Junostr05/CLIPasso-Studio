@@ -37,14 +37,15 @@ _CHUNK = 2_000_000  # pixel × segment pairs per block when looking for the clos
 
 
 class Path:
-    """Same constructor as ``pydiffvg.Path``."""
+    """Same constructor as ``pydiffvg.Path``; ``fixed``: a stroke drawn by hand that stays as it is."""
 
-    def __init__(self, num_control_points, points, stroke_width, is_closed=False, id=""):
+    def __init__(self, num_control_points, points, stroke_width, is_closed=False, id="", fixed=False):
         self.num_control_points = torch.as_tensor(num_control_points, dtype=torch.int32).flatten().cpu()
         self.points = points
         self.stroke_width = stroke_width if torch.is_tensor(stroke_width) else torch.tensor(float(stroke_width))
         self.is_closed = bool(is_closed)
         self.id = id
+        self.fixed = bool(fixed)
 
 
 class ShapeGroup:

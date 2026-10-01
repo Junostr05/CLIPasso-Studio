@@ -1,4 +1,4 @@
-"""Editing the strokes of a finished sketch (the eraser of the studio), without torch.
+"""Editing the strokes of a finished sketch (the eraser and the pen of the studio), without torch.
 
 Strokes are the ``<path>`` elements of the sketch SVG, numbered in document order.
 """
@@ -100,3 +100,68 @@ def highlight(svg: str, index: int, color: str = HIGHLIGHT) -> str:
 
 def count(svg: str) -> int:
     return len(_paths(ET.fromstring(svg)))
+
+
+FIXED_ATTR = "data-fixed"  # a stroke drawn by hand: kept as it is when CLIPasso continues the sketch
+PEN_TOLERANCE = 0.004  # simplification of a drawn stroke, as a share of the sketch size
+
+
+def _widths(root) -> list[float]:
+    out = []
+    for el in _paths(root):
+        try:
+            out.append(float(el.get("stroke-width") or 1.0))
+        except ValueError:
+            continue
+    return out
+
+
+def append_stroke(svg: str, points, width: float | None = None, fixed: bool = True) -> str:
+    """The sketch with a stroke drawn through ``points`` (sketch coordinates): the polyline is simplified
+    and smoothed into cubic Béziers; the width is the median of the sketch's strokes (``fixed``: marked
+    to stay as it is when CLIPasso continues the sketch)."""
+    from ..curves import bezier_d, catmull_rom_bezier, simplify
+
+    root = ET.fromstring(svg)
+    _, _, w, h = view_box(svg)
+    pts = simplify(list(points), PEN_TOLERANCE * max(w, h))
+    if len(pts) < 2:
+        return svg
+    if width is None:
+        widths = sorted(_widths(root))
+        width = widths[len(widths) // 2] if widths else 1.5 * max(w, h) / 224
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+    attrs = {"d": bezier_d(catmull_rom_bezier(pts)), "fill": "none", "stroke": "rgb(0, 0, 0)",
+             "stroke-opacity": "1", "stroke-width": f"{float(width):.3f}".rstrip("0").rstrip("."),
+             "stroke-linecap": "round", "stroke-linejoin": "round"}
+    if fixed:
+        attrs[FIXED_ATTR] = "1"
+    paths = _paths(root)
+    parents = {c: p for p in root.iter() for c in p}
+    parent = parents.get(paths[-1], root) if paths else root
+    ET.SubElement(parent, f"{ns}path", attrs)
+    return ET.tostring(root, encoding="unicode")
+
+
+def fixed_count(svg: str) -> int:
+    """Strokes drawn by hand (marked as fixed)."""
+    return sum(1 for el in _paths(ET.fromstring(svg)) if el.get(FIXED_ATTR) in ("1", "true"))
+
+
+def unfix(svg: str) -> str:
+    """The sketch with all strokes free again (CLIPasso may move every stroke)."""
+    root = ET.fromstring(svg)
+    for el in _paths(root):
+        el.attrib.pop(FIXED_ATTR, None)
+    return ET.tostring(root, encoding="unicode")
+
+
+def shape_count(svg: str) -> int:
+    """Strokes as CLIPasso loads them: every subpath of a ``<path>`` is one stroke."""
+    n = 0
+    for el in _paths(ET.fromstring(svg)):
+        try:
+            n += len(sample(el.get("d") or "", per_segment=2))
+        except (ValueError, IndexError):
+            continue
+    return n

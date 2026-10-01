@@ -5,18 +5,19 @@ from __future__ import annotations
 import json
 import math
 import os
+import shutil
 import sys
 import time
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QImage, QImageReader, QPixmap
-from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
-                               QScrollArea, QSplitter, QVBoxLayout, QWidget)
+from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QImage, QImageReader, QPixmap
+from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox,
+                               QProgressBar, QScrollArea, QSplitter, QToolButton, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, masking, model_store, runner
-from .. import dialogs, icons, mask_view, methods_ui, shortcuts, theme
+from .. import brush, dialogs, icons, mask_view, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -238,15 +239,33 @@ class StudioPage(QWidget):
         et.setSpacing(2)
         self.eraser_btn = tool_button("eraser", "", 18, checkable=True)
         self.eraser_btn.toggled.connect(self._toggle_eraser)
+        self.pen_btn = tool_button("pencil-line", "", 18, checkable=True)  # draw own strokes
+        self.pen_btn.toggled.connect(self._toggle_pen)
         self.undo_btn = tool_button("undo-2", "", 18)
         self.undo_btn.clicked.connect(self.undo_edit)
         self.redo_btn = tool_button("redo-2", "", 18)
         self.redo_btn.clicked.connect(self.redo_edit)
         self.revert_btn = tool_button("rotate-ccw", "", 18)
         self.revert_btn.clicked.connect(self.revert_edits)
-        for b in (self.eraser_btn, self.undo_btn, self.redo_btn, self.revert_btn):
+        self.continue_btn = tool_button("wand-sparkles", "", 18)  # a new CLIPasso job from this sketch
+        self.continue_btn.clicked.connect(self.continue_with_clipasso)
+        for b in (self.eraser_btn, self.pen_btn, self.undo_btn, self.redo_btn, self.revert_btn, self.continue_btn):
             et.addWidget(b)
         top.addWidget(self.edit_tools)
+        # brush style the sketches are shown in – also while they are computed; the export starts with it
+        self.style_btn = tool_button("palette", "", 18)
+        self.style_btn.setPopupMode(QToolButton.InstantPopup)
+        self.style_menu = QMenu(self)
+        self.style_group = QActionGroup(self)
+        self.style_actions = {}
+        for key in brush.STYLES:
+            action = self.style_menu.addAction("")
+            action.setCheckable(True)
+            action.triggered.connect(lambda _=False, k=key: self.set_canvas_style(k))
+            self.style_group.addAction(action)
+            self.style_actions[key] = action
+        self.style_btn.setMenu(self.style_menu)
+        top.addWidget(self.style_btn)
         self._edit_undo: dict[int, list[str]] = {}
         self._edit_redo: dict[int, list[str]] = {}
         self._edit_changed = False
@@ -268,6 +287,7 @@ class StudioPage(QWidget):
         self.canvas.erase_begin.connect(self._erase_begin)
         self.canvas.erase.connect(self._erase_stroke)
         self.canvas.erase_end.connect(self._erase_end)
+        self.canvas.pen_stroke.connect(self._pen_stroke)
         center.body.addWidget(self.canvas, 1)
         self.matrix = MatrixView()  # SceneSketch: all cells of the abstraction matrix
         self.matrix.clicked.connect(self.select_seed)
@@ -367,6 +387,7 @@ class StudioPage(QWidget):
             self.set_image(last_img)
         else:
             self.set_image(str(paths.resource("samples", "camel.png")))
+        self._apply_canvas_style(app_settings().get("canvas_style", "plain"))
         self.retranslate()
         self._update_buttons()
 
@@ -765,6 +786,7 @@ class StudioPage(QWidget):
             if seed in self.thumbs:
                 continue
             t = SeedThumb(seed)
+            t.set_style(self.canvas.style())
             t.clicked.connect(self.select_seed)
             if self.view_method == "scenesketch":
                 t.set_caption(self._cell_label(seed))
@@ -1337,8 +1359,30 @@ class StudioPage(QWidget):
         self.left_scroll.setMinimumWidth(max(260, need))
         self.left_scroll.setMaximumWidth(max(370, need))
 
+    def set_canvas_style(self, style: str):
+        """Show the sketches in another brush style (remembered; the export dialog starts with it)."""
+        st = app_settings()
+        st.data["export_style"] = style
+        st.set("canvas_style", style)
+        self._apply_canvas_style(style)
+
+    def _apply_canvas_style(self, style: str):
+        if style not in brush.STYLES:
+            style = "plain"
+        self.canvas.set_style(style)
+        self.matrix.set_style(style)
+        for t in self.thumbs.values():
+            t.set_style(style)
+        self.style_actions[style].setChecked(True)
+        self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{style}")))
+
     def retranslate(self):
+        for key, action in self.style_actions.items():
+            action.setText(tr(f"ui.brush.{key}"))
+        self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{self.canvas.style()}")))
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
+        self.pen_btn.setToolTip(tr("ui.pen.tip"))
+        self.continue_btn.setToolTip(tr("ui.continue.tip"))
         self.undo_btn.setToolTip(tr("ui.eraser.undo"))
         self.redo_btn.setToolTip(tr("ui.eraser.redo"))
         self.revert_btn.setToolTip(tr("ui.eraser.revert"))
@@ -1427,13 +1471,85 @@ class StudioPage(QWidget):
         self.edit_tools.setVisible(show)
         if not show and self.eraser_btn.isChecked():
             self.eraser_btn.setChecked(False)
+        if not show and self.pen_btn.isChecked():
+            self.pen_btn.setChecked(False)
         if seed is not None:
             self.undo_btn.setEnabled(bool(self._edit_undo.get(seed)))
             self.redo_btn.setEnabled(bool(self._edit_redo.get(seed)))
             self.revert_btn.setEnabled(os.path.isfile(os.path.join(self.seed_runs[seed], jobs.EDITED_FILE)))
 
     def _toggle_eraser(self, on: bool):
+        if on and self.pen_btn.isChecked():
+            self.pen_btn.setChecked(False)
         self.canvas.set_eraser(on)
+
+    def _toggle_pen(self, on: bool):
+        if on and self.eraser_btn.isChecked():
+            self.eraser_btn.setChecked(False)
+        self.canvas.set_pen(on)
+
+    def _pen_stroke(self, points: list):
+        """A stroke drawn by hand: added to the sketch (one undo step), marked to stay where it is when
+        CLIPasso continues the sketch."""
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        from .. import strokes
+
+        svg = strokes.append_stroke(self.seed_svgs[seed], points)
+        if svg == self.seed_svgs[seed]:
+            return
+        self._edit_undo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._edit_redo[seed] = []
+        self._show_edited(seed, svg)
+        self._save_edit(seed)
+        self._update_edit_tools()
+
+    def continue_with_clipasso(self):
+        """A new CLIPasso job that starts from the shown sketch: its strokes are optimised further (the ones
+        drawn by hand stay where they are) and new strokes can be added."""
+        seed = self._editable_seed()
+        if seed is None:
+            return
+        from .. import strokes
+
+        svg = self.seed_svgs[seed]
+        if not os.path.isfile(os.path.join(self.seed_runs[seed], "input.png")):
+            self.toast.emit(tr("ui.continue.no_input"), "error")
+            return
+        dlg = dialogs.ContinueDialog(strokes.shape_count(svg), strokes.fixed_count(svg), self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        image, settings = self.continue_job(seed, *dlg.values())
+        busy = self.controller.is_busy()
+        self.controller.enqueue(image, settings, start=not busy)
+        self.toast.emit(tr("ui.continue.queued" if busy else "ui.continue.started"), "success")
+
+    def continue_job(self, seed: int, new: int, iterations: int, keep: bool) -> tuple[str, dict]:
+        """(image, settings) of a CLIPasso job that continues the sketch ``seed``. Its image is the input as
+        the sketch's method used it (masked, framed, padded), so the strokes line up without further steps."""
+        from .. import strokes
+
+        run_dir = self.seed_runs[seed]
+        svg = self.seed_svgs[seed]
+        state = jobs.read_state(os.path.dirname(os.path.normpath(run_dir))) or {}
+        stem = os.path.splitext(os.path.basename(state.get("target") or ""))[0] or "sketch"
+        base = os.path.join(app_settings().get("output_dir"), "_continued", time.strftime("%Y%m%d-%H%M%S"))
+        folder, n = base, 1
+        while os.path.exists(folder):
+            n += 1
+            folder = f"{base}-{n}"
+        os.makedirs(folder)
+        image = os.path.join(folder, f"{stem}.png")
+        shutil.copyfile(os.path.join(run_dir, "input.png"), image)
+        start = os.path.join(folder, f"{stem}-start.svg")
+        with open(start, "w", encoding="utf-8") as f:
+            f.write(svg if keep else strokes.unfix(svg))
+        settings = dict(self.params.all_settings()["clipasso"])
+        settings.update(method="clipasso", path_svg=start, num_paths=strokes.shape_count(svg) + int(new),
+                        num_iter=int(iterations), num_sketches=1, num_stages=1, mask_object=False,
+                        frame_object=False, fix_scale=False, multiprocess=False)
+        return image, settings
 
     def _erase_begin(self):
         seed = self._editable_seed()

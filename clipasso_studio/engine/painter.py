@@ -94,16 +94,18 @@ class Painter(torch.nn.Module):
                 path_group = renderer.ShapeGroup(shape_ids=torch.tensor([len(self.shapes) - 1]),
                                                  fill_color=None, stroke_color=stroke_color)
                 self.shape_groups.append(path_group)
-            self.optimize_flag = [True for _ in range(len(self.shapes))]
+            # strokes drawn by hand (``data-fixed`` in the start SVG) stay where they are
+            self.optimize_flag = [not getattr(s, "fixed", False) for s in self.shapes]
 
         return self.get_image()
 
     def _load_init_svg(self):
         w, h, shapes, groups = svg_io.load_svg(self.path_svg, device=self.device)
-        # rescale to the working canvas
+        # rescale to the working canvas (the widths too: a sketch of another size keeps its look)
         sx, sy = self.canvas_width / w, self.canvas_height / h
         for s in shapes:
             s.points = (s.points * torch.tensor([sx, sy], device=s.points.device)).to(self.device)
+            s.stroke_width = (s.stroke_width * (sx + sy) / 2).to(self.device)
         return self.canvas_width, self.canvas_height, shapes, groups
 
     def get_image(self):
@@ -137,12 +139,16 @@ class Painter(torch.nn.Module):
     def render_warp(self):
         if self.opacity_optim:
             for group in self.shape_groups:
+                if getattr(self.shapes[int(group.shape_ids[0])], "fixed", False):
+                    continue  # a stroke drawn by hand keeps its colour
                 group.stroke_color.data[:3].clamp_(0., 0.)  # to force black stroke
                 group.stroke_color.data[-1].clamp_(0., 1.)  # opacity
         if self.add_random_noise:
             if random.random() > self.noise_thresh:
                 eps = 0.01 * min(self.canvas_width, self.canvas_height)
                 for path in self.shapes:
+                    if getattr(path, "fixed", False):
+                        continue  # (the noise would move it for good)
                     path.points.data.add_(eps * torch.randn_like(path.points))
         return renderer.render_on_white(self.canvas_width, self.canvas_height, self.shapes, self.shape_groups)
 
