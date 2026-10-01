@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import (Property, QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, QTimer, Signal)
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
                                QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
@@ -153,6 +153,7 @@ class SegmentedControl(QFrame):
             self._group.addButton(b)
             lay.addWidget(b)
             self._buttons[key] = b
+            self._fit(b)
             b.clicked.connect(lambda _=False, k=key: self.changed.emit(k))
         if items:
             self._buttons[items[0][0]].setChecked(True)
@@ -177,6 +178,14 @@ class SegmentedControl(QFrame):
     def set_text(self, key: str, text: str) -> None:
         if key in self._buttons:
             self._buttons[key].setText(text)
+            self._fit(self._buttons[key])
+
+    @staticmethod
+    def _fit(b: QPushButton) -> None:
+        """Wide enough for the label in the bold font of the checked state (padding 12 px each side)."""
+        f = QFont(b.font())
+        f.setWeight(QFont.Weight.DemiBold)
+        b.setMinimumWidth(QFontMetrics(f).horizontalAdvance(b.text()) + 28)
 
     def set_enabled(self, key: str, enabled: bool) -> None:
         if key in self._buttons:

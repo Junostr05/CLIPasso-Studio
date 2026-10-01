@@ -80,7 +80,45 @@ def save_input(job_dir: str, target: str) -> str | None:
         shutil.copyfile(target, dest)
     except OSError:
         return None
+    save_edited_mask(job_dir, target)
     return dest
+
+
+EDITED_MASK_FILE = "mask-edited.png"  # the user's mask of the input, kept with the job
+
+
+def save_edited_mask(job_dir: str, target: str) -> bool:
+    """Copy the mask the user edited for this input into the job folder (it is found again by the
+    image content, so this copy is the record – and restores the edit if the app data is lost)."""
+    from . import masking
+    from .imaging import load_rgb
+
+    try:
+        src = masking.edited_mask_path(load_rgb(target))
+        if src.is_file():
+            shutil.copyfile(src, os.path.join(job_dir, EDITED_MASK_FILE))
+            return True
+    except OSError:
+        pass
+    return False
+
+
+def restore_edited_mask(job_dir: str, image_path: str) -> bool:
+    """When a job is reopened: bring its edited mask back if the app data no longer has it."""
+    from . import masking
+    from .imaging import load_rgb
+
+    saved = os.path.join(job_dir, EDITED_MASK_FILE)
+    if not os.path.isfile(saved):
+        return False
+    try:
+        dest = masking.edited_mask_path(load_rgb(image_path))
+        if not dest.is_file():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(saved, dest)
+        return True
+    except OSError:
+        return False
 
 
 def saved_input(job_dir: str, target: str = "") -> str | None:

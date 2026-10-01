@@ -36,7 +36,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .... import settings_schema as schema
-from ... import checkpoint, imaging, model_store
+from ... import checkpoint, imaging, masking, model_store
 from ...jobs import SeedResult
 from . import combine as C
 from .painter import MLPPainter, paths_to_svg, render_paths
@@ -154,15 +154,16 @@ def _prepare(ctx: _Ctx) -> dict:
 
     s, device = ctx.s, ctx.device
     key = ("inputs", os.path.abspath(ctx.target), os.path.getmtime(ctx.target), str(device), s["fix_scale"],
-           s["split_scene"], s["resize_obj"], s.get("mask_model", "u2net"))
+           s["split_scene"], s["resize_obj"], s.get("mask_model", "u2net"), masking.edited_stamp(ctx.target))
     if key in _cache:
         return _cache[key]
-    scene = pre.square_scene(load_rgb(ctx.target), bool(s["fix_scale"]))
+    image = load_rgb(ctx.target)
+    scene = pre.square_scene(image, bool(s["fix_scale"]))
     size = scene.size[0]
     out = {"scene": scene, "object": None, "background": scene, "mask": None, "params": {}}
     if s["split_scene"]:
         ctx.reporter.event("stage", seed=ctx.cell, name="scene_mask")
-        prob = pre.object_probability(scene, device, s.get("mask_model", "u2net"))
+        prob = pre.object_probability(image, scene, device, s.get("mask_model", "u2net"), bool(s["fix_scale"]))
         obj_mask = pre.object_mask(prob, size)
         if obj_mask.sum() < 16:  # no foreground object found: sketch the whole scene as background
             ctx.reporter.event("warning", code="scene_no_object",

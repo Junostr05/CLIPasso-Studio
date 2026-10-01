@@ -2,7 +2,7 @@
 
 * the scene is made square (centre crop, or white padding with ``fix_scale``) and at most 512 px;
 * U2Net (with its own preprocessing: 320x320, ImageNet normalisation) finds the foreground object –
-  or BiRefNet (``mask_model``), at the scene size;
+  or BiRefNet (``mask_model``) / the user's edited mask on the whole image, cut like the scene;
 * LaMa fills in the object area (mask dilated by 11x11 at 320 px) -> the background image;
 * the object image is the scene with a white background; with ``resize_obj`` a single, small
   object is enlarged to 70 % of the canvas for sketching and scaled back when the sketches are
@@ -52,13 +52,39 @@ def u2net_probability(image: Image.Image, device, net=None) -> torch.Tensor:
     return ((pred - pred.min()) / (pred.max() - pred.min() + 1e-12)).cpu()
 
 
-def object_probability(image: Image.Image, device, model: str = "u2net") -> torch.Tensor:
-    """Object probability: U2Net's at 320x320 (``u2net_probability``) or BiRefNet's at the image size."""
-    if model == "u2net":
-        return u2net_probability(image, device)
+def square_mask(mask: np.ndarray, fix_scale: bool) -> np.ndarray:
+    """``square_scene`` for a mask of the original image: centre crop or zero padding to a square,
+    at most 512 px (bilinear)."""
+    h, w = mask.shape
+    if w != h:
+        if fix_scale:
+            side = max(w, h)
+            out = np.zeros((side, side), dtype=np.float32)
+            out[(side - h) // 2:(side - h) // 2 + h, (side - w) // 2:(side - w) // 2 + w] = mask
+            mask = out
+        else:
+            side = min(w, h)
+            top, left = (h - side) // 2, (w - side) // 2
+            mask = mask[top:top + side, left:left + side]
+    if mask.shape[0] > MAX_SIZE:
+        t = torch.from_numpy(np.ascontiguousarray(mask, dtype=np.float32))[None, None]
+        mask = F.interpolate(t, size=(MAX_SIZE, MAX_SIZE), mode="bilinear", align_corners=False)[0, 0].numpy()
+    return np.ascontiguousarray(mask, dtype=np.float32)
+
+
+def object_probability(image: Image.Image, scene: Image.Image, device, model: str = "u2net",
+                       fix_scale: bool = False) -> torch.Tensor:
+    """Object probability of the square ``scene`` made from ``image``: the user's edited mask or
+    BiRefNet's, computed on the whole image (like the preview) and cut like the scene – or U2Net's
+    on the scene at 320x320 (``u2net_probability``, the original)."""
     from ... import masking
 
-    return torch.from_numpy(masking.birefnet_probability(device, image, model))
+    full = masking.edited_mask(image)
+    if full is None and model != "u2net":
+        full = masking.birefnet_probability(device, image, model)
+    if full is None:
+        return u2net_probability(scene, device)
+    return torch.from_numpy(square_mask(full, fix_scale))
 
 
 def object_mask(prob: torch.Tensor, size: int) -> np.ndarray:

@@ -9,14 +9,14 @@ import sys
 import time
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QPixmap
+from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QImage, QPixmap
 from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
                                QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
-from ...engine import imaging, jobs
-from .. import dialogs, icons, methods_ui, theme
+from ...engine import imaging, jobs, masking, model_store
+from .. import dialogs, icons, mask_view, methods_ui, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -105,6 +105,34 @@ class StudioPage(QWidget):
         self.file_label = label("", "faint")
         self.file_label.setWordWrap(True)
         self.input_card.body.addWidget(self.file_label)
+        # the object mask, computed in the background as soon as an image is chosen
+        self.mask_row = QWidget()
+        mrow = QHBoxLayout(self.mask_row)
+        mrow.setContentsMargins(0, 0, 0, 0)
+        mrow.setSpacing(6)
+        self.mask_eye = tool_button("eye", "", 16, checkable=True)
+        self.mask_eye.setChecked(bool(app_settings().get("show_mask", True)))
+        self.mask_eye.toggled.connect(self._toggle_mask_overlay)
+        self.drop.set_show_overlay(self.mask_eye.isChecked())
+        self.mask_status = label("", "faint")
+        self.mask_dl_btn = button("", "download", "ghost", size="sm")
+        self.mask_dl_btn.clicked.connect(self._download_mask_model)
+        self.mask_edit_btn = tool_button("brush", "", 16)
+        self.mask_edit_btn.clicked.connect(self.edit_mask)
+        self.mask_reset_btn = tool_button("rotate-ccw", "", 16)
+        self.mask_reset_btn.clicked.connect(self.reset_mask)
+        mrow.addWidget(self.mask_eye)
+        mrow.addWidget(self.mask_status, 1)
+        mrow.addWidget(self.mask_dl_btn)
+        mrow.addWidget(self.mask_edit_btn)
+        mrow.addWidget(self.mask_reset_btn)
+        self.mask_row.hide()
+        self.input_card.body.addWidget(self.mask_row)
+        self.mask_preview = mask_view.MaskPreviewer(self)
+        self.mask_preview.busy.connect(lambda on: on and self._set_mask_status("busy"))
+        self.mask_preview.ready.connect(self._mask_ready)
+        self.mask_preview.failed.connect(self._mask_failed)
+        self._mask: dict | None = None  # the mask shown: key (image, model), probability, edited
         row = QHBoxLayout()
         self.open_btn = button("", "folder-open")
         self.open_btn.clicked.connect(self.browse_image)
@@ -389,7 +417,110 @@ class StudioPage(QWidget):
             self.canvas.set_input(self._square_input(pm))
         if pm.width() != pm.height() and not self.params.settings()["fix_scale"]:
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
+        self._mask = None
+        self._update_mask_preview()
         self._update_buttons()
+
+    # ------------------------------------------------------------------ object mask
+    def _mask_settings(self) -> tuple[bool, str, dict]:
+        s = self.params.settings()
+        return schema.uses_mask(self.params.method(), s), s.get("mask_model", "u2net"), s
+
+    def _update_mask_preview(self):
+        """Show the mask of the input (computed in the background) whenever the run will use one."""
+        used, model, s = self._mask_settings()
+        if not used or not self.image_path or not os.path.isfile(self.image_path):
+            self.mask_preview.forget()
+            self.mask_row.hide()
+            self.drop.set_overlay(None)
+            self._mask = None
+            return
+        self.mask_row.show()
+        if self._mask is not None and self._mask["key"] == (self.image_path, model):
+            return
+        self._mask = None
+        self.drop.set_overlay(None)
+        if model != "u2net" and not model_store.is_available(model):
+            self.mask_preview.forget()
+            self._set_mask_status("missing", model)
+            return
+        self._set_mask_status("busy")
+        self.mask_preview.request(self.image_path, model, s.get("device", "auto"))
+
+    def _mask_ready(self, path: str, model: str):
+        used, current, _ = self._mask_settings()
+        if not used or path != self.image_path or model != current:
+            return  # an earlier image or model
+        try:
+            _, prob, edited = mask_view.load_mask(path, model)
+        except OSError as exc:
+            self._mask_failed(path, model, str(exc))
+            return
+        if prob is None:
+            self._mask_failed(path, model, "no mask in the cache")
+            return
+        self._mask = {"key": (path, model), "prob": prob, "edited": edited is not None}
+        mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
+        pal = theme.current()
+        veil = QColor(pal.surface2)
+        veil.setAlpha(215)
+        self.drop.set_overlay(mask_view.overlay(mask, veil, QColor(pal.accent), max_side=700))
+        self._set_mask_status("edited" if edited is not None else "ready", model)
+
+    def _mask_failed(self, path: str, model: str, message: str):
+        if path == self.image_path:
+            self._set_mask_status("failed", model)
+            self.mask_status.setToolTip(message)
+
+    def _set_mask_status(self, state: str, model: str = ""):
+        name = dialogs.model_display_name(model) if model else ""
+        texts = {"busy": tr("ui.mask.busy"), "ready": tr("ui.mask.ready", model=name),
+                 "edited": tr("ui.mask.edited"), "missing": tr("ui.mask.missing", model=name),
+                 "failed": tr("ui.mask.failed")}
+        self.mask_state = state
+        self.mask_status.setText(texts[state])
+        self.mask_status.setToolTip("")
+        self.mask_dl_btn.setVisible(state == "missing")
+        self.mask_eye.setEnabled(state in ("ready", "edited"))
+        self.mask_edit_btn.setEnabled(state in ("ready", "edited"))
+        self.mask_reset_btn.setVisible(state == "edited")
+
+    def _toggle_mask_overlay(self, on: bool):
+        app_settings().set("show_mask", on)
+        self.drop.set_show_overlay(on)
+
+    def _download_mask_model(self):
+        _, model, _ = self._mask_settings()
+        if dialogs.ModelDownloadDialog([model], self).exec():
+            self._mask = None
+            self._update_mask_preview()
+            self.picker.refresh_status(self.params.all_settings())
+            self._update_banner()
+
+    def edit_mask(self):
+        if self._mask is None or not self.image_path:
+            return
+        from ..mask_edit import MaskEditDialog
+
+        path, model = self._mask["key"]
+        _, prob, edited = mask_view.load_mask(path, model)
+        if prob is None:
+            return
+        dlg = MaskEditDialog(path, prob, edited, self)
+        if dlg.exec() and dlg.saved:
+            self._mask = None
+            self._update_mask_preview()
+
+    def reset_mask(self):
+        """Use the automatic mask again (the edit is removed)."""
+        if not self.image_path:
+            return
+        masking.remove_edited_mask(imaging.load_rgb(self.image_path))
+        self._mask = None
+        self._update_mask_preview()
+
+    def shutdown(self):
+        self.mask_preview.shutdown()
 
     @staticmethod
     def _square_input(pm: QPixmap) -> QPixmap:
@@ -423,6 +554,7 @@ class StudioPage(QWidget):
         self._update_estimate()
         self._update_banner()
         self.picker.cards[self.params.method()].refresh_status(settings)
+        self._update_mask_preview()
 
     def _method_changed(self, method: str):
         self.picker.set_current(method)
@@ -434,6 +566,7 @@ class StudioPage(QWidget):
             self._set_view_method(method)
         self._update_banner()
         self._update_estimate()
+        self._update_mask_preview()
 
     def _set_view_method(self, method: str):
         """Adapt statistics, chart and canvas views to the method of the displayed run."""
@@ -779,6 +912,9 @@ class StudioPage(QWidget):
         if src and os.path.isfile(src):
             self.image_path = src
             self.drop.set_image(src)
+            jobs.restore_edited_mask(job_dir, src)
+            self._mask = None
+            self._update_mask_preview()
             pm = QPixmap(src)
             text = f"{os.path.basename(src)}  ·  {pm.width()}×{pm.height()} px"
             if os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(target or "")):
@@ -1069,6 +1205,13 @@ class StudioPage(QWidget):
         if not self.device_badge.text():
             self.device_badge.setText(tr("ui.device_unknown"))
         self.input_title.setText(tr("ui.input"))
+        self.mask_eye.setToolTip(tr("ui.mask.show"))
+        self.mask_dl_btn.setText(tr("ui.mask.download"))
+        self.mask_edit_btn.setToolTip(tr("ui.mask.edit"))
+        self.mask_reset_btn.setToolTip(tr("ui.mask.reset"))
+        if self.mask_row.isVisible() and getattr(self, "mask_state", ""):
+            _, model, _ = self._mask_settings()
+            self._set_mask_status(self.mask_state, model)
         self.drop.title = tr("ui.drop_title")
         self.drop.subtitle = tr("ui.drop_subtitle")
         self.drop.update()

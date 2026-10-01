@@ -225,12 +225,17 @@ def test_u2net_stays_available(monkeypatch):
     assert calls == ["hard", "soft"]
 
 
-def test_scenesketch_uses_birefnet_at_the_scene_size(disc):
+def test_scenesketch_uses_birefnet_on_the_whole_image(disc):
     from clipasso_studio.engine.methods.scenesketch import preprocess as pre
 
-    scene = _image(256, 256)
-    prob = pre.object_probability(scene, "cpu", "birefnet")
+    image = _image(256, 256)
+    scene = pre.square_scene(image, False)
+    prob = pre.object_probability(image, scene, "cpu", "birefnet")
     assert prob.shape == (256, 256)
+    net, _ = disc
+    assert net.inputs[-1].shape[-1] == 1024  # BiRefNet saw the whole image
+    wide = _image(400, 256)
+    assert pre.object_probability(wide, pre.square_scene(wide, False), "cpu", "birefnet").shape == (256, 256)
     obj = pre.object_mask(prob, 256)
     hole = pre.inpaint_mask(prob, 256)
     assert obj[128, 128] == 1 and obj[0, 0] == 0

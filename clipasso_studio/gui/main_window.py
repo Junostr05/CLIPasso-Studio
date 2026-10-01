@@ -446,6 +446,7 @@ class MainWindow(QMainWindow):
         new.show()
         new.show_page(current)
         QApplication.instance()._main_window = new
+        self.studio.shutdown()
         self.controller.shutdown()
         self._closing_for_theme = True
         self.close()
@@ -501,6 +502,7 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         app_settings().set("geometry", bytes(self.saveGeometry().toBase64()).decode())
+        self.studio.shutdown()
         self.controller.shutdown()
         dialogs.wait_for_threads()
         event.accept()

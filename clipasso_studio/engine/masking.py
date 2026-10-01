@@ -78,6 +78,63 @@ def cache_dir() -> Path:
 CACHE_KEEP = 100  # masks kept in the cache (the least recently used ones are removed)
 
 
+def image_digest(im: Image.Image) -> str:
+    """SHA-1 of the pixels of the loaded RGB image – identifies an input independent of its file."""
+    return hashlib.sha1(im.convert("RGB").tobytes()).hexdigest()
+
+
+def image_key(im: Image.Image, digest: str | None = None) -> str:
+    return f"{im.width}x{im.height}-{(digest or image_digest(im))[:24]}"
+
+
+# ------------------------------------------------------------------ masks edited by the user
+def edited_dir() -> Path:
+    """Masks touched up in the mask editor, one per image content (never removed automatically)."""
+    return paths.user_data_dir() / "masks" / "edited"
+
+
+def edited_mask_path(im: Image.Image, digest: str | None = None) -> Path:
+    return edited_dir() / f"{image_key(im, digest)}.png"
+
+
+def edited_mask(im: Image.Image, digest: str | None = None) -> np.ndarray | None:
+    """The user's mask for this image (float32 0 / 1 at the image size), or None. It is used instead
+    of the mask model by every method – the queue, parallel workers and Continue find it by the
+    image content."""
+    path = edited_mask_path(im, digest)
+    try:
+        with Image.open(path) as m:
+            if m.size != im.size:
+                return None
+            return (np.asarray(m.convert("L")) >= 128).astype(np.float32)
+    except (OSError, ValueError):
+        return None
+
+
+def save_edited_mask(im: Image.Image, mask: np.ndarray, digest: str | None = None) -> Path:
+    path = edited_mask_path(im, digest)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.stem + f".{os.getpid()}.tmp")
+    Image.fromarray(((np.asarray(mask) > 0.5) * 255).astype(np.uint8), mode="L").save(tmp, format="PNG")
+    os.replace(tmp, path)
+    return path
+
+
+def remove_edited_mask(im: Image.Image, digest: str | None = None) -> None:
+    edited_mask_path(im, digest).unlink(missing_ok=True)
+
+
+def edited_stamp(target: str) -> float:
+    """Modification time of the edited mask of an input file (0 = none) – part of the input caches
+    of the methods, so a new edit is never served from a cache."""
+    from .imaging import load_rgb
+
+    try:
+        return edited_mask_path(load_rgb(target)).stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 @contextmanager
 def _locked(lock: Path, stale: float = 30.0):
     """Only one process at a time computes a mask – parallel CLIPasso workers ask for the same one and
@@ -171,11 +228,11 @@ def birefnet_probability(device, pil_im: Image.Image, model: str = DEFAULT_MASK_
     im = pil_im.convert("RGB")
     if net is not None:
         return _predict(device, im, model, net).astype(np.float32)
-    digest = hashlib.sha1(im.tobytes()).hexdigest()
+    digest = image_digest(im)
     key = (model, im.size, digest)
     if key in _cache:
         return _cache[key]
-    path = cache_dir() / f"{model}-{im.width}x{im.height}-{digest[:24]}.png"
+    path = cache_path(im, model, digest)
     prob = _read_cached(path)
     if prob is None:
         _make_folder(path.parent)
@@ -190,6 +247,30 @@ def birefnet_probability(device, pil_im: Image.Image, model: str = DEFAULT_MASK_
     return prob
 
 
+def cache_path(im: Image.Image, model: str, digest: str | None = None) -> Path:
+    return cache_dir() / f"{model}-{image_key(im, digest)}.png"
+
+
+def cached_probability(im: Image.Image, model: str, digest: str | None = None) -> np.ndarray | None:
+    """The mask of this image from the disk cache without computing it (the preview in the GUI)."""
+    return _read_cached(cache_path(im, model, digest))
+
+
+def preview_probability(device, im: Image.Image, model: str) -> np.ndarray:
+    """The object probability the preview shows: BiRefNet's (cached like for a run), or U2Net's
+    binary mask (``get_mask_u2net``, also kept in the cache for the preview)."""
+    im = im.convert("RGB")
+    if model != "u2net":
+        return birefnet_probability(device, im, model)
+    prob = cached_probability(im, "u2net")
+    if prob is None:
+        mask = np.asarray(get_mask_u2net(device, im)[1], dtype=np.float32) / 255.0
+        _make_folder(cache_dir())
+        _write_cached(cache_path(im, "u2net"), np.round(mask * 65535.0).astype(np.uint16))
+        prob = mask
+    return prob
+
+
 def _make_folder(folder: Path) -> None:
     try:
         folder.mkdir(parents=True, exist_ok=True)
@@ -199,7 +280,10 @@ def _make_folder(folder: Path) -> None:
 
 def get_mask(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=None):
     """``get_mask_u2net`` with the chosen mask model: (image with white background, binary mask 'L').
-    When BiRefNet finds no object, the whole picture is kept."""
+    When BiRefNet finds no object, the whole picture is kept. A mask edited by the user wins."""
+    edited = edited_mask(pil_im.convert("RGB"))
+    if edited is not None:
+        return _on_white(pil_im.convert("RGB"), edited.astype(np.float64))
     if model == "u2net":
         return get_mask_u2net(device, pil_im, net=net)
     mask = (birefnet_probability(device, pil_im, model, net) >= OBJECT_THRESHOLD).astype(np.float64)
@@ -232,7 +316,10 @@ def u2net_soft_mask(device, pil_im: Image.Image, net=None) -> np.ndarray:
 def soft_mask(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=None) -> np.ndarray:
     """Soft object matte in [0, 1] at the image size for SwiftSketch / ControlSketch, min-max
     normalised like RMBG-1.4's post-processing. When BiRefNet finds no object: all ones (the whole
-    picture is kept)."""
+    picture is kept). A mask edited by the user wins."""
+    edited = edited_mask(pil_im.convert("RGB"))
+    if edited is not None:
+        return edited
     if model == "u2net":
         return u2net_soft_mask(device, pil_im, net=net)
     prob = birefnet_probability(device, pil_im, model, net)

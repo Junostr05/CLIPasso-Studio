@@ -24,6 +24,7 @@ from torchvision.transforms import InterpolationMode
 
 from .. import settings_schema as schema
 from . import checkpoint, imaging, jobs, masking
+from .imaging import load_rgb  # noqa: F401 (used by the methods as pipeline.load_rgb)
 from .jobs import SeedResult, finish_job, job_seeds, make_job_dir, run_name_for  # noqa: F401
 
 
@@ -139,16 +140,6 @@ def build_args(settings: dict, target: str, seed: int, run_dir: str, device: tor
                 "include_target_in_aug", "augment_both", "force_sparse", "lr_scheduler"):
         args.__dict__[key] = int(bool(getattr(args, key)))
     return args
-
-
-def load_rgb(path: str) -> Image.Image:
-    target = Image.open(path)
-    if target.mode in ("RGBA", "LA") or (target.mode == "P" and "transparency" in target.info):
-        target = target.convert("RGBA")
-        new_image = Image.new("RGBA", target.size, "WHITE")
-        new_image.paste(target, (0, 0), target)
-        target = new_image
-    return target.convert("RGB")
 
 
 def _canvas_transform(size, scale: int, nearest: bool = False):

@@ -452,11 +452,22 @@ class ImageDropZone(QFrame):
         self.setMinimumHeight(190)
         self._pix: QPixmap | None = None
         self._hover = False
+        self._overlay: QImage | None = None  # the object mask (see gui/mask_view.overlay)
+        self.show_overlay = True
         self.title = ""
         self.subtitle = ""
 
     def set_image(self, path: str | None):
         self._pix = QPixmap(path) if path and os.path.isfile(path) else None
+        self._overlay = None
+        self.update()
+
+    def set_overlay(self, image: QImage | None):
+        self._overlay = image
+        self.update()
+
+    def set_show_overlay(self, on: bool):
+        self.show_overlay = on
         self.update()
 
     def dragEnterEvent(self, e):  # noqa: N802
@@ -509,6 +520,8 @@ class ImageDropZone(QFrame):
             clip.addRoundedRect(QRectF(x, y, scaled.width(), scaled.height()), 8, 8)
             p.setClipPath(clip)
             p.drawPixmap(int(x), int(y), scaled)
+            if self._overlay is not None and self.show_overlay:
+                p.drawImage(QRectF(int(x), int(y), scaled.width(), scaled.height()), self._overlay)
         else:
             ic = icons.pixmap("image-plus", pal.accent_hover, 34)
             p.drawPixmap(int(r.center().x() - 17), int(r.center().y() - 44), ic)

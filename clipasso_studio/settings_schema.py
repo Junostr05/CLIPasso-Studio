@@ -59,6 +59,15 @@ def clipasso_uses_mask(s: dict) -> bool:
     return bool(s.get("mask_object")) or attention == "on"
 
 
+def uses_mask(method: str, s: dict) -> bool:
+    """Does a run with these settings use the object mask (and so the mask model)?"""
+    if method == "clipasso":
+        return clipasso_uses_mask(s)
+    if method == "scenesketch":
+        return bool(s.get("split_scene"))
+    return bool(s.get("mask_object"))
+
+
 def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
     return Param("mask_model", DEFAULT_MASK_MODEL, "choice", "image", choices=MASK_MODELS, advanced=False,
                  enabled_if=enabled_if)

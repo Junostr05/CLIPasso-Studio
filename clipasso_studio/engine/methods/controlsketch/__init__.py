@@ -131,7 +131,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     out_size = int(s["output_svg_size"])
     condition = s["condition"]
     stamp = (os.path.abspath(target), os.path.getmtime(target), str(device), s["fix_scale"], size,
-             s["object_size_ratio"], s["mask_object"], s.get("mask_model", "u2net"))
+             s["object_size_ratio"], s["mask_object"], s.get("mask_model", "u2net"), masking.edited_stamp(target))
 
     # --------------------------------------------------------------- input
     reporter.event("stage", seed=seed, name="mask" if s["mask_object"] and s.get("mask_model", "u2net") != "u2net"

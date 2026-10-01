@@ -10,6 +10,17 @@ import torch.nn.functional as F
 from PIL import Image
 
 
+def load_rgb(path: str) -> Image.Image:
+    """The input image as RGB; transparent areas become white (like the original ``get_target``)."""
+    target = Image.open(path)
+    if target.mode in ("RGBA", "LA") or (target.mode == "P" and "transparency" in target.info):
+        target = target.convert("RGBA")
+        new_image = Image.new("RGBA", target.size, "WHITE")
+        new_image.paste(target, (0, 0), target)
+        target = new_image
+    return target.convert("RGB")
+
+
 def _gauss_kernel(sigma: float, truncate: float = 4.0) -> torch.Tensor:
     radius = int(truncate * float(sigma) + 0.5)
     x = torch.arange(-radius, radius + 1, dtype=torch.float64)

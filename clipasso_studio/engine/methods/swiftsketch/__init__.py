@@ -109,7 +109,7 @@ def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Ima
 
     model = settings.get("mask_model", "u2net")
     key = ("input", os.path.abspath(target), os.path.getmtime(target), bool(settings["mask_object"]), model,
-           bool(settings["fix_scale"]))
+           bool(settings["fix_scale"]), masking.edited_stamp(target))
     if key in _cache:  # same image for every seed of a job
         return _cache[key]
     for k in [k for k in _cache if k[0] == "input"]:
