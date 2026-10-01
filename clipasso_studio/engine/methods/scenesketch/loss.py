@@ -40,24 +40,32 @@ def vit_layer_features(visual, x: torch.Tensor, upto: int) -> list[torch.Tensor]
     return feats
 
 
-def compute_grad_norm_losses(losses: dict, model: nn.Module, points_mlp: nn.Module | None) -> dict:
-    """Weights each loss inversely to its share of the mean absolute gradient of ``model``."""
+def compute_grad_norm_losses(losses: dict, model_params: list, params: list) -> tuple[dict, dict | None]:
+    """Weights each loss inversely to its share of the mean absolute gradient of ``model_params``.
+
+    Returns (weights, the gradient of every loss for ``params``): the gradient of the weighted sum is
+    put together from these (SceneLoss.backward) instead of a further backward pass through CLIP and
+    the renderer."""
     if len(losses) < 2:
-        return {k: 1.0 for k in losses}
-    grad_norms = {}
+        return {k: 1.0 for k in losses}, None
+    index = {id(p): i for i, p in enumerate(params)}
+    grads, grad_norms = {}, {}
     for name, loss in losses.items():
-        loss.backward(retain_graph=True)
-        params = [w for w in model.parameters() if w.grad is not None]
-        grad_sum = sum(w.grad.abs().sum().item() for w in params)
-        num_elem = sum(w.numel() for w in params)
-        grad_norms[name] = grad_sum / max(num_elem, 1)
-        model.zero_grad()
-        if points_mlp is not None:
-            points_mlp.zero_grad()
-    total = sum(grad_norms.values())
+        if loss.requires_grad:
+            g = torch.autograd.grad(loss, params, retain_graph=True, allow_unused=True)
+        else:
+            g = (None,) * len(params)
+        grads[name] = g
+        used = [g[index[id(w)]] for w in model_params if id(w) in index and g[index[id(w)]] is not None]
+        num_elem = sum(x.numel() for x in used)
+        grad_norms[name] = torch.stack([x.abs().sum() for x in used]).sum() / max(num_elem, 1) if used else None
+    values = [v for v in grad_norms.values() if v is not None]
+    norms = dict(zip(grad_norms, torch.stack(values).tolist())) if values else {}  # one transfer
+    norms = {k: norms.get(k, 0.0) for k in grad_norms}
+    total = sum(norms.values())
     if total <= 0:
-        return {k: 1.0 / len(losses) for k in losses}
-    return {k: (total - grad_norms[k]) / ((len(losses) - 1) * total) for k in losses}
+        return {k: 1.0 / len(losses) for k in losses}, grads
+    return {k: (total - norms[k]) / ((len(losses) - 1) * total) for k in losses}, grads
 
 
 class CLIPLayersLoss(nn.Module):
@@ -127,6 +135,7 @@ class SceneLoss(nn.Module):
         self.gradnorm = bool(gradnorm)
         self.ratio_detach_clip = bool(ratio_detach_clip)
         self.new_weights: dict = {}
+        self._grads = None  # per-loss gradients of the last training step (gradnorm), see backward()
 
     def forward(self, sketch, target, widths=None, strokes_in_canvas=None, width_mlp=None, points_mlp=None,
                 mode="train"):
@@ -143,10 +152,15 @@ class SceneLoss(nn.Module):
             coeffs["width_loss"] = self.width_loss_weight
 
         original = dict(losses)
+        self._grads = None
         if self.gradnorm:
             if mode == "train":
                 model = width_mlp if self.width_optim else points_mlp
-                self.new_weights = compute_grad_norm_losses(losses, model, points_mlp)
+                params = [p for m in (points_mlp, width_mlp) if m is not None for p in m.parameters()
+                          if p.requires_grad]
+                self.new_weights, grads = compute_grad_norm_losses(losses, list(model.parameters()), params)
+                if grads is not None:
+                    self._grads = (params, grads, dict(coeffs))
             # in eval mode the weights of the previous training step are used
             losses = {k: v * self.new_weights.get(k, 1.0) for k, v in losses.items()}
 
@@ -160,3 +174,27 @@ class SceneLoss(nn.Module):
             weighted["ratio_loss"] = nn.functional.mse_loss(original["width_loss"], clip_sum * self.ratio)
         original = {k: v.clone().detach() for k, v in original.items()}
         return weighted, normalised, original
+
+    def backward(self, weighted: dict) -> None:
+        """``sum(weighted.values()).backward()`` – with gradient-norm balancing, the gradients of the
+        balanced losses are already known (one backward each), so only the rest (the ratio loss) is
+        propagated again."""
+        stored, self._grads = self._grads, None
+        if stored is None:
+            sum(weighted.values()).backward()
+            return
+        params, grads, coeffs = stored
+        total = [None] * len(params)
+        for name, g in grads.items():
+            factor = coeffs[name] * self.new_weights.get(name, 1.0) if coeffs[name] != 0 else 0.0
+            if factor == 0:
+                continue
+            for i, gi in enumerate(g):
+                if gi is not None:
+                    total[i] = gi * factor if total[i] is None else total[i] + gi * factor
+        for p, g in zip(params, total):
+            if g is not None:
+                p.grad = g if p.grad is None else p.grad + g
+        rest = [v for k, v in weighted.items() if k not in grads and v.requires_grad]
+        if rest:
+            sum(rest).backward()

@@ -155,11 +155,13 @@ def test_grad_norm_weights():
     model = torch.nn.Module()
     model.w = w
     losses = {"a": (w * 3).sum(), "b": (w * 1).sum()}
-    weights = compute_grad_norm_losses(losses, model, None)
+    params = list(model.parameters())
+    weights, grads = compute_grad_norm_losses(losses, params, params)
     # |grad a| = 3, |grad b| = 1 -> weights (4-3)/4 and (4-1)/4
-    assert math.isclose(weights["a"], 0.25) and math.isclose(weights["b"], 0.75)
-    assert w.grad is None or float(w.grad.abs().sum()) == 0
-    assert compute_grad_norm_losses({"a": (w * 2).sum()}, model, None) == {"a": 1.0}
+    assert math.isclose(weights["a"], 0.25, rel_tol=1e-6) and math.isclose(weights["b"], 0.75, rel_tol=1e-6)
+    assert w.grad is None  # the gradients are returned, not accumulated
+    assert torch.equal(grads["a"][0], torch.full((3,), 3.0)) and torch.equal(grads["b"][0], torch.ones(3))
+    assert compute_grad_norm_losses({"a": (w * 2).sum()}, params, params) == ({"a": 1.0}, None)
 
 
 @pytest.mark.parametrize("detach", [True, False])
@@ -298,3 +300,48 @@ def test_plain_background_sketches_only_the_object(tmp_path, monkeypatch):
     for r in summary["runs"]:
         cfg = json.load(open(os.path.join(r["run_dir"], "config.json")))
         assert cfg["background_strokes"] == 0 and cfg["object_strokes"] > 0
+
+
+def test_gradient_balancing_without_an_extra_backward_pass():
+    """SceneLoss.backward() gives the gradients of the old way (one backward per loss to weigh them,
+    then one more for the weighted sum), without that last pass."""
+    import torch
+    from torch import nn
+
+    from clipasso_studio.engine.methods.scenesketch.loss import SceneLoss, compute_grad_norm_losses
+
+    def setup():
+        torch.manual_seed(0)
+        points, width = nn.Linear(4, 6), nn.Linear(4, 3)
+        x = torch.randn(2, 4)
+        p, w = points(x), torch.sigmoid(width(x))
+        losses = {"clip_vit_l2": ((p * w.sum()) ** 2).mean(), "clip_vit_l8": (p.sin() * 0.3).mean() + w.mean(),
+                  "width_loss": w.sum() / 3.0}
+        coeffs = {"clip_vit_l2": 1.0, "clip_vit_l8": 0.5, "width_loss": 2.0}
+        return points, width, losses, coeffs
+
+    # the 2.4 way
+    points, width, losses, coeffs = setup()
+    norms = {}
+    for name, loss in losses.items():
+        loss.backward(retain_graph=True)
+        params = [q for q in width.parameters() if q.grad is not None]
+        norms[name] = sum(q.grad.abs().sum().item() for q in params) / sum(q.numel() for q in params)
+        width.zero_grad()
+        points.zero_grad()
+    total = sum(norms.values())
+    weights_old = {k: (total - norms[k]) / ((len(losses) - 1) * total) for k in losses}
+    sum(v * weights_old[k] * coeffs[k] for k, v in losses.items()).backward()
+    old = [q.grad.clone() for q in list(points.parameters()) + list(width.parameters())]
+
+    # 3.0
+    points, width, losses, coeffs = setup()
+    params = list(points.parameters()) + list(width.parameters())
+    weights, grads = compute_grad_norm_losses(losses, list(width.parameters()), params)
+    assert all(abs(weights[k] - weights_old[k]) < 1e-6 for k in losses)
+    fn = SceneLoss.__new__(SceneLoss)  # without its CLIP loss: only backward() is used here
+    nn.Module.__init__(fn)
+    fn.new_weights, fn._grads = weights, (params, grads, coeffs)
+    fn.backward({k: v * weights[k] * coeffs[k] for k, v in losses.items()})
+    for a, b in zip(old, [q.grad for q in params]):
+        assert torch.allclose(a, b, atol=1e-6)

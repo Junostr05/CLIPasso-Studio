@@ -362,7 +362,7 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
         weighted, _, _ = loss_fn(sketch, cfg.target, painter.stroke_probs, painter.strokes_in_canvas(),
                                  painter.mlp_width, painter.mlp, "train")
         loss = sum(weighted.values())
-        loss.backward()
+        loss_fn.backward(weighted)  # (reuses the gradients of the gradient-norm balancing)
         points_opt.step()
         if width_opt is not None:
             width_opt.step()
