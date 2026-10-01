@@ -57,9 +57,9 @@ _cache: dict = {}
 
 def required_models(settings: dict) -> list[str]:
     s = schema.normalize({**settings, "method": "scenesketch"})
-    needed = {model_store.clip_key("ViT-B/32"), "u2net"}
+    needed = {model_store.clip_key("ViT-B/32")}
     if s["split_scene"]:
-        needed.add("lama")
+        needed.update(("lama", s["mask_model"]))
     if s["attention_init"]:
         if s["saliency_model"] == "dino":
             needed.add("dino")
@@ -154,7 +154,7 @@ def _prepare(ctx: _Ctx) -> dict:
 
     s, device = ctx.s, ctx.device
     key = ("inputs", os.path.abspath(ctx.target), os.path.getmtime(ctx.target), str(device), s["fix_scale"],
-           s["split_scene"], s["resize_obj"])
+           s["split_scene"], s["resize_obj"], s.get("mask_model", "u2net"))
     if key in _cache:
         return _cache[key]
     scene = pre.square_scene(load_rgb(ctx.target), bool(s["fix_scale"]))
@@ -162,11 +162,7 @@ def _prepare(ctx: _Ctx) -> dict:
     out = {"scene": scene, "object": None, "background": scene, "mask": None, "params": {}}
     if s["split_scene"]:
         ctx.reporter.event("stage", seed=ctx.cell, name="scene_mask")
-        from ... import nets
-
-        u2 = nets.load_u2net(device)
-        prob = pre.u2net_probability(scene, device, u2)
-        del u2
+        prob = pre.object_probability(scene, device, s.get("mask_model", "u2net"))
         obj_mask = pre.object_mask(prob, size)
         if obj_mask.sum() < 16:  # no foreground object found: sketch the whole scene as background
             ctx.reporter.event("warning", code="scene_no_object",

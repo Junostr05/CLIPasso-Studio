@@ -6,7 +6,7 @@ with classifier-free guidance and optionally polished by the refinement network.
 step's x0 prediction is reported as a live preview and saved to ``svg_logs`` (so the GIF/MP4 export
 shows the sketch emerging).
 
-Deviation from the original: the background matte comes from U2Net instead of BRIA RMBG-1.4.
+Deviation from the original: the background matte comes from BiRefNet (or U2Net) instead of BRIA RMBG-1.4.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def required_models(settings: dict) -> list[str]:
     if s["use_refine"]:
         needed.add(REFINE_KEY)
     if s["mask_object"]:
-        needed.add("u2net")
+        needed.add(s["mask_model"])
     return sorted(needed)
 
 
@@ -107,7 +107,8 @@ def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Ima
     """-> (network input image, mask image) like generate.py: mask -> masked image -> fix_scale."""
     from ...pipeline import load_rgb
 
-    key = ("input", os.path.abspath(target), os.path.getmtime(target), bool(settings["mask_object"]),
+    model = settings.get("mask_model", "u2net")
+    key = ("input", os.path.abspath(target), os.path.getmtime(target), bool(settings["mask_object"]), model,
            bool(settings["fix_scale"]))
     if key in _cache:  # same image for every seed of a job
         return _cache[key]
@@ -115,7 +116,7 @@ def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Ima
         del _cache[k]
     image = load_rgb(target)
     if settings["mask_object"]:
-        matte = masking.u2net_soft_mask(device, image)
+        matte = masking.soft_mask(device, image, model)
         image = masking.apply_soft_mask(image, matte)
         mask_img = Image.fromarray((matte * 255 + 0.5).astype(np.uint8), mode="L")
     else:
@@ -189,6 +190,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     refine = load_net(REFINE_KEY, device)[0] if s["use_refine"] else None
     features_model = _features_model(device)
 
+    if s["mask_object"] and s.get("mask_model", "u2net") != "u2net":
+        reporter.event("stage", seed=seed, name="mask")
     image, mask_img = prepare_input(s, target, device)
     input_img = image.resize((CANVAS, CANVAS), Image.BICUBIC)
     input_img.save(os.path.join(run_dir, "input.png"))

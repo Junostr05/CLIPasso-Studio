@@ -1,20 +1,10 @@
-## CLIPasso Studio 2.3 – continue where it stopped, touch up, export in style
+## CLIPasso Studio 2.4 – a much better object mask
 
-**Continue interrupted jobs.** A long run – SceneSketch “Standard” takes about 2 hours on a CPU, ControlSketch hours – no longer starts from zero when the app or the PC is closed, the app crashes or you cancel: the running sketch saves a checkpoint every 30 seconds, finished sketches are kept, and **Continue** (in the gallery, in the studio, or when the app starts) picks up exactly where it stopped.
-
-**Touch-ups**
-- **Eraser** in the sketch view: click or drag over strokes to remove them (the stroke under the cursor turns red), with undo / redo (Ctrl+Z / Ctrl+Y). The original sketch stays; exports and the gallery use the touched-up one.
-- **Crop, rotate, flip** the input image (“Edit” next to Open): free, square, 4:3 or 3:4 – saved as a copy, the original file is not changed.
-- **ControlSketch: “Remove background” can be switched off** to sketch the whole picture (like the original, it is on by default).
-
-**Export**
-- **Brush styles**: plain lines, **ink** (tapered brush-pen strokes), **pencil** (soft graphite lines) or **marker** – for SVG, PNG, the animations and the SceneSketch matrix.
-- **Folder import**: add a whole folder of images to the queue.
-- **Export many at once**: all finished results of the queue, or everything the gallery shows (e.g. your favourites) – SVG, SVG · 1 layer or PNG into one folder.
-
-**App**
-- **Updates with one click**: *Install* in the update notice downloads the new version, checks it and installs it (installed app: it restarts by itself; portable: the new exe is saved next to the old one).
-- **Interface size** 90–150 % (Settings → Appearance), for small laptop screens or large monitors.
+**BiRefNet finds the object.** Removing the background (CLIPasso, SwiftSketch, ControlSketch) and separating object and background (SceneSketch) now use **BiRefNet**, a state-of-the-art segmentation network, instead of U²-Net. It keeps fine parts (a sign's pole, a shower hose, thin legs), finds several objects (two teddy bears instead of one), and leaves no grey haze of background around the object – so the sketch shows what you wanted and nothing else.
+- Downloaded once on the first run that removes the background (444 MB, Hugging Face) – or on the Models page.
+- On a CPU it takes a few seconds per image (GPU: well under a second); the mask is cached, so the same image again – another seed, the parallel sketches, a re-run with other settings – does not compute it again.
+- **Mask model** in the image settings: *BiRefNet* (best, the default), *BiRefNet lite* (faster, 89 MB) or *U²-Net* (included, the mask of the original CLIPasso).
+- Jobs interrupted with 2.3 continue with U²-Net, so their sketches still match.
 
 | File | For whom? |
 |---|---|
@@ -25,6 +15,6 @@
 **Notes**
 - Windows SmartScreen may warn on the first start (“Unknown publisher”) → *More info* → *Run anyway*.
 - CPU times: SwiftSketch ~5 s per sketch; CLIPasso “Fast” 5–15 min; SceneSketch “Fast” ≈ 20 min, “Standard” ≈ 2 h; ControlSketch several hours (GPU: a few minutes).
-- Updating: the installer versions install over the old version; downloaded models and settings are kept. One-click updates start with this version – 2.3 itself is downloaded once more by hand.
+- Updating: the installer versions install over the old version; downloaded models and settings are kept. From 2.3 on, *Install* in the update notice updates the app with one click.
 - Licence: CC BY-NC-SA 4.0 – **non-commercial use only**. The downloaded models have their own licences (see THIRD_PARTY_NOTICES.md).
 - Checksums: `SHA256SUMS-CPU.txt` and `SHA256SUMS-GPU.txt`.

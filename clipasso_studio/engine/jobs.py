@@ -143,9 +143,13 @@ def read_state(job_dir: str) -> dict | None:
     try:
         with open(os.path.join(job_dir, STATE_FILE), encoding="utf-8") as f:
             state = json.load(f)
-        return state if isinstance(state, dict) else None
     except (OSError, ValueError):
         return None
+    if not isinstance(state, dict):
+        return None
+    if isinstance(state.get("settings"), dict):
+        state["settings"].setdefault("mask_model", "u2net")  # jobs from before 2.4 were masked with U2Net
+    return state
 
 
 def set_status(job_dir: str, status: str) -> None:

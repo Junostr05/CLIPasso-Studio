@@ -205,7 +205,7 @@ def test_full_run_with_tiny_models(monkeypatch, tmp_path):
 
     settings = {**schema.default_settings("controlsketch"), "num_iter": 4, "save_interval": 2, "num_sketches": 2,
                 "num_strokes": 8, "render_size": 256, "output_svg_size": 512, "condition": "canny",
-                "caption": "a camel", "fix_scale": True, "device": "cpu"}
+                "caption": "a camel", "fix_scale": True, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(settings, SAMPLE, str(tmp_path), Rec())
     assert summary["method"] == "controlsketch"
     runs = summary["runs"]
@@ -238,9 +238,10 @@ def test_required_models():
 
     s = schema.default_settings("controlsketch")
     assert controlsketch.required_models(s) == sorted(
-        ["sd15", "controlnet:depth", "clip:ViT-B/32", "u2net", "dpt-hybrid", "blip"])
+        ["sd15", "controlnet:depth", "clip:ViT-B/32", "birefnet", "dpt-hybrid", "blip"])
     s.update(condition="canny", caption="a camel", attn_model="diffusion", object_name="camel")
-    assert controlsketch.required_models(s) == sorted(["sd15", "controlnet:canny", "clip:ViT-B/32", "u2net", "sdxl"])
+    assert controlsketch.required_models(s) == sorted(["sd15", "controlnet:canny", "clip:ViT-B/32", "birefnet",
+                                                       "sdxl"])
     s.update(condition="scribble", use_init_method=False)
     assert "hed" in controlsketch.required_models(s) and "sdxl" not in controlsketch.required_models(s)
 
@@ -292,10 +293,11 @@ def test_without_background_removal_the_whole_picture_is_sketched(tmp_path, monk
     path = tmp_path / "scene.png"
     img.save(path)
 
-    def no_u2net(*a, **k):
-        raise AssertionError("U2Net must not run without background removal")
+    def no_mask(*a, **k):
+        raise AssertionError("no mask model may run without background removal")
 
-    monkeypatch.setattr(masking, "u2net_soft_mask", no_u2net)
+    for name in ("soft_mask", "u2net_soft_mask", "birefnet_probability"):
+        monkeypatch.setattr(masking, name, no_mask)
     s = schema.normalize({**schema.default_settings("controlsketch"), "mask_object": False, "render_size": 256})
     inp = controlsketch.prepare_input(s, str(path), torch.device("cpu"))
     assert inp["info"] is None and inp["canvas"].size == (256, 256)

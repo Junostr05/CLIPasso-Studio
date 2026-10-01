@@ -7,6 +7,7 @@ CLIPasso Studio bundles or is derived from the following works.
 | **CLIPasso** (code in `clipasso_studio/engine/painter.py`, `losses.py`, `pipeline.py`, `masking.py`) | https://github.com/yael-vinker/CLIPasso – Yael Vinker, Ehsan Pajouheshgar, Jessica Y. Bo, Roman Christian Bachmann, Amit Haim Bermano, Daniel Cohen-Or, Amir Zamir, Ariel Shamir | CC BY-NC-SA 4.0 | sketching method, optimisation loop, losses |
 | **CLIP** (code in `clipasso_studio/engine/clip_/`, model weights RN101, ViT-B/32 and optional variants) | https://github.com/openai/CLIP – OpenAI | MIT | perceptual loss, saliency |
 | **U²-Net** (code in `clipasso_studio/engine/u2net/`, weights `u2net.pth`) | https://github.com/xuebinqin/U-2-Net – Xuebin Qin et al. | Apache-2.0 | background mask |
+| **BiRefNet** (network ported to `clipasso_studio/engine/birefnet.py`, including the Swin Transformer backbone; weights `ZhengPeng7/BiRefNet` and `ZhengPeng7/BiRefNet_lite`, not bundled – downloaded on first use and stored in float16) | https://github.com/ZhengPeng7/BiRefNet – Peng Zheng, Dehong Gao, Deng-Ping Fan, Li Liu, Jorma Laaksonen, Wanli Ouyang, Nicu Sebe; Swin Transformer: https://github.com/microsoft/Swin-Transformer – Microsoft | MIT (both) | object mask (background removal) |
 | **DINO** (code in `clipasso_studio/engine/dino/`, weights ViT-S/8) | https://github.com/facebookresearch/dino – Meta AI | Apache-2.0 | alternative saliency |
 | **VGG16** feature weights (torchvision) | https://github.com/pytorch/vision | BSD-3-Clause (code); ImageNet-trained weights | LPIPS perceptual loss |
 | **SwiftSketch** and **ControlSketch** (method; `clipasso_studio/engine/methods/swiftsketch/` and `controlsketch/` are independent re-implementations written from the paper and the public code, which has no licence file) | https://github.com/swiftsketch/SwiftSketch – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 | method description (paper) | SwiftSketch / ControlSketch sketching |
@@ -67,4 +68,56 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+## BiRefNet licence
+
+```
+MIT License
+
+Copyright (c) 2024 ZhengPeng
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Swin Transformer licence (backbone of BiRefNet)
+
+```
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE
 ```

@@ -6,7 +6,7 @@ control points are optimised with an SDS loss from Stable Diffusion 1.5 steered 
 condition (depth by default) of the input. At the end the strokes are sorted (outline first, then by
 attention) and the object is scaled back to its original size.
 
-Deviations: U2Net matte instead of BRIA RMBG-1.4, BLIP instead of BLIP-2 for automatic captions,
+Deviations: BiRefNet (or U2Net) matte instead of BRIA RMBG-1.4, BLIP instead of BLIP-2 for automatic captions,
 CLIP attention as the default initialisation, the PyTorch rasterizer instead of diffvg; see
 ``conditions.py`` for the condition images.
 """
@@ -35,7 +35,9 @@ _cache: dict[tuple, object] = {}
 
 def required_models(settings: dict) -> list[str]:
     s = schema.normalize({**settings, "method": "controlsketch"})
-    needed = {"sd15", f"controlnet:{s['condition']}", model_store.clip_key("ViT-B/32"), "u2net"}
+    needed = {"sd15", f"controlnet:{s['condition']}", model_store.clip_key("ViT-B/32")}
+    if s["mask_object"]:
+        needed.add(s["mask_model"])
     if DETECTOR_MODELS.get(s["condition"]):
         needed.add(DETECTOR_MODELS[s["condition"]])
     if not schema.text_value(s["caption"]):
@@ -69,7 +71,7 @@ def prepare_input(s: dict, target: str, device):
     image = load_rgb(target)
     masked = bool(s.get("mask_object", True))
     if masked:
-        matte = masking.u2net_soft_mask(device, image)
+        matte = masking.soft_mask(device, image, s.get("mask_model", "u2net"))
         image = masking.apply_soft_mask(image, matte)
     else:  # the whole picture, background included
         matte = np.ones((image.height, image.width), dtype=np.float32)
@@ -129,10 +131,11 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     out_size = int(s["output_svg_size"])
     condition = s["condition"]
     stamp = (os.path.abspath(target), os.path.getmtime(target), str(device), s["fix_scale"], size,
-             s["object_size_ratio"], s["mask_object"])
+             s["object_size_ratio"], s["mask_object"], s.get("mask_model", "u2net"))
 
     # --------------------------------------------------------------- input
-    reporter.event("stage", seed=seed, name="loading")
+    reporter.event("stage", seed=seed, name="mask" if s["mask_object"] and s.get("mask_model", "u2net") != "u2net"
+                   else "loading")
     inp = _cached(("input",) + stamp, lambda: prepare_input(s, target, device))
     inp["full"].save(os.path.join(run_dir, "input.png"))
     inp["canvas"].save(os.path.join(run_dir, "input_canvas.png"))

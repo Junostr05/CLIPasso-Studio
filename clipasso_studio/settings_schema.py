@@ -47,6 +47,23 @@ def _on(key: str) -> Callable[[dict], bool]:
     return lambda s: bool(s.get(key))
 
 
+# Network for the object mask (engine/masking.py): BiRefNet (default since 2.4), its lite version, or
+# U2Net like the original CLIPasso / SceneSketch code.
+MASK_MODELS = ("birefnet", "birefnet-lite", "u2net")
+DEFAULT_MASK_MODEL = "birefnet"
+
+
+def clipasso_uses_mask(s: dict) -> bool:
+    """A CLIPasso run uses the object mask for the input (mask_object) or the attention map."""
+    attention = s.get("mask_object_attention", "auto")
+    return bool(s.get("mask_object")) or attention == "on"
+
+
+def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
+    return Param("mask_model", DEFAULT_MASK_MODEL, "choice", "image", choices=MASK_MODELS, advanced=False,
+                 enabled_if=enabled_if)
+
+
 PARAMS: tuple[Param, ...] = (
     # ------------------------------------------------------------------ basics
     Param("num_paths", 16, "int", "basics", cli="num_paths", minimum=1, maximum=256, advanced=False),
@@ -55,6 +72,7 @@ PARAMS: tuple[Param, ...] = (
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     # ------------------------------------------------------------------- image
     Param("mask_object", False, "bool", "image", cli="mask_object", advanced=False),
+    _mask_model(lambda s: clipasso_uses_mask(s)),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("image_scale", 224, "int", "image", cli="image_scale", minimum=64, maximum=1024, step=32),
     # ----------------------------------------------------------------- strokes
@@ -178,6 +196,7 @@ SWIFT_PARAMS: tuple[Param, ...] = (
     Param("num_sketches", 1, "int", "basics", minimum=1, maximum=32, advanced=False),
     Param("seed", 20, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     Param("mask_object", True, "bool", "image", advanced=False),
+    _mask_model(_on("mask_object")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("guidance_param", 2.5, "float", "diffusion", cli="guidance_param", minimum=1.0, maximum=10.0, step=0.1,
           decimals=2),
@@ -225,6 +244,7 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("caption", "none", "text", "basics", cli="caption", advanced=False),
     # not in the original, which always removes the background (RMBG); off = the whole picture is sketched
     Param("mask_object", True, "bool", "image", advanced=False),
+    _mask_model(_on("mask_object")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("object_size_ratio", 0.75, "float", "image", cli="object_size_ratio", minimum=0.1, maximum=1.0, step=0.05,
           decimals=2, enabled_if=_on("mask_object")),
@@ -316,6 +336,7 @@ SCENE_PARAMS: tuple[Param, ...] = (
     Param("num_sketches", 2, "int", "basics", cli="num_sketches", minimum=1, maximum=8, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     Param("split_scene", True, "bool", "image", advanced=False),
+    _mask_model(_on("split_scene")),
     Param("resize_obj", True, "bool", "image", cli="resize_obj", enabled_if=_on("split_scene")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("num_iter", 1501, "int", "fidelity", cli="num_iter", minimum=1, maximum=20000, step=100),
@@ -419,7 +440,7 @@ SCENE_EXCLUDED_ARGS: dict[str, str] = {
     "wandb_user": "Weights & Biases online logging is not part of the desktop app",
     "wandb_name": "Weights & Biases online logging is not part of the desktop app",
     "wandb_project_name": "Weights & Biases online logging is not part of the desktop app",
-    "run_u2net": "the object mask always comes from U2Net",
+    "run_u2net": "the object mask is always computed (mask_model: BiRefNet or U2Net)",
     "top_path": "input image is chosen in the GUI",
 }
 

@@ -25,7 +25,7 @@ def test_pipeline_runs_and_picks_best(tmp_path):
             events.append(kind)
 
     settings = {"num_iter": 6, "num_sketches": 2, "num_paths": 4, "mask_object": True, "fix_scale": True,
-                "save_interval": 2, "eval_interval": 2, "device": "cpu"}
+                "save_interval": 2, "eval_interval": 2, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(settings, SAMPLE, str(tmp_path), Rec())
     assert os.path.isfile(summary["best_svg"])
     assert summary["best_svg"].endswith("_best.svg")

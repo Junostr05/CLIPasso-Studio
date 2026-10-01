@@ -117,8 +117,8 @@ def test_controlsketch_continues_exactly_where_it_stopped(tmp_path, monkeypatch)
 
     monkeypatch.setattr(sds, "load_sd15", tiny_sd15_loader)
     controlsketch.release_models()
-    settings = {**schema.default_settings("controlsketch"), "num_iter": 6, "save_interval": 2, "num_sketches": 1,
-                "num_strokes": 6, "render_size": 256, "output_svg_size": 512, "condition": "canny",
+    settings = {**schema.default_settings("controlsketch"), "mask_model": "u2net", "num_iter": 6, "save_interval": 2,
+                "num_sketches": 1, "num_strokes": 6, "render_size": 256, "output_svg_size": 512, "condition": "canny",
                 "caption": "a camel", "fix_scale": True, "device": "cpu"}
     whole = pipeline.run_job(settings, CAMEL, str(tmp_path / "whole"))
     controlsketch.release_models()
@@ -144,9 +144,9 @@ def test_scenesketch_keeps_finished_parts(tmp_path, monkeypatch):
     from clipasso_studio.engine.selftest_models import tiny_lama
 
     monkeypatch.setattr(lama, "load_lama", tiny_lama)
-    s = {**schema.default_settings("scenesketch"), "layers": "8", "simplicity_levels": 2, "num_sketches": 1,
-         "num_iter": 4, "object_num_iter": 4, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
-         "save_interval": 2, "num_strokes": 6, "device": "cpu"}
+    s = {**schema.default_settings("scenesketch"), "mask_model": "u2net", "layers": "8", "simplicity_levels": 2,
+         "num_sketches": 1, "num_iter": 4, "object_num_iter": 4, "simplify_num_iter": 3, "eval_interval": 2,
+         "min_eval_iter": 2, "save_interval": 2, "num_strokes": 6, "device": "cpu"}
     total = sum(schema.scene_cell_iterations(s, c) for c in schema.scene_cells(s))
     whole = pipeline.run_job(s, BALLERINA, str(tmp_path / "whole"))
 

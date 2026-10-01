@@ -169,7 +169,7 @@ def test_full_run_with_random_networks(monkeypatch, tmp_path):
             events.append((kind, data))
 
     settings = {**schema.default_settings("swiftsketch"), "num_sketches": 2, "fix_scale": True,
-                "save_diffusion_sketch": True, "device": "cpu"}
+                "save_diffusion_sketch": True, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(settings, SAMPLE, str(tmp_path), Rec())
     assert summary["method"] == "swiftsketch"
     assert os.path.basename(summary["best_svg"]).startswith("camel_swiftsketch_32strokes_seed")
@@ -211,7 +211,8 @@ def test_cancel_keeps_the_current_sketch(monkeypatch, tmp_path):
             self.n += 1
             return self.n > 3
 
-    res = swiftsketch.run_single({"method": "swiftsketch", "device": "cpu"}, SAMPLE, str(tmp_path / "run"), 0,
+    res = swiftsketch.run_single({"method": "swiftsketch", "device": "cpu", "mask_model": "u2net"}, SAMPLE,
+                                 str(tmp_path / "run"), 0,
                                  control=StopAfter3(), device=torch.device("cpu"))
     assert res.status == "cancelled"
     assert os.path.isfile(res.best_svg)

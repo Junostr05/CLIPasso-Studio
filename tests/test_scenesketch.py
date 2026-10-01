@@ -226,7 +226,7 @@ def test_full_run_with_tiny_lama(monkeypatch, tmp_path):
 
     s = {**schema.default_settings("scenesketch"), "layers": "4_8", "simplicity_levels": 2, "num_sketches": 2,
          "num_iter": 4, "object_num_iter": 5, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
-         "save_interval": 2, "num_strokes": 6, "device": "cpu"}
+         "save_interval": 2, "num_strokes": 6, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(s, SAMPLE, str(tmp_path), Rec())
     runs = summary["runs"]
     assert [r["seed"] for r in runs] == [400, 401, 402, 800, 801, 802]
@@ -270,7 +270,7 @@ def test_cancel_keeps_a_partial_cell(tmp_path, monkeypatch):
 
     s = {**schema.default_settings("scenesketch"), "layers": "8", "simplicity_levels": 2, "num_sketches": 1,
          "num_iter": 5, "object_num_iter": 5, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
-         "num_strokes": 6, "device": "cpu"}
+         "num_strokes": 6, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(s, SAMPLE, str(tmp_path), control=StopSoon())
     assert [r["seed"] for r in summary["runs"]] == [800]
     assert summary["runs"][0]["status"] == "cancelled"
@@ -292,7 +292,7 @@ def test_plain_background_sketches_only_the_object(tmp_path, monkeypatch):
 
     s = {**schema.default_settings("scenesketch"), "layers": "8", "simplicity_levels": 1, "num_sketches": 1,
          "num_iter": 4, "object_num_iter": 4, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
-         "num_strokes": 6, "device": "cpu"}
+         "num_strokes": 6, "device": "cpu", "mask_model": "u2net"}
     summary = pipeline.run_job(s, camel, str(tmp_path), Rec())
     assert "scene_plain_background" in warnings
     for r in summary["runs"]:

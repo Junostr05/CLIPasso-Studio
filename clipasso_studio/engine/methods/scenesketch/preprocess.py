@@ -1,7 +1,8 @@
 """Scene preprocessing of SceneSketch (``preprocess_images.py`` and ``sketch_utils.get_mask_u2net``).
 
 * the scene is made square (centre crop, or white padding with ``fix_scale``) and at most 512 px;
-* U2Net (with its own preprocessing: 320x320, ImageNet normalisation) finds the foreground object;
+* U2Net (with its own preprocessing: 320x320, ImageNet normalisation) finds the foreground object –
+  or BiRefNet (``mask_model``), at the scene size;
 * LaMa fills in the object area (mask dilated by 11x11 at 320 px) -> the background image;
 * the object image is the scene with a white background; with ``resize_obj`` a single, small
   object is enlarged to 70 % of the canvas for sketching and scaled back when the sketches are
@@ -51,6 +52,15 @@ def u2net_probability(image: Image.Image, device, net=None) -> torch.Tensor:
     return ((pred - pred.min()) / (pred.max() - pred.min() + 1e-12)).cpu()
 
 
+def object_probability(image: Image.Image, device, model: str = "u2net") -> torch.Tensor:
+    """Object probability: U2Net's at 320x320 (``u2net_probability``) or BiRefNet's at the image size."""
+    if model == "u2net":
+        return u2net_probability(image, device)
+    from ... import masking
+
+    return torch.from_numpy(masking.birefnet_probability(device, image, model))
+
+
 def object_mask(prob: torch.Tensor, size: int) -> np.ndarray:
     """Binary object mask at the scene size (``get_mask_u2net``: threshold, bilinear resize, threshold)."""
     binary = (prob >= 0.5).float()[None, None]
@@ -59,9 +69,11 @@ def object_mask(prob: torch.Tensor, size: int) -> np.ndarray:
 
 
 def inpaint_mask(prob: torch.Tensor, size: int) -> np.ndarray:
-    """Dilated mask for the inpainting (``get_U2Net_mask`` of preprocess_images.py)."""
+    """Dilated mask for the inpainting (``get_U2Net_mask`` of preprocess_images.py: 11x11 at 320 px,
+    scaled for a probability map of another size)."""
     binary = (prob >= 0.5).float()[None, None]
-    dilated = F.max_pool2d(binary, kernel_size=11, stride=1, padding=5)
+    k = max(3, round(11 * prob.shape[-1] / 320) // 2 * 2 + 1)
+    dilated = F.max_pool2d(binary, kernel_size=k, stride=1, padding=k // 2)
     m = F.interpolate(dilated, size=(size, size), mode="nearest")[0, 0]
     return (m >= 0.5).numpy().astype(np.float32)
 

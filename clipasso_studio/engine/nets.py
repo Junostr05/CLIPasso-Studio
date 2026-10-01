@@ -1,4 +1,4 @@
-"""Loaders for the auxiliary networks (U2Net for masking, DINO ViT-S/8 for saliency, VGG16 for LPIPS)."""
+"""Loaders for the auxiliary networks (BiRefNet / U2Net for masking, DINO ViT-S/8 for saliency, VGG16 for LPIPS)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,20 @@ def load_u2net(device) -> nn.Module:
     net = U2NET(3, 1)
     state = {k: v.float() for k, v in model_store.load_state("u2net").items()}
     net.load_state_dict(state)
+    net.requires_grad_(False)
+    return net.to(device).eval()
+
+
+def load_birefnet(device, spec_key: str = "birefnet") -> nn.Module:
+    """BiRefNet (``birefnet``: Swin-L, ``birefnet-lite``: Swin-T) in float32."""
+    from safetensors.torch import load_file
+
+    from .birefnet import build
+
+    net = build("lite" if spec_key == "birefnet-lite" else "general")
+    state = load_file(str(model_store.model_dir(spec_key) / "model.safetensors"))
+    net.load_state_dict({k: v.float() for k, v in state.items()}, strict=True)
+    del state
     net.requires_grad_(False)
     return net.to(device).eval()
 

@@ -21,6 +21,14 @@ def swiftsketch_net(seed: int = 0, **overrides):
     return SwiftSketchNet.from_args({**SWIFT_ARGS, **overrides}).eval()
 
 
+def birefnet(seed: int = 0):
+    """BiRefNet lite (the real structure) with random weights."""
+    from .birefnet import build
+
+    torch.manual_seed(seed)
+    return build("lite").eval()
+
+
 def tiny_sd(seed: int = 0):
     """(unet, controlnet, vae) with the Stable Diffusion 1.5 structure, a few MB in size."""
     from diffusers import AutoencoderKL, ControlNetModel, UNet2DConditionModel

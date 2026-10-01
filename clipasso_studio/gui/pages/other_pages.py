@@ -578,7 +578,8 @@ MODEL_PURPOSE = {
     "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
     "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
     "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
-    "lama": "ui.models.purpose.lama",
+    "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
+    "birefnet-lite": "ui.models.purpose.birefnet-lite",
 }
 
 
@@ -586,6 +587,8 @@ def model_group(key: str) -> str:
     spec = model_store.SPECS[key]
     if spec.bundled:
         return "bundled"
+    if key.startswith("birefnet"):
+        return "masking"
     if key.startswith("clip:"):
         return "clipasso"
     if key.startswith("swiftsketch:"):
@@ -703,7 +706,7 @@ class ModelsPage(QWidget):
         self.list_lay.setSpacing(8)
         self.rows = []
         self.group_titles: dict[str, tuple[QLabel, QLabel]] = {}
-        for group in ("bundled", "clipasso", "swiftsketch", "controlsketch", "scenesketch"):
+        for group in ("bundled", "masking", "clipasso", "swiftsketch", "controlsketch", "scenesketch"):
             title = label("", "h2")
             hint = label("", "faint", wrap=True)
             if group != "bundled":

@@ -54,7 +54,8 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
                              cond_mask_prob=0.1 if key.endswith("diffusion") else 0.0).to(device),
         dict(tiny.SWIFT_ARGS, diffusion_steps=10))
     try:
-        s = {**schema.default_settings("swiftsketch"), "num_sketches": 2, "save_diffusion_sketch": True}
+        s = {**schema.default_settings("swiftsketch"), "num_sketches": 2, "save_diffusion_sketch": True,
+             "mask_model": "u2net"}
         results["swiftsketch"] = pipeline.run_job(s, sample, out_dir, pipeline.PrintReporter())
     finally:
         swiftsketch.load_net = load_net
@@ -62,7 +63,8 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
     sds.load_sd15 = tiny.tiny_sd15_loader
     try:
         s = {**schema.default_settings("controlsketch"), "num_iter": 3, "save_interval": 1, "num_strokes": 8,
-             "render_size": 256, "output_svg_size": 256, "condition": "canny", "caption": "a camel"}
+             "render_size": 256, "output_svg_size": 256, "condition": "canny", "caption": "a camel",
+             "mask_model": "u2net"}
         results["controlsketch"] = pipeline.run_job(s, sample, out_dir, pipeline.PrintReporter())
     finally:
         sds.load_sd15 = load_sd15
@@ -74,7 +76,7 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
     try:
         s = {**schema.default_settings("scenesketch"), "layers": "8", "simplicity_levels": 1, "num_sketches": 1,
              "num_iter": 4, "object_num_iter": 4, "simplify_num_iter": 3, "eval_interval": 2, "min_eval_iter": 2,
-             "save_interval": 2, "num_strokes": 8}
+             "save_interval": 2, "num_strokes": 8, "mask_model": "u2net"}
         results["scenesketch"] = pipeline.run_job(s, str(paths.resource("samples", "ballerina.jpg")), out_dir,
                                                   pipeline.PrintReporter())
     finally:
@@ -94,6 +96,36 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
         report[method] = {"ok": bool(ok and summary.get("clip_score") is not None),
                           "clip_score": summary.get("clip_score"), "best_svg": svg}
     return report
+
+
+def _selftest_mask(out_dir: str) -> dict:
+    """BiRefNet with random weights at a reduced input size: the operations of the port and the
+    safetensors round trip of its weights work in the packaged app (the methods above use U2Net)."""
+    from PIL import Image
+    from safetensors.torch import load_file, save_file
+
+    from . import paths
+    from .engine import birefnet, masking
+    from .engine import selftest_models as tiny
+
+    size = birefnet.SIZE
+    try:
+        net = tiny.birefnet()
+        path = os.path.join(out_dir, "birefnet-selftest.safetensors")
+        save_file({k: v.contiguous() for k, v in net.state_dict().items()}, path)
+        net.load_state_dict(load_file(path), strict=True)
+        birefnet.SIZE = 256
+        image = Image.open(paths.resource("samples", "camel.png")).convert("RGB")
+        prob = masking.birefnet_probability("cpu", image, "birefnet-lite", net=net)
+        ok = prob.shape == (image.height, image.width) and 0.0 <= float(prob.min()) <= float(prob.max()) <= 1.0
+    except Exception as exc:  # reported, not raised: the other results still count
+        print(f"selftest: mask ERROR {exc!r}", flush=True)
+        ok = False
+    finally:
+        birefnet.SIZE = size
+        masking._cache.clear()
+    print(f"selftest: mask ok={ok}", flush=True)
+    return {"ok": ok}
 
 
 def _selftest_resume(out_dir: str) -> dict:
@@ -143,7 +175,7 @@ def selftest(out_dir: str | None = None) -> int:
             return 2
     start = time.time()
     settings = {"num_iter": 5, "num_sketches": 2, "num_paths": 8, "save_interval": 1, "eval_interval": 1,
-                "mask_object": True, "multiprocess": True}
+                "mask_object": True, "mask_model": "u2net", "multiprocess": True}
     # same code path as the GUI: worker processes started by the JobRunner
     from .engine.runner import JobRunner
 
@@ -178,6 +210,7 @@ def selftest(out_dir: str | None = None) -> int:
     print("selftest: clipasso " + json.dumps(report), flush=True)
     methods = _selftest_diffusion_methods(out_dir)
     methods["resume"] = _selftest_resume(out_dir)
+    methods["mask"] = _selftest_mask(out_dir)
     report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
               "clipasso": {"ok": ok, "best_svg": summary["best_svg"]}, **methods}
     print("selftest: " + json.dumps(report), flush=True)

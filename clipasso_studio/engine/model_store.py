@@ -179,6 +179,18 @@ CONTROLSKETCH_SPECS = (
     ), 6940),
 )
 
+# BiRefNet (MIT) for the object mask of all methods – the general model (Swin-L backbone) and the
+# lite one (Swin-T); stored as float16 safetensors for the port in engine/birefnet.py
+MASK_SPECS = (
+    _hf_spec("birefnet", "masking/birefnet", "ZhengPeng7/BiRefNet", "e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4", (
+        ("model.safetensors", "model.safetensors", 444_473_596, True),
+    ), 444),
+    _hf_spec("birefnet-lite", "masking/birefnet-lite", "ZhengPeng7/BiRefNet_lite",
+             "aa62cd87eafb9cc43056d08ef3615a14628b831d", (
+                 ("model.safetensors", "model.safetensors", 177_634_392, True),
+             ), 89),
+)
+
 SPECS: dict[str, ModelSpec] = {s.key: s for s in (
     _clip_spec("RN101", True, 291_791_292, 290),
     _clip_spec("ViT-B/32", True, 353_976_522, 350),
@@ -254,6 +266,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
     ),
 )}
 SPECS.update({s.key: s for s in CONTROLSKETCH_SPECS})
+SPECS.update({s.key: s for s in MASK_SPECS})
 
 
 def clip_key(name: str) -> str:

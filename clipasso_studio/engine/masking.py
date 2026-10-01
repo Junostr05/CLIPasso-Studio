@@ -1,14 +1,34 @@
-"""Background masking with U2Net – port of ``sketch_utils.get_mask_u2net``."""
+"""Background masking – the object mask of all methods.
+
+``u2net`` is the U2Net port of ``sketch_utils.get_mask_u2net`` (what CLIPasso and SceneSketch use);
+``birefnet`` / ``birefnet-lite`` use BiRefNet, a much more accurate segmentation network, in its place
+(the default since 2.4). SwiftSketch and ControlSketch originally use BRIA RMBG-1.4, whose licence
+does not allow redistribution; both networks stand in for it.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import os
+import threading
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
+from .. import paths
+from ..settings_schema import DEFAULT_MASK_MODEL, MASK_MODELS  # noqa: F401 (re-exported)
 from . import nets
+
+OBJECT_THRESHOLD = 0.5  # BiRefNet probability from which a pixel belongs to the object
+
+_cache: dict[tuple, np.ndarray] = {}  # the last BiRefNet result (the same image for every seed of a job)
 
 
 def get_mask_u2net(device, pil_im: Image.Image, net=None):
@@ -35,8 +55,12 @@ def get_mask_u2net(device, pil_im: Image.Image, net=None):
     small = predict[0].cpu().numpy().astype(np.float32)
     mask = np.asarray(Image.fromarray(small, mode="F").resize((w, h), Image.BILINEAR))
     mask = (mask >= 0.5).astype(np.float64)
-    mask3 = np.repeat(mask[:, :, None], 3, axis=2)
+    return _on_white(pil_im, mask)
 
+
+def _on_white(pil_im: Image.Image, mask: np.ndarray) -> tuple[Image.Image, Image.Image]:
+    """The image with everything outside the binary ``mask`` white, and the mask as an 'L' image."""
+    mask3 = np.repeat(mask[:, :, None], 3, axis=2)
     im_np = np.array(pil_im).astype(np.float64)
     im_np = im_np / max(im_np.max(), 1e-12)
     im_np = mask3 * im_np
@@ -44,6 +68,144 @@ def get_mask_u2net(device, pil_im: Image.Image, net=None):
     im_final = (im_np / max(im_np.max(), 1e-12) * 255).astype(np.uint8)
     mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
     return Image.fromarray(im_final), mask_img
+
+
+def cache_dir() -> Path:
+    """BiRefNet masks already computed (16-bit PNG per model and image)."""
+    return paths.user_data_dir() / "cache" / "masks"
+
+
+CACHE_KEEP = 100  # masks kept in the cache (the least recently used ones are removed)
+
+
+@contextmanager
+def _locked(lock: Path, stale: float = 30.0):
+    """Only one process at a time computes a mask – parallel CLIPasso workers ask for the same one and
+    then take it from the cache. The holder refreshes the lock file every few seconds, so a lock left
+    by a killed process expires after ``stale`` seconds."""
+    held = False
+    while not held:
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            held = True
+        except FileExistsError:
+            try:
+                if time.time() - lock.stat().st_mtime > stale:
+                    lock.unlink()
+            except OSError:
+                pass
+            time.sleep(0.2)
+        except OSError:  # no usable cache folder: go on without the lock
+            break
+    stop = threading.Event()
+
+    def beat():
+        while not stop.wait(5.0):
+            try:
+                os.utime(lock)
+            except OSError:
+                pass
+
+    if held:
+        threading.Thread(target=beat, daemon=True).start()
+    try:
+        yield
+    finally:
+        stop.set()
+        if held:
+            try:
+                lock.unlink()
+            except OSError:
+                pass
+
+
+def _read_cached(path: Path) -> np.ndarray | None:
+    try:
+        with Image.open(path) as im:
+            prob = np.asarray(im, dtype=np.float32) / 65535.0
+        os.utime(path)  # recently used
+        return prob
+    except (OSError, ValueError):
+        return None
+
+
+def _write_cached(path: Path, q: np.ndarray) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.stem + f".{os.getpid()}.tmp")
+        Image.fromarray(q).save(tmp, format="PNG")
+        os.replace(tmp, path)
+        os.utime(path)
+        old = sorted(path.parent.glob("*.png"), key=lambda f: f.stat().st_mtime, reverse=True)[CACHE_KEEP:]
+        for f in old:
+            f.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _predict(device, im: Image.Image, model: str, net=None) -> np.ndarray:
+    from .birefnet import MEAN, SIZE, STD
+
+    x = torch.from_numpy(np.asarray(im.resize((SIZE, SIZE), Image.BILINEAR), dtype=np.float32) / 255.0)
+    x = ((x - torch.tensor(MEAN)) / torch.tensor(STD)).permute(2, 0, 1)[None].to(device)
+    own = net is None
+    net = net or nets.load_birefnet(device, model)
+    with torch.inference_mode():
+        logits = net(x).float()
+    prob = F.interpolate(logits.sigmoid(), size=(im.height, im.width), mode="bilinear", align_corners=False)
+    prob = prob[0, 0].clamp(0, 1).cpu().numpy()
+    if own:
+        del net
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return prob
+
+
+def birefnet_probability(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=None) -> np.ndarray:
+    """Object probability in [0, 1] at the image size (float32 [H, W]) like BiRefNet's inference
+    code: 1024 x 1024 (bilinear), ImageNet normalisation, sigmoid – then bilinear back to the image size.
+
+    The result is rounded to 16 bits (so a mask from the cache equals a fresh one) and kept: the last
+    one in memory (the seeds of a job), the last ``CACHE_KEEP`` on disk (the same image again, the
+    parallel workers of a job). With an explicit ``net`` nothing is cached."""
+    im = pil_im.convert("RGB")
+    if net is not None:
+        return _predict(device, im, model, net).astype(np.float32)
+    digest = hashlib.sha1(im.tobytes()).hexdigest()
+    key = (model, im.size, digest)
+    if key in _cache:
+        return _cache[key]
+    path = cache_dir() / f"{model}-{im.width}x{im.height}-{digest[:24]}.png"
+    prob = _read_cached(path)
+    if prob is None:
+        _make_folder(path.parent)
+        with _locked(path.with_suffix(".lock")):
+            prob = _read_cached(path)  # computed by another process meanwhile
+            if prob is None:
+                q = np.round(_predict(device, im, model) * 65535.0).astype(np.uint16)
+                _write_cached(path, q)
+                prob = q.astype(np.float32) / 65535.0
+    _cache.clear()
+    _cache[key] = prob
+    return prob
+
+
+def _make_folder(folder: Path) -> None:
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError:  # no cache then
+        pass
+
+
+def get_mask(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=None):
+    """``get_mask_u2net`` with the chosen mask model: (image with white background, binary mask 'L').
+    When BiRefNet finds no object, the whole picture is kept."""
+    if model == "u2net":
+        return get_mask_u2net(device, pil_im, net=net)
+    mask = (birefnet_probability(device, pil_im, model, net) >= OBJECT_THRESHOLD).astype(np.float64)
+    if not mask.any():
+        mask[:] = 1
+    return _on_white(pil_im.convert("RGB"), mask)
 
 
 def u2net_soft_mask(device, pil_im: Image.Image, net=None) -> np.ndarray:
@@ -65,6 +227,18 @@ def u2net_soft_mask(device, pil_im: Image.Image, net=None) -> np.ndarray:
     pred = (pred - pred.min()) / (pred.max() - pred.min() + 1e-12)
     mask = torch.nn.functional.interpolate(pred[None, None], size=(h, w), mode="bilinear", align_corners=False)
     return mask[0, 0].clamp(0, 1).cpu().numpy().astype(np.float32)
+
+
+def soft_mask(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=None) -> np.ndarray:
+    """Soft object matte in [0, 1] at the image size for SwiftSketch / ControlSketch, min-max
+    normalised like RMBG-1.4's post-processing. When BiRefNet finds no object: all ones (the whole
+    picture is kept)."""
+    if model == "u2net":
+        return u2net_soft_mask(device, pil_im, net=net)
+    prob = birefnet_probability(device, pil_im, model, net)
+    if float(prob.max()) < OBJECT_THRESHOLD:
+        return np.ones_like(prob)
+    return ((prob - prob.min()) / (prob.max() - prob.min() + 1e-12)).astype(np.float32)
 
 
 def apply_soft_mask(pil_im: Image.Image, mask: np.ndarray) -> Image.Image:

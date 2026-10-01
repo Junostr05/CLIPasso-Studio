@@ -17,6 +17,8 @@ def required_models(settings: dict) -> list[str]:
     needed = {model_store.clip_key(s["clip_model_name"]), "u2net", model_store.clip_key("ViT-B/32")}
     if s["attention_init"]:
         needed.add(model_store.clip_key(s["saliency_clip_model"]) if s["saliency_model"] == "clip" else "dino")
+    if schema.clipasso_uses_mask(s):
+        needed.add(s["mask_model"])
     if s["percep_loss"] == "LPIPS":
         needed.add("vgg16")
     return sorted(needed)

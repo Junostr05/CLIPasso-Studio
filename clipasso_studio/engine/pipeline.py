@@ -166,7 +166,9 @@ def _canvas_transform(size, scale: int, nearest: bool = False):
 def get_target(args, u2net=None):
     """-> (target tensor [1,3,S,S], mask tensor [S,S], masked PIL, mask PIL) like the original get_target."""
     target = load_rgb(args.target)
-    masked_im, mask_img = masking.get_mask_u2net(args.device, target, net=u2net)
+    # an unused mask is only shown in the mask view: the bundled U2Net, as before
+    model = getattr(args, "mask_model", "u2net") if args.mask_object or args.mask_object_attention else "u2net"
+    masked_im, mask_img = masking.get_mask(args.device, target, model, net=u2net if model == "u2net" else None)
     if args.mask_object:
         target = masked_im
     if args.fix_scale:
@@ -220,6 +222,8 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
 
     reporter.event("stage", seed=seed, name="loading")
     loss_func = Loss(args)
+    if (args.mask_object or args.mask_object_attention) and args.mask_model != "u2net":
+        reporter.event("stage", seed=seed, name="mask")  # BiRefNet takes a few seconds on a CPU
     inputs, mask, mask_img = get_target(args)
     input_img = imaging.tensor_to_pil(inputs)
     input_img.save(os.path.join(run_dir, "input.png"))
@@ -432,6 +436,9 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     old: dict[int, SeedResult] = {}
     if resume:
         jobs.set_status(job_dir, "running")
+        # the mask the job started with (U2Net for jobs from before 2.4), so the rest matches
+        saved = (jobs.read_state(job_dir) or {}).get("settings") or {}
+        settings["mask_model"] = saved.get("mask_model", settings.get("mask_model"))
         old = jobs.done_results(job_dir)
         if seeds is None:
             seeds = [s for s in job_seeds(settings) if s not in old]
