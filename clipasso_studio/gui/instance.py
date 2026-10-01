@@ -15,10 +15,10 @@ from PySide6.QtCore import QLockFile
 _lock: QLockFile | None = None
 
 
-def try_lock(path: str) -> QLockFile | None:
+def try_lock(path: str, wait_ms: int = 300) -> QLockFile | None:
     lock = QLockFile(path)
     lock.setStaleLockTime(0)  # never stale by age, only when its process is gone
-    return lock if lock.tryLock(300) else None
+    return lock if lock.tryLock(wait_ms) else None
 
 
 def owner_pid(path: str) -> int | None:
@@ -36,12 +36,13 @@ def lock_path() -> str:
     return str(paths.user_data_dir() / "app.lock")
 
 
-def acquire() -> bool:
-    """True if this is the only running app (the lock is held until :func:`release`)."""
+def acquire(wait_ms: int = 300) -> bool:
+    """True if this is the only running app (the lock is held until :func:`release`); ``wait_ms``: longer
+    when the previous version is still closing (started by its update)."""
     global _lock
     if _lock is not None:
         return True
-    _lock = try_lock(lock_path())
+    _lock = try_lock(lock_path(), wait_ms)
     return _lock is not None
 
 

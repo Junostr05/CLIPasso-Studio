@@ -82,3 +82,26 @@ def relocated(path: str, old: str, new: str) -> str:
     if norm == norm_old or norm.startswith(norm_old.rstrip("\\/") + os.sep):
         return os.path.join(new, os.path.relpath(os.path.abspath(path), os.path.abspath(old)))
     return path
+
+
+# ----------------------------------------------------------------------------- uninstaller
+
+MODELS_LOCATION = "models_location.txt"
+OUTPUT_LOCATION = "output_location.txt"
+
+
+def write_uninstall_info() -> None:
+    """For the uninstaller (packaging/installer.iss), which asks whether to remove the models and the app
+    data: where the downloaded models are – in a folder the user chose only the model folders are
+    removed (line 1: the folder, then its model folders) – and the output folder, which is never removed."""
+    from ..engine import model_store
+
+    names = sorted({Path(s.filename).parts[0] for s in model_store.SPECS.values()} | {".partial"})
+    data = paths.user_data_dir()
+    try:
+        (data / MODELS_LOCATION).write_text("\n".join([str(paths.downloaded_models_dir()), *names]) + "\n",
+                                            encoding="utf-8-sig")
+        (data / OUTPUT_LOCATION).write_text(str(app_settings().get("output_dir") or "") + "\n",
+                                            encoding="utf-8-sig")
+    except OSError:
+        pass

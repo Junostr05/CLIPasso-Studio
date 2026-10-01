@@ -46,3 +46,19 @@ def test_lock_files_match_the_requirements():
             for pkg, ver in _pins(req / name).items():
                 assert pkg in lock, (ed, pkg)
                 assert lock[pkg].split("+")[0] == ver, (ed, pkg, lock[pkg], ver)
+
+
+def test_installer_matches_the_app():
+    """The uninstaller finds the app data and the files the app writes for it; both editions can be
+    installed side by side (own shortcut names); an update removes the libraries of the old version."""
+    from clipasso_studio.gui import storage, updates
+
+    raw = (ROOT / "packaging" / "installer.iss").read_bytes()
+    iss = raw.decode("utf-8")
+    if any(ord(c) > 127 for c in iss):
+        assert raw.startswith(b"\xef\xbb\xbf")  # ISCC reads UTF-8 only with a BOM (German texts)
+    assert re.search(r'#define AppDataName "([^"]+)"', iss).group(1) == clipasso_studio.APP_ID
+    assert f"AppGuid = '{updates.APP_GUID}'" in iss and "AppId={" + updates.APP_GUID + "_{#Edition}" in iss
+    assert storage.MODELS_LOCATION in iss and storage.OUTPUT_LOCATION in iss
+    assert 'Type: filesandordirs; Name: "{app}\\_internal"' in iss
+    assert '#define ShortcutName "CLIPasso Studio GPU"' in iss and 'Name: "{autodesktop}\\{#ShortcutName}"' in iss

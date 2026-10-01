@@ -883,6 +883,32 @@ def export_many(parent, items: list[tuple[str, dict]]) -> int:
     return dlg.written
 
 
+class WhatsNewDialog(QDialog):
+    """Release notes (Markdown): of a new release (GitHub) or of this version (after an update)."""
+
+    def __init__(self, title: str, text: str, parent=None):
+        super().__init__(parent)
+        from PySide6.QtWidgets import QTextBrowser
+
+        self.setWindowTitle(title)
+        self.resize(640, 560)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(20, 18, 20, 16)
+        lay.setSpacing(12)
+        self.title = label(title, "h2")
+        lay.addWidget(self.title)
+        self.browser = QTextBrowser()
+        self.browser.setOpenExternalLinks(True)
+        self.browser.setMarkdown(text)
+        lay.addWidget(self.browser, 1)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        close = button(tr("ui.close"), None, "primary")
+        close.clicked.connect(self.accept)
+        row.addWidget(close)
+        lay.addLayout(row)
+
+
 class UpdateDownloadDialog(QDialog):
     """Downloads and verifies an update (installer or portable exe) with progress and cancel."""
 

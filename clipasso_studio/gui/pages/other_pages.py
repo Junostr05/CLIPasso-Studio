@@ -716,6 +716,7 @@ class SettingsPage(QWidget):
     keep_models_changed = Signal(bool)
     watch_changed = Signal()  # the watched folder was set up differently
     output_dir_changed = Signal(str, str, bool)  # (old, new, the results were moved along)
+    check_updates_now = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -820,7 +821,14 @@ class SettingsPage(QWidget):
         self.updates = ToggleSwitch()
         self.updates.setChecked(bool(s.get("check_updates")))
         self.updates.toggled.connect(lambda v: s.set("check_updates", v))
-        self.behaviour.body.addLayout(self._row(self.updates_label, self.updates))
+        self.check_now_btn = button("", "refresh-cw", "ghost", size="sm")
+        self.check_now_btn.clicked.connect(self.check_updates_now.emit)
+        r = QHBoxLayout()
+        r.addWidget(self.updates_label)
+        r.addStretch(1)
+        r.addWidget(self.check_now_btn)
+        r.addWidget(self.updates)
+        self.behaviour.body.addLayout(r)
         self.warm_label = label("", None)
         self.warm = ToggleSwitch()  # the worker stays open between jobs with its models loaded
         self.warm.setChecked(bool(s.get("keep_models_loaded", True)))
@@ -1207,6 +1215,7 @@ class SettingsPage(QWidget):
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))
         self.updates_label.setText(tr("ui.settings.check_updates"))
+        self.check_now_btn.setText(tr("ui.update.check_now"))
         self.warm_label.setText(tr("ui.settings.keep_models"))
         self.warm_label.setToolTip(tr("ui.settings.keep_models_tip"))
         self.warm.setToolTip(tr("ui.settings.keep_models_tip"))
@@ -1254,6 +1263,7 @@ class SettingsPage(QWidget):
 # ====================================================================== about
 class AboutPage(QWidget):
     show_tour = Signal()
+    show_whats_new = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1281,7 +1291,13 @@ class AboutPage(QWidget):
         top.addLayout(t, 1)
         self.tour_btn = button("", "circle-help", "ghost")
         self.tour_btn.clicked.connect(self.show_tour.emit)
-        top.addWidget(self.tour_btn, 0, Qt.AlignTop)
+        self.whats_new_btn = button("", "sparkles", "ghost")
+        self.whats_new_btn.clicked.connect(self.show_whats_new.emit)
+        buttons = QVBoxLayout()
+        buttons.addWidget(self.tour_btn)
+        buttons.addWidget(self.whats_new_btn)
+        buttons.addStretch(1)
+        top.addLayout(buttons)
         hero.body.addLayout(top)
         self.desc = label("", None, wrap=True)
         hero.body.addWidget(self.desc)
@@ -1352,6 +1368,7 @@ class AboutPage(QWidget):
     def retranslate(self):
         self.version.setText(tr("ui.about.version", version=__version__, edition=tr(f"ui.edition.{EDITION}")))
         self.tour_btn.setText(tr("ui.tour.show"))
+        self.whats_new_btn.setText(tr("ui.whatsnew.button_about", version=__version__))
         self.byline.setText(tr("ui.about.byline"))
         self.desc.setText(tr("ui.about.desc"))
         for b in self.link_buttons:

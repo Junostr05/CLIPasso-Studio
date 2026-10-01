@@ -50,7 +50,7 @@ def latest_release(url: str = RELEASES_API, timeout: float = 5.0) -> dict | None
     assets = [{"name": a.get("name", ""), "url": a.get("browser_download_url", ""), "size": int(a.get("size") or 0)}
               for a in data.get("assets") or [] if isinstance(a, dict)]
     return {"tag": data["tag_name"], "url": data.get("html_url") or RELEASES_PAGE, "name": data.get("name") or "",
-            "assets": assets}
+            "body": str(data.get("body") or ""), "assets": assets}
 
 
 def check(progress=None, url: str = RELEASES_API, current: str = __version__) -> str:
@@ -64,28 +64,66 @@ def check(progress=None, url: str = RELEASES_API, current: str = __version__) ->
     return ""
 
 
+def check_now(progress=None, url: str = RELEASES_API, current: str = __version__) -> str:
+    """For "Check for updates now" (``run_in_thread``): JSON ``{"status": "newer" | "current" | "error",
+    "release": …}`` – unlike :func:`check` it tells "up to date" from "offline"."""
+    try:
+        release = latest_release(url)
+    except Exception as exc:  # offline, rate limit …
+        return json.dumps({"status": "error", "error": f"{type(exc).__name__}: {exc}"})
+    if release and is_newer(release["tag"], current):
+        return json.dumps({"status": "newer", "release": release})
+    return json.dumps({"status": "current"})
+
+
+WHATS_NEW = "whats_new_{lang}.md"  # what is new in this version, shown at the first start after an update
+
+
+def whats_new_text(lang: str) -> str:
+    for code in (lang, "en"):
+        path = paths.resource(WHATS_NEW.format(lang=code))
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
+    return ""
+
+
+def updated_since(last: str | None, current: str = __version__) -> bool:
+    """Is this the first start after an update (``last``: the version of the last start, "" when unknown)?"""
+    return bool(last) and parse_version(last) < parse_version(current)
+
+
 # ----------------------------------------------------------------------- installing
-def build_info() -> tuple[str, str]:
-    """(edition, mode) of this build: ("cpu" | "gpu", "installed" | "portable"), ("dev", "dev") from source."""
+PORTABLE_MARKER = "portable.txt"  # next to the exe of the portable ZIP (added by the CI when it zips)
+
+
+def build_info(exe: str | None = None) -> tuple[str, str]:
+    """(edition, mode) of this build: ("cpu" | "gpu", "installed" | "portable" | "portable-zip"),
+    ("dev", "dev") from source. The installer and the portable ZIP hold the same onedir build; the ZIP
+    has a marker file next to the exe."""
     try:
         from . import _build_info  # written by the PyInstaller spec
 
-        return getattr(_build_info, "EDITION", "dev"), getattr(_build_info, "MODE", "installed")
+        edition, mode = getattr(_build_info, "EDITION", "dev"), getattr(_build_info, "MODE", "installed")
     except ImportError:
         return "dev", "dev"
+    if mode == "installed" and os.path.isfile(os.path.join(os.path.dirname(exe or sys.executable), PORTABLE_MARKER)):
+        mode = "portable-zip"
+    return edition, mode
 
 
 def update_files(release: dict, edition: str, mode: str) -> tuple[list[dict], dict | None]:
     """The assets to download for this edition (main file first) and the checksum file."""
     ed = edition.upper()
     if mode == "installed":
-        prefix = f"CLIPassoStudio-{ed}-Setup"
-    elif mode == "portable":
-        prefix = f"CLIPassoStudio-{ed}-Portable"
+        prefix, main = f"CLIPassoStudio-{ed}-Setup", ".exe"  # + the .bin slices of the GPU setup
+        assets = [a for a in release.get("assets", []) if a["name"].startswith(prefix)]
+    elif mode in ("portable", "portable-zip"):
+        name = f"CLIPassoStudio-{ed}-Portable" + (".exe" if mode == "portable" else ".zip")
+        main = name[-4:]
+        assets = [a for a in release.get("assets", []) if a["name"] == name]
     else:
         return [], None
-    files = sorted((a for a in release.get("assets", []) if a["name"].startswith(prefix)),
-                   key=lambda a: (not a["name"].endswith(".exe"), a["name"]))
+    files = sorted(assets, key=lambda a: (not a["name"].endswith(main), a["name"]))
     sums = next((a for a in release.get("assets", []) if a["name"] == f"SHA256SUMS-{ed}.txt"), None)
     return files, sums
 
@@ -94,7 +132,7 @@ def can_install(release: dict, edition: str | None = None, mode: str | None = No
     if edition is None or mode is None:
         edition, mode = build_info()
     files, sums = update_files(release, edition, mode)
-    return bool(files) and sums is not None and files[0]["name"].endswith(".exe")
+    return bool(files) and sums is not None and files[0]["name"].endswith((".exe", ".zip"))
 
 
 def parse_sums(text: str) -> dict[str, str]:
@@ -240,6 +278,8 @@ def install_command(path: str, mode: str, app_dir: str | None = None,
         edition = edition or build_info()[0]
         scope = "/ALLUSERS" if all_users_install(app_dir, edition) else "/CURRENTUSER"
         return path, ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", scope, "/UPDATE"]
+    if mode == "portable-zip":  # the new version offers to delete this one's folder
+        return path, [AFTER_UPDATE_ARG, app_dir or os.path.dirname(sys.executable)]
     return path, []
 
 
@@ -258,3 +298,82 @@ def place_portable(path: str, version: str, exe: str | None = None) -> str:
         except OSError:
             continue
     return path
+
+
+# ----------------------------------------------------------------------- portable ZIP
+
+AFTER_UPDATE_ARG = "--after-update"  # started by the previous portable version: <its folder> follows
+APP_EXE = "CLIPassoStudio.exe"
+
+
+def place_portable_zip(path: str, version: str, app_dir: str | None = None, progress=None) -> str:
+    """Unpack the portable ZIP next to the running version's folder (or into Downloads when that place
+    is read-only) as ``CLIPasso Studio <version>``; returns the new exe."""
+    import zipfile
+
+    app_dir = os.path.abspath(app_dir or os.path.dirname(sys.executable))
+    name = f"CLIPasso Studio {version.lstrip('v')}"
+    errors = []
+    with zipfile.ZipFile(path) as zf:
+        members = [m for m in zf.infolist() if not m.is_dir()]
+        exe = next((m.filename for m in members if m.filename.replace("\\", "/").rsplit("/", 1)[-1] == APP_EXE),
+                   None)
+        if exe is None:
+            raise UserError("update_no_files", f"{os.path.basename(path)} holds no {APP_EXE}")
+        root = exe.replace("\\", "/").rsplit("/", 1)[0] + "/" if "/" in exe.replace("\\", "/") else ""
+        total = sum(m.file_size for m in members) or 1
+        for parent in (os.path.dirname(app_dir), str(Path.home() / "Downloads")):
+            target = os.path.join(parent, name)
+            n = 1
+            while os.path.exists(target):
+                n += 1
+                target = os.path.join(parent, f"{name} ({n})")
+            tmp = target + ".partial"
+            try:
+                ensure_space(parent, total, "update")
+                shutil.rmtree(tmp, ignore_errors=True)
+                done = 0
+                for m in members:
+                    rel = m.filename.replace("\\", "/")
+                    if not rel.startswith(root):
+                        continue
+                    dest = os.path.normpath(os.path.join(tmp, rel[len(root):]))
+                    if not dest.startswith(os.path.normpath(tmp) + os.sep):
+                        continue  # no paths out of the folder
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    with zf.open(m) as src, open(dest, "wb") as out:
+                        shutil.copyfileobj(src, out, 1 << 20)
+                    done += m.file_size
+                    if progress:
+                        progress(done, total)
+                os.replace(tmp, target)
+                return os.path.join(target, APP_EXE)
+            except UserError:
+                raise
+            except OSError as exc:
+                errors.append(f"{parent}: {exc}")
+                shutil.rmtree(tmp, ignore_errors=True)
+    raise UserError("update_unpack", "could not unpack the update: " + "; ".join(errors), details="; ".join(errors))
+
+
+def is_old_portable_folder(folder: str, current_exe: str | None = None) -> bool:
+    """Is ``folder`` the folder of an earlier portable ZIP version (safe to delete)? It must hold the app's
+    exe, its ``_internal`` folder and the portable marker, and must not be the running version."""
+    if not folder or not os.path.isdir(folder):
+        return False
+    here = os.path.normcase(os.path.abspath(os.path.dirname(current_exe or sys.executable)))
+    if os.path.normcase(os.path.abspath(folder)) == here:
+        return False
+    return all(os.path.exists(os.path.join(folder, n)) for n in (APP_EXE, "_internal", PORTABLE_MARKER))
+
+
+def remove_folder(folder: str, attempts: int = 20, wait: float = 0.5) -> bool:
+    """Delete an old version's folder; its exe may still be closing, so a few tries."""
+    import time
+
+    for _ in range(attempts):
+        shutil.rmtree(folder, ignore_errors=True)
+        if not os.path.exists(folder):
+            return True
+        time.sleep(wait)
+    return False

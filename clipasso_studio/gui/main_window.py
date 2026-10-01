@@ -56,10 +56,13 @@ class UpdateBar(QFrame):
         self.download.clicked.connect(self._download)
         self.skip = button("", None, "ghost")
         self.skip.clicked.connect(self._skip)
+        self.notes = button("", "sparkles", "ghost")  # "What's new?": the release notes
+        self.notes.clicked.connect(self.show_notes)
         self.close_btn = tool_button("x")
         self.close_btn.clicked.connect(self.hide_bar)
         lay.addWidget(self.icon, 0, Qt.AlignVCenter)
         lay.addWidget(self.text, 1)
+        lay.addWidget(self.notes)
         lay.addWidget(self.skip)
         lay.addWidget(self.download)
         lay.addWidget(self.install)
@@ -81,6 +84,14 @@ class UpdateBar(QFrame):
         self.skipped.emit(self.release.get("tag", ""))
         self.hide_bar()
 
+    def show_notes(self) -> dialogs.WhatsNewDialog:
+        version = self.release.get("tag", "").lstrip("v")
+        dlg = dialogs.WhatsNewDialog(tr("ui.whatsnew.release", version=version), self.release.get("body", ""),
+                                     self.window())
+        dlg.setAttribute(Qt.WA_DeleteOnClose)
+        dlg.show()
+        return dlg
+
     def retranslate(self):
         p = theme.current()
         self.icon.setPixmap(icons.pixmap("sparkles", p.accent_hover, 18))
@@ -94,6 +105,8 @@ class UpdateBar(QFrame):
         self.download.style().polish(self.download)
         self.download.setText(tr("ui.update.download"))
         self.skip.setText(tr("ui.update.skip"))
+        self.notes.setText(tr("ui.whatsnew.button"))
+        self.notes.setVisible(bool(self.release.get("body", "").strip()))
         self.close_btn.setToolTip(tr("ui.update.later"))
 
 
@@ -232,9 +245,13 @@ class MainWindow(QMainWindow):
         self.queue.load_in_studio.connect(self.load_in_studio)
         self.controller.queue_idle.connect(self._queue_done)
         self.settings.busy_check = self.controller.is_busy
+        s = app_settings()  # the version of the last start (settings from before 3.0 have none)
+        self._last_version = s.get("last_version") or ("2.4.0" if s.get("tour_done") else "")
         self.settings.waiting_files = self.controller.waiting_files
         self.settings.output_dir_changed.connect(self._output_dir_changed)
         self.about.show_tour.connect(self.show_tour)
+        self.about.show_whats_new.connect(self.show_whats_new)
+        self.settings.check_updates_now.connect(self.check_updates_now)
         self.tour = None
         self.settings.models_dir_changed.connect(self._models_dir_changed)
         self.settings.keep_models_changed.connect(self.controller.set_keep_models)
@@ -303,10 +320,16 @@ class MainWindow(QMainWindow):
         if box.clickedButton() is not now:
             return False
         path = dlg.path
-        if mode == "portable":  # copies about a gigabyte: in the background, the window stays responsive
-            busy = dialogs.BusyDialog(tr("ui.update.placing"), self)
+        if mode in ("portable", "portable-zip"):  # about a gigabyte: in the background, the window stays usable
+            busy = dialogs.BusyDialog(tr("ui.update.placing" if mode == "portable" else "ui.update.unpacking"), self)
             placed = []
-            dialogs.run_in_thread(busy, lambda progress=None: updates.place_portable(dlg.path, version),
+
+            def work(progress=None):
+                if mode == "portable":
+                    return updates.place_portable(dlg.path, version)
+                return updates.place_portable_zip(dlg.path, version, progress=progress)
+
+            dialogs.run_in_thread(busy, work, on_progress=busy.progress,
                                   on_done=lambda p: (placed.append(p), busy.accept()), on_error=busy.fail)
             if not busy.exec() or not placed:
                 QMessageBox.warning(self, APP_NAME, busy.error or tr("ui.error"))
@@ -317,6 +340,26 @@ class MainWindow(QMainWindow):
             return False
         QProcess.startDetached(program, args)
         QApplication.quit()
+        return True
+
+    def offer_remove_old_version(self, folder: str) -> bool:
+        """The first start after the update of a portable ZIP version: delete the previous version's folder?"""
+        if not updates.is_old_portable_folder(folder):
+            return False
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(APP_NAME)
+        box.setText(tr("ui.update.remove_old", version=__version__))
+        box.setInformativeText(folder)
+        remove = box.addButton(tr("ui.update.remove_old_yes"), QMessageBox.AcceptRole)
+        box.addButton(tr("ui.update.remove_old_keep"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is not remove:
+            return False
+        dialogs.run_in_thread(self, lambda progress=None: updates.remove_folder(folder),
+                              on_done=lambda ok: None if ok else self.toast.show_message(
+                                  tr("ui.update.remove_old_failed"), "warning"),
+                              on_error=lambda msg: None)
         return True
 
     # ------------------------------------------------------ interrupted jobs
@@ -428,12 +471,18 @@ class MainWindow(QMainWindow):
         self.show_page("studio")
 
     def _output_dir_changed(self, old: str, new: str, moved: bool):
+        from .storage import write_uninstall_info
+
         if moved:
             self.controller.relocate(old, new)
             self.studio.relocate(old, new)
         self.gallery.refresh()
+        write_uninstall_info()
 
     def _models_dir_changed(self):
+        from .storage import write_uninstall_info
+
+        write_uninstall_info()
         self.models.retranslate()  # the location line and every row
         self.studio.picker.refresh_status(self.studio.params.all_settings())
         self.studio._update_banner()
@@ -492,10 +541,52 @@ class MainWindow(QMainWindow):
         if app_settings().get("check_updates"):
             dialogs.run_in_thread(self, updates.check, url=url, on_done=self._update_found)
 
-    def remove_old_updates(self):
-        """The downloads of updates that are installed by now are not needed any more (in the background)."""
+    def housekeeping(self):
+        """After the start: remove the downloads of updates that are installed by now (in the background)
+        and tell the uninstaller where the models are."""
+        from .storage import write_uninstall_info
+
+        write_uninstall_info()
         dialogs.run_in_thread(self, lambda progress=None: updates.remove_old_updates(),
                               on_error=lambda msg: None)
+
+    def check_updates_now(self) -> None:
+        """Settings → "Check for updates now": also when the automatic check is off; says the result."""
+        def done(text: str):
+            try:
+                result = json.loads(text)
+            except ValueError:
+                result = {"status": "error"}
+            if result.get("status") == "newer":
+                self.update_bar.show_release(result["release"])
+                self.toast.show_message(tr("ui.update.found", version=result["release"]["tag"].lstrip("v")),
+                                        "success")
+            elif result.get("status") == "current":
+                self.toast.show_message(tr("ui.update.up_to_date", version=__version__), "success")
+            else:
+                self.toast.show_message(tr("ui.update.check_failed"), "warning")
+            self.settings.check_now_btn.setEnabled(True)
+
+        self.settings.check_now_btn.setEnabled(False)
+        dialogs.run_in_thread(self, updates.check_now, on_done=done,
+                              on_error=lambda msg: done('{"status": "error"}'))
+
+    def show_whats_new(self) -> dialogs.WhatsNewDialog | None:
+        """What is new in this version (shipped with the app)."""
+        text = updates.whats_new_text(i18n.lang)
+        if not text:
+            return None
+        dlg = dialogs.WhatsNewDialog(tr("ui.whatsnew.title", version=__version__), text, self)
+        dlg.setAttribute(Qt.WA_DeleteOnClose)
+        dlg.show()  # not modal: other notices of the start do not pile up on it
+        return dlg
+
+    def maybe_show_whats_new(self) -> bool:
+        """The first start after an update: what is new. (Not at the very first start – the guide is shown.)"""
+        app_settings().set("last_version", __version__)
+        if updates.updated_since(self._last_version, __version__):
+            return self.show_whats_new() is not None
+        return False
 
     def _update_found(self, text: str):
         try:

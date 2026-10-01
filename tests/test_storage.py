@@ -293,3 +293,17 @@ def test_controller_follows_the_move(qapp, fresh):
     assert ctl.jobs[1].target == "/photos/b.png" and ctl.jobs[1].job_dir == os.path.join(new, "job-b")
     assert app_settings().get("recent_images") == [os.path.join(new, "_webcam", "c.png"), "/photos/b.png"]
     assert os.path.join(new, "_pasted", "a.png") in ctl.waiting_files()
+
+
+def test_uninstall_info(fresh):
+    from clipasso_studio import paths
+    from clipasso_studio.gui import storage
+
+    storage.write_uninstall_info()
+    raw = (paths.user_data_dir() / storage.MODELS_LOCATION).read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf")  # read by Inno Setup's LoadStringsFromFile
+    lines = raw.decode("utf-8-sig").splitlines()
+    assert lines[0] == str(paths.downloaded_models_dir())
+    assert {"clip", "masking", ".partial"} <= set(lines[1:]) and all("/" not in n for n in lines[1:])
+    out = (paths.user_data_dir() / storage.OUTPUT_LOCATION).read_text(encoding="utf-8-sig").strip()
+    assert out == str(fresh / "out")

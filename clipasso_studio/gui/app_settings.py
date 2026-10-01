@@ -34,6 +34,7 @@ DEFAULTS: dict[str, Any] = {
     "keep_models_loaded": True,  # the worker stays open between jobs with its models (runner keep_warm)
     "parallel_sketches": "auto",  # "auto": the sketches of a job in parallel on a big CPU (runner.plan_workers)
     "skipped_version": "",
+    "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,
     "last_preset": "standard",
     "last_image": "",

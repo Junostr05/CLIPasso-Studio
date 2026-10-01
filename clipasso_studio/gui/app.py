@@ -81,7 +81,14 @@ def run_gui(argv: list[str] | None = None) -> int:
 
     from . import instance
 
-    if not instance.acquire():  # the app is already open: show it instead
+    from .updates import AFTER_UPDATE_ARG
+
+    old_version = ""  # started by the update of a portable ZIP version: its folder
+    if AFTER_UPDATE_ARG in sys.argv:
+        i = sys.argv.index(AFTER_UPDATE_ARG)
+        old_version = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
+        del sys.argv[i:i + 2]  # (not again after a restart)
+    if not instance.acquire(15_000 if old_version else 300):  # the app is already open: show it instead
         _close_splash()
         instance.tell_already_running()
         return 0
@@ -99,5 +106,8 @@ def run_gui(argv: list[str] | None = None) -> int:
     QTimer.singleShot(1200, lambda: crash.show_previous_crash(window))
     QTimer.singleShot(2500, window.check_interrupted_jobs)
     QTimer.singleShot(4000, window.start_update_check)
-    QTimer.singleShot(9000, window.remove_old_updates)
+    QTimer.singleShot(9000, window.housekeeping)
+    QTimer.singleShot(1800, window.maybe_show_whats_new)  # the first start after an update
+    if old_version:
+        QTimer.singleShot(1500, lambda: window.offer_remove_old_version(old_version))
     return app.exec()
