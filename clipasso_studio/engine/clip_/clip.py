@@ -44,16 +44,33 @@ def available_models() -> List[str]:
     return [k.split(":", 1)[1] for k in model_store.SPECS if k.startswith("clip:")]
 
 
+_loaded: dict = {}
+
+
 def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False):
     """Load a CLIP model -> (model, preprocess). Same behaviour as ``clip.load(..., jit=False)``:
     fp16 weights on CUDA, fp32 on CPU. Weights are frozen (``requires_grad=False``): only the
-    sketch is optimised, so gradients for the CLIP weights were never needed."""
-    state_dict = model_store.load_state(model_store.clip_key(name))
-    model = build_model(state_dict).to(device)
-    if torch.device(device).type == "cpu":
-        model.float()
-    model.requires_grad_(False)
-    return model, _transform(model.visual.input_resolution)
+    sketch is optimised, so gradients for the CLIP weights were never needed.
+
+    A model is loaded once per process and shared (CLIPasso used to load it up to three times per
+    sketch); callers must not change it. Building it does not touch the random number generator,
+    so a sketch is the same whether the model was cached or not."""
+    key = (name, str(torch.device(device)))
+    if key not in _loaded:
+        state_dict = model_store.load_state(model_store.clip_key(name))
+        with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
+            model = build_model(state_dict).to(device)
+        if torch.device(device).type == "cpu":
+            model.float()
+        model.requires_grad_(False)
+        model.eval()
+        _loaded[key] = (model, _transform(model.visual.input_resolution))
+    return _loaded[key]
+
+
+def release_models() -> None:
+    """Forget the loaded models (their memory is freed when nothing else uses them)."""
+    _loaded.clear()
 
 
 def tokenize(texts: Union[str, List[str]], context_length: int = 77) -> torch.LongTensor:

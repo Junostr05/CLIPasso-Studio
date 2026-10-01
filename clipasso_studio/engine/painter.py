@@ -460,9 +460,15 @@ class Hook:
 def interpret(image, texts, model, device):
     """Relevance map of a CLIP ViT (Chefer et al.); generalised to any patch grid."""
     images = image.repeat(1, 1, 1, 1)
-    model.encode_image(images.type(model.dtype))
-    model.zero_grad()
     image_attn_blocks = list(dict(model.visual.transformer.resblocks.named_children()).values())
+    for blk in image_attn_blocks:
+        blk.keep_attention = True
+    try:
+        model.encode_image(images.type(model.dtype))
+    finally:
+        for blk in image_attn_blocks:
+            blk.keep_attention = False
+    model.zero_grad()
     num_tokens = image_attn_blocks[0].attn_probs.shape[-1]
     R = torch.eye(num_tokens, num_tokens, dtype=image_attn_blocks[0].attn_probs.dtype).to(device)
     R = R.unsqueeze(0).expand(1, num_tokens, num_tokens)

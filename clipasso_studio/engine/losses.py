@@ -288,10 +288,6 @@ class CLIPVisualEncoder(nn.Module):
         super().__init__()
         self.clip_model = clip_model
         self.featuremaps = None
-        self._hooks = []
-        for i in range(len(self.clip_model.visual.transformer.resblocks)):
-            self._hooks.append(self.clip_model.visual.transformer.resblocks[i].register_forward_hook(
-                self.make_hook(i)))
 
     def make_hook(self, name):
         def hook(module, input, output):
@@ -303,8 +299,15 @@ class CLIPVisualEncoder(nn.Module):
         return hook
 
     def forward(self, x):
-        self.featuremaps = collections.OrderedDict()
-        fc_features = self.clip_model.encode_image(x).float()
+        # the hooks only while this encoder runs: the CLIP model is shared (clip.load caches it)
+        blocks = self.clip_model.visual.transformer.resblocks
+        hooks = [blocks[i].register_forward_hook(self.make_hook(i)) for i in range(len(blocks))]
+        try:
+            self.featuremaps = collections.OrderedDict()
+            fc_features = self.clip_model.encode_image(x).float()
+        finally:
+            for h in hooks:
+                h.remove()
         featuremaps = [self.featuremaps[k] for k in range(len(self.featuremaps))]
         return fc_features, featuremaps
 

@@ -231,8 +231,9 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
 
     try:
         with torch.no_grad():
-            for i, x, x0 in sampler.sample(lambda xt, t: net.guided(xt, t, feats, guidance), shape, device,
-                                           generator=generator):
+            memories = net.guided_memories(feats, guidance)  # the image's part, once for all steps
+            for i, x, x0 in sampler.sample(lambda xt, t: net.guided(xt, t, feats, guidance, memories), shape,
+                                           device, generator=generator):
                 step_done(sampler.steps - 1 - i, x0)
                 if control.should_stop():
                     raise Cancelled()

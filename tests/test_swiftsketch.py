@@ -67,6 +67,8 @@ def test_network_shapes_and_guidance():
         g = net.guided(x, t, feats, 2.5)
         cond, uncond = net(x, t, feats), net(x, t, feats, uncond=True)
         assert torch.allclose(g, uncond + 2.5 * (cond - uncond), atol=1e-5)
+        memories = net.guided_memories(feats, 2.5)  # computed once per sketch, reused every step
+        assert len(memories) == 2 and torch.allclose(net.guided(x, t, feats, 2.5, memories), g, atol=1e-6)
         refine = small_net(cond_mask_prob=0)
         assert torch.allclose(refine.guided(x, t, feats, 2.5), refine(x, t, feats))
 

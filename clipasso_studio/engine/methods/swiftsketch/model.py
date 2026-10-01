@@ -125,19 +125,32 @@ class SwiftSketchNet(nn.Module):
                    scaling_factor=float(args.get("scaling_factor", 2.0)),
                    cond_mask_prob=float(args.get("cond_mask_prob", 0.0)))
 
-    def forward(self, x, timesteps, image_features, uncond: bool = False):
+    def image_memory(self, image_features, uncond: bool = False):
+        """The decoder memory of an image ([S*S, batch, dim]); the same for every diffusion step."""
+        feats = torch.zeros_like(image_features) if uncond else image_features
+        return self.embed_image_ca(feats)
+
+    def forward(self, x, timesteps, image_features, uncond: bool = False, memory=None):
         h = self.input_process(x)
         emb = self.embed_timestep(timesteps)
-        feats = torch.zeros_like(image_features) if uncond else image_features
-        memory = emb + self.embed_image_ca(feats)
+        memory = emb + (self.image_memory(image_features, uncond) if memory is None else memory)
         h = self.sequence_pos_encoder(h)
         h = self.seqTransDecoder(tgt=h, memory=memory)
         return self.output_process(h)
 
-    def guided(self, x, timesteps, image_features, scale: float):
-        """Classifier-free guidance: uncond + scale * (cond - uncond)."""
+    def guided_memories(self, image_features, scale: float):
+        """What :meth:`guided` needs of the image, computed once per sketch instead of every step."""
         if scale == 1.0 or self.cond_mask_prob <= 0:
-            return self(x, timesteps, image_features)
-        out = self(x, timesteps, image_features)
-        out_uncond = self(x, timesteps, image_features, uncond=True)
+            return (self.image_memory(image_features),)
+        return self.image_memory(image_features), self.image_memory(image_features, uncond=True)
+
+    def guided(self, x, timesteps, image_features, scale: float, memories=None):
+        """Classifier-free guidance: uncond + scale * (cond - uncond) – both in one batch."""
+        if memories is None:
+            memories = self.guided_memories(image_features, scale)
+        if len(memories) == 1:
+            return self(x, timesteps, image_features, memory=memories[0])
+        both = self(torch.cat([x, x]), torch.cat([timesteps, timesteps]), image_features,
+                     memory=torch.cat(memories, dim=1))
+        out, out_uncond = both.chunk(2)
         return out_uncond + scale * (out - out_uncond)

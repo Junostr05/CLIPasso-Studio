@@ -40,6 +40,17 @@ class MultiheadAttention(nn.Module):
         v = v.contiguous().view(-1, bsz * self.num_heads, self.head_dim).transpose(0, 1)
         src_len = k.shape[1]
 
+        hooks = attention_probs_forward_hook is not None or attention_probs_backwards_hook is not None
+        if not (need_weights or hooks) and key_padding_mask is None:
+            # the fused kernel (no attention matrix kept for the backward pass); q is already scaled
+            mask = attn_mask
+            if mask is not None and mask.dtype == torch.bool:
+                mask = ~mask  # True = masked out here, True = attends in scaled_dot_product_attention
+            out = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, scale=1.0,
+                                                 dropout_p=self.dropout if self.training else 0.0)
+            out = out.transpose(0, 1).contiguous().view(tgt_len, bsz, embed_dim)
+            return self.out_proj(out), None
+
         weights = torch.bmm(q, k.transpose(1, 2))
         if attn_mask is not None:
             if attn_mask.dtype == torch.bool:

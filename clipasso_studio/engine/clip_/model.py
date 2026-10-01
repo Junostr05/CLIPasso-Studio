@@ -183,6 +183,7 @@ class ResidualAttentionBlock(nn.Module):
 
         self.attn_probs = None
         self.attn_grad = None
+        self.keep_attention = False  # store the attention probabilities (relevance maps, see interpret)
 
     def set_attn_probs(self, attn_probs):
         self.attn_probs = attn_probs
@@ -192,6 +193,8 @@ class ResidualAttentionBlock(nn.Module):
 
     def attention(self, x: torch.Tensor):
         self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device) if self.attn_mask is not None else None
+        if not self.keep_attention:
+            return self.attn(x, x, x, need_weights=False, attn_mask=self.attn_mask)[0]
         return self.attn(x, x, x, need_weights=False, attn_mask=self.attn_mask, attention_probs_forward_hook=self.set_attn_probs,
                          attention_probs_backwards_hook=self.set_attn_grad)[0]
 
