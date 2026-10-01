@@ -160,9 +160,18 @@ def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=No
 
 
 ANIMATIONS = ("gif", "mp4", "webp")
-EXTENSIONS = {"svg1": "svg", "matrix": "zip"}
+TIMED = ANIMATIONS + ("svganim",)  # formats with a drawing length
+EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg"}
 FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
            "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)"}
+
+
+def _stroke_count(svg_path: str) -> int:
+    try:
+        with open(svg_path, encoding="utf-8") as f:
+            return f.read().count("<path")
+    except OSError:
+        return 0
 
 
 def default_animation_length(frames: int) -> float:
@@ -182,7 +191,8 @@ class ExportDialog(QDialog):
         self.default_name = default_name
         # "svg1": all strokes as one path in one layer (for plotters / cutting machines)
         self.ext = EXTENSIONS.get(fmt, fmt)
-        title = {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix")}.get(fmt, fmt.upper())
+        title = {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix"),
+                 "svganim": tr("ui.export_svganim")}.get(fmt, fmt.upper())
         heading = tr("ui.export_matrix_title") if fmt == "matrix" else tr("ui.export_title", fmt=title)
         self.setWindowTitle(heading)
         self.setMinimumWidth(420)
@@ -211,8 +221,8 @@ class ExportDialog(QDialog):
         self.style.setCurrentIndex(max(self.style.findData(last), 0))
         if fmt != "svg1":  # the plotter SVG stays plain lines
             form.addRow(tr("ui.brush.label"), self.style)
-        self.background = ColorButton("#FFFFFF" if fmt != "svg" else "transparent", allow_transparent=fmt in
-                                      ("svg", "png", "webp", "matrix"))
+        self.background = ColorButton("#FFFFFF" if fmt not in ("svg", "svganim") else "transparent",
+                                      allow_transparent=fmt in ("svg", "png", "webp", "matrix", "svganim"))
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
         self.size = QSpinBox()
@@ -220,16 +230,28 @@ class ExportDialog(QDialog):
         self.size.setSingleStep(128)
         self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
-        if fmt not in ("svg", "svg1"):
+        if fmt not in ("svg", "svg1", "svganim"):
             form.addRow(tr("ui.size"), self.size)
-        # animations: the length of the drawing is set, the frame rate follows from it
-        self.frames = len(export.animation_frames(run_dir)) if fmt in ANIMATIONS else 0
+        # animations: the drawing process (optimisation history) or the finished strokes one by one
+        self.process_frames = len(export.animation_frames(run_dir)) if fmt in ANIMATIONS else 0
+        self.strokes = _stroke_count(svg_path) if fmt in TIMED else 0
+        self.mode = QComboBox()
+        self.mode.addItem(tr("ui.export_mode.process"), "process")
+        self.mode.addItem(tr("ui.export_mode.strokes"), "strokes")
+        self.mode.setToolTip(tr("ui.export_mode.tip"))
+        wanted = "strokes" if fmt == "svganim" or not self.process_frames else \
+            app_settings().get("export_anim_mode", "process")
+        self.mode.setCurrentIndex(max(self.mode.findData(wanted), 0))
+        if fmt in ANIMATIONS:
+            form.addRow(tr("ui.export_mode.label"), self.mode)
+            self.mode.setEnabled(bool(self.process_frames))
+        self.frames = self._frames()
         self.length = QDoubleSpinBox()
         self.length.setRange(0.5, 300.0)
         self.length.setSingleStep(0.5)
         self.length.setDecimals(1)
         self.length.setSuffix(" s")
-        self.length.setValue(default_animation_length(self.frames))
+        self.length.setValue(self._default_length())
         self.hold = QDoubleSpinBox()
         self.hold.setRange(0.0, 10.0)
         self.hold.setSingleStep(0.5)
@@ -237,12 +259,13 @@ class ExportDialog(QDialog):
         self.hold.setSuffix(" s")
         self.hold.setValue(1.0)
         self.timing = label("", "faint")
-        if fmt in ANIMATIONS:
+        if fmt in TIMED:
             form.addRow(tr("ui.export_length"), self.length)
             form.addRow(tr("ui.export_hold"), self.hold)
             form.addRow("", self.timing)
             for w in (self.length, self.hold, self.size):
                 w.valueChanged.connect(self._update_timing)
+            self.mode.currentIndexChanged.connect(self._mode_changed)
             self._update_timing()
         lay.addLayout(form)
 
@@ -264,7 +287,32 @@ class ExportDialog(QDialog):
         self.busy = False  # an animation export is running in the background
         self._cancel = False
 
+    def _drawing(self) -> bool:
+        return self.fmt == "svganim" or self.mode.currentData() == "strokes"
+
+    def _frames(self) -> int:
+        if self._drawing():
+            length = self.length.value() if hasattr(self, "length") else export.default_drawing_length(self.strokes)
+            return max(2, round(length * export.DRAW_STEPS_PER_SECOND))
+        return self.process_frames
+
+    def _default_length(self) -> float:
+        if self._drawing():
+            return export.default_drawing_length(self.strokes)
+        return default_animation_length(self.process_frames)
+
+    def _mode_changed(self):
+        self.length.blockSignals(True)
+        self.length.setValue(self._default_length())
+        self.length.blockSignals(False)
+        self._update_timing()
+
     def _update_timing(self):
+        self.frames = self._frames()
+        if self.fmt == "svganim":
+            self.timing.setText(tr("ui.export_timing_svg", strokes=self.strokes,
+                                   total=f"{self.length.value() + self.hold.value():.1f}"))
+            return
         idx, durations = export.animation_plan(self.frames, self.length.value(), hold=self.hold.value(),
                                                fmt=self.fmt, size=self.size.value())
         if not idx:
@@ -276,7 +324,7 @@ class ExportDialog(QDialog):
 
     def _save(self):
         ext = FILTERS[self.ext]
-        suffix = {"svg1": "_1layer", "matrix": "_matrix"}.get(self.fmt, "")
+        suffix = {"svg1": "_1layer", "matrix": "_matrix", "svganim": "_animated"}.get(self.fmt, "")
         start = os.path.join(os.path.expanduser("~"), f"{self.default_name}{suffix}.{self.ext}")
         dest, _ = QFileDialog.getSaveFileName(self, tr("ui.save_as"), start, ext)
         if not dest:
@@ -289,6 +337,8 @@ class ExportDialog(QDialog):
         bg = None if bg == "transparent" else bg
         style = self.style.currentData() if self.fmt != "svg1" else "plain"
         app_settings().set("export_style", self.style.currentData())
+        if self.fmt in ANIMATIONS and self.mode.isEnabled():
+            app_settings().set("export_anim_mode", self.mode.currentData())
         try:
             if self.fmt == "svg":
                 export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style)
@@ -297,6 +347,9 @@ class ExportDialog(QDialog):
             elif self.fmt == "png":
                 export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg,
                                   style)
+            elif self.fmt == "svganim":
+                export.export_animated_svg(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
+                                           self.width_scale.value(), bg, style)
             else:  # animations and the matrix run in the background
                 self.ok.setEnabled(False)
                 self.progress.setRange(0, 1)
@@ -322,6 +375,9 @@ class ExportDialog(QDialog):
                           "on_done": lambda _: self._finished(dest), "on_error": self._failed}
                 if self.fmt == "matrix":
                     run_in_thread(self, export.export_matrix_zip, self.run_dir, dest, **common)
+                elif self._drawing():
+                    run_in_thread(self, export.export_drawing, self.svg_path, dest, length=self.length.value(),
+                                  hold=self.hold.value(), **common)
                 else:
                     run_in_thread(self, export.export_animation, self.run_dir, dest, length=self.length.value(),
                                   hold=self.hold.value(), **common)

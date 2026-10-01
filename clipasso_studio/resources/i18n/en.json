@@ -638,5 +638,13 @@
  "ui.mask_edit.empty": "The mask is empty – add a part or paint the object",
  "ui.mask_edit.nothing_here": "Nothing found here – paint it with the brush (Add)",
  "param.frame_object.label": "Fit the object",
- "param.frame_object.help": "Small objects are enlarged so they fill the picture: the image is cropped around the mask with a margin. Only with “Remove background”; objects that already fill the picture stay as they are. Not in the original (where small objects get small sketches)."
+ "param.frame_object.help": "Small objects are enlarged so they fill the picture: the image is cropped around the mask with a margin. Only with “Remove background”; objects that already fill the picture stay as they are. Not in the original (where small objects get small sketches).",
+ "ui.export_mode.label": "Animation",
+ "ui.export_mode.process": "Drawing process",
+ "ui.export_mode.strokes": "Stroke by stroke",
+ "ui.export_mode.tip": "Drawing process: how the optimisation shapes the sketch. Stroke by stroke: the finished strokes are drawn one after another, like by hand.",
+ "ui.export_svganim": "SVG · animated",
+ "ui.export_svganim_tip": "An SVG that draws itself stroke by stroke in the browser – for websites",
+ "ui.export_desc.svganim": "The finished sketch draws itself stroke by stroke and starts again after the pause – in every browser, on websites and in presentations (CSS animation; image editors show the finished sketch).",
+ "ui.export_timing_svg": "{strokes} strokes · repeats every {total} s"
 }

@@ -638,5 +638,13 @@
  "ui.mask_edit.empty": "Die Maske ist leer – füge einen Teil hinzu oder male das Objekt",
  "ui.mask_edit.nothing_here": "Hier wurde nichts gefunden – male es mit dem Pinsel (Hinzufügen)",
  "param.frame_object.label": "Objekt einpassen",
- "param.frame_object.help": "Kleine Objekte werden vergrößert, damit sie das Bild füllen: Das Bild wird mit Rand um die Maske zugeschnitten. Nur mit „Hintergrund entfernen“; Objekte, die das Bild schon füllen, bleiben, wie sie sind. Nicht im Original (dort werden kleine Objekte zu kleinen Skizzen)."
+ "param.frame_object.help": "Kleine Objekte werden vergrößert, damit sie das Bild füllen: Das Bild wird mit Rand um die Maske zugeschnitten. Nur mit „Hintergrund entfernen“; Objekte, die das Bild schon füllen, bleiben, wie sie sind. Nicht im Original (dort werden kleine Objekte zu kleinen Skizzen).",
+ "ui.export_mode.label": "Animation",
+ "ui.export_mode.process": "Entstehungsprozess",
+ "ui.export_mode.strokes": "Strich für Strich",
+ "ui.export_mode.tip": "Entstehungsprozess: wie die Optimierung die Skizze formt. Strich für Strich: Die fertigen Striche werden nacheinander gezeichnet, wie von Hand.",
+ "ui.export_svganim": "SVG · animiert",
+ "ui.export_svganim_tip": "Ein SVG, das sich im Browser Strich für Strich selbst zeichnet – für Webseiten",
+ "ui.export_desc.svganim": "Die fertige Skizze zeichnet sich Strich für Strich selbst und beginnt nach der Pause von vorn – in jedem Browser, auf Webseiten und in Präsentationen (CSS-Animation; Bildprogramme zeigen die fertige Skizze).",
+ "ui.export_timing_svg": "{strokes} Striche · wiederholt sich alle {total} s"
 }

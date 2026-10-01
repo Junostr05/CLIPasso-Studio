@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import glob
+import json
+import math
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -205,6 +207,21 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
     ``hold`` seconds on the final sketch. ``progress(i, n)`` per drawn frame, ``progress(0, 0)`` while
     the file is encoded; ``cancel()`` returning True stops (InterruptedError) and removes the file.
     A transparent ``background`` (None) is kept in WebP; GIF and MP4 fall back to white."""
+    frames = animation_frames(run_dir)
+    if not frames:
+        raise FileNotFoundError("no intermediate SVGs (svg_logs) found")
+
+    def read(i):
+        with open(frames[i], encoding="utf-8") as f:
+            return f.read()
+
+    return _encode(read, len(frames), dest, size, fps, stroke_color, width_scale, background, progress, cancel,
+                   length, hold, style)
+
+
+def _encode(read, n: int, dest: str, size: int, fps: float, stroke_color: str | None, width_scale: float,
+            background: str | None, progress, cancel, length: float | None, hold: float, style: str) -> int:
+    """Render the drawn frames ``read(0 .. n-1)`` (SVG text) and encode them (see export_animation)."""
     import numpy as np
 
     def check():
@@ -212,16 +229,8 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
             raise InterruptedError("export cancelled")
 
     fmt = os.path.splitext(dest)[1].lower().lstrip(".")
-    frames = animation_frames(run_dir)
-    if not frames:
-        raise FileNotFoundError("no intermediate SVGs (svg_logs) found")
-    idx, durations = animation_plan(len(frames), length, fps, hold, fmt, size)
-
-    def read(i):
-        with open(frames[i], encoding="utf-8") as f:
-            return f.read()
-
-    ink = stroke_color is not None or _one_colour(read(len(frames) - 1))
+    idx, durations = animation_plan(n, length, fps, hold, fmt, size)
+    ink = stroke_color is not None or _one_colour(read(n - 1))
     bg = QColor(background) if background else None
     if bg is not None and bg.alpha() == 0:
         bg = None
@@ -243,7 +252,7 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
 
             last, frame = None, None
             with imageio.get_writer(dest, fps=MP4_FPS, codec="libx264", quality=8, macro_block_size=16) as w:
-                for n, i in enumerate(idx):
+                for k, i in enumerate(idx):
                     check()
                     if i != last:
                         img = render(i)
@@ -251,12 +260,12 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
                         last = i
                     w.append_data(frame)
                     if progress:
-                        progress(n + 1, len(idx))
+                        progress(k + 1, len(idx))
                 if progress:
                     progress(0, 0)
         else:
             images = []
-            for n, i in enumerate(idx):
+            for k, i in enumerate(idx):
                 check()
                 img = render(i)
                 if ink:
@@ -266,7 +275,7 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
                         img.info["transparency"] = alpha
                 images.append(img)
                 if progress:
-                    progress(n + 1, len(idx))
+                    progress(k + 1, len(idx))
             check()
             if progress:
                 progress(0, 0)
@@ -287,6 +296,191 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
             pass
         raise
     return len(idx)
+
+
+# --------------------------------------------------------------- stroke by stroke
+DRAW_STEPS_PER_SECOND = 50  # drawn frames per second of the stroke-by-stroke timeline (thinned out later)
+PEN_LIFT = 0.25  # time between two strokes, as a share of the mean stroke length
+
+
+def run_method(run_dir: str) -> str:
+    try:
+        with open(os.path.join(run_dir, "config.json"), encoding="utf-8") as f:
+            return str(json.load(f).get("method") or "clipasso")
+    except (OSError, ValueError):
+        return "clipasso"
+
+
+def _length(pts) -> float:
+    return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts, pts[1:]))
+
+
+class Drawing:
+    """The finished strokes of a sketch drawn one after another, like by hand: ``frame(t)`` is the
+    SVG at progress ``t`` (0..1) – the strokes before it complete, the current one up to its share."""
+
+    def __init__(self, svg: str, keep_order: bool = False):
+        from .brush import sample
+
+        root = ET.fromstring(svg)
+        ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+        self.head = '<svg xmlns="http://www.w3.org/2000/svg" ' + " ".join(
+            f'{k}="{v}"' for k, v in root.attrib.items() if not k.startswith("{")) + ">"
+        strokes = []
+        for el in root.iter(f"{ns}path"):
+            subs = sample(el.get("d") or "")
+            if not subs:
+                continue
+            attrs = {k: v for k, v in el.attrib.items() if k != "d" and not k.startswith("{")}
+            whole = ET.tostring(el, encoding="unicode").replace(f' xmlns="{ns[1:-1]}"', "") if ns else \
+                ET.tostring(el, encoding="unicode")
+            strokes.append({"subs": subs, "attrs": attrs, "xml": whole, "len": sum(_length(p) for p in subs)})
+        self.strokes = strokes if keep_order else self._route(strokes)
+        mean = sum(st["len"] for st in self.strokes) / max(len(self.strokes), 1)
+        lift = PEN_LIFT * mean
+        self.spans, t = [], 0.0
+        for st in self.strokes:
+            self.spans.append((t, t + st["len"]))
+            t += st["len"] + lift
+        self.total = max(t - lift, 1e-9)
+
+    @staticmethod
+    def _route(strokes: list[dict]) -> list[dict]:
+        """Greedy route: the longest stroke first, then always the nearest stroke end (drawn from
+        that end), so the "hand" moves naturally."""
+        if not strokes:
+            return []
+        left = list(strokes)
+        first = max(left, key=lambda st: st["len"])
+        left.remove(first)
+        route = [first]
+        pen = first["subs"][-1][-1]
+        while left:
+            best, best_d, rev = None, None, False
+            for st in left:
+                a, b = st["subs"][0][0], st["subs"][-1][-1]
+                for d, r in ((math.hypot(a[0] - pen[0], a[1] - pen[1]), False),
+                             (math.hypot(b[0] - pen[0], b[1] - pen[1]), True)):
+                    if best_d is None or d < best_d:
+                        best, best_d, rev = st, d, r
+            left.remove(best)
+            if rev:
+                best = {**best, "subs": [list(reversed(p)) for p in reversed(best["subs"])]}
+            route.append(best)
+            pen = best["subs"][-1][-1]
+        return route
+
+    def centreline(self, i: int) -> str:
+        """Path data of stroke ``i`` in drawing direction (sampled)."""
+        return " ".join("M " + " L ".join(f"{x:.2f} {y:.2f}" for x, y in pts) for pts in self.strokes[i]["subs"])
+
+    def _partial(self, st: dict, dist: float) -> str:
+        parts, left = [], dist
+        for pts in st["subs"]:
+            if left <= 0:
+                break
+            out = [pts[0]]
+            for a, b in zip(pts, pts[1:]):
+                seg = math.hypot(b[0] - a[0], b[1] - a[1])
+                if seg >= left:
+                    f = left / seg if seg else 0.0
+                    out.append((a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f))
+                    left = 0
+                    break
+                out.append(b)
+                left -= seg
+            if len(out) >= 2:
+                parts.append("M " + " L ".join(f"{x:.2f} {y:.2f}" for x, y in out))
+        if not parts:
+            return ""
+        attrs = " ".join(f'{k}="{v}"' for k, v in st["attrs"].items())
+        return f'<path d="{" ".join(parts)}" {attrs} />'
+
+    def frame(self, t: float) -> str:
+        now = max(0.0, min(1.0, t)) * self.total
+        body = []
+        for st, (a, b) in zip(self.strokes, self.spans):
+            if now >= b:
+                body.append(st["xml"])
+            elif now > a:
+                body.append(self._partial(st, now - a))
+                break
+            else:
+                break
+        return self.head + "".join(body) + "</svg>"
+
+
+def default_drawing_length(strokes: int) -> float:
+    """Seconds for a stroke-by-stroke drawing: about a quarter second per stroke, 2 – 12 s."""
+    return round(min(12.0, max(2.0, strokes * 0.25)) * 2) / 2
+
+
+def export_drawing(svg_path: str, dest: str, size: int = 512, stroke_color: str | None = None,
+                   width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
+                   length: float | None = None, hold: float = 1.0, style: str = "plain",
+                   keep_order: bool | None = None) -> int:
+    """GIF / WebP / MP4 in which the finished sketch (with eraser edits) is drawn stroke by stroke.
+    ``keep_order``: draw in the order of the SVG (ControlSketch sorts its strokes outline first) –
+    by default for ControlSketch runs, otherwise along a short route."""
+    with open(svg_path, encoding="utf-8") as f:
+        svg = f.read()
+    if keep_order is None:
+        keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
+    drawing = Drawing(svg, keep_order)
+    if not drawing.strokes:
+        raise ValueError("the sketch has no strokes")
+    length = default_drawing_length(len(drawing.strokes)) if length is None else length
+    n = max(2, round(length * DRAW_STEPS_PER_SECOND))
+    return _encode(lambda i: drawing.frame((i + 1) / n), n, dest, size, n / length, stroke_color, width_scale,
+                   background, progress, cancel, length, hold, style)
+
+
+def animated_svg(svg: str, length: float | None = None, hold: float = 1.0, stroke_color: str | None = None,
+                 width_scale: float = 1.0, background: str | None = None, style: str = "plain",
+                 keep_order: bool = False) -> str:
+    """An SVG that draws itself in the browser (CSS animation, repeating): every stroke – in any
+    brush style – is uncovered by a mask whose centre line grows along the stroke."""
+    drawing = Drawing(svg, keep_order)
+    n = len(drawing.strokes)
+    length = default_drawing_length(n) if length is None else max(float(length), 0.1)
+    cycle = length + max(float(hold), 0.0)
+    styled = []
+    for st in drawing.strokes:
+        one = drawing.head + st["xml"] + "</svg>"
+        one = stylize_svg(restyle_svg(one, stroke_color, width_scale), style)
+        root = ET.fromstring(one)
+        styled.append("".join(ET.tostring(el, encoding="unicode") for el in root
+                              if not el.tag.endswith("rect")))
+    css, defs, body = [], [], []
+    for i, (st, (a, b)) in enumerate(zip(drawing.strokes, drawing.spans)):
+        start = a / drawing.total * length / cycle * 100
+        end = b / drawing.total * length / cycle * 100
+        css.append(f"@keyframes d{i}{{0%,{start:.3f}%{{stroke-dashoffset:1}}{end:.3f}%,100%{{stroke-dashoffset:0}}}}"
+                   f".d{i}{{animation:d{i} {cycle:.3f}s linear infinite}}")
+        try:
+            width = float(st["attrs"].get("stroke-width", "1")) * width_scale
+        except ValueError:
+            width = width_scale
+        defs.append(f'<mask id="m{i}" maskUnits="userSpaceOnUse"><path class="d{i}" d="{drawing.centreline(i)}" '
+                    f'fill="none" stroke="#fff" stroke-width="{4 * width + 2:.3g}" stroke-linecap="round" '
+                    f'stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"/></mask>')
+        body.append(f'<g mask="url(#m{i})">{styled[i]}</g>')
+    bg = f'<rect width="100%" height="100%" fill="{background}"/>' if background else ""
+    out = (drawing.head + "<style>" + "".join(css) + "</style><defs>" + "".join(defs) + "</defs>" + bg
+           + "".join(body) + "</svg>")
+    return re.sub(r' xmlns(:ns\d+)?="http://www.w3.org/2000/svg"', "", out).replace(
+        "<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ', 1)
+
+
+def export_animated_svg(svg_path: str, dest: str, length: float | None = None, hold: float = 1.0,
+                        stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
+                        style: str = "plain", keep_order: bool | None = None) -> None:
+    with open(svg_path, encoding="utf-8") as f:
+        svg = f.read()
+    if keep_order is None:
+        keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(animated_svg(svg, length, hold, stroke_color, width_scale, background, style, keep_order))
 
 
 def _render_svg(svg: str, width: int, height: int, background: QColor | None) -> QImage:

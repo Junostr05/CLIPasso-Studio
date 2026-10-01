@@ -178,15 +178,20 @@ class StudioPage(QWidget):
         b.clicked.connect(lambda _=False: self.export("webp"))
         grid.addWidget(b, 2, 0)
         self.export_btns["webp"] = b
+        # an SVG that draws itself in the browser, stroke by stroke
+        b = button("", "pencil-line")
+        b.clicked.connect(lambda _=False: self.export("svganim"))
+        grid.addWidget(b, 2, 1)
+        self.export_btns["svganim"] = b
         # extra: plain single-layer SVG (one path with all strokes) for plotters / cutting machines
         b = button("", "pen-tool", "ghost")
         b.clicked.connect(lambda _=False: self.export("svg1"))
-        grid.addWidget(b, 2, 1)
+        grid.addWidget(b, 3, 0)
         self.export_btns["svg1"] = b
         # SceneSketch: every sketch of the matrix at once
         b = button("", "layers", "ghost")
         b.clicked.connect(lambda _=False: self.export("matrix"))
-        grid.addWidget(b, 3, 0, 1, 2)
+        grid.addWidget(b, 4, 0, 1, 2)
         self.export_btns["matrix"] = b
         self.result_card.body.addLayout(grid)
         self.folder_btn = button("", "folder-open", "ghost")
@@ -1225,6 +1230,8 @@ class StudioPage(QWidget):
         self.export_btns["svg1"].setText(tr("ui.export_svg1"))
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
         self.export_btns["webp"].setToolTip(tr("ui.export_webp_tip"))
+        self.export_btns["svganim"].setText(tr("ui.export_svganim"))
+        self.export_btns["svganim"].setToolTip(tr("ui.export_svganim_tip"))
         self.export_btns["matrix"].setText(tr("ui.export_matrix"))
         self.export_btns["matrix"].setToolTip(tr("ui.export_matrix_tip"))
         self.folder_btn.setText(tr("ui.open_folder"))
