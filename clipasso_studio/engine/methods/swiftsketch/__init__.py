@@ -106,18 +106,25 @@ def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Ima
         return _cache[key]
     for k in [k for k in _cache if k[0] == "input"]:
         del _cache[k]
+    from ... import framing
+
     image = load_rgb(target)
+    photo, region, pad = image.size, None, None
     if settings["mask_object"]:
         matte = masking.soft_mask(device, image, model)
         image = masking.apply_soft_mask(image, matte)
         mask_img = Image.fromarray((matte * 255 + 0.5).astype(np.uint8), mode="L")
         if settings.get("frame_object"):  # small objects fill the canvas
-            image, mask_img, _ = imaging.frame_object(image, mask_img)
+            box = imaging.frame_box(mask_img)
+            image, mask_img, framed = imaging.frame_object(image, mask_img)
+            region = box if framed else None
     else:
         mask_img = Image.new("L", image.size, 255)
     if settings["fix_scale"]:
+        pad = framing.fix_scale_pad(*image.size)
         image = imaging.fix_image_scale(image)
         mask_img = imaging.fix_image_scale(mask_img, fill=0)
+    image.info[framing.FRAME_KEY] = framing.photo_frame(photo, region, pad)  # (for the export)
     _cache[key] = (image, mask_img)
     return image, mask_img
 
@@ -187,6 +194,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     if s["mask_object"] and s.get("mask_model", "u2net") != "u2net":
         reporter.event("stage", seed=seed, name="mask")
     image, mask_img = prepare_input(s, target, device)
+    photo_frame = image.info.get("photo_frame")
     input_img = image.resize((CANVAS, CANVAS), Image.BICUBIC)
     input_img.save(os.path.join(run_dir, "input.png"))
     mask_img.save(os.path.join(run_dir, "mask.png"))
@@ -255,7 +263,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         "method": "swiftsketch", "target": target, "seed": seed, "output_dir": run_dir, "device": str(device),
         "model_args": args, "num_paths": num_paths, "diffusion_steps": sampler.steps,
         "best_loss": best_loss, "best_iter": max(counter - 1, 0), "iterations_done": counter, "status": status,
-        "seconds": active_time, "clip_score": clip_sc, "settings": s,
+        "seconds": active_time, "clip_score": clip_sc, "settings": s, "photo_frame": photo_frame,
     }
     with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, default=str)

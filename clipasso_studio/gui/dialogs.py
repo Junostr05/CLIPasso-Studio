@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QDou
                                QFormLayout, QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout,
                                QWidget)
 
-from ..engine import model_store
+from ..engine import framing, model_store
 from . import brush, export, theme
 from .app_settings import app_settings
 from .i18n import i18n, tr
@@ -274,16 +274,55 @@ class CountdownDialog(QDialog):
         super().done(result)
 
 
+def frame_combo(svg_path: str | None = None) -> QComboBox:
+    """Choice of the export frame (square / like the photo / cropped to the strokes), set to the last
+    choice; "like the photo" is greyed out for a sketch whose photo shape is not known."""
+    combo = QComboBox()
+    for key in framing.MODES:
+        combo.addItem(tr(f"ui.frame.{key}"), key)
+    combo.setToolTip(tr("ui.frame.tip"))
+    if svg_path is not None:
+        try:
+            unknown = export.framing_for(svg_path, "photo") is None
+        except Exception:
+            unknown = True
+        if unknown:
+            item = combo.model().item(framing.MODES.index("photo"))
+            item.setEnabled(False)
+            item.setToolTip(tr("ui.frame.photo_unknown"))
+    index = combo.findData(app_settings().get("export_frame", "square"))
+    if index < 0 or not combo.model().item(index).isEnabled():
+        index = 0
+    combo.setCurrentIndex(index)
+    return combo
+
+
+def margin_spin() -> QSpinBox:
+    spin = QSpinBox()
+    spin.setRange(0, 50)
+    spin.setSuffix(" %")
+    try:
+        spin.setValue(int(app_settings().get("export_margin", 5)))
+    except (TypeError, ValueError):
+        spin.setValue(5)
+    spin.setToolTip(tr("ui.frame.margin_tip"))
+    return spin
+
+
 def copy_sketch(svg_path: str) -> None:
     """Put a sketch on the clipboard with the choices of the last export (white instead of a
     transparent background – many programs paste transparency as black)."""
     st = app_settings()
     stroke = st.get("export_stroke", "#000000")
     background = st.get("export_background", "#FFFFFF")
+    try:
+        margin = int(st.get("export_margin", 5)) / 100
+    except (TypeError, ValueError):
+        margin = framing.DEFAULT_MARGIN
     data = export.sketch_mime(svg_path, 1024, None if str(stroke).lower() == "#000000" else stroke,
                               float(st.get("export_width", 1.0)),
                               "#FFFFFF" if background in (None, "", "transparent") else background,
-                              st.get("export_style", "plain"))
+                              st.get("export_style", "plain"), st.get("export_frame", "square"), margin)
     QGuiApplication.clipboard().setMimeData(data)
 
 
@@ -367,11 +406,20 @@ class ExportDialog(QDialog):
         self.background = ColorButton(bg, allow_transparent=allow_transparent)
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
+        # the shape of the picture: the square canvas, like the photo, or cropped to the strokes
+        self.frame = frame_combo(svg_path if fmt != "matrix" else None)
+        self.margin = margin_spin()
+        self.margin_label = label(tr("ui.frame.margin"), None)
+        if fmt != "matrix":
+            form.addRow(tr("ui.frame.label"), self.frame)
+            form.addRow(self.margin_label, self.margin)
+        self.frame.currentIndexChanged.connect(self._frame_changed)
         self.size = QSpinBox()
         self.size.setRange(64, 8192)
         self.size.setSingleStep(128)
         self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
+        self.size.setToolTip(tr("ui.size_longest"))
         if fmt not in ("svg", "svg1", "svganim", "pdf"):
             form.addRow(tr("ui.size"), self.size)
         self.width_cm = QDoubleSpinBox()  # PDF: the printed width
@@ -385,6 +433,7 @@ class ExportDialog(QDialog):
         # animations: the drawing process (optimisation history) or the finished strokes one by one
         self.process_frames = len(export.animation_frames(run_dir)) if fmt in ANIMATIONS else 0
         self.strokes = _stroke_count(svg_path) if fmt in TIMED else 0
+        self.draw_length = export.drawing_length(svg_path) if fmt in TIMED else 2.0
         self.mode = QComboBox()
         self.mode.addItem(tr("ui.export_mode.process"), "process")
         self.mode.addItem(tr("ui.export_mode.strokes"), "strokes")
@@ -445,19 +494,28 @@ class ExportDialog(QDialog):
         lay.addLayout(row)
         self.busy = False  # an animation export is running in the background
         self._cancel = False
+        self._frame_changed()
+
+    def _frame_changed(self):
+        content = self.frame.currentData() == "content" and self.fmt != "matrix"
+        self.margin.setVisible(content)
+        self.margin_label.setVisible(content)
+
+    def _shape(self) -> dict:
+        return {"frame": self.frame.currentData(), "margin": self.margin.value() / 100}
 
     def _drawing(self) -> bool:
         return self.fmt == "svganim" or self.mode.currentData() == "strokes"
 
     def _frames(self) -> int:
         if self._drawing():
-            length = self.length.value() if hasattr(self, "length") else export.default_drawing_length(self.strokes)
+            length = self.length.value() if hasattr(self, "length") else self.draw_length
             return max(2, round(length * export.DRAW_STEPS_PER_SECOND))
         return self.process_frames
 
     def _default_length(self) -> float:
         if self._drawing():
-            return export.default_drawing_length(self.strokes)
+            return self.draw_length
         return default_animation_length(self.process_frames)
 
     def _every_step(self):
@@ -513,11 +571,15 @@ class ExportDialog(QDialog):
             app_settings().set("export_background", self.background.color())
         if self.fmt in ANIMATIONS and self.mode.isEnabled():
             app_settings().set("export_anim_mode", self.mode.currentData())
+        shape = self._shape() if self.fmt != "matrix" else {}
+        if shape:
+            app_settings().data["export_margin"] = self.margin.value()
+            app_settings().set("export_frame", shape["frame"])
         try:
             if self.fmt == "svg":
-                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style)
+                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style, **shape)
             elif self.fmt == "svg1":
-                export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
+                export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value(), **shape)
             elif self.fmt in ("png", "pdf"):  # big images take a while: in the background
                 if self.fmt == "pdf":
                     app_settings().set("export_pdf_width", self.width_cm.value())
@@ -526,7 +588,7 @@ class ExportDialog(QDialog):
                 write = export.export_png if self.fmt == "png" else export.export_pdf
 
                 def job(progress=None):
-                    write(*args)
+                    write(*args, **shape)
                     return dest
 
                 self.ok.setEnabled(False)
@@ -537,7 +599,7 @@ class ExportDialog(QDialog):
                 return
             elif self.fmt == "svganim":
                 export.export_animated_svg(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
-                                           self.width_scale.value(), bg, style)
+                                           self.width_scale.value(), bg, style, **shape)
             else:  # animations and the matrix run in the background
                 self.ok.setEnabled(False)
                 self.progress.setRange(0, 1)
@@ -565,10 +627,10 @@ class ExportDialog(QDialog):
                     run_in_thread(self, export.export_matrix_zip, self.run_dir, dest, **common)
                 elif self._drawing():
                     run_in_thread(self, export.export_drawing, self.svg_path, dest, length=self.length.value(),
-                                  hold=self.hold.value(), **common)
+                                  hold=self.hold.value(), **common, **shape)
                 else:
                     run_in_thread(self, export.export_animation, self.run_dir, dest, length=self.length.value(),
-                                  hold=self.hold.value(), **common)
+                                  hold=self.hold.value(), **common, **shape)
                 return
         except Exception as exc:
             self._failed(error_text(exc))
@@ -713,6 +775,12 @@ class BatchExportDialog(QDialog):
         self.style.setCurrentIndex(max(self.style.findData(app_settings().get("export_style", "plain")), 0))
         self.style_label = label(tr("ui.brush.label"), None)
         form.addRow(self.style_label, self.style)
+        self.frame = frame_combo()  # "like the photo": sketches whose photo shape is not known stay square
+        form.addRow(tr("ui.frame.label"), self.frame)
+        self.margin = margin_spin()
+        self.margin_label = label(tr("ui.frame.margin"), None)
+        form.addRow(self.margin_label, self.margin)
+        self.frame.currentIndexChanged.connect(self._format_changed)
         lay.addLayout(form)
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -735,6 +803,8 @@ class BatchExportDialog(QDialog):
             w.setVisible(fmt == "png")
         for w in (self.background, self.bg_label, self.style, self.style_label):
             w.setVisible(fmt != "svg1")
+        for w in (self.margin, self.margin_label):
+            w.setVisible(self.frame.currentData() == "content")
 
     def _choose(self):
         start = app_settings().get("batch_export_dir") or os.path.expanduser("~")
@@ -780,6 +850,7 @@ class BatchExportDialog(QDialog):
         run_in_thread(self, export.export_batch, self.items, folder, fmt=fmt, size=self.size.value(),
                       stroke_color=stroke, width_scale=self.width_scale.value(), background=bg,
                       style=self.style.currentData() if fmt != "svg1" else "plain", cancel=lambda: self._cancel,
+                      frame=self.frame.currentData(), margin=self.margin.value() / 100,
                       on_progress=prog, on_done=done, on_error=failed)
 
     def reject(self):
@@ -1003,3 +1074,176 @@ def info_box(parent, title: str, text: str) -> None:
     QMessageBox.information(parent, title, text)
 
 
+
+
+def webcam_available() -> tuple[bool, str]:
+    """(can the webcam be used, why not): needs Qt Multimedia and at least one camera."""
+    try:
+        from PySide6.QtMultimedia import QMediaDevices
+    except Exception:  # not installed, or its system libraries are missing
+        return False, "ui.webcam.no_multimedia"
+    if not QMediaDevices.videoInputs():
+        return False, "ui.webcam.no_camera"
+    return True, ""
+
+
+class WebcamDialog(QDialog):
+    """Take the input photo with a webcam: live preview, choice of camera, mirror, a 3-second countdown.
+    The photo is saved in ``folder`` (``path`` after accept())."""
+
+    COUNTDOWN = 3
+
+    def __init__(self, folder: str, parent=None):
+        super().__init__(parent)
+        from PySide6.QtWidgets import QLabel
+
+        self.folder = folder
+        self.path = ""
+        self._frame = None  # the latest camera image
+        self._left = 0
+        self.setWindowTitle(tr("ui.webcam.title"))
+        self.setMinimumWidth(560)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(12)
+        lay.addWidget(label(tr("ui.webcam.title"), "h2"))
+        self.view = QLabel()
+        self.view.setMinimumSize(512, 384)
+        self.view.setAlignment(Qt.AlignCenter)
+        self.view.setStyleSheet(f"background: {theme.current().surface2}; border-radius: 10px;")
+        lay.addWidget(self.view, 1)
+        row = QHBoxLayout()
+        self.cameras = QComboBox()
+        self.mirror = QCheckBox(tr("ui.webcam.mirror"))
+        self.mirror.setChecked(bool(app_settings().get("webcam_mirror", True)))
+        self.mirror.toggled.connect(lambda v: app_settings().set("webcam_mirror", v))
+        row.addWidget(self.cameras, 1)
+        row.addWidget(self.mirror)
+        lay.addLayout(row)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        cancel = button(tr("ui.cancel"), variant="ghost")
+        cancel.clicked.connect(self.reject)
+        self.shoot = button(tr("ui.webcam.shoot"), "camera", "primary")
+        self.shoot.clicked.connect(self._start_countdown)
+        buttons.addWidget(cancel)
+        buttons.addWidget(self.shoot)
+        lay.addLayout(buttons)
+        self._timer = QTimer(self, interval=1000)
+        self._timer.timeout.connect(self._tick)
+        self.camera = self.session = self.sink = None
+        ok, why = webcam_available()
+        self.available = ok
+        if not ok:
+            self.view.setText(tr(why))
+            self.shoot.setEnabled(False)
+            self.cameras.setEnabled(False)
+            return
+        from PySide6.QtMultimedia import QMediaCaptureSession, QMediaDevices, QVideoSink
+
+        self._devices = QMediaDevices.videoInputs()
+        for dev in self._devices:
+            self.cameras.addItem(dev.description())
+        self.session = QMediaCaptureSession(self)
+        self.sink = QVideoSink(self)
+        self.sink.videoFrameChanged.connect(self._frame_arrived)
+        self.session.setVideoSink(self.sink)
+        self.cameras.currentIndexChanged.connect(self._use_camera)
+        self._use_camera(0)
+
+    def _use_camera(self, index: int):
+        from PySide6.QtMultimedia import QCamera
+
+        if self.camera is not None:
+            self.camera.stop()
+        self.camera = QCamera(self._devices[index], self)
+        self.session.setCamera(self.camera)
+        self.camera.start()
+
+    def _frame_arrived(self, frame):
+        img = frame.toImage()
+        if img.isNull():
+            return
+        self.show_image(img)
+
+    def show_image(self, img):
+        """A camera image: shown (mirrored if wanted) and kept for the photo."""
+        from PySide6.QtGui import QPixmap
+
+        if self.mirror.isChecked():
+            img = img.flipped(Qt.Horizontal) if hasattr(img, "flipped") else img.mirrored(True, False)
+        self._frame = img
+        pm = QPixmap.fromImage(img).scaled(self.view.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        if self._left:
+            from PySide6.QtGui import QFont, QPainter
+
+            p = QPainter(pm)
+            font = QFont(p.font())
+            font.setPointSize(64)
+            font.setBold(True)
+            p.setFont(font)
+            p.setPen(QColor("white"))
+            p.drawText(pm.rect(), Qt.AlignCenter, str(self._left))
+            p.end()
+        self.view.setPixmap(pm)
+
+    def _start_countdown(self):
+        self._left = self.COUNTDOWN
+        self.shoot.setEnabled(False)
+        self._timer.start()
+
+    def _tick(self):
+        self._left -= 1
+        if self._left <= 0:
+            self._timer.stop()
+            self.take()
+
+    def take(self) -> bool:
+        """Save the latest camera image and close."""
+        if self._frame is None or self._frame.isNull():
+            self.shoot.setEnabled(True)
+            return False
+        import time
+
+        os.makedirs(self.folder, exist_ok=True)
+        path = os.path.join(self.folder, time.strftime("webcam-%Y%m%d-%H%M%S.png"))
+        n = 1
+        while os.path.exists(path):
+            n += 1
+            path = os.path.join(self.folder, time.strftime(f"webcam-%Y%m%d-%H%M%S-{n}.png"))
+        if not self._frame.save(path):
+            self.shoot.setEnabled(True)
+            return False
+        self.path = path
+        self.accept()
+        return True
+
+    def done(self, result):
+        self._timer.stop()
+        if self.camera is not None:
+            self.camera.stop()
+        super().done(result)
+
+
+def ask_out_of_memory(parent, name: str, on_gpu: bool, smaller: dict | None) -> str | None:
+    """"Out of memory": "cpu" (compute it on the CPU), "smaller" (with settings that need less memory) or
+    None. Finished sketches of the job are kept either way."""
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle(tr("ui.oom.title"))
+    box.setText(tr("ui.oom.text", name=name))
+    box.setInformativeText(tr("ui.oom.info"))
+    cpu = box.addButton(tr("ui.oom.cpu"), QMessageBox.AcceptRole) if on_gpu else None
+    small = None
+    if smaller:
+        small = box.addButton(tr("ui.oom.smaller"), QMessageBox.AcceptRole)
+        details = ", ".join(f"{k} = {v}" for k, v in smaller.items())
+        small.setToolTip(details)
+    box.addButton(tr("ui.close"), QMessageBox.RejectRole)
+    box.exec()
+    clicked = box.clickedButton()
+    if cpu is not None and clicked is cpu:
+        return "cpu"
+    if small is not None and clicked is small:
+        return "smaller"
+    return None

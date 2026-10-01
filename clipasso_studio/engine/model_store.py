@@ -28,6 +28,7 @@ from typing import Callable
 
 
 from .. import paths
+from ..fileops import ensure_space, folder_size, move_entries  # noqa: F401 (folder_size: used by the GUI)
 from .errors import UserError
 
 ProgressFn = Callable[[int, int], None]
@@ -210,7 +211,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
             "https://huggingface.co/flashingtt/U-2-Net/resolve/main/u2net.pth",
             "gdrive:1ao1ovG1Qtx4b7EoskHXmi2E9rp5CHLcZ",
         ),
-        download_sha256=None,
+        download_sha256="10025a17f49cd3208afc342b589890e402ee63123d6f2d289a4a0903695cce58",
         download_size=176_290_937,
         stored_size_mb=88,
         bundled=True,
@@ -220,7 +221,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         key="dino",
         filename="dino/dino_vits8_fp16.pt",
         urls=("https://dl.fbaipublicfiles.com/dino/dino_deitsmall8_pretrain/dino_deitsmall8_pretrain.pth",),
-        download_sha256=None,
+        download_sha256="55c8b267f479b614ec20858947ce361ba804846c193e20be74263a096bb6d75e",
         download_size=86_728_949,
         stored_size_mb=44,
         bundled=True,
@@ -230,7 +231,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         key="swiftsketch:diffusion",
         filename="swiftsketch/sketch_diffusion.pt",
         urls=("gdrive:19FryO99dCmz-Dw1jzeZITUI0uuksiOA-",),
-        download_sha256=None,
+        download_sha256="d1be95d1de0e35806b31ac854edf0833cceb720afdaf145c3f3ad9b2f4fb5fde",
         download_size=357_580_707,
         stored_size_mb=144,
         bundled=False,
@@ -240,7 +241,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         key="swiftsketch:refine",
         filename="swiftsketch/refinement_network.pt",
         urls=("gdrive:1OrLzwaJXZ4SlDw3hqn71Yg1L01ytLv2x",),
-        download_sha256=None,
+        download_sha256="c4af9d11b8116e122b03ad5804f4a81eaf02fc6ec6f189b88ad09ae7ee02e17a",
         download_size=356_303_267,
         stored_size_mb=144,
         bundled=False,
@@ -263,7 +264,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
         key="vgg16",
         filename="vgg/vgg16_features_fp16.pt",
         urls=("https://download.pytorch.org/models/vgg16-397923af.pth",),
-        download_sha256=None,
+        download_sha256="397923af8e79cdbb6a7127f12361acd7a2f83e06b05044ddf496e83de57a5bf0",
         download_size=553_433_881,
         stored_size_mb=30,
         bundled=True,
@@ -409,14 +410,16 @@ def download_raw(spec: ModelSpec, workdir: Path, progress: ProgressFn | None = N
     meta = target.with_suffix(".json")
     errors = []
     for url in spec.urls:
-        info = {"url": url, "size": spec.download_size, "sha256": spec.download_sha256}
+        # every mirror serves the same file: a partial download of another mirror continues here
+        info = {"size": spec.download_size, "sha256": spec.download_sha256}
         try:
-            same = json.loads(meta.read_text(encoding="utf-8")) == info
-        except (OSError, ValueError):
+            saved = json.loads(meta.read_text(encoding="utf-8"))
+            same = {k: saved.get(k) for k in info} == info
+        except (OSError, ValueError, AttributeError):
             same = False
         if not same:  # a different file: start over
             target.unlink(missing_ok=True)
-            meta.write_text(json.dumps(info), encoding="utf-8")
+        meta.write_text(json.dumps({**info, "url": url}), encoding="utf-8")
         failure = None
         for attempt in range(attempts):
             offset = target.stat().st_size if target.exists() else 0
@@ -525,11 +528,25 @@ def _swiftsketch_checkpoint(raw: Path) -> dict:
     return {"args": args, "state_dict": state}
 
 
+def space_needed(spec: ModelSpec, dest_root: Path) -> int:
+    """Bytes an install still needs on the drive: what is left to download, plus the converted model
+    (the raw download is removed only after the conversion)."""
+    part = partial_dir(dest_root)
+    if spec.kind == "hf":
+        raw = part / _safe_name(spec.key)
+        have = folder_size(raw) if raw.is_dir() else 0
+    else:
+        raw = part / f"{_safe_name(spec.key)}.part"
+        have = raw.stat().st_size if raw.is_file() else 0
+    return max(spec.download_size - have, 0) + spec.stored_size_mb * 1_000_000
+
+
 def install(spec_key: str, dest_root: Path | None = None, progress: ProgressFn | None = None,
             cancel: Callable[[], bool] | None = None) -> Path:
     """Download + convert a model into ``dest_root`` (default: the user's model folder)."""
     spec = SPECS[spec_key]
     dest_root = dest_root or paths.downloaded_models_dir()
+    ensure_space(dest_root, space_needed(spec, dest_root), spec.key)
     if spec.kind == "hf":
         return _install_hf(spec, dest_root, progress, cancel)
     dest = dest_root / spec.filename
@@ -649,39 +666,11 @@ def load_state(spec_key: str) -> dict:
     return state
 
 
-def folder_size(path: Path) -> int:
-    total = 0
-    for dirpath, _, files in os.walk(path):
-        for f in files:
-            try:
-                total += os.path.getsize(os.path.join(dirpath, f))
-            except OSError:
-                pass
-    return total
-
-
 def move_models(src: Path, dst: Path, progress: ProgressFn | None = None) -> int:
     """Move every downloaded model (and unfinished download) from ``src`` to ``dst``: a rename on the
     same drive, otherwise copy + delete per folder. Folders that exist in ``dst`` are merged.
     Returns the bytes moved."""
-    src, dst = Path(src), Path(dst)
-    dst.mkdir(parents=True, exist_ok=True)
-    entries = sorted(src.iterdir()) if src.is_dir() else []
-    sizes = [folder_size(e) if e.is_dir() else e.stat().st_size for e in entries]
-    total, done = sum(sizes) or 1, 0
-    for e, size in zip(entries, sizes):
-        target = dst / e.name
-        if target.exists() and e.is_dir():
-            shutil.copytree(e, target, dirs_exist_ok=True)
-            shutil.rmtree(e)
-        else:
-            if target.exists():
-                target.unlink()
-            shutil.move(str(e), str(target))
-        done += size
-        if progress:
-            progress(done, total)
-    return done
+    return move_entries(src, dst, progress=progress)
 
 
 def copy_tree(src: Path, dst: Path) -> None:

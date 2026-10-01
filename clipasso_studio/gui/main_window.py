@@ -18,7 +18,8 @@ from .drop import dropped_images, has_images
 from .controller import JobController
 from .i18n import i18n, tr
 from .pages.compare import ComparePage
-from .pages.other_pages import AboutPage, GalleryPage, ModelsPage, QueuePage, SettingsPage
+from .pages.gallery import GalleryPage
+from .pages.other_pages import AboutPage, ModelsPage, QueuePage, SettingsPage
 from .pages.studio import StudioPage
 from .widgets.common import Toast, button, label, tool_button
 
@@ -228,12 +229,21 @@ class MainWindow(QMainWindow):
         self.compare.toast.connect(self.toast.show_message)
         self.gallery.toast.connect(self.toast.show_message)
         self.queue.toast.connect(self.toast.show_message)
+        self.queue.load_in_studio.connect(self.load_in_studio)
         self.controller.queue_idle.connect(self._queue_done)
         self.settings.busy_check = self.controller.is_busy
+        self.settings.waiting_files = self.controller.waiting_files
+        self.settings.output_dir_changed.connect(self._output_dir_changed)
         self.about.show_tour.connect(self.show_tour)
         self.tour = None
         self.settings.models_dir_changed.connect(self._models_dir_changed)
         self.settings.keep_models_changed.connect(self.controller.set_keep_models)
+        from .watch import FolderWatcher
+
+        # images saved into the watched folder are sketched and exported by themselves
+        self.watcher = FolderWatcher(self.controller, lambda: self.studio.params.settings(), self)
+        self.watcher.message.connect(lambda key, params: self.toast.show_message(tr(key, **params), "info"))
+        self.settings.watch_changed.connect(self.watcher.reconfigure)
         QTimer.singleShot(1500, self._probe_hardware)  # GPU / CUDA, in a child process (no torch here)
         self.settings.release_worker = self.controller.release_worker
         self.models.release_worker = self.controller.release_worker
@@ -310,6 +320,13 @@ class MainWindow(QMainWindow):
         return True
 
     # ------------------------------------------------------ interrupted jobs
+    def load_in_studio(self, image: str, settings: dict) -> None:
+        """A queued job's image and settings in the studio (to look at or change them)."""
+        if os.path.isfile(image):
+            self.studio.set_image(image)
+        self.studio.params.set_settings(settings)
+        self.show_page("studio")
+
     def continue_job(self, job_dir: str) -> bool:
         job = self.controller.continue_job(job_dir)
         if job is None:
@@ -410,6 +427,12 @@ class MainWindow(QMainWindow):
         app_settings().set("tour_done", True)
         self.show_page("studio")
 
+    def _output_dir_changed(self, old: str, new: str, moved: bool):
+        if moved:
+            self.controller.relocate(old, new)
+            self.studio.relocate(old, new)
+        self.gallery.refresh()
+
     def _models_dir_changed(self):
         self.models.retranslate()  # the location line and every row
         self.studio.picker.refresh_status(self.studio.params.all_settings())
@@ -468,6 +491,11 @@ class MainWindow(QMainWindow):
         """Look for a newer release in the background (if enabled in the settings)."""
         if app_settings().get("check_updates"):
             dialogs.run_in_thread(self, updates.check, url=url, on_done=self._update_found)
+
+    def remove_old_updates(self):
+        """The downloads of updates that are installed by now are not needed any more (in the background)."""
+        dialogs.run_in_thread(self, lambda progress=None: updates.remove_old_updates(),
+                              on_error=lambda msg: None)
 
     def _update_found(self, text: str):
         try:
@@ -573,6 +601,8 @@ class MainWindow(QMainWindow):
 
     def _on_job_finished(self, job):
         self.run_indicator.setVisible(self.controller.is_busy())
+        if job.status == "failed" and getattr(job, "oom", False):
+            QTimer.singleShot(0, lambda: self.offer_out_of_memory_retry(job))
         if app_settings().get("notify") and not self.isActiveWindow():
             QApplication.alert(self)
             if self.tray is not None:
@@ -583,6 +613,19 @@ class MainWindow(QMainWindow):
                 else:
                     self.tray.showMessage(tr("ui.notify_failed_title"), job.message or job.status,
                                           QSystemTrayIcon.Warning, 8000)
+
+    def offer_out_of_memory_retry(self, job) -> str | None:
+        """The memory ran out: offer to compute the job again on the CPU or with smaller settings (finished
+        sketches are kept)."""
+        from .controller import smaller_settings
+
+        choice = dialogs.ask_out_of_memory(self, job.name, on_gpu=str(job.device).startswith("cuda") or (
+            job.settings.get("device") != "cpu" and not job.device), smaller=smaller_settings(job.settings))
+        if choice == "cpu":
+            self.controller.retry(job.id, overrides={"device": "cpu"})
+        elif choice == "smaller":
+            self.controller.retry(job.id, overrides=smaller_settings(job.settings), restart_unfinished=True)
+        return choice
 
     def retranslate(self):
         for key, _ in NAV:

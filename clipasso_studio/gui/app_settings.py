@@ -23,6 +23,14 @@ DEFAULTS: dict[str, Any] = {
     "check_updates": True,
     "ui_scale": 1.0,  # interface size (applied at the start via QT_SCALE_FACTOR)
     "canvas_style": "plain",  # brush style the sketches are shown in (brush.STYLES)
+    "recent_images": [],  # the last opened images (studio menu "recent")
+    "webcam_mirror": True,
+    "watch_enabled": False,  # watched folder (gui/watch.py)
+    "watch_folder": "",
+    "watch_preset": "studio",  # "studio": the current studio settings, else a preset file
+    "watch_formats": ["png"],
+    "watch_export_dir": "",  # "": a subfolder "sketches" of the watched folder
+    "watch_move_done": False,
     "keep_models_loaded": True,  # the worker stays open between jobs with its models (runner keep_warm)
     "parallel_sketches": "auto",  # "auto": the sketches of a job in parallel on a big CPU (runner.plan_workers)
     "skipped_version": "",

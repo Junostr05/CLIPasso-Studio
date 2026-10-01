@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import shutil
 import sys
 import time
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QImage, QImageReader, QPixmap
+from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QImage, QPixmap
 from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox,
                                QProgressBar, QScrollArea, QSplitter, QToolButton, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
-from ...engine import imaging, jobs, masking, model_store, runner
-from .. import brush, dialogs, icons, mask_view, methods_ui, shortcuts, theme
+from ...engine import imaging, jobs, masking, model_store
+from .. import brush, dialogs, icons, image_io, mask_view, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -144,8 +143,16 @@ class StudioPage(QWidget):
         self.samples_btn.setMenu(self.samples_menu)
         self.edit_btn = button("", "crop", "ghost")
         self.edit_btn.clicked.connect(self.edit_image)
+        self.recent_btn = button("", "clock", "ghost")  # the last images (icon only: the row is narrow)
+        self.recent_menu = QMenu(self)
+        self.recent_menu.aboutToShow.connect(self._build_recent_menu)
+        self.recent_btn.setMenu(self.recent_menu)
+        self.webcam_btn = button("", "camera", "ghost")
+        self.webcam_btn.clicked.connect(self.take_webcam_photo)
         row.addWidget(self.open_btn)
         row.addWidget(self.samples_btn)
+        row.addWidget(self.recent_btn)
+        row.addWidget(self.webcam_btn)
         row.addWidget(self.edit_btn)
         row.addStretch(1)
         self.input_card.body.addLayout(row)
@@ -400,6 +407,38 @@ class StudioPage(QWidget):
                                                                          Qt.SmoothTransformation), f.stem)
                 act.triggered.connect(lambda _=False, p=str(f): self.set_image(p))
 
+    RECENT_MAX = 12
+
+    def _remember_recent(self, path: str):
+        """The image heads the "recent" menu (not the bundled samples)."""
+        if os.path.normcase(os.path.abspath(path)).startswith(os.path.normcase(str(paths.resource("samples")))):
+            return
+        st = app_settings()
+        key = os.path.normcase(os.path.abspath(path))
+        recent = [p for p in st.get("recent_images") or [] if os.path.normcase(os.path.abspath(p)) != key]
+        st.set("recent_images", [path] + recent[: self.RECENT_MAX - 1])
+
+    def _build_recent_menu(self):
+        from .. import thumbs
+
+        self.recent_menu.clear()
+        st = app_settings()
+        saved = list(st.get("recent_images") or [])
+        recent = [p for p in saved if os.path.isfile(p)]
+        if recent != saved:  # moved or deleted meanwhile
+            st.set("recent_images", recent)
+        for p in recent:
+            act = self.recent_menu.addAction(thumbs.thumbnail(p, 40), os.path.basename(p))
+            act.setToolTip(p)
+            act.triggered.connect(lambda _=False, path=p: self.set_image(path))
+        if not recent:
+            self.recent_menu.addAction(tr("ui.recent_empty")).setEnabled(False)
+
+    def take_webcam_photo(self):
+        dlg = dialogs.WebcamDialog(os.path.join(app_settings().get("output_dir"), "_webcam"), self)
+        if dlg.exec() == QDialog.Accepted and dlg.path:
+            self.set_image(dlg.path)
+
     def browse_image(self):
         start = os.path.dirname(self.image_path) if self.image_path else os.path.expanduser("~")
         path, _ = QFileDialog.getOpenFileName(self, tr("ui.choose_image"), start, IMAGE_FILTER)
@@ -468,8 +507,9 @@ class StudioPage(QWidget):
         if not path or not os.path.isfile(path):
             return
         self.image_path = path
+        self._remember_recent(path)
         self.drop.set_image(path)
-        full = QImageReader(path).size()  # from the file header: the photo is decoded once, small
+        full = image_io.image_size(path)  # from the file header: the photo is decoded once, small
         pm = load_pixmap(path, DISPLAY_MAX)
         self.file_label.setText(f"{os.path.basename(path)}  ·  {full.width()}×{full.height()} px")
         self.file_label.setToolTip(path)
@@ -764,6 +804,17 @@ class StudioPage(QWidget):
             self.resume_banner.hide()
             self.toast.emit(tr("ui.resume.queued"), "info")
 
+    def relocate(self, old: str, new: str):
+        """The output folder moved with its results: show the same job and image from their new place."""
+        from ..storage import relocated
+
+        if self.view_dir:
+            moved = relocated(self.view_dir, old, new)
+            if moved != self.view_dir and os.path.isdir(moved):
+                self.show_job_dir(moved)
+        if self.image_path:
+            self.image_path = relocated(self.image_path, old, new)
+
     def forget_job_dir(self, job_dir: str):
         """A job folder was deleted in the gallery: stop showing its results and its saved input."""
         root = os.path.normcase(os.path.abspath(job_dir))
@@ -1039,7 +1090,7 @@ class StudioPage(QWidget):
             self._mask = None
             self._update_mask_preview()
             pm = load_pixmap(src, DISPLAY_MAX)
-            full = QImageReader(src).size()
+            full = image_io.image_size(src)
             text = f"{os.path.basename(src)}  ·  {full.width()}×{full.height()} px"
             if os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(target or "")):
                 text += f"  ·  {tr('ui.saved_copy')}"
@@ -1196,9 +1247,13 @@ class StudioPage(QWidget):
         method = self.params.method()
         if method == "swiftsketch":  # always 32 strokes
             return
-        for n in ((4, 8, 16, 32) if method == "clipasso" else (8, 16, 32, 64)):
+        one_line = method == "clipasso" and base.get("one_line")
+        for n in (16, 32, 64, 128) if one_line else (4, 8, 16, 32) if method == "clipasso" else (8, 16, 32, 64):
             s = dict(base)
-            if method == "clipasso":
+            if one_line:  # one line with more and more turns
+                s["one_line_segments"] = n
+                s["path_svg"] = "none"
+            elif method == "clipasso":
                 s["num_paths"] = n
                 s["path_svg"] = "none"
             else:
@@ -1262,30 +1317,9 @@ class StudioPage(QWidget):
 
     def _update_estimate(self):
         s = self.params.settings()
-        method = self.params.method()
-        rates = app_settings().get("sec_per_it", {}) or {}
         gpu = s["device"] == "cuda" or (s["device"] == "auto" and (self.device_badge.text().startswith("GPU")
                                                                   or methods_ui.has_cuda()))
-        dev = "cuda" if gpu else "cpu"
-        legacy = rates.get(dev) if method == "clipasso" else None  # measured by version 1.x
-        per_it = rates.get(f"{method}:{dev}", legacy or methods_ui.DEFAULT_SEC_PER_IT[(method, dev)])
-        if schema.turbo(s):
-            per_it = rates.get(f"{method}:{dev}:turbo", per_it * methods_ui.TURBO_SPEED[(method, dev)])
-        if method == "clipasso":
-            per_it *= (1 + s["num_aug_clip"]) / 5
-            if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
-                per_it *= 2
-        sketches = s["num_sketches"]
-        workers = runner.plan_workers(s, sketches, auto=app_settings().get("parallel_sketches", "auto") == "auto",
-                                      cuda=gpu)
-        if workers > 1:  # in parallel (each worker has fewer cores: not quite workers x faster)
-            sketches = math.ceil(sketches / workers) * 1.6
-        secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
-        if schema.turbo_prunes(s) and method == "clipasso":  # one after another, the weaker ones stop early
-            secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
-        if method == "scenesketch":
-            secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * len(
-                schema.scene_cells(s))
+        secs = methods_ui.estimate_seconds(s, gpu)
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))
 
     def _seed_caption(self, best_loss, clip_score, seed: int | None = None, pruned: bool = False) -> str:
@@ -1404,6 +1438,8 @@ class StudioPage(QWidget):
         self.open_btn.setText(tr("ui.open"))
         self.samples_btn.setText(tr("ui.samples"))
         self.edit_btn.setToolTip(tr("ui.edit_image.tip"))  # icon only: the row must fit the narrow column
+        self.recent_btn.setToolTip(tr("ui.recent"))
+        self.webcam_btn.setToolTip(tr("ui.webcam.tip"))
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(param_text_key(self.params.method(), key, "label")))
             lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
@@ -1474,6 +1510,16 @@ class StudioPage(QWidget):
         if not show and self.pen_btn.isChecked():
             self.pen_btn.setChecked(False)
         if seed is not None:
+            from .. import strokes
+
+            # a sketch of one line (one-line mode) has nothing to erase but the whole drawing
+            try:
+                single = strokes.count(self.seed_svgs[seed]) <= 1
+            except Exception:
+                single = False
+            self.eraser_btn.setEnabled(not single)
+            if single and self.eraser_btn.isChecked():
+                self.eraser_btn.setChecked(False)
             self.undo_btn.setEnabled(bool(self._edit_undo.get(seed)))
             self.redo_btn.setEnabled(bool(self._edit_redo.get(seed)))
             self.revert_btn.setEnabled(os.path.isfile(os.path.join(self.seed_runs[seed], jobs.EDITED_FILE)))

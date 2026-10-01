@@ -6,11 +6,56 @@ from __future__ import annotations
 import os
 from collections import OrderedDict
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QImageReader, QPixmap
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 
 _cache: OrderedDict = OrderedDict()
 KEEP = 512
+
+
+_sketches: OrderedDict = OrderedDict()
+
+
+def sketch_thumbnail(svg_path: str, size: int, style: str = "plain") -> QPixmap:
+    """A sketch file rendered at ``size`` px on white (2x for high-DPI screens) – kept in memory and on
+    disk (``cache/thumbs`` in the app data), so a gallery of hundreds of results opens quickly."""
+    import hashlib
+
+    from PySide6.QtGui import QColor
+
+    try:
+        st = os.stat(svg_path)
+    except OSError:
+        return QPixmap()
+    key = (os.path.normcase(os.path.abspath(svg_path)), st.st_mtime_ns, st.st_size, size, style)
+    pm = _sketches.get(key)
+    if pm is not None:
+        _sketches.move_to_end(key)
+        return pm
+    from .. import paths
+
+    folder = paths.user_data_dir() / "cache" / "thumbs"
+    disk = folder / (hashlib.sha1(repr(key).encode("utf-8")).hexdigest() + ".png")
+    pm = QPixmap(str(disk)) if disk.is_file() else QPixmap()
+    if pm.isNull():
+        from .widgets.canvas import render_svg_image, styled
+
+        try:
+            with open(svg_path, encoding="utf-8") as f:
+                svg = styled(f.read(), style)
+        except OSError:
+            return QPixmap()
+        img = render_svg_image(svg, size * 2, QColor("white"))
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            img.save(str(disk), "PNG")
+        except OSError:
+            pass
+        pm = QPixmap.fromImage(img)
+    _sketches[key] = pm
+    while len(_sketches) > KEEP:
+        _sketches.popitem(last=False)
+    return pm
 
 
 def thumbnail(path: str, size: int) -> QPixmap:
@@ -24,14 +69,9 @@ def thumbnail(path: str, size: int) -> QPixmap:
     if pm is not None:
         _cache.move_to_end(key)
         return pm
-    reader = QImageReader(path)
-    reader.setAutoTransform(True)  # EXIF orientation
-    full = reader.size()
-    if full.isValid() and full.width() > 0 and full.height() > 0:
-        scaled = full.scaled(QSize(size * 2, size * 2), Qt.KeepAspectRatio)  # 2x for high-DPI screens
-        if scaled.width() < full.width():
-            reader.setScaledSize(scaled)
-    img = reader.read()
+    from .image_io import read_image
+
+    img = read_image(path, size * 2)  # 2x for high-DPI screens; HEIC / AVIF through Pillow
     if img.isNull():
         return QPixmap()
     pm = QPixmap.fromImage(img).scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)

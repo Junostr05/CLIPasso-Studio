@@ -145,10 +145,13 @@ def _prepare(ctx: _Ctx) -> dict:
            s["split_scene"], s["resize_obj"], s.get("mask_model", "u2net"), masking.edited_stamp(ctx.target))
     if key in _cache:
         return _cache[key]
+    from ... import framing
+
     image = load_rgb(ctx.target)
     scene = pre.square_scene(image, bool(s["fix_scale"]))
     size = scene.size[0]
-    out = {"scene": scene, "object": None, "background": scene, "mask": None, "params": {}}
+    out = {"scene": scene, "object": None, "background": scene, "mask": None, "params": {},
+           "frame": framing.guess_frame("scenesketch", s, image.size)}
     if s["split_scene"]:
         ctx.reporter.event("stage", seed=ctx.cell, name="scene_mask")
         prob = pre.object_probability(image, scene, device, s.get("mask_model", "u2net"), bool(s["fix_scale"]))
@@ -643,7 +646,7 @@ def _write_cell(ctx: _Ctx, layer: int, level: int, bg: RunResult, obj: RunResult
               "object_strokes": len(obj.paths) if obj is not None else 0, "clip_score": clip_sc,
               "background_run": bg.run_dir, "object_run": obj.run_dir if obj is not None else None,
               "resize_params": inputs["params"], "best_iter": 10 ** 9, "seconds": seconds,
-              "settings": ctx.s, **extra}
+              "settings": ctx.s, "photo_frame": inputs.get("frame"), **extra}
     with open(os.path.join(cell_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, default=str)
     best_loss = round(1.0 - clip_sc / 100.0, 4) if clip_sc is not None else 1.0

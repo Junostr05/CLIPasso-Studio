@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from .. import settings_schema as schema
 from ..engine import model_store
 
@@ -82,3 +84,36 @@ def total_iterations(settings: dict) -> int:
 def uses_loss(method: str) -> bool:
     """CLIPasso optimises a CLIP loss it reports; the other methods are judged by the CLIP score."""
     return method == "clipasso"
+
+
+def estimate_seconds(settings: dict, gpu: bool | None = None) -> float:
+    """Expected run time of a job with these settings: measured seconds per iteration of earlier runs
+    (``sec_per_it``) or defaults, parallel sketches and turbo mode taken into account."""
+    from ..engine import runner
+    from .app_settings import app_settings
+
+    s = schema.normalize(settings)
+    method = schema.method_of(s)
+    if gpu is None:
+        gpu = s["device"] == "cuda" or (s["device"] == "auto" and has_cuda())
+    rates = app_settings().get("sec_per_it", {}) or {}
+    dev = "cuda" if gpu else "cpu"
+    legacy = rates.get(dev) if method == "clipasso" else None  # measured by version 1.x
+    per_it = rates.get(f"{method}:{dev}", legacy or DEFAULT_SEC_PER_IT[(method, dev)])
+    if schema.turbo(s):
+        per_it = rates.get(f"{method}:{dev}:turbo", per_it * TURBO_SPEED[(method, dev)])
+    if method == "clipasso":
+        per_it *= (1 + s["num_aug_clip"]) / 5
+        if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
+            per_it *= 2
+    sketches = s["num_sketches"]
+    workers = runner.plan_workers(s, sketches, auto=app_settings().get("parallel_sketches", "auto") == "auto",
+                                  cuda=gpu)
+    if workers > 1:  # in parallel (each worker has fewer cores: not quite workers x faster)
+        sketches = math.ceil(sketches / workers) * 1.6
+    secs = per_it * iterations(s) * sketches + SETUP_SECONDS[method] * s["num_sketches"]
+    if schema.turbo_prunes(s) and method == "clipasso":  # one after another, the weaker ones stop early
+        secs = per_it * total_iterations(s) + SETUP_SECONDS[method] * s["num_sketches"]
+    if method == "scenesketch":
+        secs = per_it * total_iterations(s) + SETUP_SECONDS[method] * len(schema.scene_cells(s))
+    return float(secs)

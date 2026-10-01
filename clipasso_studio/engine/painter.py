@@ -30,6 +30,8 @@ class Painter(torch.nn.Module):
         self.args = args
         self.num_paths = num_strokes
         self.num_segments = num_segments
+        # one-line mode: a single path with num_segments segments through num_segments + 1 start points
+        self.one_line = bool(getattr(args, "one_line", False))
         self.width = args.width
         self.control_points_per_seg = args.control_points_per_seg
         self.opacity_optim = args.force_sparse
@@ -116,6 +118,8 @@ class Painter(torch.nn.Module):
         return img
 
     def get_path(self):
+        if self.one_line:
+            return self._one_line_path()
         points = []
         self.num_control_points = torch.zeros(self.num_segments, dtype=torch.int32) + (self.control_points_per_seg - 2)
         p0 = self.inds_normalised[self.strokes_counter] if self.attention_init else (random.random(), random.random())
@@ -132,6 +136,25 @@ class Painter(torch.nn.Module):
         points[:, 1] *= self.canvas_height
 
         path = renderer.Path(num_control_points=self.num_control_points, points=points,
+                             stroke_width=torch.tensor(self.width, device=self.device), is_closed=False)
+        self.strokes_counter += 1
+        return path
+
+    def _one_line_path(self):
+        """One-line mode: one smooth cubic path through all start points, in the order of a short route."""
+        from ..curves import catmull_rom_bezier, order_points
+
+        n = self.num_segments + 1
+        if self.attention_init:
+            pts = [tuple(p) for p in self.inds_normalised[:n]]
+        else:
+            pts = [(random.random(), random.random()) for _ in range(n)]
+        pts = [(x * self.canvas_width, y * self.canvas_height) for x, y in pts]
+        segments = catmull_rom_bezier([pts[i] for i in order_points(pts)])
+        flat = [segments[0][0]] + [q for _, c1, c2, end in segments for q in (c1, c2, end)]
+        self.num_control_points = torch.zeros(len(segments), dtype=torch.int32) + 2
+        path = renderer.Path(num_control_points=self.num_control_points,
+                             points=torch.tensor(flat, dtype=torch.float32, device=self.device),
                              stroke_width=torch.tensor(self.width, device=self.device), is_closed=False)
         self.strokes_counter += 1
         return path
@@ -295,7 +318,8 @@ class Painter(torch.nn.Module):
         attn_map_soft = np.copy(attn_map)
         attn_map_soft[attn_map > 0] = self.softmax(attn_map[attn_map > 0], tau=self.softmax_temp)
 
-        k = self.num_stages * self.num_paths
+        stages, per_stage = self._start_points()
+        k = stages * per_stage
         p = attn_map_soft.flatten().astype(np.float64)
         p = np.nan_to_num(p)
         if np.count_nonzero(p) < k:  # too few candidate pixels: fall back to a slightly smoothed map
@@ -310,8 +334,15 @@ class Painter(torch.nn.Module):
         self.inds_normalised = self.inds_normalised.tolist()
         return attn_map_soft
 
+    def _start_points(self) -> tuple[int, int]:
+        """(stages, start points per stage): one per stroke – or all points of the one line."""
+        if self.one_line:
+            return 1, self.num_segments + 1
+        return self.num_stages, self.num_paths
+
     def set_inds_dino(self):
-        k = max(3, (self.num_stages * self.num_paths) // 6 + 1)  # sample top 3 three points from each attention head
+        stages, per_stage = self._start_points()
+        k = max(3, (stages * per_stage) // 6 + 1)  # sample top 3 three points from each attention head
         num_heads = self.attention_map.shape[0]
         self.inds = np.zeros((k * num_heads, 2))
         # "thresh" is used for visualisaiton purposes only
@@ -348,9 +379,9 @@ class Painter(torch.nn.Module):
         prob_sum = prob_sum + 1e-12
         prob_sum = prob_sum / prob_sum.sum()
         new_inds = []
-        replace = self.inds.shape[0] < self.num_paths
-        for _ in range(self.num_stages):
-            new_inds.extend(np.random.choice(range(self.inds.shape[0]), size=self.num_paths, replace=replace,
+        replace = self.inds.shape[0] < per_stage
+        for _ in range(stages):
+            new_inds.extend(np.random.choice(range(self.inds.shape[0]), size=per_stage, replace=replace,
                                              p=prob_sum))
         self.inds = self.inds[new_inds]
 

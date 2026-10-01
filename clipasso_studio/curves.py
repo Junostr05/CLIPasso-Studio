@@ -72,3 +72,37 @@ def bezier_d(segments: list[tuple[Point, Point, Point, Point]], digits: int = 3)
     for _, c1, c2, p in segments:
         parts.append(f"C {f(c1[0])} {f(c1[1])} {f(c2[0])} {f(c2[1])} {f(p[0])} {f(p[1])}")
     return " ".join(parts)
+
+
+def _dist(a: Point, b: Point) -> float:
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def order_points(points: list[Point], passes: int = 50) -> list[int]:
+    """A short open route through all points (indices): nearest neighbour from the leftmost point, then
+    improved with 2-opt moves. Deterministic (no random numbers)."""
+    n = len(points)
+    if n < 3:
+        return list(range(n))
+    start = min(range(n), key=lambda i: (points[i][0], points[i][1], i))
+    route, left = [start], set(range(n)) - {start}
+    while left:
+        last = points[route[-1]]
+        nxt = min(left, key=lambda i: (_dist(last, points[i]), i))
+        route.append(nxt)
+        left.remove(nxt)
+    p = [points[i] for i in route]
+    for _ in range(passes):
+        improved = False
+        for i in range(-1, n - 2):
+            for j in range(i + 2, n):
+                # reverse route[i+1 .. j]: edges (i, i+1) and (j, j+1) become (i, j) and (i+1, j+1)
+                before = (_dist(p[i], p[i + 1]) if i >= 0 else 0.0) + (_dist(p[j], p[j + 1]) if j < n - 1 else 0.0)
+                after = (_dist(p[i], p[j]) if i >= 0 else 0.0) + (_dist(p[i + 1], p[j + 1]) if j < n - 1 else 0.0)
+                if after < before - 1e-9:
+                    route[i + 1:j + 1] = route[i + 1:j + 1][::-1]
+                    p[i + 1:j + 1] = p[i + 1:j + 1][::-1]
+                    improved = True
+        if not improved:
+            break
+    return route

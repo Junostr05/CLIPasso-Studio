@@ -13,7 +13,7 @@ from .. import icons, theme
 from ..drop import IMAGE_EXT, dropped_images, has_images  # noqa: F401 (IMAGE_EXT re-exported)
 from ..i18n import tr
 
-IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.webp *.tif *.tiff)"
+IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.webp *.tif *.tiff *.gif *.heic *.heif *.avif)"
 
 
 def svg_renderer(svg: str | bytes | None) -> QSvgRenderer | None:
@@ -52,15 +52,11 @@ DISPLAY_MAX = 1600  # px: the longest side photos are decoded at for display
 
 
 def load_pixmap(path: str, max_side: int) -> QPixmap:
-    """An image file as a pixmap of at most ``max_side`` px (big photos are decoded smaller directly)."""
-    from PySide6.QtGui import QImageReader
+    """An image file as a pixmap of at most ``max_side`` px (big photos are decoded smaller directly;
+    HEIC / AVIF through Pillow)."""
+    from ..image_io import read_image
 
-    reader = QImageReader(path)
-    reader.setAutoTransform(True)
-    full = reader.size()
-    if full.isValid() and max(full.width(), full.height()) > max_side:
-        reader.setScaledSize(full.scaled(QSize(max_side, max_side), Qt.KeepAspectRatio))
-    img = reader.read()
+    img = read_image(path, max_side)
     return QPixmap.fromImage(img) if not img.isNull() else QPixmap()
 
 

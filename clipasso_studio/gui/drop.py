@@ -6,7 +6,7 @@ import os
 
 from ..engine import jobs
 
-IMAGE_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff")
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff", ".gif", ".heic", ".heif", ".avif")
 
 
 def image_files(folder: str, recursive: bool = False) -> list[str]:
@@ -16,7 +16,8 @@ def image_files(folder: str, recursive: bool = False) -> list[str]:
         if os.path.isfile(os.path.join(dirpath, "job.json")) or os.path.isfile(os.path.join(dirpath, jobs.STATE_FILE)):
             dirnames[:] = []
             continue
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith((".", "_edited", "_pasted")))
+        skip = (".", "_edited", "_pasted", "_webcam", "_continued")
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith(skip))
         out += [os.path.join(dirpath, f) for f in sorted(filenames, key=str.lower) if f.lower().endswith(IMAGE_EXT)]
         if not recursive:
             break

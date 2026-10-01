@@ -99,4 +99,5 @@ def run_gui(argv: list[str] | None = None) -> int:
     QTimer.singleShot(1200, lambda: crash.show_previous_crash(window))
     QTimer.singleShot(2500, window.check_interrupted_jobs)
     QTimer.singleShot(4000, window.start_update_check)
+    QTimer.singleShot(9000, window.remove_old_updates)
     return app.exec()

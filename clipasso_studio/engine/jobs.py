@@ -192,6 +192,26 @@ def write_state(job_dir: str, target: str, settings: dict, status: str = "runnin
     os.replace(tmp, path)
 
 
+def rebase(path: str, job_dir: str) -> str:
+    """A path saved inside a job folder, for where that folder is now: the files keep absolute paths,
+    and the output folder may have been moved (in the settings, or by hand)."""
+    if not path or os.path.exists(path):
+        return path
+    parts = [p for p in path.replace("\\", "/").split("/") if p]
+    name = os.path.basename(os.path.normpath(job_dir))
+    if name not in parts:
+        return path
+    i = len(parts) - 1 - parts[::-1].index(name)
+    return os.path.join(job_dir, *parts[i + 1:])
+
+
+def _rebase_run(run: dict, job_dir: str) -> dict:
+    for key in ("run_dir", "best_svg"):
+        if isinstance(run.get(key), str):
+            run[key] = rebase(run[key], job_dir)
+    return run
+
+
 def read_state(job_dir: str) -> dict | None:
     try:
         with open(os.path.join(job_dir, STATE_FILE), encoding="utf-8") as f:
@@ -203,6 +223,8 @@ def read_state(job_dir: str) -> dict | None:
     if isinstance(state.get("settings"), dict):
         state["settings"].setdefault("mask_model", "u2net")  # jobs from before 2.4 were masked with U2Net
         state["settings"].setdefault("frame_object", False)  # ... and not framed
+        if isinstance(state["settings"].get("path_svg"), str):  # input/init.svg of the job
+            state["settings"]["path_svg"] = rebase(state["settings"]["path_svg"], job_dir)
     return state
 
 
@@ -243,8 +265,8 @@ def saved_results(job_dir: str) -> dict[int, SeedResult]:
         path = os.path.join(job_dir, name, RESULT_FILE)
         try:
             with open(path, encoding="utf-8") as f:
-                result = SeedResult(**json.load(f))
-        except (OSError, ValueError, TypeError):
+                result = SeedResult(**_rebase_run(json.load(f), job_dir))
+        except (OSError, ValueError, TypeError, AttributeError):
             continue
         if os.path.isfile(result.best_svg):
             out[int(result.seed)] = result
@@ -269,6 +291,24 @@ def remaining_seeds(job_dir: str) -> list[int]:
     return [s for s in state.get("seeds", []) if s not in done]
 
 
+CHECKPOINT_FILE = "checkpoint.pt"  # (engine/checkpoint.py, without importing torch here)
+
+
+def drop_checkpoints(job_dir: str) -> int:
+    """Remove the checkpoints of the unfinished sketches of a job (they start again, e.g. with other
+    settings); finished sketches stay. Returns how many were removed."""
+    done = {os.path.normcase(os.path.abspath(r.run_dir)) for r in done_results(job_dir).values()}
+    removed = 0
+    for current, _dirs, files in os.walk(job_dir):
+        if CHECKPOINT_FILE in files and os.path.normcase(os.path.abspath(current)) not in done:
+            try:
+                os.remove(os.path.join(current, CHECKPOINT_FILE))
+                removed += 1
+            except OSError:
+                pass
+    return removed
+
+
 def can_continue(job_dir: str) -> bool:
     """Interrupted, cancelled or failed with work left."""
     state = read_state(job_dir)
@@ -283,6 +323,36 @@ def merge_results(old: dict[int, SeedResult], new: list[SeedResult]) -> list[See
         if r is not None:
             merged[int(r.seed)] = r
     return [merged[s] for s in sorted(merged)]
+
+
+META_FILE = "meta.json"  # the user's own data about a job (favourite, name, notes, tags) – kept on continue
+META_KEYS = ("favourite", "title", "notes", "tags")
+
+
+def read_meta(job_dir: str) -> dict:
+    try:
+        with open(os.path.join(job_dir, META_FILE), encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in meta.items() if k in META_KEYS} if isinstance(meta, dict) else {}
+
+
+def write_meta(job_dir: str, **changes) -> dict:
+    """Change the user's data of a job (a value of None removes it); returns all of it."""
+    meta = read_meta(job_dir)
+    for key, value in changes.items():
+        if key not in META_KEYS:
+            raise KeyError(key)
+        if value is None:
+            meta.pop(key, None)
+        else:
+            meta[key] = value
+    path = os.path.join(job_dir, META_FILE)
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
+    os.replace(path + ".tmp", path)
+    return meta
 
 
 def job_summary(job_dir: str) -> dict | None:
@@ -311,10 +381,15 @@ def job_summary(job_dir: str) -> dict | None:
                    "settings": state.get("settings", {}), "method": method,
                    "clip_score": best.clip_score if best else None, "best_svg": best.best_svg if best else "",
                    "best_run": best.run_name if best else "", "runs": [r.__dict__ for r in results]}
+    summary["best_svg"] = rebase(summary.get("best_svg") or "", job_dir)
+    for run in summary.get("runs") or []:
+        if isinstance(run, dict):
+            _rebase_run(run, job_dir)
     if state is not None:
         summary["state"] = state.get("status", "done")
         done, total = progress_of(job_dir)
         summary["progress"] = [done, total]
+    summary.update(read_meta(job_dir))  # (a favourite of version 2.x is still in job.json)
     return summary
 
 

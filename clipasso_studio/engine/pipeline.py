@@ -139,6 +139,9 @@ def build_args(settings: dict, target: str, seed: int, run_dir: str, device: tor
     for key in ("mask_object", "fix_scale", "attention_init", "xdog_intersec", "clip_conv_loss", "train_with_clip",
                 "include_target_in_aug", "augment_both", "force_sparse", "lr_scheduler"):
         args.__dict__[key] = int(bool(getattr(args, key)))
+    if args.one_line:  # one cubic path with one_line_segments segments through the salient points
+        args.num_paths, args.num_segments, args.num_stages = 1, int(args.one_line_segments), 1
+        args.control_points_per_seg, args.force_sparse = 4, 0
     return args
 
 
@@ -156,17 +159,24 @@ def _canvas_transform(size, scale: int, nearest: bool = False):
 
 def get_target(args, u2net=None):
     """-> (target tensor [1,3,S,S], mask tensor [S,S], masked PIL, mask PIL) like the original get_target."""
+    from . import framing
+
     target = load_rgb(args.target)
+    photo, region, pad = target.size, None, None
     # an unused mask is only shown in the mask view: the bundled U2Net, as before
     model = getattr(args, "mask_model", "u2net") if args.mask_object or args.mask_object_attention else "u2net"
     masked_im, mask_img = masking.get_mask(args.device, target, model, net=u2net if model == "u2net" else None)
     if args.mask_object:
         target = masked_im
         if getattr(args, "frame_object", False):  # small objects fill the canvas
-            target, mask_img, _ = imaging.frame_object(target, mask_img)
+            box = imaging.frame_box(mask_img)
+            target, mask_img, framed = imaging.frame_object(target, mask_img)
+            region = box if framed else None
     if args.fix_scale:
+        pad = framing.fix_scale_pad(*target.size)
         target = imaging.fix_image_scale(target)
         mask_img = imaging.fix_image_scale(mask_img, fill=0)
+    args.photo_frame = framing.photo_frame(photo, region, pad)  # where the photo lies on the canvas (export)
 
     target_ = _canvas_transform(target.size, args.image_scale)(target).unsqueeze(0).to(args.device)
     mask_t = _canvas_transform(mask_img.size, args.image_scale, nearest=True)(mask_img)[0]

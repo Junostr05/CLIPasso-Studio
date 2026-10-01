@@ -14,7 +14,7 @@ from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
-from ..engine import jobs
+from ..engine import framing, jobs
 from ..engine.errors import UserError
 from .brush import stylize_svg
 
@@ -43,15 +43,60 @@ def restyle_svg(svg: str, stroke_color: str | None = None, width_scale: float = 
     return ET.tostring(root, encoding="unicode")
 
 
-def svg_to_qimage(svg: str, size: int, background: QColor | None) -> QImage:
+def _dims(renderer: QSvgRenderer, size: int) -> tuple[int, int]:
+    box = renderer.viewBoxF()
+    if box.width() <= 0 or box.height() <= 0:
+        return size, size
+    aspect = box.width() / box.height()
+    return (size, max(1, round(size / aspect))) if aspect >= 1 else (max(1, round(size * aspect)), size)
+
+
+def svg_dims(svg: str, size: int) -> tuple[int, int]:
+    """Pixel size of a sketch rendered with its longer side ``size`` (in the shape of its viewBox)."""
+    return _dims(QSvgRenderer(QByteArray(svg.encode("utf-8"))), size)
+
+
+def svg_to_qimage(svg: str, size: int, background: QColor | None, canvas: tuple[int, int] | None = None) -> QImage:
+    """The sketch with its longer side ``size`` px; ``canvas``: a larger image it is centred on."""
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
-    img = QImage(size, size, QImage.Format_ARGB32)
+    w, h = _dims(renderer, size)
+    cw, ch = canvas or (w, h)
+    img = QImage(cw, ch, QImage.Format_ARGB32)
     img.fill(background if background is not None else QColor(0, 0, 0, 0))
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
-    renderer.render(p, QRectF(0, 0, size, size))
+    renderer.render(p, QRectF((cw - w) / 2, (ch - h) / 2, w, h))
     p.end()
     return img
+
+
+def run_dir_of(svg_path: str) -> str:
+    """The run folder a sketch file belongs to (also for the ``<run>_best.svg`` copy in the job folder)."""
+    folder = os.path.dirname(os.path.abspath(svg_path))
+    if os.path.isfile(os.path.join(folder, "config.json")):
+        return folder
+    summary = jobs.job_summary(folder) or {}
+    for r in summary.get("runs", []):
+        if r.get("run_name") == summary.get("best_run") and r.get("run_dir"):
+            return r["run_dir"]
+    return folder
+
+
+def framing_for(svg_path: str, frame: str = "square", margin: float = framing.DEFAULT_MARGIN,
+                svg: str | None = None):
+    """The export frame of a sketch: "square" (None: as drawn), "photo" (the shape of the original photo;
+    None when it is not known) or "content" (cropped to the strokes with ``margin``)."""
+    if frame not in ("photo", "content"):
+        return None
+    if svg is None:
+        with open(svg_path, encoding="utf-8") as f:
+            svg = f.read()
+    known = framing.run_frame(run_dir_of(svg_path)) if frame == "photo" else None
+    return framing.make_framing(svg, frame, known, margin)
+
+
+def _framed(svg: str, fr) -> str:
+    return fr.apply(svg) if fr is not None else svg
 
 
 def qimage_to_pil(img: QImage) -> Image.Image:
@@ -62,11 +107,13 @@ def qimage_to_pil(img: QImage) -> Image.Image:
 
 
 def export_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_scale: float = 1.0,
-               background: str | None = None, style: str = "plain") -> None:
+               background: str | None = None, style: str = "plain", frame: str = "square",
+               margin: float = framing.DEFAULT_MARGIN) -> None:
     with open(src_svg, encoding="utf-8") as f:
         svg = f.read()
+    fr = framing_for(src_svg, frame, margin, svg)
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(stylize_svg(restyle_svg(svg, stroke_color, width_scale, background), style))
+        f.write(stylize_svg(_framed(restyle_svg(svg, stroke_color, width_scale, background), fr), style))
 
 
 def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: float = 1.0) -> str:
@@ -102,17 +149,22 @@ def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: flo
 
 
 def export_single_layer_svg(src_svg: str, dest: str, stroke_color: str | None = None,
-                            width_scale: float = 1.0) -> None:
+                            width_scale: float = 1.0, frame: str = "square",
+                            margin: float = framing.DEFAULT_MARGIN) -> None:
     with open(src_svg, encoding="utf-8") as f:
         svg = f.read()
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(single_layer_svg(svg, stroke_color, width_scale))
+        f.write(single_layer_svg(_framed(svg, framing_for(src_svg, frame, margin, svg)), stroke_color, width_scale))
 
 
 def export_png(src_svg: str, dest: str, size: int = 1024, stroke_color: str | None = None,
-               width_scale: float = 1.0, background: str | None = "#FFFFFF", style: str = "plain") -> None:
+               width_scale: float = 1.0, background: str | None = "#FFFFFF", style: str = "plain",
+               frame: str = "square", margin: float = framing.DEFAULT_MARGIN) -> None:
+    """PNG with its longer side ``size`` px (square unless ``frame`` gives it another shape)."""
     with open(src_svg, encoding="utf-8") as f:
-        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
+        raw = f.read()
+    svg = stylize_svg(_framed(restyle_svg(raw, stroke_color, width_scale), framing_for(src_svg, frame, margin, raw)),
+                      style)
     bg = QColor(background) if background else None
     svg_to_qimage(svg, size, bg).save(dest)
 
@@ -121,13 +173,16 @@ PDF_WIDTH_CM = 15.0
 
 
 def export_pdf(src_svg: str, dest: str, width_cm: float = PDF_WIDTH_CM, stroke_color: str | None = None,
-               width_scale: float = 1.0, background: str | None = None, style: str = "plain") -> None:
+               width_scale: float = 1.0, background: str | None = None, style: str = "plain",
+               frame: str = "square", margin: float = framing.DEFAULT_MARGIN) -> None:
     """Vector PDF of the sketch (one page in the sketch's aspect ratio, ``width_cm`` wide) – for printing."""
     from PySide6.QtCore import QMarginsF, QSizeF
     from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
 
     with open(src_svg, encoding="utf-8") as f:
-        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
+        raw = f.read()
+    svg = stylize_svg(_framed(restyle_svg(raw, stroke_color, width_scale), framing_for(src_svg, frame, margin, raw)),
+                      style)
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
     box = renderer.viewBoxF()
     aspect = box.height() / box.width() if box.width() > 0 and box.height() > 0 else 1.0
@@ -151,13 +206,16 @@ CLIPBOARD_MARK = "application/x-clipasso-studio"  # recognises our own clipboard
 
 
 def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None, width_scale: float = 1.0,
-                background: str | None = "#FFFFFF", style: str = "plain"):
+                background: str | None = "#FFFFFF", style: str = "plain", frame: str = "square",
+                margin: float = framing.DEFAULT_MARGIN):
     """Clipboard content of a sketch: a PNG image and the SVG (``image/svg+xml``). No plain text –
     word processors would paste the SVG code instead of the picture."""
     from PySide6.QtCore import QMimeData
 
     with open(svg_path, encoding="utf-8") as f:
-        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
+        raw = f.read()
+    svg = stylize_svg(_framed(restyle_svg(raw, stroke_color, width_scale), framing_for(svg_path, frame, margin, raw)),
+                      style)
     data = QMimeData()
     data.setImageData(svg_to_qimage(svg, size, QColor(background) if background else None))
     with_bg = stylize_svg(restyle_svg(svg, None, 1.0, background), "plain") if background else svg
@@ -232,11 +290,12 @@ def _one_colour(svg: str) -> bool:
     return colours <= _BLACK
 
 
-def _ink(svg: str, size: int, width_scale: float, style: str = "plain"):
+def _ink(svg: str, size: int, width_scale: float, style: str = "plain", canvas: tuple[int, int] | None = None):
     """Rendered strokes as palette steps 0 (background) .. INK_LEVELS - 1 (full stroke colour)."""
     import numpy as np
 
-    img = svg_to_qimage(stylize_svg(restyle_svg(svg, "#000000", width_scale), style), size, QColor("#FFFFFF"))
+    img = svg_to_qimage(stylize_svg(restyle_svg(svg, "#000000", width_scale), style), size, QColor("#FFFFFF"),
+                        canvas)
     grey = np.asarray(qimage_to_pil(img).convert("L"), dtype=np.uint16)
     return (((255 - grey) * (INK_LEVELS - 1) + 127) // 255).astype(np.uint8)
 
@@ -258,7 +317,8 @@ def _ink_palette(stroke: QColor, background: QColor | None) -> tuple[list[int], 
 
 def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, stroke_color: str | None = None,
                      width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
-                     length: float | None = None, hold: float = 1.0, style: str = "plain") -> int:
+                     length: float | None = None, hold: float = 1.0, style: str = "plain", frame: str = "square",
+                     margin: float = framing.DEFAULT_MARGIN) -> int:
     """GIF / WebP / MP4 of the drawing process (format from the file extension); returns the number
     of frames. The drawing takes ``length`` seconds (default: one drawn frame per 1/``fps`` s) plus
     ``hold`` seconds on the final sketch. ``progress(i, n)`` per drawn frame, ``progress(0, 0)`` while
@@ -267,10 +327,12 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
     frames = animation_frames(run_dir)
     if not frames:
         raise UserError("export_no_logs", "no intermediate SVGs (svg_logs) found")
+    final = jobs.sketch_file(run_dir)
+    fr = framing_for(final if os.path.isfile(final) else frames[-1], frame, margin)  # the same for every frame
 
     def read(i):
         with open(frames[i], encoding="utf-8") as f:
-            return f.read()
+            return _framed(f.read(), fr)
 
     return _encode(read, len(frames), dest, size, fps, stroke_color, width_scale, background, progress, cancel,
                    length, hold, style)
@@ -295,12 +357,14 @@ def _encode(read, n: int, dest: str, size: int, fps: float, stroke_color: str | 
         bg = QColor("#FFFFFF")
     pal, alpha = _ink_palette(QColor(stroke_color or "#000000"), bg)
     lut = np.array(pal, dtype=np.uint8).reshape(-1, 3)
+    w, h = svg_dims(read(n - 1), size)
+    canvas = (w + (-w) % 16, h + (-h) % 16) if fmt == "mp4" else None  # the video codec wants multiples of 16
 
     def render(i):
         svg = read(i)
         if ink:
-            return _ink(svg, size, width_scale, style)
-        img = svg_to_qimage(stylize_svg(restyle_svg(svg, stroke_color, width_scale), style), size, bg)
+            return _ink(svg, size, width_scale, style, canvas)
+        img = svg_to_qimage(stylize_svg(restyle_svg(svg, stroke_color, width_scale), style), size, bg, canvas)
         return qimage_to_pil(img).convert("RGBA" if bg is None else "RGB")
 
     try:
@@ -400,6 +464,14 @@ class Drawing:
             self.spans.append((t, t + st["len"]))
             t += st["len"] + lift
         self.total = max(t - lift, 1e-9)
+        try:
+            from .strokes import view_box
+
+            width = view_box(svg)[2]
+        except (ValueError, ET.ParseError):
+            width = 224.0
+        # a sketch of one line (one-line mode): its length in canvas widths, for the duration of the drawing
+        self.line = self.total / max(width, 1e-9) if len(self.strokes) == 1 else 0.0
 
     @staticmethod
     def _route(strokes: list[dict]) -> list[dict]:
@@ -467,26 +539,40 @@ class Drawing:
         return self.head + "".join(body) + "</svg>"
 
 
-def default_drawing_length(strokes: int) -> float:
-    """Seconds for a stroke-by-stroke drawing: about a quarter second per stroke, 2 – 12 s."""
-    return round(min(12.0, max(2.0, strokes * 0.25)) * 2) / 2
+def default_drawing_length(strokes: int, line: float = 0.0) -> float:
+    """Seconds for a stroke-by-stroke drawing: about a quarter second per stroke, 2 – 12 s; a sketch of a
+    single line (``line``: its length in canvas widths) about 0.6 s per canvas width."""
+    seconds = line * 0.6 if strokes == 1 and line > 0 else strokes * 0.25
+    return round(min(12.0, max(2.0, seconds)) * 2) / 2
+
+
+def drawing_length(svg_path: str) -> float:
+    """The default duration of the stroke-by-stroke drawing of a sketch file."""
+    try:
+        with open(svg_path, encoding="utf-8") as f:
+            drawing = Drawing(f.read(), keep_order=True)
+    except (OSError, ET.ParseError, ValueError):
+        return default_drawing_length(0)
+    return default_drawing_length(len(drawing.strokes), drawing.line)
 
 
 def export_drawing(svg_path: str, dest: str, size: int = 512, stroke_color: str | None = None,
                    width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
                    length: float | None = None, hold: float = 1.0, style: str = "plain",
-                   keep_order: bool | None = None) -> int:
+                   keep_order: bool | None = None, frame: str = "square",
+                   margin: float = framing.DEFAULT_MARGIN) -> int:
     """GIF / WebP / MP4 in which the finished sketch (with eraser edits) is drawn stroke by stroke.
     ``keep_order``: draw in the order of the SVG (ControlSketch sorts its strokes outline first) –
     by default for ControlSketch runs, otherwise along a short route."""
     with open(svg_path, encoding="utf-8") as f:
         svg = f.read()
+    svg = _framed(svg, framing_for(svg_path, frame, margin, svg))
     if keep_order is None:
         keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
     drawing = Drawing(svg, keep_order)
     if not drawing.strokes:
         raise UserError("export_no_strokes", "the sketch has no strokes")
-    length = default_drawing_length(len(drawing.strokes)) if length is None else length
+    length = default_drawing_length(len(drawing.strokes), drawing.line) if length is None else length
     n = max(2, round(length * DRAW_STEPS_PER_SECOND))
     return _encode(lambda i: drawing.frame((i + 1) / n), n, dest, size, n / length, stroke_color, width_scale,
                    background, progress, cancel, length, hold, style)
@@ -499,7 +585,7 @@ def animated_svg(svg: str, length: float | None = None, hold: float = 1.0, strok
     brush style – is uncovered by a mask whose centre line grows along the stroke."""
     drawing = Drawing(svg, keep_order)
     n = len(drawing.strokes)
-    length = default_drawing_length(n) if length is None else max(float(length), 0.1)
+    length = default_drawing_length(n, drawing.line) if length is None else max(float(length), 0.1)
     cycle = length + max(float(hold), 0.0)
     styled = []
     for st in drawing.strokes:
@@ -531,9 +617,11 @@ def animated_svg(svg: str, length: float | None = None, hold: float = 1.0, strok
 
 def export_animated_svg(svg_path: str, dest: str, length: float | None = None, hold: float = 1.0,
                         stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
-                        style: str = "plain", keep_order: bool | None = None) -> None:
+                        style: str = "plain", keep_order: bool | None = None, frame: str = "square",
+                        margin: float = framing.DEFAULT_MARGIN) -> None:
     with open(svg_path, encoding="utf-8") as f:
         svg = f.read()
+    svg = _framed(svg, framing_for(svg_path, frame, margin, svg))
     if keep_order is None:
         keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
     with open(dest, "w", encoding="utf-8") as f:
@@ -663,9 +751,11 @@ def _unique(path: str) -> str:
 
 def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", size: int = 1024,
                  stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
-                 style: str = "plain", progress=None, cancel=None) -> int:
+                 style: str = "plain", progress=None, cancel=None, frame: str = "square",
+                 margin: float = framing.DEFAULT_MARGIN) -> int:
     """Export the best sketch (touched up, if it was) of several jobs into ``folder`` as
-    ``<image>_<method>.<ext>``; returns the number of files written."""
+    ``<image>_<method>.<ext>``; returns the number of files written. ``frame``: see :func:`framing_for`
+    (a sketch whose photo shape is not known stays square)."""
     os.makedirs(folder, exist_ok=True)
     written = 0
     for n, (job_dir, summary) in enumerate(items):
@@ -679,14 +769,15 @@ def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", s
         suffix = "_1layer" if fmt == "svg1" else ""
         ext = fmt if fmt in ("png", "pdf") else "svg"
         dest = _unique(os.path.join(folder, f"{stem}_{method}{suffix}.{ext}"))
+        shape = {"frame": frame, "margin": margin}
         if fmt == "png":
-            export_png(src, dest, size, stroke_color, width_scale, background, style)  # None: transparent
+            export_png(src, dest, size, stroke_color, width_scale, background, style, **shape)  # None: transparent
         elif fmt == "pdf":
-            export_pdf(src, dest, PDF_WIDTH_CM, stroke_color, width_scale, background, style)
+            export_pdf(src, dest, PDF_WIDTH_CM, stroke_color, width_scale, background, style, **shape)
         elif fmt == "svg1":
-            export_single_layer_svg(src, dest, stroke_color, width_scale)
+            export_single_layer_svg(src, dest, stroke_color, width_scale, **shape)
         else:
-            export_svg(src, dest, stroke_color, width_scale, background, style)
+            export_svg(src, dest, stroke_color, width_scale, background, style, **shape)
         written += 1
         if progress:
             progress(n + 1, len(items))

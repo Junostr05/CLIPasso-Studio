@@ -2,26 +2,25 @@
 
 from __future__ import annotations
 
-import json
 import os
 import platform
 import shutil
 from pathlib import Path
 
-from PySide6.QtCore import QFile, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QFile, QStandardPaths, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPixmap
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QMenu, QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QMessageBox, QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
-from ...engine import jobs, model_store
+from ...engine import imaging, jobs, model_store
 from .. import crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
-from ..widgets.canvas import IMAGE_FILTER, SketchCanvas
+from ..widgets.canvas import IMAGE_FILTER
 from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 
 try:
@@ -85,13 +84,25 @@ def method_badge(method: str) -> QLabel:
 
 
 # ====================================================================== queue
+QUEUE_MIME = "application/x-clipasso-queue-job"
+
+
 class QueueRow(Card):
+    """One job of the queue: preview, name, progress, status and its controls. Waiting jobs can be
+    dragged to another place; a click shows its details."""
+
+    selected = Signal(int)
+
     def __init__(self, job: QueuedJob, controller: JobController, parent=None):
         super().__init__(parent, flat=True, margins=12, spacing=8)
         self.job = job
         self.controller = controller
+        self._press = None
         row = QHBoxLayout()
         row.setSpacing(12)
+        self.grip = QLabel()
+        self.grip.setFixedWidth(16)
+        row.addWidget(self.grip)
         thumb = QLabel()
         pm = thumbs.thumbnail(job.target, 56)  # decoded small and kept (rows are rebuilt often)
         if not pm.isNull():
@@ -102,13 +113,12 @@ class QueueRow(Card):
         info = QVBoxLayout()
         info.setSpacing(3)
         self.name = label(job.name, "h3")
-        s = job.settings
-        self.details = label(tr("ui.queue.details", strokes=schema.num_strokes(s), iters=methods_ui.iterations(s),
-                                sketches=s["num_sketches"]), "faint")
+        self.details = label("", "faint")
         name_row = QHBoxLayout()
         name_row.setSpacing(8)
         name_row.addWidget(self.name)
-        name_row.addWidget(method_badge(schema.method_of(s)))
+        self.method = method_badge(schema.method_of(job.settings))
+        name_row.addWidget(self.method)
         name_row.addStretch(1)
         info.addLayout(name_row)
         info.addWidget(self.details)
@@ -120,6 +130,12 @@ class QueueRow(Card):
         row.addLayout(info, 1)
         self.badge = label("", "badge")
         row.addWidget(self.badge, 0, Qt.AlignVCenter)
+        self.pause = tool_button("pause", tr("ui.pause"))
+        self.pause.clicked.connect(self._pause)
+        self.cancel = tool_button("square", tr("ui.queue.cancel"))
+        self.cancel.clicked.connect(self._cancel)
+        self.retry = tool_button("rotate-ccw", tr("ui.queue.retry"))
+        self.retry.clicked.connect(lambda: controller.retry(job.id))
         self.up = tool_button("chevron-up", tr("ui.queue.up"))
         self.up.clicked.connect(lambda: controller.move(job.id, -1))
         self.down = tool_button("chevron-down", tr("ui.queue.down"))
@@ -128,33 +144,147 @@ class QueueRow(Card):
         self.folder.clicked.connect(self._open)
         self.remove = tool_button("trash-2", tr("ui.queue.remove"))
         self.remove.clicked.connect(lambda: controller.remove(job.id))
-        for b in (self.up, self.down, self.folder, self.remove):
+        for b in (self.pause, self.cancel, self.retry, self.up, self.down, self.folder, self.remove):
             row.addWidget(b)
         self.body.addLayout(row)
+        self.setCursor(Qt.PointingHandCursor)
         self.refresh()
 
     def _open(self):
         if self.job.job_dir and os.path.isdir(self.job.job_dir):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.job.job_dir))
 
+    def _pause(self):
+        if self.job is self.controller.current:
+            if self.job.status == "paused":
+                self.controller.resume()
+            else:
+                self.controller.pause()
+
+    def _cancel(self):
+        if self.job is self.controller.current and QMessageBox.question(
+                self, tr("ui.cancel_run"), tr("ui.cancel_run_question")) == QMessageBox.Yes:
+            self.controller.cancel()
+
+    def set_selected(self, on: bool):
+        color = theme.current().accent if on else theme.current().border
+        self.setStyleSheet(f"QFrame#CardFlat {{ border: {2 if on else 1}px solid {color}; }}")
+
     def refresh(self):
         j = self.job
+        s = j.settings
+        details = tr("ui.queue.details", strokes=schema.num_strokes(s), iters=methods_ui.iterations(s),
+                     sketches=s["num_sketches"])
+        if j.resume_dir and j.status == "queued":
+            details += "  ·  " + tr("ui.queue.continues")
+        self.details.setText(details)
         self.bar.setValue(int(j.progress * 1000) if j.status != "done" else 1000)
         self.badge.setText(tr(f"ui.jobstatus.{j.status}"))
         self.badge.setProperty("role", _status_role(j.status))
         self.badge.style().unpolish(self.badge)
         self.badge.style().polish(self.badge)
         queued = j.status == "queued"
-        self.up.setEnabled(queued)
-        self.down.setEnabled(queued)
-        self.remove.setEnabled(j.status not in ("running", "paused"))
+        live = j.status in ("running", "paused")
+        # the grip only for waiting jobs (its place stays, so all rows line up)
+        self.grip.setPixmap(icons.pixmap("grip-vertical", theme.current().faint, 16) if queued else QPixmap())
+        self.up.setVisible(queued)
+        self.down.setVisible(queued)
+        self.pause.setVisible(live)
+        self.cancel.setVisible(live)
+        self.retry.setVisible(j.status in ("failed", "cancelled"))
+        p = theme.current()
+        self.pause.setIcon(icons.icon("play" if j.status == "paused" else "pause", p.muted, active_color=p.text))
+        self.pause.setToolTip(tr("ui.resume") if j.status == "paused" else tr("ui.pause"))
+        self.remove.setEnabled(not live)
         self.folder.setEnabled(bool(j.job_dir))
-        if j.message and j.status == "failed":
-            self.details.setToolTip(j.message)
+        self.details.setToolTip(j.message if j.message and j.status == "failed" else "")
+
+    # drag a waiting job to another place; a click selects it
+    def mousePressEvent(self, e):  # noqa: N802
+        if e.button() == Qt.LeftButton:
+            self._press = e.position().toPoint()
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):  # noqa: N802
+        if self._press is not None and self.job.status == "queued" and \
+                (e.position().toPoint() - self._press).manhattanLength() >= QApplication.startDragDistance():
+            self._press = None
+            from PySide6.QtCore import QMimeData
+            from PySide6.QtGui import QDrag
+
+            drag = QDrag(self)
+            data = QMimeData()
+            data.setData(QUEUE_MIME, str(self.job.id).encode("ascii"))
+            drag.setMimeData(data)
+            drag.setPixmap(self.grab().scaledToWidth(min(self.width(), 420), Qt.SmoothTransformation))
+            drag.exec(Qt.MoveAction)
+            return
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):  # noqa: N802
+        if self._press is not None and e.button() == Qt.LeftButton:
+            self.selected.emit(self.job.id)
+        self._press = None
+        super().mouseReleaseEvent(e)
+
+
+class QueueDetails(Card):
+    """The selected job: its settings that differ from the defaults, and what can be done with it."""
+
+    load = Signal(int)  # load the job's image and settings into the studio
+    replace = Signal(int)  # give the job the studio's current settings
+
+    def __init__(self, parent=None):
+        super().__init__(parent, margins=16, spacing=10)
+        self.setFixedWidth(320)
+        self.job: QueuedJob | None = None
+        self.title = label("", "h2", wrap=True)
+        self.status = label("", "muted", wrap=True)
+        self.message = label("", "faint", wrap=True)
+        self.heading = label("", "h3")
+        self.changes = label("", "muted", wrap=True)
+        self.changes.setTextFormat(Qt.PlainText)
+        self.load_btn = button("", "brush", "primary", size="sm")
+        self.load_btn.clicked.connect(lambda: self.job and self.load.emit(self.job.id))
+        self.replace_btn = button("", "refresh-cw", "ghost", size="sm")
+        self.replace_btn.clicked.connect(lambda: self.job and self.replace.emit(self.job.id))
+        for w in (self.title, self.status, self.message, self.heading, self.changes, self.load_btn,
+                  self.replace_btn):
+            self.body.addWidget(w)
+        self.body.addStretch(1)
+
+    def show_job(self, job: QueuedJob | None):
+        from ..widgets.param_panel import param_text_key
+
+        self.job = job
+        self.setVisible(job is not None)
+        if job is None:
+            return
+        s = job.settings
+        method = schema.method_of(s)
+        self.title.setText(job.name)
+        self.status.setText(f"{methods_ui.name(method)} · {tr(f'ui.jobstatus.{job.status}')}")
+        self.message.setText(job.message if job.status == "failed" else "")
+        self.message.setVisible(bool(self.message.text()))
+        defaults = schema.default_settings(method)
+        lines = []
+        for key in schema.changed_keys(s):
+            name = tr(param_text_key(method, key, "label"))
+            value, default = s[key], defaults[key]
+            if isinstance(value, bool):
+                value, default = tr("ui.on") if value else tr("ui.off"), tr("ui.on") if default else tr("ui.off")
+            lines.append(f"{name}: {value}  ({tr('ui.queue.default')} {default})")
+        self.heading.setText(tr("ui.queue.changed_settings"))
+        self.changes.setText("\n".join(lines) if lines else tr("ui.queue.all_defaults"))
+        self.load_btn.setText(tr("ui.queue.load_in_studio"))
+        self.replace_btn.setText(tr("ui.queue.replace_settings"))
+        self.replace_btn.setToolTip(tr("ui.queue.replace_settings_tip"))
+        self.replace_btn.setVisible(job.status == "queued" and not job.resume_dir)
 
 
 class QueuePage(QWidget):
     open_in_studio = Signal(str)
+    load_in_studio = Signal(str, dict)  # (image, settings) of a queued job
     toast = Signal(str, str)
 
     def __init__(self, controller: JobController, settings_provider, parent=None):
@@ -193,6 +323,9 @@ class QueuePage(QWidget):
         opts.addWidget(self.auto)
         opts.addWidget(self.auto_label)
         opts.addStretch(1)
+        self.total = label("", "muted")  # how long the whole queue still takes
+        opts.addWidget(self.total)
+        opts.addSpacing(16)
         # what the PC does when the last job is done (this session only – reset after it ran)
         self.done_label = label("", "muted")
         self.done_combo = QComboBox()
@@ -207,11 +340,25 @@ class QueuePage(QWidget):
         self.done_combo.setVisible(power.available())
         root.addLayout(opts)
         host = QWidget()
+        host.setAcceptDrops(True)
+        self.list_host = host
         self.list_lay = QVBoxLayout(host)
         self.list_lay.setContentsMargins(0, 0, 8, 0)
         self.list_lay.setSpacing(8)
         self.list_lay.addStretch(1)
-        root.addWidget(_scroll(host), 1)
+        body = QHBoxLayout()
+        body.setSpacing(14)
+        body.addWidget(_scroll(host), 1)
+        self.detail = QueueDetails()
+        self.detail.load.connect(self._load_in_studio)
+        self.detail.replace.connect(self._replace_settings)
+        self.detail.setVisible(False)
+        body.addWidget(self.detail)
+        root.addLayout(body, 1)
+        self.selected_id: int | None = None
+        self._eta_timer = QTimer(self, interval=2000)  # the remaining time of the whole queue
+        self._eta_timer.timeout.connect(self._update_total)
+        self._eta_timer.start()
         self.empty = label("", "muted")
         self.empty.setAlignment(Qt.AlignCenter)
         root.addWidget(self.empty)
@@ -254,10 +401,32 @@ class QueuePage(QWidget):
         return len(paths)
 
     def dragEnterEvent(self, e):  # noqa: N802
-        if has_images(e.mimeData()):
+        if has_images(e.mimeData()) or e.mimeData().hasFormat(QUEUE_MIME):
             e.acceptProposedAction()
 
+    def dragMoveEvent(self, e):  # noqa: N802
+        if e.mimeData().hasFormat(QUEUE_MIME):
+            e.acceptProposedAction()
+
+    def drop_index(self, y: int) -> int:
+        """Queue position for a job dropped at height ``y`` (in the list's coordinates)."""
+        for i, job in enumerate(self.controller.jobs):
+            row = self.rows.get(job.id)
+            if row is not None and y < row.y() + row.height() / 2:
+                return i
+        return len(self.controller.jobs)
+
     def dropEvent(self, e):  # noqa: N802
+        if e.mimeData().hasFormat(QUEUE_MIME):  # a waiting job moved to another place
+            job_id = int(bytes(e.mimeData().data(QUEUE_MIME)).decode("ascii"))
+            y = self.list_host.mapFrom(self, e.position().toPoint()).y()
+            index = self.drop_index(y)
+            old = next((i for i, j in enumerate(self.controller.jobs) if j.id == job_id), None)
+            if old is not None and index > old:
+                index -= 1
+            self.controller.move_to(job_id, index)
+            e.acceptProposedAction()
+            return
         paths = dropped_images(e.mimeData())
         if paths:
             e.acceptProposedAction()
@@ -293,9 +462,14 @@ class QueuePage(QWidget):
             row = self.rows.get(job.id)
             if row is None:
                 row = self.rows[job.id] = QueueRow(job, self.controller)
+                row.selected.connect(self.select_job)
             if self.list_lay.indexOf(row) != i:
                 self.list_lay.insertWidget(i, row)
             row.refresh()
+        if self.selected_id not in self.rows:
+            self.selected_id = None
+        self.select_job(self.selected_id)
+        self._update_total()
         self.empty.setVisible(not self.controller.jobs)
         self.run_btn.setEnabled(bool(self.controller.pending()) and not self.controller.is_busy())
         self.export_btn.setEnabled(any(j.status in ("done", "cancelled") and j.job_dir for j in self.controller.jobs))
@@ -303,6 +477,31 @@ class QueuePage(QWidget):
     def _on_event(self, job, kind, data):
         if kind in ("iteration", "seed_done", "job_done") and job.id in self.rows:
             self.rows[job.id].refresh()
+
+    def select_job(self, job_id: int | None):
+        """Show the details of a job (None: none)."""
+        if job_id is not None and job_id == self.selected_id and self.detail.isVisible() and \
+                self.sender() is not None and isinstance(self.sender(), QueueRow):
+            job_id = None  # a second click closes the details
+        self.selected_id = job_id
+        for jid, row in self.rows.items():
+            row.set_selected(jid == job_id)
+        self.detail.show_job(next((j for j in self.controller.jobs if j.id == job_id), None))
+
+    def _load_in_studio(self, job_id: int):
+        job = next((j for j in self.controller.jobs if j.id == job_id), None)
+        if job is not None:
+            self.load_in_studio.emit(job.target, dict(job.settings))
+
+    def _replace_settings(self, job_id: int):
+        if self.controller.replace_settings(job_id, self.settings_provider()):
+            self.toast.emit(tr("ui.queue.replaced"), "success")
+
+    def _update_total(self):
+        busy = any(j.status in ("queued", "running", "paused") for j in self.controller.jobs)
+        self.total.setVisible(busy)
+        if busy:
+            self.total.setText(tr("ui.queue.total", time=imaging.eta_string(self.controller.remaining_seconds())))
 
     def retranslate(self):
         self.title.setText(tr("ui.queue.title"))
@@ -324,19 +523,6 @@ class QueuePage(QWidget):
 
 
 # ==================================================================== gallery
-def set_favourite(job_dir: str, value: bool) -> None:
-    """Mark a job as favourite (stored in its job.json)."""
-    path = os.path.join(job_dir, "job.json")
-    with open(path, encoding="utf-8") as f:
-        summary = json.load(f)
-    if value:
-        summary["favourite"] = True
-    else:
-        summary.pop("favourite", None)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
-
-
 def move_to_trash(path: str) -> bool:
     """Move a file or folder to the recycle bin; False when the system does not allow it."""
     try:
@@ -345,295 +531,6 @@ def move_to_trash(path: str) -> bool:
         return False
     ok = res[0] if isinstance(res, tuple) else bool(res)
     return bool(ok) and not os.path.exists(path)
-
-
-def _job_matches(job_dir: str, summary: dict, query: str) -> bool:
-    if not query:
-        return True
-    method = job_method(summary)
-    hay = " ".join((os.path.basename(job_dir), os.path.basename(summary.get("target", "")), method,
-                    methods_ui.name(method))).lower()
-    return all(word in hay for word in query.split())
-
-
-class GalleryCard(Card):
-    clicked = Signal(str)
-    action = Signal(str, str)  # (kind, job folder): "folder", "favourite", "delete"
-
-    def __init__(self, job_dir: str, summary: dict, parent=None, active: bool = False):
-        super().__init__(parent, margins=12, spacing=8)
-        self.job_dir = job_dir
-        self.active = active  # the queue is working on it
-        self.favourite = bool(summary.get("favourite"))
-        self.setCursor(Qt.PointingHandCursor)
-        self.setFixedWidth(220)
-        view = SketchCanvas()
-        view.setFixedSize(196, 196)
-        try:
-            with open(jobs.best_sketch(summary), encoding="utf-8") as f:
-                view.set_svg(f.read())
-        except (OSError, KeyError):
-            pass
-        self.body.addWidget(view)
-        name = os.path.splitext(os.path.basename(summary.get("target", job_dir)))[0]
-        title = label(name, "h3")
-        title.setToolTip(job_dir)
-        self.body.addWidget(title)
-        s = summary.get("settings", {})
-        method = job_method(summary)
-        self.method = method
-        runs = summary.get("runs", [])
-        meta = tr("ui.gallery.meta", strokes=schema.num_strokes({**s, "method": method}),
-                  date=summary.get("created", "")[:16])
-        self.body.addWidget(label(meta, "faint"))
-        badges = QHBoxLayout()
-        badges.setSpacing(6)
-        badges.addWidget(method_badge(method))
-        scores = [r["clip_score"] for r in runs if r.get("clip_score") is not None]
-        if summary.get("clip_score") is not None or scores:
-            badges.addWidget(label(f"CLIP {summary.get('clip_score') or max(scores):.1f}", "badge"))
-        elif runs:
-            badges.addWidget(label(f"Loss {min(r.get('best_loss', 99) for r in runs):.3f}", "badge"))
-        badges.addStretch(1)
-        self.body.addLayout(badges)
-        self.can_continue = jobs.summary_can_continue(summary) and not active
-        self.state_label = None
-        if active:
-            self.state_label = label(tr("ui.gallery.state_active"), "badge")
-            self.body.addWidget(self.state_label, 0, Qt.AlignLeft)
-        elif self.can_continue:
-            done, total = summary["progress"]
-            self.state_label = label(tr(f"ui.gallery.state_{summary['state']}", done=done, total=total),
-                                     "badge-warning")
-            self.body.addWidget(self.state_label, 0, Qt.AlignLeft)
-        tools = QHBoxLayout()
-        tools.setSpacing(2)
-        p = theme.current()
-        self.star = tool_button("star", tr("ui.gallery.favourite"), 16, checkable=True)
-        self.star.setIcon(icons.icon("star", p.muted, active_color=p.warning))
-        self.star.setChecked(self.favourite)
-        self.star.toggled.connect(lambda on: self.action.emit("favourite", self.job_dir))
-        self.folder = tool_button("folder-open", tr("ui.gallery.show_folder"), 16)
-        self.folder.clicked.connect(lambda: self.action.emit("folder", self.job_dir))
-        self.delete = tool_button("trash-2", tr("ui.gallery.delete"), 16)
-        self.delete.clicked.connect(lambda: self.action.emit("delete", self.job_dir))
-        self.delete.setEnabled(not active)
-        tools.addWidget(self.star)
-        tools.addStretch(1)
-        self.cont = None
-        if self.can_continue:
-            self.cont = button(tr("ui.continue"), "play", "primary", size="sm")
-            self.cont.clicked.connect(lambda: self.action.emit("continue", self.job_dir))
-            tools.addWidget(self.cont)
-        tools.addWidget(self.folder)
-        tools.addWidget(self.delete)
-        self.body.addLayout(tools)
-        self.body.addStretch(1)
-        self.setFixedHeight(self.sizeHint().height())
-
-    def mouseReleaseEvent(self, e):  # noqa: N802
-        if e.button() == Qt.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.clicked.emit(self.job_dir)
-
-    def contextMenuEvent(self, e):  # noqa: N802
-        menu = QMenu(self)
-        menu.addAction(icons.icon("brush"), tr("ui.gallery.open"), lambda: self.clicked.emit(self.job_dir))
-        if self.can_continue:
-            menu.addAction(icons.icon("play"), tr("ui.continue"), lambda: self.action.emit("continue", self.job_dir))
-        menu.addAction(icons.icon("folder-open"), tr("ui.gallery.show_folder"),
-                       lambda: self.action.emit("folder", self.job_dir))
-        menu.addAction(icons.icon("copy"), tr("ui.copy"), lambda: self.action.emit("copy", self.job_dir))
-        menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if self.favourite else "ui.gallery.favourite"),
-                       self.star.toggle)
-        menu.addSeparator()
-        delete = menu.addAction(icons.icon("trash-2", theme.current().danger), tr("ui.gallery.delete"),
-                                lambda: self.action.emit("delete", self.job_dir))
-        delete.setEnabled(not self.active)
-        menu.exec(e.globalPos())
-
-
-class GalleryPage(QWidget):
-    open_job = Signal(str)
-    job_deleted = Signal(str)
-    continue_job = Signal(str)
-    toast = Signal(str, str)
-
-    SORTS = ("newest", "score")
-
-    def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
-        self.setObjectName("Page")
-        self.controller = controller
-        if controller is not None:  # new and finished results appear without "Refresh"
-            controller.job_started.connect(lambda _: self._refresh_if_shown())
-            controller.job_finished.connect(lambda _: self._refresh_if_shown())
-        root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
-        head = QHBoxLayout()
-        lay, self.title, self.subtitle = _page_header("ui.gallery.title", "ui.gallery.subtitle")
-        head.addLayout(lay, 1)
-        self.search = QLineEdit()
-        self.search.setClearButtonEnabled(True)
-        self.search.setFixedWidth(240)
-        self.search.textChanged.connect(self.refresh)
-        self.filter = SegmentedControl([("all", "")] + [(m, methods_ui.name(m)) for m in schema.METHODS])
-        self.filter.changed.connect(lambda _: self.refresh())
-        self.fav_btn = button("", "star", "ghost")
-        self.fav_btn.setCheckable(True)
-        self.fav_btn.toggled.connect(lambda _: self.refresh())
-        self.sort = QComboBox()
-        self.sort.currentIndexChanged.connect(lambda _: self.refresh())
-        self.folder_btn = button("", "folder-open", "ghost")
-        self.folder_btn.clicked.connect(self._open_folder)
-        self.export_btn = button("", "file-down", "ghost")
-        self.export_btn.clicked.connect(lambda: dialogs.export_many(self, self.shown_items()))
-        self.refresh_btn = button("", "refresh-cw")
-        self.refresh_btn.clicked.connect(self.refresh)
-        head.addWidget(self.export_btn, 0, Qt.AlignBottom)
-        head.addWidget(self.folder_btn, 0, Qt.AlignBottom)
-        head.addWidget(self.refresh_btn, 0, Qt.AlignBottom)
-        root.addLayout(head)
-        tools = QHBoxLayout()
-        tools.setSpacing(10)
-        tools.addWidget(self.filter)
-        tools.addWidget(self.fav_btn)
-        tools.addWidget(self.sort)
-        tools.addStretch(1)
-        tools.addWidget(self.search)
-        root.addLayout(tools)
-        self.host = QWidget()
-        self.grid = QGridLayout(self.host)
-        self.grid.setContentsMargins(0, 0, 8, 0)
-        self.grid.setSpacing(14)
-        self.grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        root.addWidget(_scroll(self.host), 1)
-        self.empty = label("", "muted")
-        self.empty.setAlignment(Qt.AlignCenter)
-        root.addWidget(self.empty)
-        self.cards: list[GalleryCard] = []
-        i18n.language_changed.connect(lambda _: self.retranslate())
-        self.retranslate()
-
-    def _open_folder(self):
-        folder = app_settings().get("output_dir")
-        os.makedirs(folder, exist_ok=True)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
-
-    def _refresh_if_shown(self):
-        if self.isVisible():
-            QTimer.singleShot(0, self.refresh)
-
-    def _active(self) -> set[str]:
-        return self.controller.active_dirs() if self.controller is not None else set()
-
-    def scan(self) -> list[tuple[str, dict]]:
-        return scan_jobs(unfinished=True)
-
-    def refresh(self):
-        for c in self.cards:
-            c.setParent(None)
-        self.cards.clear()
-        q = self.search.text().lower().strip()
-        cols = max(1, (self.width() - 60) // 236)
-        wanted = self.filter.current() or "all"
-        items = [(d, s) for d, s in self.scan()
-                 if _job_matches(d, s, q) and (wanted == "all" or job_method(s) == wanted)
-                 and (not self.fav_btn.isChecked() or s.get("favourite"))]
-        if self.SORTS[max(self.sort.currentIndex(), 0)] == "score":
-            items.sort(key=lambda it: it[1].get("clip_score") if it[1].get("clip_score") is not None
-                       else float("-inf"), reverse=True)
-        self._shown = [(d, s) for d, s in items if jobs.best_sketch(s)]
-        self.export_btn.setEnabled(bool(self._shown))
-        active = self._active()
-        for n, (job_dir, summary) in enumerate(items):
-            card = GalleryCard(job_dir, summary, active=os.path.normcase(os.path.abspath(job_dir)) in active)
-            card.clicked.connect(self.open_job.emit)
-            card.action.connect(self._card_action)
-            self.grid.addWidget(card, n // cols, n % cols)
-            self.cards.append(card)
-        self.empty.setVisible(not items)
-
-    def shown_items(self) -> list[tuple[str, dict]]:
-        """The results the gallery shows right now (filter, favourites, search) that have a sketch."""
-        return list(getattr(self, "_shown", []))
-
-    def _card_action(self, kind: str, job_dir: str):
-        if kind == "folder":
-            QDesktopServices.openUrl(QUrl.fromLocalFile(job_dir))
-        elif kind == "copy":
-            summary = jobs.job_summary(job_dir)
-            src = jobs.best_sketch(summary) if summary else None
-            if src and os.path.isfile(src):
-                dialogs.copy_sketch(src)
-                self.toast.emit(tr("ui.copied"), "success")
-        elif kind == "continue":
-            self.continue_job.emit(job_dir)
-        elif kind == "favourite":
-            card = next((c for c in self.cards if c.job_dir == job_dir), None)
-            value = card.star.isChecked() if card else True
-            try:
-                set_favourite(job_dir, value)
-            except (OSError, ValueError) as exc:
-                QMessageBox.warning(self, tr("ui.error"), str(exc))
-                return
-            if card:
-                card.favourite = value
-            if self.fav_btn.isChecked() and not value:
-                QTimer.singleShot(0, self.refresh)
-        elif kind == "delete":
-            self.delete_job(job_dir)
-
-    def delete_job(self, job_dir: str, confirm: bool = True) -> bool:
-        name = os.path.basename(os.path.normpath(job_dir))
-        if os.path.normcase(os.path.abspath(job_dir)) in self._active():
-            QMessageBox.information(self, tr("ui.gallery.delete"), tr("ui.gallery.delete_active", name=name))
-            return False
-        if confirm and QMessageBox.question(self, tr("ui.gallery.delete"),
-                                            tr("ui.gallery.delete_q", name=name)) != QMessageBox.Yes:
-            return False
-        if not move_to_trash(job_dir):
-            if confirm and QMessageBox.question(self, tr("ui.gallery.delete"),
-                                                tr("ui.gallery.delete_permanently_q", name=name)) != QMessageBox.Yes:
-                return False
-            try:
-                shutil.rmtree(job_dir)
-            except OSError as exc:
-                QMessageBox.warning(self, tr("ui.error"), str(exc))
-                return False
-        self.job_deleted.emit(job_dir)
-        QTimer.singleShot(0, self.refresh)  # not from within the card that asked
-        return True
-
-    def showEvent(self, e):  # noqa: N802
-        super().showEvent(e)
-        QTimer.singleShot(0, self.refresh)
-
-    def resizeEvent(self, e):  # noqa: N802
-        super().resizeEvent(e)
-        if self.cards:
-            cols = max(1, (self.width() - 60) // 236)
-            for i, c in enumerate(self.cards):
-                self.grid.addWidget(c, i // cols, i % cols)
-
-    def retranslate(self):
-        self.title.setText(tr("ui.gallery.title"))
-        self.subtitle.setText(tr("ui.gallery.subtitle"))
-        self.search.setPlaceholderText(tr("ui.gallery.search"))
-        self.filter.set_text("all", tr("ui.gallery.all"))
-        self.fav_btn.setText(tr("ui.gallery.favourites"))
-        self.fav_btn.setToolTip(tr("ui.gallery.favourites_tip"))
-        index = max(self.sort.currentIndex(), 0)
-        self.sort.blockSignals(True)
-        self.sort.clear()
-        self.sort.addItems([tr(f"ui.gallery.sort_{k}") for k in self.SORTS])
-        self.sort.setCurrentIndex(index)
-        self.sort.blockSignals(False)
-        self.folder_btn.setText(tr("ui.open_folder"))
-        self.export_btn.setText(tr("ui.batch.export_shown"))
-        self.export_btn.setToolTip(tr("ui.batch.export_shown_tip"))
-        self.refresh_btn.setText(tr("ui.refresh"))
-        self.empty.setText(tr("ui.gallery.empty"))
 
 
 # ===================================================================== models
@@ -665,6 +562,10 @@ def model_group(key: str) -> str:
 
 def _size_text(mb: float) -> str:
     return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+
+
+def _bytes_text(n: int) -> str:
+    return _size_text(n / 1e6) if n >= 1e6 else f"{n / 1e3:.0f} KB"
 
 
 class ModelRow(Card):
@@ -813,10 +714,13 @@ class SettingsPage(QWidget):
     theme_changed = Signal(str)
     models_dir_changed = Signal()
     keep_models_changed = Signal(bool)
+    watch_changed = Signal()  # the watched folder was set up differently
+    output_dir_changed = Signal(str, str, bool)  # (old, new, the results were moved along)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.busy_check = lambda: False  # the main window: is a job running?
+        self.waiting_files = lambda: []  # the main window: files the waiting jobs need (not cleared)
         self.release_worker = lambda: None  # the main window: end the warm worker
         self.setObjectName("Page")
         s = app_settings()
@@ -929,6 +833,9 @@ class SettingsPage(QWidget):
         self.behaviour.body.addLayout(self._row(self.parallel_label, self.parallel))
         col.addWidget(self.behaviour)
 
+        self._build_watch(col)
+        self._build_storage(col)
+
         self.system = Card()
         self.system_title = label("", "h2")
         self.system.body.addWidget(self.system_title)
@@ -937,7 +844,15 @@ class SettingsPage(QWidget):
         self.system.body.addWidget(self.system_info)
         self.logs_btn = button("", "folder-open", "ghost")
         self.logs_btn.clicked.connect(crash.open_logs_folder)
-        self.system.body.addWidget(self.logs_btn, 0, Qt.AlignLeft)
+        self.diag_copy_btn = button("", "copy", "ghost")
+        self.diag_copy_btn.clicked.connect(self.copy_diagnostics)
+        self.diag_save_btn = button("", "download", "ghost")
+        self.diag_save_btn.clicked.connect(self.save_diagnostics)
+        row = QHBoxLayout()
+        for b in (self.logs_btn, self.diag_copy_btn, self.diag_save_btn):
+            row.addWidget(b)
+        row.addStretch(1)
+        self.system.body.addLayout(row)
         col.addWidget(self.system)
         col.addStretch(1)
         root.addWidget(_scroll(host), 1)
@@ -954,6 +869,149 @@ class SettingsPage(QWidget):
         r.addStretch(1)
         r.addWidget(widget)
         return r
+
+    def _build_storage(self, col):
+        """Disk space of caches and leftovers, each with a button to clear it."""
+        from .. import storage
+
+        self.storage_card = Card()
+        self.storage_title = label("", "h2")
+        self.storage_desc = label("", "faint", wrap=True)
+        self.storage_card.body.addWidget(self.storage_title)
+        self.storage_card.body.addWidget(self.storage_desc)
+        self.storage_rows = {}
+        for key in storage.AREAS:
+            name, size = label("", None), label("", "faint")
+            clear = button("", "trash-2", "ghost", size="sm")
+            clear.clicked.connect(lambda _=False, k=key: self.clear_storage(k))
+            r = QHBoxLayout()
+            r.addWidget(name)
+            r.addStretch(1)
+            r.addWidget(size)
+            r.addWidget(clear)
+            self.storage_card.body.addLayout(r)
+            self.storage_rows[key] = (name, size, clear)
+        col.addWidget(self.storage_card)
+
+    def refresh_storage(self) -> dict:
+        from .. import storage
+
+        sizes = storage.sizes()
+        for key, (_, size, clear) in self.storage_rows.items():
+            size.setText(_bytes_text(sizes[key]))
+            clear.setEnabled(sizes[key] > 0)
+        return sizes
+
+    def clear_storage(self, key: str, confirm: bool = True) -> int:
+        """Clear one area (asks first); pasted / edited images a waiting job needs stay."""
+        from .. import storage
+
+        if confirm and QMessageBox.question(self, tr("ui.storage.title"), tr(f"ui.storage.clear_q.{key}")) \
+                != QMessageBox.Yes:
+            return 0
+        freed = storage.clear(key, self.waiting_files() if key == "inputs" else ())
+        self.refresh_storage()
+        return freed
+
+    def showEvent(self, event):  # noqa: N802
+        super().showEvent(event)
+        self.refresh_storage()
+
+    def _build_watch(self, col):
+        """Watched folder: new images there are sketched by themselves and exported."""
+        from .. import watch
+
+        s = app_settings()
+        cfg = watch.config()
+        self.watch_card = Card()
+        self.watch_title = label("", "h2")
+        self.watch_desc = label("", "faint", wrap=True)
+        self.watch_card.body.addWidget(self.watch_title)
+        self.watch_card.body.addWidget(self.watch_desc)
+        self.watch_on_label = label("", None)
+        self.watch_on = ToggleSwitch()
+        self.watch_on.setChecked(cfg["enabled"])
+        self.watch_on.toggled.connect(lambda v: self._watch_set("watch_enabled", v))
+        self.watch_card.body.addLayout(self._row(self.watch_on_label, self.watch_on))
+        self.watch_folder_label = label("", None)
+        self.watch_folder = QLineEdit(cfg["folder"])
+        self.watch_folder.setReadOnly(True)
+        self.watch_folder_btn = button("", "folder-open")
+        self.watch_folder_btn.clicked.connect(lambda: self._watch_choose("watch_folder", self.watch_folder))
+        r = QHBoxLayout()
+        r.addWidget(self.watch_folder, 1)
+        r.addWidget(self.watch_folder_btn)
+        self.watch_card.body.addWidget(self.watch_folder_label)
+        self.watch_card.body.addLayout(r)
+        self.watch_preset_label = label("", None)
+        self.watch_preset = QComboBox()
+        self.watch_preset.addItem("", "studio")
+        self.watch_preset.addItem("", "file")
+        preset = cfg["preset"]
+        if preset != "studio":
+            self.watch_preset.addItem(os.path.basename(preset), preset)
+            self.watch_preset.setCurrentIndex(2)
+        self.watch_preset.activated.connect(self._watch_preset_chosen)
+        self.watch_card.body.addLayout(self._row(self.watch_preset_label, self.watch_preset))
+        self.watch_formats_label = label("", None)
+        formats = QHBoxLayout()
+        formats.setSpacing(12)
+        self.watch_formats = {}
+        for fmt in watch.FORMATS:
+            box = QCheckBox({"svg": "SVG", "svg1": "", "png": "PNG", "pdf": "PDF"}[fmt])
+            box.setChecked(fmt in cfg["formats"])
+            box.toggled.connect(lambda _: self._watch_set("watch_formats", [f for f, b in self.watch_formats.items()
+                                                                             if b.isChecked()]))
+            self.watch_formats[fmt] = box
+            formats.addWidget(box)
+        formats.addStretch(1)
+        self.watch_card.body.addWidget(self.watch_formats_label)
+        self.watch_card.body.addLayout(formats)
+        self.watch_export_label = label("", None)
+        self.watch_export = QLineEdit(cfg["export_dir"])
+        self.watch_export.setReadOnly(True)
+        self.watch_export_btn = button("", "folder-open")
+        self.watch_export_btn.clicked.connect(lambda: self._watch_choose("watch_export_dir", self.watch_export))
+        r = QHBoxLayout()
+        r.addWidget(self.watch_export, 1)
+        r.addWidget(self.watch_export_btn)
+        self.watch_card.body.addWidget(self.watch_export_label)
+        self.watch_card.body.addLayout(r)
+        self.watch_move_label = label("", None)
+        self.watch_move = ToggleSwitch()
+        self.watch_move.setChecked(cfg["move_done"])
+        self.watch_move.toggled.connect(lambda v: self._watch_set("watch_move_done", v))
+        self.watch_card.body.addLayout(self._row(self.watch_move_label, self.watch_move))
+        col.addWidget(self.watch_card)
+        del s
+
+    def _watch_set(self, key: str, value) -> None:
+        app_settings().set(key, value)
+        self.watch_changed.emit()
+
+    def _watch_choose(self, key: str, edit: QLineEdit, folder: str | None = None) -> None:
+        if folder is None:
+            start = edit.text() or os.path.expanduser("~")
+            folder = QFileDialog.getExistingDirectory(self, tr("ui.watch.choose"), start)
+        if folder:
+            edit.setText(folder)
+            self._watch_set(key, folder)
+
+    def _watch_preset_chosen(self, index: int) -> None:
+        data = self.watch_preset.itemData(index)
+        if data == "file":
+            path, _ = QFileDialog.getOpenFileName(self, tr("ui.watch.preset_file"), os.path.expanduser("~"),
+                                                  "JSON (*.json)")
+            if not path:
+                self.watch_preset.setCurrentIndex(max(self.watch_preset.findData(app_settings().get(
+                    "watch_preset") or "studio"), 0))
+                return
+            while self.watch_preset.count() > 2:
+                self.watch_preset.removeItem(2)
+            self.watch_preset.addItem(os.path.basename(path), path)
+            self.watch_preset.setCurrentIndex(2)
+            data = path
+        self._watch_set("watch_preset", data)
 
     def _lang_changed(self, idx):
         code = self.lang.itemData(idx)
@@ -973,11 +1031,57 @@ class SettingsPage(QWidget):
         app_settings().set("theme", mode)
         self.theme_changed.emit(mode)
 
-    def _choose_out(self):
-        d = QFileDialog.getExistingDirectory(self, tr("ui.settings.output"), self.out_edit.text())
-        if d:
-            self.out_edit.setText(d)
-            app_settings().set("output_dir", d)
+    def _choose_out(self, folder: str | None = None, move: bool | None = None) -> bool:
+        """Change the output folder; its results (job folders, pasted / edited images) can move along
+        (``folder`` / ``move`` skip the dialogs, for tests)."""
+        from ... import fileops
+        from .. import storage
+
+        old = app_settings().get("output_dir") or ""
+        if folder is None:
+            folder = QFileDialog.getExistingDirectory(self, tr("ui.settings.output"), self.out_edit.text())
+            if not folder:
+                return False
+        new, cur = Path(folder).resolve(), Path(old).resolve() if old else None
+        if cur is not None and new == cur:
+            return False
+        names = storage.result_entries(old) if old else []
+        if names and move is not False:
+            if self.busy_check():  # a running job writes into the old folder
+                QMessageBox.information(self, tr("ui.settings.output"), tr("ui.settings.output_busy"))
+                return False
+            if any(Path(old, n).resolve() in (new, *new.parents) for n in names):
+                QMessageBox.warning(self, tr("ui.settings.output"), tr("ui.settings.models_nested"))
+                return False
+            size = storage.results_size(old)
+            if move is None:
+                box = QMessageBox(self)
+                box.setIcon(QMessageBox.Question)
+                box.setWindowTitle(tr("ui.settings.output"))
+                box.setText(tr("ui.settings.output_move_q", n=len(names), size=_bytes_text(size)))
+                move_btn = box.addButton(tr("ui.settings.output_move"), QMessageBox.AcceptRole)
+                only_btn = box.addButton(tr("ui.settings.output_only"), QMessageBox.DestructiveRole)
+                box.addButton(tr("ui.cancel"), QMessageBox.RejectRole)
+                box.exec()
+                if box.clickedButton() not in (move_btn, only_btn):
+                    return False
+                move = box.clickedButton() is move_btn
+            if move:
+                if cur.anchor.lower() != new.anchor.lower() and 0 <= fileops.free_space(new) < size * 1.02:
+                    QMessageBox.warning(self, tr("ui.settings.output"),
+                                        tr("ui.settings.models_no_space", size=_bytes_text(size)))
+                    return False
+                dlg = dialogs.BusyDialog(tr("ui.settings.output_moving"), self)
+                dialogs.run_in_thread(dlg, storage.move_results, old, str(new), on_progress=dlg.progress,
+                                      on_done=lambda _: dlg.accept(), on_error=dlg.fail)
+                if not dlg.exec():
+                    QMessageBox.warning(self, tr("ui.settings.output"), dlg.error or tr("ui.error"))
+                    return False
+        self.out_edit.setText(str(new))
+        app_settings().set("output_dir", str(new))
+        self.output_dir_changed.emit(old, str(new), bool(names and move))
+        self.refresh_storage()
+        return True
 
     def choose_models_dir(self, folder: str | None = None, move: bool | None = None) -> bool:
         """Change the folder of the downloaded models, moving them there if wanted (``folder`` /
@@ -1033,6 +1137,32 @@ class SettingsPage(QWidget):
         self.models_edit.setText(str(folder))
         self.models_hint.setText(tr("ui.settings.models_hint", size=_size_text(model_store.folder_size(folder) / 1e6)))
 
+    def copy_diagnostics(self) -> str:
+        """Copy the diagnostics text (for a bug report) to the clipboard."""
+        from .. import diagnostics
+
+        text = diagnostics.report()
+        QApplication.clipboard().setText(text)
+        self.diag_copy_btn.setText(tr("ui.diag.copied"))
+        QTimer.singleShot(2500, lambda: self.diag_copy_btn.setText(tr("ui.diag.copy")))
+        return text
+
+    def save_diagnostics(self, path: str = "") -> str:
+        from .. import diagnostics
+
+        if not path:
+            folder = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation) or str(Path.home())
+            start = os.path.join(folder, diagnostics.default_file_name())
+            path, _ = QFileDialog.getSaveFileName(self, tr("ui.diag.save"), start, "Text (*.txt)")
+            if not path:
+                return ""
+        try:
+            diagnostics.save(path)
+        except OSError as exc:
+            QMessageBox.warning(self, tr("ui.diag.save"), str(exc))
+            return ""
+        return path
+
     def set_hardware(self, info: dict | None):
         """The answer of the hardware probe (gui/hardware.py)."""
         self._hardware = info
@@ -1083,8 +1213,32 @@ class SettingsPage(QWidget):
         self.parallel_label.setText(tr("ui.settings.parallel"))
         self.parallel_label.setToolTip(tr("ui.settings.parallel_tip"))
         self.parallel.setToolTip(tr("ui.settings.parallel_tip"))
+        self.watch_title.setText(tr("ui.watch.title"))
+        self.watch_desc.setText(tr("ui.watch.desc"))
+        self.watch_on_label.setText(tr("ui.watch.enabled"))
+        self.watch_folder_label.setText(tr("ui.watch.folder"))
+        self.watch_folder_btn.setText(tr("ui.change"))
+        self.watch_preset_label.setText(tr("ui.watch.preset"))
+        self.watch_preset.setItemText(0, tr("ui.watch.preset_studio"))
+        self.watch_preset.setItemText(1, tr("ui.watch.preset_file"))
+        self.watch_formats_label.setText(tr("ui.watch.formats"))
+        self.watch_formats["svg1"].setText(tr("ui.export_svg1"))
+        self.watch_export_label.setText(tr("ui.watch.export_dir"))
+        self.watch_export.setPlaceholderText(tr("ui.watch.export_default"))
+        self.watch_export_btn.setText(tr("ui.change"))
+        self.watch_move_label.setText(tr("ui.watch.move_done"))
+        self.storage_title.setText(tr("ui.storage.title"))
+        self.storage_desc.setText(tr("ui.storage.desc"))
+        for key, (name, _, clear) in self.storage_rows.items():
+            name.setText(tr(f"ui.storage.{key}"))
+            name.setToolTip(tr(f"ui.storage.{key}_tip"))
+            clear.setText(tr("ui.storage.clear"))
         self.logs_btn.setText(tr("ui.crash.open_logs"))
         self.logs_btn.setToolTip(tr("ui.settings.logs_tip"))
+        self.diag_copy_btn.setText(tr("ui.diag.copy"))
+        self.diag_copy_btn.setToolTip(tr("ui.diag.tip"))
+        self.diag_save_btn.setText(tr("ui.diag.save"))
+        self.diag_save_btn.setToolTip(tr("ui.diag.tip"))
         self.system_title.setText(tr("ui.settings.system"))
         edition = tr(f"ui.edition.{EDITION}")
         info = [f"{APP_NAME} {__version__} · {edition}",

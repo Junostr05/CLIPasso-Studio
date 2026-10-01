@@ -64,10 +64,10 @@ excludes = [
     "matplotlib", "IPython", "jupyter", "notebook", "pandas", "scipy", "skimage", "sklearn", "cv2",
     "PyQt5", "PyQt6", "PySide2", "torch.utils.tensorboard", "tensorboard", "caffe2", "triton",
     "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtQuick", "PySide6.QtQml",
-    "PySide6.Qt3DCore", "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization",
+    "PySide6.Qt3DCore", "PySide6.QtCharts", "PySide6.QtDataVisualization",  # (QtMultimedia: the webcam)
     "PySide6.QtPdf", "PySide6.QtBluetooth", "PySide6.QtPositioning", "PySide6.QtSql", "PySide6.QtTest",
     "PySide6.QtDesigner", "PySide6.QtHelp", "PySide6.QtOpenGL", "PySide6.QtOpenGLWidgets",
-    "PySide6.QtNetwork", "PySide6.QtXml", "PySide6.QtConcurrent", "PySide6.QtDBus",
+    "PySide6.QtXml", "PySide6.QtConcurrent", "PySide6.QtDBus",  # (QtNetwork: needed by QtMultimedia)
     "PySide6.QtSpatialAudio", "PySide6.QtSerialPort", "PySide6.QtUiTools",
 ]
 

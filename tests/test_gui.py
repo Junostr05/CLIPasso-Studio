@@ -276,19 +276,26 @@ def test_gallery_favourites_sorting_and_delete(window, tmp_path):
     gallery = window.gallery
     window.show_page("gallery")
     gallery.refresh()
-    assert [c.job_dir for c in gallery.cards] == [b, a]  # newest first
-    gallery.sort.setCurrentIndex(1)  # best CLIP score
-    assert [c.job_dir for c in gallery.cards] == [b, a]
-    gallery.search.setText("rose")
-    assert [c.job_dir for c in gallery.cards] == [a]
-    gallery.search.setText("")
 
-    card = next(c for c in gallery.cards if c.job_dir == a)
-    card.star.setChecked(True)  # favourite -> stored in job.json
-    with open(os.path.join(a, "job.json")) as f:
+    def shown():
+        return [it.job_dir for it in gallery.items()]
+
+    assert shown() == [b, a]  # newest first
+    gallery.sort.setCurrentIndex(gallery.SORTS.index("score"))  # best CLIP score
+    assert shown() == [b, a]
+    gallery.sort.setCurrentIndex(gallery.SORTS.index("oldest"))
+    assert shown() == [a, b]
+    gallery.search.setText("rose")
+    gallery._apply()  # (the search waits for a pause in typing)
+    assert shown() == [a]
+    gallery.search.setText("")
+    gallery._apply()
+
+    gallery.delegate.star_clicked.emit(gallery.model.row_of(a))  # favourite -> stored in meta.json
+    with open(os.path.join(a, "meta.json")) as f:
         assert json.load(f)["favourite"] is True
     gallery.fav_btn.setChecked(True)
-    assert [c.job_dir for c in gallery.cards] == [a]
+    assert shown() == [a]
     gallery.fav_btn.setChecked(False)
     gallery.sort.setCurrentIndex(0)
 
@@ -305,7 +312,7 @@ def test_gallery_favourites_sorting_and_delete(window, tmp_path):
     from PySide6.QtWidgets import QApplication
 
     QApplication.processEvents()
-    assert [c.job_dir for c in gallery.cards] == [b]
+    assert shown() == [b]
     window.show_page("studio")
 
 
@@ -391,8 +398,15 @@ def test_continue_an_interrupted_job(window, tmp_path, monkeypatch):
     # the gallery lists it (no job.json yet) with its progress and a Continue button
     window.show_page("gallery")
     window.gallery.refresh()
-    card = next(c for c in window.gallery.cards if c.job_dir == job)
-    assert card.can_continue and card.cont is not None and "1" in card.state_label.text()
+    item = window.gallery.item(job)
+    assert item.can_continue and item.summary["progress"][0] == 1
+    from clipasso_studio.gui.pages.gallery import GalleryPage
+
+    page, continued = GalleryPage(), []  # (not connected to the window, which would start the job)
+    page.continue_job.connect(continued.append)
+    page.refresh()
+    page.delegate.continue_clicked.emit(page.model.row_of(job))
+    assert continued == [job]
     # the studio shows the finished sketch and offers to continue
     window.studio.show_job_dir(job)
     assert window.studio.resume_banner.isVisibleTo(window.studio) and len(window.studio.thumbs) == 1
@@ -481,8 +495,8 @@ def test_gallery_knows_the_running_job(window, tmp_path, monkeypatch):
     try:
         window.show_page("gallery")
         window.gallery.refresh()
-        card = next(c for c in window.gallery.cards if c.job_dir == job_dir)
-        assert card.active and not card.can_continue and card.cont is None and not card.delete.isEnabled()
+        item = window.gallery.item(job_dir)
+        assert item.active and not item.can_continue
         told = []
         monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: told.append(a))
         assert not window.gallery.delete_job(job_dir) and told and os.path.isdir(job_dir)
@@ -490,8 +504,8 @@ def test_gallery_knows_the_running_job(window, tmp_path, monkeypatch):
         controller.current = None
         controller.jobs.remove(job)
     window.gallery.refresh()
-    card = next(c for c in window.gallery.cards if c.job_dir == job_dir)
-    assert not card.active and card.can_continue
+    item = window.gallery.item(job_dir)
+    assert not item.active and item.can_continue
     window.show_page("studio")
 
 
@@ -671,3 +685,26 @@ def test_pen_draws_strokes_and_continue_with_clipasso(window, tmp_path, monkeypa
     studio.continue_with_clipasso()
     assert queued and queued[0]["num_paths"] == 2 + 4
     studio.revert_edits()
+
+
+def test_one_line_in_the_studio(window, tmp_path, monkeypatch):
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    panel = studio.params
+    panel.set_method("clipasso")
+    panel.reset_all_fields()
+    panel.fields["one_line"].set_value(True, emit=True)
+    assert not panel.fields["num_paths"].title.isEnabled() and panel.fields["one_line_segments"].title.isEnabled()
+    queued = []
+    monkeypatch.setattr(studio.controller, "enqueue", lambda image, s, start=True: queued.append(s))
+    monkeypatch.setattr(studio, "_check_models", lambda: True)
+    studio.abstraction_series()
+    assert [s["one_line_segments"] for s in queued] == [16, 32, 64, 128] and all(s["one_line"] for s in queued)
+    panel.reset_all_fields()
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "line_job", str(tmp_path / "line.png"), 30.0)
+    studio.show_job_dir(job)
+    assert studio.edit_tools.isVisibleTo(studio) and not studio.eraser_btn.isEnabled()  # a single stroke

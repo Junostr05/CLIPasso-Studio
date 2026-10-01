@@ -29,9 +29,9 @@ def _attach_console() -> None:
 def _ensure_streams(log_name: str) -> None:
     """In a windowed exe stdout/stderr are None; send output to a log file instead."""
     if sys.stdout is None or sys.stderr is None:
-        from . import paths
+        from . import logs
 
-        log = open(paths.user_data_dir() / log_name, "a", encoding="utf-8", errors="replace")
+        log = logs.open_log(log_name)  # logs/<name>, rotated at 5 MB
         sys.stdout = sys.stdout or log
         sys.stderr = sys.stderr or log
 
@@ -183,6 +183,27 @@ def _selftest_resume(out_dir: str) -> dict:
     return {"ok": ok}
 
 
+def _selftest_inputs(out_dir: str) -> dict:
+    """The packaged app opens HEIC and AVIF photos (pi-heif, Pillow) and has Qt Multimedia for the webcam."""
+    try:
+        from PIL import Image
+
+        from .engine.imaging import load_rgb, register_formats
+
+        register_formats()
+        avif = os.path.join(out_dir, "selftest.avif")
+        Image.new("RGB", (16, 12), "white").save(avif, format="AVIF")
+        ok = load_rgb(avif).size == (16, 12)
+        import pi_heif  # noqa: F401 (the HEIC decoder is bundled)
+
+        from PySide6.QtMultimedia import QMediaDevices  # noqa: F401 (the webcam module is bundled)
+    except Exception as exc:  # reported, not raised
+        print(f"selftest: inputs ERROR {exc!r}", flush=True)
+        ok = False
+    print(f"selftest: inputs ok={ok}", flush=True)
+    return {"ok": ok}
+
+
 def selftest(out_dir: str | None = None) -> int:
     """Run tiny sketch jobs of all methods on a bundled sample image; exit code 0 = success."""
     import json
@@ -237,6 +258,8 @@ def selftest(out_dir: str | None = None) -> int:
     methods["resume"] = _selftest_resume(out_dir)
     methods["mask"] = _selftest_mask(out_dir)
     methods["warm"] = _selftest_warm(out_dir)
+    if sys.platform == "win32":  # (on Linux Qt Multimedia needs the PulseAudio library of the system)
+        methods["inputs"] = _selftest_inputs(out_dir)
     report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
               "clipasso": {"ok": ok, "best_svg": summary["best_svg"]}, **methods}
     print("selftest: " + json.dumps(report), flush=True)

@@ -324,3 +324,34 @@ def test_every_saved_step_gets_a_frame(qapp, tmp_path):
     assert sorted(set(idx)) == list(range(700))
     mp4.mode.setCurrentIndex(mp4.mode.findData("strokes"))
     assert not mp4.every_step.isVisibleTo(mp4)  # only for the drawing process
+
+
+def test_export_dialog_shapes(qapp, tmp_path, user_data):
+    import json
+
+    from clipasso_studio.engine import framing
+    from clipasso_studio.gui import dialogs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    run = tmp_path / "run"
+    run.mkdir()
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
+           '<path d="M 20 100 C 60 100 120 100 200 110" fill="none" stroke="#000" stroke-width="2"/></svg>')
+    (run / "best_iter.svg").write_text(svg)
+    (run / "config.json").write_text("{}")
+    dlg = dialogs.ExportDialog("png", str(run / "best_iter.svg"), str(run), "x")
+    photo = dlg.frame.findData("photo")
+    assert not dlg.frame.model().item(photo).isEnabled()  # an old run without a known photo shape
+    dlg.frame.setCurrentIndex(dlg.frame.findData("content"))
+    assert dlg.margin.isVisibleTo(dlg) and dlg._shape() == {"frame": "content", "margin": 0.05}
+    dlg.frame.setCurrentIndex(dlg.frame.findData("square"))
+    assert not dlg.margin.isVisibleTo(dlg)
+    (run / "config.json").write_text(json.dumps({"photo_frame": framing.photo_frame((300, 200))}))
+    app_settings().set("export_frame", "photo")
+    dlg = dialogs.ExportDialog("svg", str(run / "best_iter.svg"), str(run), "x")
+    assert dlg.frame.currentData() == "photo"  # remembered, and known now
+    matrix = dialogs.ExportDialog("matrix", str(run / "best_iter.svg"), str(run), "x")
+    assert not matrix.frame.isVisibleTo(matrix)
+    batch = dialogs.BatchExportDialog([])
+    assert batch.frame.model().item(photo).isEnabled()
+    app_settings().set("export_frame", "square")

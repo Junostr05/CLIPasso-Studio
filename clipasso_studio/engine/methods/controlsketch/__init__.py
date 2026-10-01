@@ -51,8 +51,11 @@ def prepare_input(s: dict, target: str, device):
     """
     from ...pipeline import load_rgb
 
+    from ... import framing
+
     size = int(s["render_size"])
     image = load_rgb(target)
+    frame = framing.photo_frame(image.size, pad=framing.fix_scale_pad(*image.size) if s["fix_scale"] else None)
     masked = bool(s.get("mask_object", True))
     if masked:
         matte = masking.soft_mask(device, image, s.get("mask_model", "u2net"))
@@ -70,9 +73,10 @@ def prepare_input(s: dict, target: str, device):
     image = image.resize((size, size), Image.BICUBIC)
     mask = F.interpolate(torch.from_numpy(matte)[None, None], (size, size))[0, 0]
     if not masked:  # no object to shrink: the picture fills the canvas
-        return {"full": image, "full_mask": mask, "canvas": image, "mask": mask, "info": None}
+        return {"full": image, "full_mask": mask, "canvas": image, "mask": mask, "info": None, "frame": frame}
     canvas_img, canvas_mask, info = P.shrink_object(image, mask, float(s["object_size_ratio"]))
-    return {"full": image, "full_mask": mask, "canvas": canvas_img, "mask": canvas_mask, "info": info}
+    return {"full": image, "full_mask": mask, "canvas": canvas_img, "mask": canvas_mask, "info": info,
+            "frame": frame}
 
 
 def _cached(key, fn):
@@ -301,7 +305,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     best_loss = round(1.0 - clip_sc / 100.0, 4) if clip_sc is not None else 1.0
     config = {
         "method": "controlsketch", "target": target, "seed": seed, "output_dir": run_dir, "device": str(device),
-        "caption": caption, "object_scale": inp["info"], "canvas": size, "best_loss": best_loss,
+        "caption": caption, "object_scale": inp["info"], "canvas": size, "photo_frame": inp.get("frame"),
+        "best_loss": best_loss,
         "best_iter": max(counter - 1, 0),
         "iterations_done": counter, "status": status, "seconds": active_time, "clip_score": clip_sc,
         "clip_scores": scores, "sds_loss": losses, "stroke_order": order, "settings": s,

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QMessageBox, QProgressBar, QV
 
 from ... import settings_schema as schema
 from ...engine import imaging, jobs
-from .. import dialogs, icons, methods_ui, theme
+from .. import dialogs, icons, methods_ui, theme, thumbs
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import SketchCanvas
@@ -277,7 +277,7 @@ class ComparePage(QWidget):
 
     def refresh(self):
         image = self.studio.image_path
-        pm = QPixmap(image) if image else QPixmap()
+        pm = thumbs.thumbnail(image, 84) if image else QPixmap()
         if not pm.isNull():
             self.thumb.setPixmap(pm.scaled(84, 84, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.image_name.setText(os.path.basename(image))

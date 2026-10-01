@@ -209,7 +209,9 @@ class ImageEditDialog(QDialog):
         super().__init__(parent)
         self.path = path
         self.result_path = ""
-        self.original = QImage(path)
+        from .image_io import read_image
+
+        self.original = read_image(path)
         self.setWindowTitle(tr("ui.edit_image.title"))
         self.setMinimumSize(640, 560)
         lay = QVBoxLayout(self)

@@ -12,9 +12,29 @@ if TYPE_CHECKING:  # imported where it is used: the GUI starts without PyTorch
     import torch
 
 
+_formats_registered = False
+
+
+def register_formats() -> None:
+    """HEIC / HEIF photos (pi-heif) – once; AVIF, WebP, TIFF, GIF and BMP are Pillow's own."""
+    global _formats_registered
+    if not _formats_registered:
+        _formats_registered = True
+        try:
+            import pi_heif
+
+            pi_heif.register_heif_opener()
+        except Exception:
+            pass
+
+
 def load_rgb(path: str) -> Image.Image:
-    """The input image as RGB; transparent areas become white (like the original ``get_target``)."""
-    target = Image.open(path)
+    """The input image as RGB, upright like it is shown (EXIF orientation), first frame of a GIF;
+    transparent areas become white (like the original ``get_target``)."""
+    from PIL import ImageOps
+
+    register_formats()
+    target = ImageOps.exif_transpose(Image.open(path))
     if target.mode in ("RGBA", "LA") or (target.mode == "P" and "transparency" in target.info):
         target = target.convert("RGBA")
         new_image = Image.new("RGBA", target.size, "WHITE")
@@ -99,23 +119,35 @@ FRAME_FILL = 0.85  # auto-framing: the object fills this share of the square cro
 FRAME_SMALL = 0.75  # ... when its longer side is below this share of the shorter image side
 
 
+def frame_box(mask: Image.Image, fill: float = FRAME_FILL, small: float = FRAME_SMALL):
+    """The square crop of :func:`frame_object` as (left, top, right, bottom) in image pixels (it may
+    reach beyond the image), or None when the object is not small enough to be framed."""
+    m = np.asarray(mask.convert("L")) > 127
+    if not m.any():
+        return None
+    ys, xs = np.nonzero(m)
+    x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
+    w, h = mask.size
+    obj = max(x1 - x0, y1 - y0)
+    if obj >= small * min(w, h):
+        return None
+    side = max(8, int(round(obj / fill)))
+    left = int(round((x0 + x1) / 2 - side / 2))
+    top = int(round((y0 + y1) / 2 - side / 2))
+    return left, top, left + side, top + side
+
+
 def frame_object(im: Image.Image, mask: Image.Image, fill: float = FRAME_FILL,
                  small: float = FRAME_SMALL) -> tuple[Image.Image, Image.Image, bool]:
     """Auto-framing: a square crop around the object (``mask`` > 50 %) in which it fills ``fill`` of
     the side – only for small objects; outside the image the crop is white (mask 0). Returns the
     image, the mask and whether it was framed."""
-    m = np.asarray(mask.convert("L")) > 127
-    if not m.any():
+    crop = frame_box(mask, fill, small)
+    if crop is None:
         return im, mask, False
-    ys, xs = np.nonzero(m)
-    x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
+    left, top, _, _ = crop
+    side = crop[2] - left
     w, h = im.size
-    obj = max(x1 - x0, y1 - y0)
-    if obj >= small * min(w, h):
-        return im, mask, False
-    side = max(8, int(round(obj / fill)))
-    left = int(round((x0 + x1) / 2 - side / 2))
-    top = int(round((y0 + y1) / 2 - side / 2))
     box = (max(left, 0), max(top, 0), min(left + side, w), min(top + side, h))
     out = Image.new("RGB", (side, side), "white")
     out.paste(im.convert("RGB").crop(box), (box[0] - left, box[1] - top))

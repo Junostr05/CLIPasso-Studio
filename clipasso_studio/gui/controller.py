@@ -35,6 +35,7 @@ class QueuedJob:
     eta: float = float("nan")
     device: str = ""
     resume_dir: str = ""  # "Continue": the interrupted job folder
+    oom: bool = False  # failed because the memory (of the GPU) ran out
     live: dict = field(default_factory=dict, repr=False, compare=False)  # latest previews (studio)
 
     @property
@@ -56,6 +57,8 @@ class QueuedJob:
         data = {"target": self.target, "settings": self.settings}
         if self.resume_dir:
             data["resume_dir"] = self.resume_dir
+        if self.status in ("failed", "cancelled"):  # kept over a restart, to try again
+            data.update(status=self.status, job_dir=self.job_dir, message=self.message)
         return data
 
 
@@ -73,6 +76,23 @@ def _keep_awake(on: bool) -> None:
         ctypes.windll.kernel32.SetThreadExecutionState(flags)
     except Exception:
         pass
+
+
+def smaller_settings(settings: dict) -> dict | None:
+    """Settings that need less memory (after "out of memory"); None when the method has none."""
+    s = schema.normalize(settings)
+    method = schema.method_of(s)
+    if method == "controlsketch":
+        return {"render_size": max(256, int(s["render_size"]) - 128), "turbo": True} \
+            if int(s["render_size"]) > 256 or not s.get("turbo") else None
+    if method in ("clipasso", "scenesketch"):
+        out = {}
+        if int(s["num_aug_clip"]) > 1:
+            out["num_aug_clip"] = max(1, int(s["num_aug_clip"]) // 2)
+        if method == "clipasso" and int(s["image_scale"]) > 224:
+            out["image_scale"] = 224
+        return out or None
+    return None
 
 
 class JobController(QObject):
@@ -146,6 +166,63 @@ class JobController(QObject):
         self._persist_queue()
         self.queue_changed.emit()
 
+    def move_to(self, job_id: int, index: int) -> None:
+        """Put a job at position ``index`` of the queue (drag and drop)."""
+        idx = next((i for i, j in enumerate(self.jobs) if j.id == job_id), None)
+        if idx is None:
+            return
+        job = self.jobs.pop(idx)
+        self.jobs.insert(min(max(int(index), 0), len(self.jobs)), job)
+        self._persist_queue()
+        self.queue_changed.emit()
+
+    def retry(self, job_id: int, start: bool = True, overrides: dict | None = None,
+              restart_unfinished: bool = False) -> QueuedJob | None:
+        """A failed or cancelled job once more: it continues from its finished sketches and checkpoints
+        when its folder allows that, otherwise it starts again. ``overrides``: changed settings (e.g. the
+        CPU after "out of memory"); ``restart_unfinished``: the unfinished sketches start again (their
+        checkpoints do not fit other sizes)."""
+        job = next((j for j in self.jobs if j.id == job_id), None)
+        if job is None or job.status not in ("failed", "cancelled"):
+            return None
+        if overrides:
+            job.settings = schema.normalize({**job.settings, **overrides})
+        if job.job_dir and jobs.read_state(job.job_dir) and jobs.remaining_seeds(job.job_dir):
+            job.resume_dir = job.job_dir
+            if restart_unfinished:
+                jobs.drop_checkpoints(job.job_dir)
+        job.status, job.message, job.eta, job.finished, job.oom = "queued", "", float("nan"), 0.0, False
+        job.seed_progress, job.seed_best = {}, {}
+        self._persist_queue()
+        self.queue_changed.emit()
+        if start and not self.is_busy():
+            self.start_next()
+        return job
+
+    def replace_settings(self, job_id: int, settings: dict) -> bool:
+        """Other settings for a waiting job (not for one that continues a started job)."""
+        job = next((j for j in self.jobs if j.id == job_id), None)
+        if job is None or job.status != "queued" or job.resume_dir:
+            return False
+        job.settings = schema.normalize(settings)
+        self._persist_queue()
+        self.queue_changed.emit()
+        return True
+
+    def remaining_seconds(self) -> float:
+        """Time until the queue is done: the running job's own estimate plus estimates of the waiting ones."""
+        total = 0.0
+        for j in self.jobs:
+            if j.status in ("running", "paused") and j.eta == j.eta:  # (not NaN)
+                total += max(float(j.eta), 0.0)
+            elif j.status in ("queued", "running", "paused"):
+                secs = methods_ui.estimate_seconds(j.settings)
+                if j.resume_dir:  # only what is left of it
+                    done, all_ = jobs.progress_of(j.resume_dir)
+                    secs *= 1 - done / max(all_, 1)
+                total += secs
+        return total
+
     def move(self, job_id: int, delta: int) -> None:
         idx = next((i for i, j in enumerate(self.jobs) if j.id == job_id), None)
         if idx is None:
@@ -157,6 +234,7 @@ class JobController(QObject):
 
     def clear_finished(self) -> None:
         self.jobs = [j for j in self.jobs if j.status in ("queued", "running", "paused")]
+        self._persist_queue()
         self.queue_changed.emit()
 
     def active_dirs(self) -> set[str]:
@@ -262,6 +340,7 @@ class JobController(QObject):
                 job.status = "cancelled" if job.message == "cancel" else "done"
             elif kind == "error":
                 job.message = data.get("message", "")
+                job.oom = job.oom or bool(data.get("oom"))
             elif kind in ("job_failed", "job_ended"):
                 if job.status not in ("done", "cancelled"):
                     job.status = "cancelled" if job.message == "cancel" else "failed"
@@ -282,9 +361,39 @@ class JobController(QObject):
                 if not self.pending() and job.status != "cancelled":
                     self.queue_idle.emit(job)
 
+    def relocate(self, old: str, new: str) -> None:
+        """The output folder moved from ``old`` to ``new`` (with its results): follow it in the waiting
+        jobs (their pasted / edited images, continued job folders) and the recent images."""
+        from .storage import relocated
+
+        for j in self.jobs:
+            if j.status in ("running", "paused"):
+                continue
+            j.target = relocated(j.target, old, new)
+            j.job_dir = relocated(j.job_dir, old, new)
+            j.resume_dir = relocated(j.resume_dir, old, new)
+            if isinstance(j.settings.get("path_svg"), str):
+                j.settings["path_svg"] = relocated(j.settings["path_svg"], old, new)
+        self._persist_queue()
+        s = app_settings()
+        s.set("recent_images", [relocated(p, old, new) for p in s.get("recent_images") or []])
+        if s.get("last_image"):
+            s.set("last_image", relocated(s.get("last_image"), old, new))
+        self.queue_changed.emit()
+
+    def waiting_files(self) -> list[str]:
+        """Images and SVGs the waiting jobs still need (they stay when the app's image folders are cleared)."""
+        files = []
+        for j in self.jobs:
+            if j.status in ("queued", "running", "paused", "failed", "cancelled"):
+                files.append(j.target)
+                if isinstance(j.settings.get("path_svg"), str):
+                    files.append(j.settings["path_svg"])
+        return files
+
     # ------------------------------------------------------------ persistence
     def _persist_queue(self):
-        app_settings().set("queue", [j.to_json() for j in self.jobs if j.status == "queued"])
+        app_settings().set("queue", [j.to_json() for j in self.jobs if j.status in ("queued", "failed", "cancelled")])
 
     def _restore_queue(self):
         for item in app_settings().get("queue") or []:
@@ -293,7 +402,11 @@ class JobController(QObject):
                     resume = item.get("resume_dir", "")
                     if resume and not os.path.isdir(resume):
                         continue
+                    status = item.get("status", "queued")
                     self.jobs.append(QueuedJob(target=item["target"], settings=schema.normalize(item["settings"]),
-                                               resume_dir=resume))
+                                               resume_dir=resume,
+                                               status=status if status in ("failed", "cancelled") else "queued",
+                                               job_dir=item.get("job_dir", "") or "",
+                                               message=item.get("message", "") or ""))
             except (KeyError, TypeError, ValueError):
                 continue

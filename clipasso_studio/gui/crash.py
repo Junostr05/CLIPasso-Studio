@@ -21,7 +21,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QtMsgType, QUrl, Signal, Slot, qInstallMessageHandler
 from PySide6.QtGui import QDesktopServices
 
-from .. import APP_NAME, __version__, paths
+from .. import APP_NAME, __version__, logs
 
 KEEP_LOGS = 20
 QT_LOG_MAX_BYTES = 1_000_000
@@ -32,14 +32,19 @@ _state: dict = {"installed": False, "fault_file": None, "showing": False, "notif
 
 
 def logs_dir() -> Path:
-    d = paths.user_data_dir() / "logs"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return logs.logs_dir()
 
 
 def _header() -> str:
-    return (f"{APP_NAME} {__version__} · {platform.system()} {platform.release()} · "
-            f"Python {platform.python_version()} · {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    """Version, edition, system, torch / CUDA and GPU (from the hardware probe) and the time."""
+    try:
+        from .diagnostics import header
+
+        head = header()
+    except Exception:  # noqa: BLE001 - a crash log is written anyway
+        head = (f"{APP_NAME} {__version__} · {platform.system()} {platform.release()} · "
+                f"Python {platform.python_version()}")
+    return f"{head} · {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
 def _prune(pattern: str = "crash-*.log", keep: int = KEEP_LOGS) -> None:

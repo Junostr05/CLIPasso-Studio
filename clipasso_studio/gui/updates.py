@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .. import __version__, paths
 from ..engine.errors import UserError
+from ..fileops import ensure_space, folder_size
 
 RELEASES_API = "https://api.github.com/repos/Junostr05/CLIPasso-Studio/releases/latest"
 RELEASES_PAGE = "https://github.com/Junostr05/CLIPasso-Studio/releases/latest"
@@ -110,6 +111,26 @@ def updates_dir(tag: str) -> Path:
     return paths.user_data_dir() / "updates" / re.sub(r"[^A-Za-z0-9._-]", "_", tag)
 
 
+def remove_old_updates(current: str = __version__) -> int:
+    """Delete the downloads of updates that are installed by now (this version or older); a newer
+    one that is only partly downloaded stays. Returns the bytes freed."""
+    root = paths.user_data_dir() / "updates"
+    freed = 0
+    if not root.is_dir():
+        return 0
+    for d in root.iterdir():
+        if not d.is_dir():
+            continue
+        try:
+            older = parse_version(d.name) <= parse_version(current)
+        except ValueError:
+            older = True
+        if older:
+            freed += folder_size(d)
+            shutil.rmtree(d, ignore_errors=True)
+    return freed
+
+
 def download_update(release: dict, edition: str | None = None, mode: str | None = None, dest_dir=None,
                     progress=None, cancel=None) -> str:
     """Download and verify the update files of this edition; returns the file to start (setup / exe).
@@ -123,6 +144,9 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
         raise UserError("update_no_files", "this release has no files for this edition")
     dest = Path(dest_dir) if dest_dir else updates_dir(release["tag"])
     dest.mkdir(parents=True, exist_ok=True)
+    left = sum(f["size"] - ((dest / f["name"]).stat().st_size if (dest / f["name"]).is_file() else 0)
+               for f in files)
+    ensure_space(dest, max(left, 0), "update")
     sums_path = dest / sums["name"]
     _download_url(sums["url"], sums_path, None, cancel)
     expected = parse_sums(sums_path.read_text(encoding="utf-8", errors="replace"))
@@ -134,6 +158,14 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
         if not digest:
             raise UserError("update_no_checksum", f"{f['name']} is missing in {sums['name']}", file=f["name"])
         ok_marker = target.with_name(target.name + ".ok")
+        if target.is_file() and not ok_marker.is_file() and target.stat().st_size == f["size"]:
+            # complete, but the check did not finish last time (app closed): check instead of loading again
+            if progress:
+                progress(0, 0)
+            if _sha256(target) == digest:
+                ok_marker.write_text(digest, encoding="utf-8")
+            else:
+                target.unlink()
         if not (target.is_file() and ok_marker.is_file() and target.stat().st_size == f["size"]):
             offset = target.stat().st_size if target.is_file() and target.stat().st_size < f["size"] else 0
             if offset == 0 and target.exists():

@@ -47,6 +47,10 @@ def _on(key: str) -> Callable[[dict], bool]:
     return lambda s: bool(s.get(key))
 
 
+def _off(key: str) -> Callable[[dict], bool]:
+    return lambda s: not s.get(key)
+
+
 # Network for the object mask (engine/masking.py): BiRefNet (default since 2.4), its lite version, or
 # U2Net like the original CLIPasso / SceneSketch code.
 MASK_MODELS = ("birefnet", "birefnet-lite", "u2net")
@@ -75,7 +79,8 @@ def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
 
 PARAMS: tuple[Param, ...] = (
     # ------------------------------------------------------------------ basics
-    Param("num_paths", 16, "int", "basics", cli="num_paths", minimum=1, maximum=256, advanced=False),
+    Param("num_paths", 16, "int", "basics", cli="num_paths", minimum=1, maximum=256, advanced=False,
+          enabled_if=_off("one_line")),
     Param("num_iter", 2001, "int", "basics", cli="num_iter", minimum=1, maximum=20000, step=100, advanced=False),
     Param("num_sketches", 3, "int", "basics", cli="num_sketches", minimum=1, maximum=16, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
@@ -87,9 +92,14 @@ PARAMS: tuple[Param, ...] = (
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("image_scale", 224, "int", "image", cli="image_scale", minimum=64, maximum=1024, step=32),
     # ----------------------------------------------------------------- strokes
+    # not in the original: the whole sketch as one continuous line through the salient points
+    Param("one_line", False, "bool", "strokes", advanced=False),
+    Param("one_line_segments", 48, "int", "strokes", minimum=8, maximum=128, step=8, advanced=False,
+          enabled_if=_on("one_line")),
     Param("width", 1.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
-    Param("num_segments", 1, "int", "strokes", cli="num_segments", minimum=1, maximum=16),
-    Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4)),
+    Param("num_segments", 1, "int", "strokes", cli="num_segments", minimum=1, maximum=16, enabled_if=_off("one_line")),
+    Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4),
+          enabled_if=_off("one_line")),
     Param("path_svg", "none", "path", "strokes", cli="path_svg"),
     # -------------------------------------------------------------------- init
     Param("attention_init", True, "bool", "init", cli="attention_init"),
@@ -129,12 +139,12 @@ PARAMS: tuple[Param, ...] = (
     Param("turbo", False, "bool", "optim", advanced=False),
     Param("lr", 1.0, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
     Param("lr_scheduler", False, "bool", "optim", cli="lr_scheduler"),
-    Param("force_sparse", False, "bool", "optim", cli="force_sparse"),
+    Param("force_sparse", False, "bool", "optim", cli="force_sparse", enabled_if=_off("one_line")),
     Param("color_lr", 0.01, "float", "optim", cli="color_lr", minimum=0.0, maximum=1.0, step=0.005, decimals=4,
           enabled_if=_on("force_sparse")),
     Param("color_vars_threshold", 0.0, "float", "optim", cli="color_vars_threshold", minimum=0.0, maximum=1.0,
           step=0.05, decimals=2, enabled_if=_on("force_sparse")),
-    Param("num_stages", 1, "int", "optim", cli="num_stages", minimum=1, maximum=16),
+    Param("num_stages", 1, "int", "optim", cli="num_stages", minimum=1, maximum=16, enabled_if=_off("one_line")),
     Param("eval_interval", 10, "int", "optim", cli="eval_interval", minimum=1, maximum=1000),
     Param("save_interval", 10, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
     # ----------------------------------------------------------------- augment
@@ -580,7 +590,7 @@ def num_strokes(settings: dict[str, Any]) -> int:
     """Number of strokes a run will produce (per stage for CLIPasso)."""
     method = method_of(settings)
     if method == "clipasso":
-        return int(settings.get("num_paths", 16))
+        return 1 if settings.get("one_line") else int(settings.get("num_paths", 16))
     if method == "controlsketch":
         return int(settings.get("num_strokes", 32))
     if method == "scenesketch":

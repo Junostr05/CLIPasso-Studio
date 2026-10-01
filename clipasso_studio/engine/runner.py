@@ -25,6 +25,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 
+from .. import logs
 from . import jobs
 
 MAX_PARALLEL_WORKERS = 4
@@ -90,6 +91,15 @@ class _EventControl:
             time.sleep(0.1)
 
 
+def is_out_of_memory(exc: BaseException) -> bool:
+    """Did a run fail because the GPU (or the computer) ran out of memory?"""
+    if isinstance(exc, MemoryError) or type(exc).__name__ == "OutOfMemoryError":
+        return True
+    text = str(exc).lower()
+    return any(s in text for s in ("out of memory", "can't allocate memory", "not enough memory",
+                                   "cudnn_status_alloc_failed", "failed to allocate"))
+
+
 def _run_one(reporter, settings, target, output_root, job_dir, seeds, finish, stop_event, pause_event,
              resume) -> bool:
     """Run (the seeds of) a job in this worker; False after an unexpected exception."""
@@ -106,7 +116,8 @@ def _run_one(reporter, settings, target, output_root, job_dir, seeds, finish, st
             reporter.event("error", message=str(exc), model=exc.spec_key, traceback="")
         return True
     except BaseException as exc:  # report everything, including MemoryError / KeyboardInterrupt
-        reporter.event("error", message=f"{type(exc).__name__}: {exc}", traceback=traceback.format_exc())
+        reporter.event("error", message=f"{type(exc).__name__}: {exc}", traceback=traceback.format_exc(),
+                       oom=is_out_of_memory(exc))
         return False
 
 
@@ -115,6 +126,7 @@ def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finis
     """Entry point of a worker process. ``threads``: the number chosen in the settings (0 = automatic);
     ``share``: workers running at the same time, which divide the physical cores among them."""
     reporter = _QueueReporter(q, worker_id)
+    fault_log = logs.start_worker_log()
     try:
         import torch
 
@@ -129,6 +141,7 @@ def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finis
         reporter.event("error", message=f"{type(exc).__name__}: {exc}", traceback=traceback.format_exc())
     finally:
         reporter.event("worker_exit")
+        logs.end_worker_log(fault_log)
 
 
 def release_cached_models() -> None:
@@ -152,6 +165,14 @@ def release_cached_models() -> None:
 
 def _warm_main(job_q, q, stop_event, pause_event):
     """A worker that runs one job after the other (see the module docstring)."""
+    fault_log = logs.start_worker_log()
+    try:
+        _warm_loop(job_q, q, stop_event, pause_event)
+    finally:
+        logs.end_worker_log(fault_log)
+
+
+def _warm_loop(job_q, q, stop_event, pause_event):
     import gc
 
     import torch
@@ -408,8 +429,9 @@ class JobRunner:
                 codes = [p.exitcode for p in job.workers]
                 if any(c not in (0, None) for c in codes) and not job.failed:
                     job.failed = True
+                    stacks = "\n\n".join(t for t in (logs.read_worker_log(p.pid) for p in job.workers) if t)
                     events.append(("error", {"message": f"worker process ended unexpectedly (exit codes {codes})",
-                                             "traceback": ""}))
+                                             "traceback": stacks}))
             if job.finished_workers >= len(job.workers):
                 if job.parallel and (job.seed_results or job.resumed) and not job.failed:
                     results = jobs.merge_results(job.resumed, [jobs.SeedResult(**r) for r in job.seed_results])
