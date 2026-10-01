@@ -5,6 +5,7 @@ Works both from a source checkout and from a PyInstaller bundle (onefile or oned
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -55,10 +56,28 @@ def user_data_dir() -> Path:
     return path
 
 
+def default_models_dir() -> Path:
+    return user_data_dir() / "models"
+
+
+def _stored_setting(key: str):
+    """A value of settings.json read directly (worker processes have no app settings object)."""
+    try:
+        data = json.loads(app_settings_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data.get(key) if isinstance(data, dict) else None
+
+
 def downloaded_models_dir() -> Path:
-    """Optional models downloaded on demand (writable)."""
-    path = user_data_dir() / "models"
-    path.mkdir(parents=True, exist_ok=True)
+    """Optional models downloaded on demand (writable): the folder chosen in the settings ("Model
+    folder") or <app data>/models."""
+    custom = os.environ.get("CLIPASSO_DOWNLOADS_DIR") or _stored_setting("models_dir")
+    path = Path(custom) if custom else default_models_dir()
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:  # e.g. an external drive that is not connected: nothing is found there
+        pass
     return path
 
 

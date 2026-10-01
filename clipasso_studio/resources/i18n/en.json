@@ -668,5 +668,14 @@
  "ui.queue.done_text_sleep": "The PC goes to sleep in {s} s.",
  "ui.queue.done_text_shutdown": "The PC shuts down in {s} s. Your sketches are saved.",
  "ui.queue.done_now_sleep": "Sleep now",
- "ui.queue.done_now_shutdown": "Shut down now"
+ "ui.queue.done_now_shutdown": "Shut down now",
+ "ui.settings.models_dir": "Model folder (downloaded models)",
+ "ui.settings.models_hint": "{size} of downloaded models here. The models included with the app stay where they are.",
+ "ui.settings.models_busy": "Wait until the running sketch is done, then change the model folder.",
+ "ui.settings.models_nested": "The new folder must not be inside the old one (or the other way round).",
+ "ui.settings.models_move_q": "Move your downloaded models ({size}) to the new folder?",
+ "ui.settings.models_move": "Move models",
+ "ui.settings.models_only": "Use the new folder only",
+ "ui.settings.models_no_space": "Not enough free space in the new folder for {size}.",
+ "ui.settings.models_moving": "Moving the models …"
 }

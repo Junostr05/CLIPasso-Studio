@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+from pathlib import Path
 
 from PySide6.QtCore import QFile, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPixmap
@@ -787,9 +788,11 @@ class ModelsPage(QWidget):
 # =================================================================== settings
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
+    models_dir_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.busy_check = lambda: False  # the main window: is a job running?
         self.setObjectName("Page")
         s = app_settings()
         root = QVBoxLayout(self)
@@ -852,6 +855,23 @@ class SettingsPage(QWidget):
         r.addWidget(self.out_btn)
         self.files.body.addWidget(self.out_label)
         self.files.body.addLayout(r)
+        # where downloaded models are stored (bundled ones stay with the app)
+        self.models_label = label("", None)
+        self.models_edit = QLineEdit(str(paths.downloaded_models_dir()))
+        self.models_edit.setReadOnly(True)
+        self.models_btn = button("", "folder-open")
+        self.models_btn.clicked.connect(self.choose_models_dir)
+        self.models_open = tool_button("external-link", "", 16)
+        self.models_open.clicked.connect(lambda: QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(paths.downloaded_models_dir()))))
+        self.models_hint = label("", "faint", wrap=True)
+        r = QHBoxLayout()
+        r.addWidget(self.models_edit, 1)
+        r.addWidget(self.models_open)
+        r.addWidget(self.models_btn)
+        self.files.body.addWidget(self.models_label)
+        self.files.body.addLayout(r)
+        self.files.body.addWidget(self.models_hint)
         col.addWidget(self.files)
 
         self.behaviour = Card()
@@ -923,6 +943,59 @@ class SettingsPage(QWidget):
             self.out_edit.setText(d)
             app_settings().set("output_dir", d)
 
+    def choose_models_dir(self, folder: str | None = None, move: bool | None = None) -> bool:
+        """Change the folder of the downloaded models, moving them there if wanted (``folder`` /
+        ``move`` skip the dialogs, for tests). Not while a job runs."""
+        if self.busy_check():
+            QMessageBox.information(self, tr("ui.settings.models_dir"), tr("ui.settings.models_busy"))
+            return False
+        old = paths.downloaded_models_dir()
+        if folder is None:
+            folder = QFileDialog.getExistingDirectory(self, tr("ui.settings.models_dir"), str(old))
+            if not folder:
+                return False
+        new, cur = Path(folder).resolve(), old.resolve()
+        if new == cur:
+            return False
+        if cur in new.parents or new in cur.parents:
+            QMessageBox.warning(self, tr("ui.settings.models_dir"), tr("ui.settings.models_nested"))
+            return False
+        size = model_store.folder_size(cur)
+        if size and move is None:
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Question)
+            box.setWindowTitle(tr("ui.settings.models_dir"))
+            box.setText(tr("ui.settings.models_move_q", size=_size_text(size / 1e6)))
+            move_btn = box.addButton(tr("ui.settings.models_move"), QMessageBox.AcceptRole)
+            only_btn = box.addButton(tr("ui.settings.models_only"), QMessageBox.DestructiveRole)
+            box.addButton(tr("ui.cancel"), QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() not in (move_btn, only_btn):
+                return False
+            move = box.clickedButton() is move_btn
+        if size and move:
+            new.mkdir(parents=True, exist_ok=True)
+            if shutil.disk_usage(new).free < size * 1.02 and cur.anchor.lower() != new.anchor.lower():
+                QMessageBox.warning(self, tr("ui.settings.models_dir"), tr("ui.settings.models_no_space",
+                                                                         size=_size_text(size / 1e6)))
+                return False
+            dlg = dialogs.BusyDialog(tr("ui.settings.models_moving"), self)
+            dialogs.run_in_thread(dlg, model_store.move_models, cur, new, on_progress=dlg.progress,
+                                  on_done=lambda _: dlg.accept(), on_error=dlg.fail)
+            if not dlg.exec():
+                QMessageBox.warning(self, tr("ui.settings.models_dir"), dlg.error or tr("ui.error"))
+                return False
+        default = paths.default_models_dir().resolve()
+        app_settings().set("models_dir", "" if new == default else str(new))
+        self._show_models_dir()
+        self.models_dir_changed.emit()
+        return True
+
+    def _show_models_dir(self):
+        folder = paths.downloaded_models_dir()
+        self.models_edit.setText(str(folder))
+        self.models_hint.setText(tr("ui.settings.models_hint", size=_size_text(model_store.folder_size(folder) / 1e6)))
+
     def _probe_hardware(self):
         def probe(progress=None):
             import torch
@@ -963,6 +1036,10 @@ class SettingsPage(QWidget):
         self.files_title.setText(tr("ui.settings.files"))
         self.out_label.setText(tr("ui.settings.output"))
         self.out_btn.setText(tr("ui.change"))
+        self.models_label.setText(tr("ui.settings.models_dir"))
+        self.models_btn.setText(tr("ui.change"))
+        self.models_open.setToolTip(tr("ui.open_folder"))
+        self._show_models_dir()
         self.behaviour_title.setText(tr("ui.settings.behaviour"))
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))

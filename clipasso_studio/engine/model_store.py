@@ -633,5 +633,40 @@ def load_state(spec_key: str) -> dict:
     return state
 
 
+def folder_size(path: Path) -> int:
+    total = 0
+    for dirpath, _, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(dirpath, f))
+            except OSError:
+                pass
+    return total
+
+
+def move_models(src: Path, dst: Path, progress: ProgressFn | None = None) -> int:
+    """Move every downloaded model (and unfinished download) from ``src`` to ``dst``: a rename on the
+    same drive, otherwise copy + delete per folder. Folders that exist in ``dst`` are merged.
+    Returns the bytes moved."""
+    src, dst = Path(src), Path(dst)
+    dst.mkdir(parents=True, exist_ok=True)
+    entries = sorted(src.iterdir()) if src.is_dir() else []
+    sizes = [folder_size(e) if e.is_dir() else e.stat().st_size for e in entries]
+    total, done = sum(sizes) or 1, 0
+    for e, size in zip(entries, sizes):
+        target = dst / e.name
+        if target.exists() and e.is_dir():
+            shutil.copytree(e, target, dirs_exist_ok=True)
+            shutil.rmtree(e)
+        else:
+            if target.exists():
+                target.unlink()
+            shutil.move(str(e), str(target))
+        done += size
+        if progress:
+            progress(done, total)
+    return done
+
+
 def copy_tree(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst, dirs_exist_ok=True)

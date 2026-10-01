@@ -166,6 +166,36 @@ FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp
            "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)"}
 
 
+class BusyDialog(QDialog):
+    """A short "please wait" with a progress bar for work in ``run_in_thread``; ``exec()`` is
+    accepted when the work is done, rejected with ``error`` set when it failed."""
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self.error = ""
+        self.setWindowTitle(text)
+        self.setMinimumWidth(380)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.addWidget(label(text, "muted", wrap=True))
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 0)
+        lay.addWidget(self.bar)
+
+    def progress(self, done: int, total: int):
+        if total > 0:
+            self.bar.setRange(0, total)
+            self.bar.setValue(done)
+
+    def fail(self, message: str):
+        self.error = message
+        self.reject()
+
+    def reject(self):  # not closable by Esc while the work runs
+        if self.error:
+            super().reject()
+
+
 class CountdownDialog(QDialog):
     """"The queue is done – the PC goes to sleep / shuts down in 60 s" with Cancel and Now; accepted
     when the time is up or on Now."""

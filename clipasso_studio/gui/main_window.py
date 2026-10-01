@@ -229,6 +229,8 @@ class MainWindow(QMainWindow):
         self.gallery.toast.connect(self.toast.show_message)
         self.queue.toast.connect(self.toast.show_message)
         self.controller.queue_idle.connect(self._queue_done)
+        self.settings.busy_check = self.controller.is_busy
+        self.settings.models_dir_changed.connect(self._models_dir_changed)
         self.power_action = power.run  # replaced in tests
         self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
         self.settings.theme_changed.connect(self.apply_theme)
@@ -374,6 +376,11 @@ class MainWindow(QMainWindow):
         if self.studio.image_path:
             self.show_page("studio")
             self.studio.add_to_queue()
+
+    def _models_dir_changed(self):
+        self.models.retranslate()  # the location line and every row
+        self.studio.picker.refresh_status(self.studio.params.all_settings())
+        self.studio._update_banner()
 
     def _queue_done(self, job):
         """The last job of the queue ended: sleep / shut down if chosen (after a countdown)."""

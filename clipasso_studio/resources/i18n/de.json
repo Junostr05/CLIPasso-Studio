@@ -668,5 +668,14 @@
  "ui.queue.done_text_sleep": "Der PC wechselt in {s} s in den Energiesparmodus.",
  "ui.queue.done_text_shutdown": "Der PC fährt in {s} s herunter. Deine Skizzen sind gespeichert.",
  "ui.queue.done_now_sleep": "Jetzt Energie sparen",
- "ui.queue.done_now_shutdown": "Jetzt herunterfahren"
+ "ui.queue.done_now_shutdown": "Jetzt herunterfahren",
+ "ui.settings.models_dir": "Modellordner (geladene Modelle)",
+ "ui.settings.models_hint": "Hier liegen {size} geladene Modelle. Die mitgelieferten Modelle bleiben, wo sie sind.",
+ "ui.settings.models_busy": "Warte, bis die laufende Skizze fertig ist, und ändere dann den Modellordner.",
+ "ui.settings.models_nested": "Der neue Ordner darf nicht im alten liegen (und umgekehrt).",
+ "ui.settings.models_move_q": "Deine geladenen Modelle ({size}) in den neuen Ordner verschieben?",
+ "ui.settings.models_move": "Modelle verschieben",
+ "ui.settings.models_only": "Nur den neuen Ordner verwenden",
+ "ui.settings.models_no_space": "Im neuen Ordner ist nicht genug Platz für {size}.",
+ "ui.settings.models_moving": "Verschiebe die Modelle …"
 }
