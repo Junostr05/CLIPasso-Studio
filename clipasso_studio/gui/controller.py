@@ -125,6 +125,19 @@ class JobController(QObject):
             self.start_next()
         return job
 
+    def enqueue_many(self, targets: list[str], settings: dict, start: bool = True) -> list[QueuedJob]:
+        """Queue several images with the same settings – the queue is saved and shown once, not per image
+        (a folder of hundreds of images)."""
+        normalized = schema.normalize(settings)
+        added = [QueuedJob(target=t, settings=dict(normalized)) for t in targets]
+        self.jobs.extend(added)
+        if added:
+            self._persist_queue()
+            self.queue_changed.emit()
+            if start and not self.is_busy():
+                self.start_next()
+        return added
+
     def pending(self) -> list[QueuedJob]:
         return [j for j in self.jobs if j.status == "queued"]
 

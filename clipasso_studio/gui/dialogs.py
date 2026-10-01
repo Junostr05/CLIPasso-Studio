@@ -517,13 +517,23 @@ class ExportDialog(QDialog):
                 export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style)
             elif self.fmt == "svg1":
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
-            elif self.fmt == "png":
-                export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg,
-                                  style)
-            elif self.fmt == "pdf":
-                app_settings().set("export_pdf_width", self.width_cm.value())
-                export.export_pdf(self.svg_path, dest, self.width_cm.value(), stroke, self.width_scale.value(), bg,
-                                  style)
+            elif self.fmt in ("png", "pdf"):  # big images take a while: in the background
+                if self.fmt == "pdf":
+                    app_settings().set("export_pdf_width", self.width_cm.value())
+                args = (self.svg_path, dest, self.size.value() if self.fmt == "png" else self.width_cm.value(),
+                        stroke, self.width_scale.value(), bg, style)
+                write = export.export_png if self.fmt == "png" else export.export_pdf
+
+                def job(progress=None):
+                    write(*args)
+                    return dest
+
+                self.ok.setEnabled(False)
+                self.progress.setRange(0, 0)
+                self.progress.setVisible(True)
+                self.busy, self._cancel = True, False
+                run_in_thread(self, job, on_done=lambda _: self._finished(dest), on_error=self._failed)
+                return
             elif self.fmt == "svganim":
                 export.export_animated_svg(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
                                            self.width_scale.value(), bg, style)

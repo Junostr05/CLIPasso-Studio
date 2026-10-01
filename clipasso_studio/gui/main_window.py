@@ -292,7 +292,16 @@ class MainWindow(QMainWindow):
         box.exec()
         if box.clickedButton() is not now:
             return False
-        path = updates.place_portable(dlg.path, version) if mode == "portable" else dlg.path
+        path = dlg.path
+        if mode == "portable":  # copies about a gigabyte: in the background, the window stays responsive
+            busy = dialogs.BusyDialog(tr("ui.update.placing"), self)
+            placed = []
+            dialogs.run_in_thread(busy, lambda progress=None: updates.place_portable(dlg.path, version),
+                                  on_done=lambda p: (placed.append(p), busy.accept()), on_error=busy.fail)
+            if not busy.exec() or not placed:
+                QMessageBox.warning(self, APP_NAME, busy.error or tr("ui.error"))
+                return False
+            path = placed[0]
         program, args = updates.install_command(path, mode)
         if not self.close():  # a running job: the user decided to keep it
             return False

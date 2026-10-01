@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import jobs, model_store
-from .. import crash, dialogs, icons, methods_ui, power, shortcuts, theme
+from .. import crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
@@ -93,9 +93,9 @@ class QueueRow(Card):
         row = QHBoxLayout()
         row.setSpacing(12)
         thumb = QLabel()
-        pm = QPixmap(job.target)
+        pm = thumbs.thumbnail(job.target, 56)  # decoded small and kept (rows are rebuilt often)
         if not pm.isNull():
-            thumb.setPixmap(pm.scaled(56, 56, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            thumb.setPixmap(pm)
         thumb.setFixedSize(60, 60)
         thumb.setAlignment(Qt.AlignCenter)
         row.addWidget(thumb)
@@ -223,8 +223,7 @@ class QueuePage(QWidget):
 
     def _add_images(self):
         paths_, _ = QFileDialog.getOpenFileNames(self, tr("ui.choose_image"), os.path.expanduser("~"), IMAGE_FILTER)
-        for p in paths_:
-            self.controller.enqueue(p, self.settings_provider(), start=not self.controller.is_busy())
+        self.controller.enqueue_many(paths_, self.settings_provider(), start=not self.controller.is_busy())
 
     def _add_folder(self):
         folder = QFileDialog.getExistingDirectory(self, tr("ui.queue.add_folder"), os.path.expanduser("~"))
@@ -249,9 +248,7 @@ class QueuePage(QWidget):
 
     def add_paths(self, paths: list[str]) -> int:
         """Queue images (dropped files / folders) with the current settings; returns their number."""
-        settings = self.settings_provider()
-        for p in paths:
-            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        self.controller.enqueue_many(list(paths), self.settings_provider(), start=not self.controller.is_busy())
         if paths:
             self.toast.emit(tr("ui.queue.added", n=len(paths)), "success")
         return len(paths)
@@ -272,9 +269,7 @@ class QueuePage(QWidget):
         """Queue every image of a folder with the current settings (result folders of the app are
         skipped). Returns the number of images."""
         images = image_files(folder, recursive)
-        settings = self.settings_provider()
-        for p in images:
-            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        self.controller.enqueue_many(images, self.settings_provider(), start=not self.controller.is_busy())
         return len(images)
 
     def finished_items(self) -> list[tuple[str, dict]]:
@@ -290,13 +285,17 @@ class QueuePage(QWidget):
         dialogs.export_many(self, self.finished_items())
 
     def rebuild(self):
-        for r in self.rows.values():
-            r.setParent(None)
-        self.rows.clear()
-        for job in self.controller.jobs:
-            row = QueueRow(job, self.controller)
-            self.list_lay.insertWidget(self.list_lay.count() - 1, row)
-            self.rows[job.id] = row
+        """Rows for the jobs of the queue, in its order – existing rows are kept (only new jobs get a row)."""
+        ids = [job.id for job in self.controller.jobs]
+        for job_id in [k for k in self.rows if k not in ids]:
+            self.rows.pop(job_id).setParent(None)
+        for i, job in enumerate(self.controller.jobs):
+            row = self.rows.get(job.id)
+            if row is None:
+                row = self.rows[job.id] = QueueRow(job, self.controller)
+            if self.list_lay.indexOf(row) != i:
+                self.list_lay.insertWidget(i, row)
+            row.refresh()
         self.empty.setVisible(not self.controller.jobs)
         self.run_btn.setEnabled(bool(self.controller.pending()) and not self.controller.is_busy())
         self.export_btn.setEnabled(any(j.status in ("done", "cancelled") and j.job_dir for j in self.controller.jobs))

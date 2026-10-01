@@ -36,6 +36,34 @@ def render_svg_image(svg: str, size: int, background: QColor | None = QColor("wh
     return img
 
 
+DISPLAY_MAX = 1600  # px: the longest side photos are decoded at for display
+
+
+def load_pixmap(path: str, max_side: int) -> QPixmap:
+    """An image file as a pixmap of at most ``max_side`` px (big photos are decoded smaller directly)."""
+    from PySide6.QtGui import QImageReader
+
+    reader = QImageReader(path)
+    reader.setAutoTransform(True)
+    full = reader.size()
+    if full.isValid() and max(full.width(), full.height()) > max_side:
+        reader.setScaledSize(full.scaled(QSize(max_side, max_side), Qt.KeepAspectRatio))
+    img = reader.read()
+    return QPixmap.fromImage(img) if not img.isNull() else QPixmap()
+
+
+def _fitted(widget, pix: QPixmap, size: QSize, keep_aspect: bool = True) -> QPixmap:
+    """``pix`` smoothly scaled to ``size`` – kept on the widget until the pixmap or the size changes."""
+    key = (pix.cacheKey(), size.width(), size.height(), keep_aspect)
+    cached = getattr(widget, "_scaled", None)
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    mode = Qt.KeepAspectRatio if keep_aspect else Qt.IgnoreAspectRatio
+    scaled = pix.scaled(size, mode, Qt.SmoothTransformation)
+    widget._scaled = (key, scaled)
+    return scaled
+
+
 class SketchCanvas(QWidget):
     """Paper-like canvas showing the sketch (SVG), the input, the attention map or the mask.
 
@@ -181,7 +209,8 @@ class SketchCanvas(QWidget):
         elif self.mode == "condition" and self._condition:
             p.drawPixmap(rect.toRect(), self._condition)
         elif self.mode == "compare" and self._input:
-            p.drawPixmap(rect.toRect(), self._input)
+            # scaled once per size, not on every move of the divider
+            p.drawPixmap(rect.toRect(), _fitted(self, self._input, rect.toRect().size(), keep_aspect=False))
             x = rect.left() + rect.width() * self._split
             right = QRectF(x, rect.top(), rect.right() - x, rect.height())
             p.save()
@@ -428,7 +457,9 @@ class LossChart(QWidget):
         c.setAlpha(90)
         p.setPen(QPen(c, 1))
         path = QPainterPath()
-        for i, (it, v) in enumerate(self.train):
+        step = max(1, len(self.train) // max(int(r.width()), 1))  # about one point per pixel column
+        shown = self.train[::step] + ([self.train[-1]] if (len(self.train) - 1) % step else [])
+        for i, (it, v) in enumerate(shown):
             path.lineTo(pt(it, v)) if i else path.moveTo(pt(it, v))
         p.drawPath(path)
         if len(self.evals) > 1:
@@ -460,7 +491,9 @@ class ImageDropZone(QFrame):
         self.subtitle = ""
 
     def set_image(self, path: str | None):
-        self._pix = QPixmap(path) if path and os.path.isfile(path) else None
+        # decoded at most at a screen-friendly size (a 24-megapixel photo is not needed here)
+        self._pix = load_pixmap(path, DISPLAY_MAX) if path and os.path.isfile(path) else None
+        self._scaled = None
         self._overlay = None
         self.update()
 
@@ -508,7 +541,7 @@ class ImageDropZone(QFrame):
         p.drawRoundedRect(r, 12, 12)
         if self._pix and not self._pix.isNull():
             inner = r.adjusted(10, 10, -10, -10)
-            scaled = self._pix.scaled(inner.size().toSize(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = _fitted(self, self._pix, inner.size().toSize())
             x = inner.left() + (inner.width() - scaled.width()) / 2
             y = inner.top() + (inner.height() - scaled.height()) / 2
             clip = QPainterPath()

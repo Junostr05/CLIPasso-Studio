@@ -122,3 +122,27 @@ def test_window_routes_drops(window, tmp_path, monkeypatch):
     before = len(window.controller.jobs)
     _drop(window, files)
     assert len(window.controller.jobs) == before + 1
+
+
+def test_many_images_are_queued_at_once(window, tmp_path, monkeypatch):
+    """A folder of many images: the queue is saved and rebuilt once, rows are kept and small previews
+    are decoded once."""
+    from clipasso_studio.gui import thumbs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    files = _images(tmp_path / "many", [f"i{i:03d}.png" for i in range(40)])
+    saves, rebuilds = [], []
+    real_set = app_settings().set
+    monkeypatch.setattr(app_settings(), "set", lambda k, v: (saves.append(k), real_set(k, v)))
+    window.controller.queue_changed.connect(lambda: rebuilds.append(1))
+    before = len(window.controller.jobs)
+    assert window.queue.add_folder(str(tmp_path / "many")) == 40
+    assert len(window.controller.jobs) == before + 40
+    assert saves.count("queue") <= 2 and len(rebuilds) <= 2  # (+1 if the first job started)
+    rows = dict(window.queue.rows)
+    window.queue.rebuild()
+    assert all(window.queue.rows[k] is rows[k] for k in rows)  # the rows are kept
+    assert thumbs.thumbnail(files[0], 56).width() <= 56
+    for job in window.controller.jobs[before:]:
+        if job.status == "queued":
+            window.controller.remove(job.id)

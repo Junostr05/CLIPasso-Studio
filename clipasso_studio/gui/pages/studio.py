@@ -9,7 +9,7 @@ import sys
 import time
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QImage, QPixmap
+from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QImage, QImageReader, QPixmap
 from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
                                QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
@@ -20,7 +20,8 @@ from .. import dialogs, icons, mask_view, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
-from ..widgets.canvas import IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb, SketchCanvas
+from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
+                              SketchCanvas, load_pixmap)
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel
@@ -412,9 +413,7 @@ class StudioPage(QWidget):
             self.queue_paths(paths)
 
     def queue_paths(self, paths: list[str]) -> int:
-        settings = self.params.settings()
-        for p in paths:
-            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        self.controller.enqueue_many(list(paths), self.params.settings(), start=not self.controller.is_busy())
         self.toast.emit(tr("ui.queue.added", n=len(paths)), "success")
         return len(paths)
 
@@ -449,14 +448,15 @@ class StudioPage(QWidget):
             return
         self.image_path = path
         self.drop.set_image(path)
-        pm = QPixmap(path)
-        self.file_label.setText(f"{os.path.basename(path)}  ·  {pm.width()}×{pm.height()} px")
+        full = QImageReader(path).size()  # from the file header: the photo is decoded once, small
+        pm = load_pixmap(path, DISPLAY_MAX)
+        self.file_label.setText(f"{os.path.basename(path)}  ·  {full.width()}×{full.height()} px")
         self.file_label.setToolTip(path)
         app_settings().set("last_image", path)
         if not self.controller.is_busy():
             self._reset_view()
             self.canvas.set_input(self._square_input(pm))
-        if pm.width() != pm.height() and not self.params.settings()["fix_scale"]:
+        if full.width() != full.height() and not self.params.settings()["fix_scale"]:
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
         self._mask = None
         self._update_mask_preview()
@@ -794,7 +794,7 @@ class StudioPage(QWidget):
         if job.target != self.image_path:
             self.image_path = job.target
             self.drop.set_image(job.target)
-        self.canvas.set_input(self._square_input(QPixmap(job.target)))
+        self.canvas.set_input(self._square_input(load_pixmap(job.target, DISPLAY_MAX)))
         self._set_view_method(schema.method_of(job.settings))
         self.chart.reset(methods_ui.iterations(job.settings))
         self._setup_matrix(job.settings)
@@ -1012,8 +1012,9 @@ class StudioPage(QWidget):
             jobs.restore_edited_mask(job_dir, src)
             self._mask = None
             self._update_mask_preview()
-            pm = QPixmap(src)
-            text = f"{os.path.basename(src)}  ·  {pm.width()}×{pm.height()} px"
+            pm = load_pixmap(src, DISPLAY_MAX)
+            full = QImageReader(src).size()
+            text = f"{os.path.basename(src)}  ·  {full.width()}×{full.height()} px"
             if os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(target or "")):
                 text += f"  ·  {tr('ui.saved_copy')}"
             self.file_label.setText(text)

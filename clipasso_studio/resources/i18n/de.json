@@ -732,5 +732,6 @@
  "ui.settings.parallel": "Auf großen CPUs mehrere Skizzen gleichzeitig rechnen",
  "ui.settings.parallel_tip": "CLIPasso und SwiftSketch: Ab 6 CPU-Kernen und genug freiem Arbeitsspeicher laufen die Skizzen eines Jobs nebeneinander statt nacheinander (jede mit ihrem Anteil der Kerne). Auf einer GPU nicht verwendet.",
  "ui.settings.keep_models": "Modelle zwischen Jobs geladen lassen",
- "ui.settings.keep_models_tip": "Der nächste Job der Warteschlange startet, ohne PyTorch und die Modelle neu zu laden (spart 5–60 s pro Job). Sie bleiben bis 5 Minuten nach dem letzten Job im Arbeitsspeicher."
+ "ui.settings.keep_models_tip": "Der nächste Job der Warteschlange startet, ohne PyTorch und die Modelle neu zu laden (spart 5–60 s pro Job). Sie bleiben bis 5 Minuten nach dem letzten Job im Arbeitsspeicher.",
+ "ui.update.placing": "Die neue Version wird neben diese kopiert …"
 }

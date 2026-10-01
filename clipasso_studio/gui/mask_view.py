@@ -9,7 +9,9 @@ holds the cache lock of its image) – the newest request waits and starts after
 from __future__ import annotations
 
 import multiprocessing as mp
+import os
 import queue as queue_mod
+from collections import OrderedDict
 
 import numpy as np
 from PIL import Image
@@ -20,11 +22,45 @@ from ..engine import masking
 from ..engine.imaging import load_rgb
 
 
+_images: OrderedDict = OrderedDict()  # (path, mtime, size) -> (image, digest): decoding + hashing a photo
+_probabilities: OrderedDict = OrderedDict()  # (model, digest, cache file mtime) -> probability
+
+
+def _remember(store: OrderedDict, key, value, keep: int):
+    store[key] = value
+    store.move_to_end(key)
+    while len(store) > keep:
+        store.popitem(last=False)
+    return value
+
+
 def load_mask(path: str, model: str) -> tuple[Image.Image, np.ndarray | None, np.ndarray | None]:
-    """(image, the model's probability from the cache or None, the user's edited mask or None)."""
-    im = load_rgb(path)
-    digest = masking.image_digest(im)
-    return im, masking.cached_probability(im, model, digest), masking.edited_mask(im, digest)
+    """(image, the model's probability from the cache or None, the user's edited mask or None).
+
+    The decoded image, its digest and the probability are kept for the last few images: the studio
+    asks for the same image several times (a new image, the eye button, the mask editor)."""
+    st = os.stat(path)
+    key = (os.path.normcase(os.path.abspath(path)), st.st_mtime_ns, st.st_size)
+    if key in _images:
+        _images.move_to_end(key)
+        im, digest = _images[key]
+    else:
+        im = load_rgb(path)
+        im, digest = _remember(_images, key, (im, masking.image_digest(im)), keep=2)
+    cache_file = masking.cache_path(im, model, digest)
+    try:
+        stamp = cache_file.stat().st_mtime_ns
+    except OSError:
+        stamp = None
+    prob = None
+    if stamp is not None:
+        pkey = (model, digest, stamp)
+        prob = _probabilities.get(pkey)
+        if prob is None:
+            prob = masking.cached_probability(im, model, digest)
+            if prob is not None:
+                _remember(_probabilities, pkey, prob, keep=4)
+    return im, prob, masking.edited_mask(im, digest)
 
 
 def _erode(m: np.ndarray) -> np.ndarray:

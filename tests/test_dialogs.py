@@ -299,6 +299,7 @@ def test_export_dialog_remembers_the_last_choices(qapp, tmp_path, monkeypatch):
     os.makedirs(tmp_path / "elsewhere", exist_ok=True)
     monkeypatch.setattr(QFileDialog, "getSaveFileName", fake_save)
     png._save()
+    _wait(qapp, lambda: not png.busy)  # written in the background
     assert os.path.dirname(starts[0]) == str(tmp_path / "exports")
     assert s.get("export_dir") == str(tmp_path / "elsewhere") and s.get("export_last_format") == "png"
     assert os.path.isfile(tmp_path / "elsewhere" / "sketch.png")
