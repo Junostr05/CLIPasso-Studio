@@ -326,3 +326,38 @@ def test_real_birefnet_lite_finds_the_camel():
     m = np.asarray(mask) > 0
     assert 0.2 < m.mean() < 0.6 and not m[0, 0]
     masking._cache.clear()
+
+
+def test_masked_images_are_computed_in_blocks_without_changing_them():
+    """_on_white / apply_soft_mask work on blocks of rows (big photos no longer need gigabytes):
+    the result is the same as the whole-image float64 version of 2.4."""
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.engine import masking
+
+    def old_on_white(pil_im, mask):
+        mask3 = np.repeat(mask[:, :, None], 3, axis=2)
+        im_np = np.array(pil_im).astype(np.float64)
+        im_np = im_np / max(im_np.max(), 1e-12)
+        im_np = mask3 * im_np
+        im_np[mask3 == 0] = 1
+        return (im_np / max(im_np.max(), 1e-12) * 255).astype(np.uint8), (mask * 255).astype(np.uint8)
+
+    def old_soft(pil_im, mask):
+        im = np.asarray(pil_im.convert("RGB")).astype(np.float64)
+        im = im / max(im.max(), 1e-12)
+        im = mask[:, :, None] * im
+        im[mask < mask.mean()] = 1
+        return (im / max(im.max(), 1e-12) * 255).astype(np.uint8)
+
+    rng = np.random.default_rng(0)
+    for h, w in ((700, 530), (256, 256), (1, 9), (513, 1)):
+        im = Image.fromarray(rng.integers(0, 256, (h, w, 3), dtype=np.uint8))
+        mask = (rng.random((h, w)) > 0.4).astype(np.float64)
+        a, am = old_on_white(im, mask)
+        b, bm = masking._on_white(im, mask)
+        assert np.array_equal(a, np.asarray(b)) and np.array_equal(am, np.asarray(bm))
+        assert np.array_equal(a, np.asarray(masking._on_white(im, mask > 0.5)[0]))  # a boolean mask
+        soft = rng.random((h, w)).astype(np.float32)
+        assert np.array_equal(old_soft(im, soft), np.asarray(masking.apply_soft_mask(im, soft)))

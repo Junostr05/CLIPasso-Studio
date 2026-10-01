@@ -54,19 +54,40 @@ def get_mask_u2net(device, pil_im: Image.Image, net=None):
     # resize back to the input size (bilinear like skimage.transform.resize) and re-binarise
     small = predict[0].cpu().numpy().astype(np.float32)
     mask = np.asarray(Image.fromarray(small, mode="F").resize((w, h), Image.BILINEAR))
-    mask = (mask >= 0.5).astype(np.float64)
-    return _on_white(pil_im, mask)
+    return _on_white(pil_im, mask >= 0.5)
+
+
+ROWS = 256  # image rows computed at a time: a 24-megapixel photo no longer needs gigabytes in float64
+
+
+def _rows(height: int):
+    return (slice(y, min(y + ROWS, height)) for y in range(0, height, ROWS))
+
+
+def _whitened(im: np.ndarray, mask: np.ndarray, white) -> np.ndarray:
+    """The image scaled to [0, 1] and multiplied by ``mask``, with 1 where ``white(mask)``, scaled to
+    its maximum and as uint8 – per block of rows (computed twice: once for the maximum), with the same
+    float64 arithmetic as the original whole-image version."""
+    peak = max(float(im.max()), 1e-12)
+
+    def block(rows):
+        m = mask[rows].astype(np.float64)[:, :, None]
+        b = m * (im[rows].astype(np.float64) / peak)
+        b[np.broadcast_to(white(m), b.shape)] = 1
+        return b
+
+    top = max(max((float(block(r).max()) for r in _rows(im.shape[0])), default=0.0), 1e-12)
+    out = np.empty(im.shape, dtype=np.uint8)
+    for rows in _rows(im.shape[0]):
+        out[rows] = (block(rows) / top * 255).astype(np.uint8)
+    return out
 
 
 def _on_white(pil_im: Image.Image, mask: np.ndarray) -> tuple[Image.Image, Image.Image]:
     """The image with everything outside the binary ``mask`` white, and the mask as an 'L' image."""
-    mask3 = np.repeat(mask[:, :, None], 3, axis=2)
-    im_np = np.array(pil_im).astype(np.float64)
-    im_np = im_np / max(im_np.max(), 1e-12)
-    im_np = mask3 * im_np
-    im_np[mask3 == 0] = 1
-    im_final = (im_np / max(im_np.max(), 1e-12) * 255).astype(np.uint8)
-    mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+    im = np.asarray(pil_im)
+    im_final = _whitened(im, mask, lambda m: m == 0)
+    mask_img = Image.fromarray((np.asarray(mask, dtype=np.float32) * 255).astype(np.uint8), mode="L")
     return Image.fromarray(im_final), mask_img
 
 
@@ -333,8 +354,5 @@ def soft_mask(device, pil_im: Image.Image, model: str = DEFAULT_MASK_MODEL, net=
 def apply_soft_mask(pil_im: Image.Image, mask: np.ndarray) -> Image.Image:
     """``create_masked_image`` of SwiftSketch: multiply by the matte, pixels below the mean matte
     value become white."""
-    im = np.asarray(pil_im.convert("RGB")).astype(np.float64)
-    im = im / max(im.max(), 1e-12)
-    im = mask[:, :, None] * im
-    im[mask < mask.mean()] = 1
-    return Image.fromarray((im / max(im.max(), 1e-12) * 255).astype(np.uint8))
+    mean = mask.mean()
+    return Image.fromarray(_whitened(np.asarray(pil_im.convert("RGB")), mask, lambda m: m < mean))
