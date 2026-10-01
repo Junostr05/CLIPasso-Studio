@@ -66,6 +66,7 @@ class MLPPainter(nn.Module):
                  gumbel_temp: float = 0.2, width: float = BASE_WIDTH):
         super().__init__()
         self.device = device
+        self._black = torch.tensor([0.0, 0.0, 0.0, 1.0], device=device)  # shared by all strokes (not optimised)
         self.canvas = int(canvas)
         self.points_init = points_init.to(device=device, dtype=torch.float32)  # [N, cp, 2] in pixels
         self.num_paths, self.num_cp = int(points_init.shape[0]), int(points_init.shape[1])
@@ -126,7 +127,7 @@ class MLPPainter(nn.Module):
                 self.out_of_canvas_mask[p] = 0
             shapes.append(path)
             groups.append(renderer.ShapeGroup(shape_ids=torch.tensor([len(shapes) - 1]), fill_color=None,
-                                              stroke_color=torch.tensor([0.0, 0.0, 0.0, 1.0])))
+                                              stroke_color=self._black))
         self.shapes, self.shape_groups = shapes, groups
         img = renderer.render_on_white(self.canvas, self.canvas, shapes, groups)
         return img.permute(2, 0, 1).unsqueeze(0)

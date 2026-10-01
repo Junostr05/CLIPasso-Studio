@@ -73,7 +73,7 @@ class Painter(torch.nn.Module):
             # don't optimize on previous strokes
             self.optimize_flag = [False for _ in range(len(self.shapes))]
             for _ in range(self.strokes_per_stage):
-                stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0])
+                stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
                 path = self.get_path()
                 self.shapes.append(path)
                 path_group = renderer.ShapeGroup(shape_ids=torch.tensor([len(self.shapes) - 1]),
@@ -88,7 +88,7 @@ class Painter(torch.nn.Module):
                 num_paths_exists = len(self.shapes)
 
             for _ in range(num_paths_exists, self.num_paths):
-                stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0])
+                stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
                 path = self.get_path()
                 self.shapes.append(path)
                 path_group = renderer.ShapeGroup(shape_ids=torch.tensor([len(self.shapes) - 1]),
@@ -107,10 +107,7 @@ class Painter(torch.nn.Module):
         return self.canvas_width, self.canvas_height, shapes, groups
 
     def get_image(self):
-        img = self.render_warp()
-        opacity = img[:, :, 3:4]
-        img = opacity * img[:, :, :3] + torch.ones(img.shape[0], img.shape[1], 3, device=self.device) * (1 - opacity)
-        img = img[:, :, :3]
+        img = self.render_warp()  # on white (black strokes take the fast path of the renderer)
         # Convert img from HWC to NCHW
         img = img.unsqueeze(0)
         img = img.permute(0, 3, 1, 2).to(self.device)  # NHWC -> NCHW
@@ -133,7 +130,7 @@ class Painter(torch.nn.Module):
         points[:, 1] *= self.canvas_height
 
         path = renderer.Path(num_control_points=self.num_control_points, points=points,
-                             stroke_width=torch.tensor(self.width), is_closed=False)
+                             stroke_width=torch.tensor(self.width, device=self.device), is_closed=False)
         self.strokes_counter += 1
         return path
 
@@ -147,7 +144,7 @@ class Painter(torch.nn.Module):
                 eps = 0.01 * min(self.canvas_width, self.canvas_height)
                 for path in self.shapes:
                     path.points.data.add_(eps * torch.randn_like(path.points))
-        return renderer.render(self.canvas_width, self.canvas_height, self.shapes, self.shape_groups)
+        return renderer.render_on_white(self.canvas_width, self.canvas_height, self.shapes, self.shape_groups)
 
     def parameters(self):
         self.points_vars = []

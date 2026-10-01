@@ -191,7 +191,8 @@ def load_svg(filename: str, device=None):
                 closed = False
             points = torch.tensor([[(p.real - vx) * sx, (p.imag - vy) * sy] for p in pts], dtype=torch.float32,
                                   device=device)
-            shapes.append(Path(torch.tensor(ncp, dtype=torch.int32), points, torch.tensor(width), is_closed=closed))
+            shapes.append(Path(torch.tensor(ncp, dtype=torch.int32), points, torch.tensor(width, device=device),
+                               is_closed=closed))
             groups.append(ShapeGroup(torch.tensor([len(shapes) - 1]), fill_color=None,
-                                     stroke_color=torch.tensor(color, dtype=torch.float32)))
+                                     stroke_color=torch.tensor(color, dtype=torch.float32, device=device)))
     return canvas_w, canvas_h, shapes, groups

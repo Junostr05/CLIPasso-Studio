@@ -33,7 +33,7 @@ class StrokePainter:
         for i in range(self.num_strokes):
             self.shapes.append(self._path(i))
             self.groups.append(ShapeGroup(shape_ids=torch.tensor([i]), fill_color=None,
-                                          stroke_color=torch.tensor([0.0, 0.0, 0.0, 1.0])))
+                                          stroke_color=torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)))
 
     def _path(self, i: int) -> Path:
         if self.start_points is not None:
@@ -49,8 +49,8 @@ class StrokePainter:
                 p0 = p1
         pts = torch.tensor(points, dtype=torch.float32) * self.canvas
         ncp = torch.zeros(self.num_segments, dtype=torch.int32) + (self.cps - 2)
-        return Path(num_control_points=ncp, points=pts.to(self.device), stroke_width=torch.tensor(self.width),
-                    is_closed=False)
+        return Path(num_control_points=ncp, points=pts.to(self.device),
+                    stroke_width=torch.tensor(self.width, device=self.device), is_closed=False)
 
     def parameters(self) -> list[torch.Tensor]:
         for s in self.shapes:
