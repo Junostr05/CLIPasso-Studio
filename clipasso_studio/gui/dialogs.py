@@ -924,7 +924,7 @@ MODEL_NAMES = {
     "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
     "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
     "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
-    "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite",
+    "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite", "taesd": "TAESD",
 }
 
 

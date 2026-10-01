@@ -733,5 +733,12 @@
  "ui.settings.parallel_tip": "CLIPasso and SwiftSketch: with 6 or more CPU cores and enough free memory, the sketches of a job run side by side instead of one after the other (each with its share of the cores). Not used on a GPU.",
  "ui.settings.keep_models": "Keep the models loaded between jobs",
  "ui.settings.keep_models_tip": "The next job of the queue starts without loading PyTorch and the models again (saves 5–60 s per job). They stay in memory until 5 minutes after the last job.",
- "ui.update.placing": "Copying the new version next to this one …"
+ "ui.update.placing": "Copying the new version next to this one …",
+ "param.turbo.label": "Turbo mode",
+ "param.turbo.help": "Faster, with a slightly different result: the CLIP features of the augmented input are computed only once, with several sketches only the best one continues after a quarter of the iterations, and a sketch stops as soon as it hardly improves any more.",
+ "param.controlsketch.turbo.help": "Faster, with a slightly different result: the sketch is encoded with the small TAESD autoencoder (10 MB download) instead of the Stable Diffusion VAE and drawn on a 384 px canvas instead of 512 px (it looks the same at the end); on CPUs with bfloat16 support (AVX-512 BF16 or AMX) Stable Diffusion also runs in bfloat16.",
+ "param.scenesketch.turbo.help": "Faster, with a slightly different result: the CLIP features of the augmented input are computed only once, with two or more sketches per part only the better one continues after a quarter of the iterations, and a fidelity sketch stops as soon as it hardly improves any more.",
+ "ui.log.plateau": "Sketch {seed} hardly improved any more – stopped at iteration {it} (turbo mode)",
+ "ui.seed_pruned": "{value} · dropped",
+ "ui.models.purpose.taesd": "Small autoencoder for the turbo mode of ControlSketch (instead of the Stable Diffusion VAE)."
 }

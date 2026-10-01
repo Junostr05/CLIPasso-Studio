@@ -525,3 +525,30 @@ def test_save_step_is_in_the_basics_with_the_number_of_steps(window):
         assert str(panel.settings()["num_iter"] + 1) in field.warning.text()  # every iteration
         panel.reset_all_fields()
     panel.set_method("clipasso")
+
+
+def test_turbo_switch_estimate_and_dropped_sketches(window):
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui.i18n import tr
+
+    studio = window.studio
+    panel = studio.params
+    for method, shown in (("clipasso", True), ("swiftsketch", False), ("controlsketch", True), ("scenesketch", True)):
+        panel.set_method(method)
+        studio._sync_quick()
+        assert studio.quick["turbo"][1].isVisibleTo(studio) is shown, method
+        if shown:
+            assert studio.quick["turbo"][0].toolTip() == tr(f"param.{method}.turbo.help") or method == "clipasso"
+    panel.set_method("clipasso")
+    panel.reset_all_fields()
+    studio._update_estimate()
+    normal = studio.estimate.text()
+    studio.quick["turbo"][1].setChecked(True)
+    assert panel.settings()["turbo"] is True and schema.turbo_prunes(panel.settings())
+    assert studio.estimate.text() != normal  # three sketches: two of them stop after a quarter
+    studio.quick["turbo"][1].setChecked(False)
+    assert panel.settings()["turbo"] is False
+
+    studio.view_method = "clipasso"
+    assert studio._seed_caption(0.25, None, 0, pruned=True) == tr("ui.seed_pruned", value="0.250")
+    assert studio._seed_caption(0.25, None, 0) == "0.250"

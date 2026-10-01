@@ -644,7 +644,7 @@ MODEL_PURPOSE = {
     "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
     "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
     "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
-    "birefnet-lite": "ui.models.purpose.birefnet-lite",
+    "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
 }
 
 

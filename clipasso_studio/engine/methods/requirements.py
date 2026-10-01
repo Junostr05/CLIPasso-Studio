@@ -50,6 +50,8 @@ def controlsketch(settings: dict) -> list[str]:
         needed.add("blip")
     if controlsketch_uses_sdxl(s):
         needed.add("sdxl")
+    if schema.turbo(s):
+        needed.add("taesd")
     return sorted(needed)
 
 

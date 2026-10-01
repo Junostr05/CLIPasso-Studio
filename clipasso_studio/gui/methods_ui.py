@@ -15,6 +15,13 @@ DEFAULT_SEC_PER_IT = {
     ("controlsketch", "cpu"): 16.0, ("controlsketch", "cuda"): 0.2,
     ("scenesketch", "cpu"): 1.1, ("scenesketch", "cuda"): 0.1,
 }
+# time per iteration in turbo mode relative to the normal mode, until a turbo run was measured (CPU: measured
+# on 4 cores, CLIPasso 1.02 -> 0.70 s, ControlSketch 15.1 -> 2.3 s; GPU: estimated)
+TURBO_SPEED = {
+    ("clipasso", "cpu"): 0.7, ("clipasso", "cuda"): 0.75,
+    ("controlsketch", "cpu"): 0.2, ("controlsketch", "cuda"): 0.5,
+    ("scenesketch", "cpu"): 0.75, ("scenesketch", "cuda"): 0.8,
+}
 # seconds for loading models / preparing the input, per sketch
 SETUP_SECONDS = {"clipasso": 15, "swiftsketch": 10, "controlsketch": 60, "scenesketch": 5}
 
@@ -62,10 +69,14 @@ def iterations(settings: dict) -> int:
 
 
 def total_iterations(settings: dict) -> int:
-    """Iterations of a whole job (all sketches / all matrix cells)."""
+    """Iterations of a whole job (all sketches / all matrix cells; in turbo mode the weaker sketches
+    stop after a quarter)."""
     if schema.method_of(settings) == "scenesketch":
         return sum(schema.scene_cell_iterations(settings, c) for c in schema.scene_cells(settings))
-    return iterations(settings) * int(settings.get("num_sketches", 1))
+    n = int(settings.get("num_sketches", 1))
+    if schema.turbo_prunes(settings):
+        return iterations(settings) + (n - 1) * schema.turbo_prune_iter(iterations(settings))
+    return iterations(settings) * n
 
 
 def uses_loss(method: str) -> bool:

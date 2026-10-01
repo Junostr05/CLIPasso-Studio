@@ -24,7 +24,7 @@ from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZon
                               SketchCanvas, load_pixmap)
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 from ..widgets.method_picker import MethodPicker
-from ..widgets.param_panel import ParamPanel
+from ..widgets.param_panel import ParamPanel, param_text_key
 
 
 def _pixmap_from_png(data: bytes) -> QPixmap:
@@ -150,7 +150,7 @@ class StudioPage(QWidget):
         self.input_card.body.addLayout(row)
         # quick toggles mirrored from the parameter panel
         self.quick = {}
-        for key in ("mask_object", "fix_scale"):
+        for key in ("mask_object", "fix_scale", "turbo"):
             r = QHBoxLayout()
             lbl = label("", None)
             sw = ToggleSwitch()
@@ -581,6 +581,7 @@ class StudioPage(QWidget):
             present = key in s
             lbl.setVisible(present)
             sw.setVisible(present)
+            lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
             if present and sw.isChecked() != bool(s[key]):
                 sw.blockSignals(True)
                 sw.setChecked(bool(s[key]))
@@ -883,7 +884,8 @@ class StudioPage(QWidget):
                 self.seed_scores[seed] = data["clip_score"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
-                self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score"), seed))
+                self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score"), seed,
+                                                                 data.get("pruned", False)))
             if self.view_method == "scenesketch":
                 self.matrix.set_cell(seed, data["svg"])
             if seed == self.selected_seed:
@@ -946,6 +948,8 @@ class StudioPage(QWidget):
             self.chart.add(it, None, data["score"])
         if it >= 5 and data["elapsed"] > 0:
             key = f"{method}:" + ("cuda" if job.device.startswith("cuda") else "cpu")
+            if schema.turbo(job.settings):
+                key += ":turbo"
             rates = dict(app_settings().get("sec_per_it", {}) or {})
             rates[key] = data["elapsed"] / it
             if it % 50 == 0:
@@ -1032,7 +1036,8 @@ class StudioPage(QWidget):
             except OSError:
                 continue
             self.thumbs[seed].set_svg(self.seed_svgs[seed])
-            self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score"), seed))
+            self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score"), seed,
+                                                             r.get("pruned", False)))
             if self.view_method == "scenesketch":
                 self.matrix.set_cell(seed, self.seed_svgs[seed])
             if r.get("clip_score") is not None:
@@ -1242,6 +1247,8 @@ class StudioPage(QWidget):
         dev = "cuda" if gpu else "cpu"
         legacy = rates.get(dev) if method == "clipasso" else None  # measured by version 1.x
         per_it = rates.get(f"{method}:{dev}", legacy or methods_ui.DEFAULT_SEC_PER_IT[(method, dev)])
+        if schema.turbo(s):
+            per_it = rates.get(f"{method}:{dev}:turbo", per_it * methods_ui.TURBO_SPEED[(method, dev)])
         if method == "clipasso":
             per_it *= (1 + s["num_aug_clip"]) / 5
             if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
@@ -1252,12 +1259,16 @@ class StudioPage(QWidget):
         if workers > 1:  # in parallel (each worker has fewer cores: not quite workers x faster)
             sketches = math.ceil(sketches / workers) * 1.6
         secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
+        if schema.turbo_prunes(s) and method == "clipasso":  # one after another, the weaker ones stop early
+            secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
         if method == "scenesketch":
             secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * len(
                 schema.scene_cells(s))
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))
 
-    def _seed_caption(self, best_loss, clip_score, seed: int | None = None) -> str:
+    def _seed_caption(self, best_loss, clip_score, seed: int | None = None, pruned: bool = False) -> str:
+        if pruned:  # turbo mode: stopped after a quarter because another sketch was better
+            return tr("ui.seed_pruned", value=self._seed_caption(best_loss, clip_score, seed))
         if self.view_method == "scenesketch" and seed is not None:
             score = f"  {clip_score:.0f}" if clip_score is not None else ""
             return self._cell_label(seed) + score
@@ -1350,8 +1361,8 @@ class StudioPage(QWidget):
         self.samples_btn.setText(tr("ui.samples"))
         self.edit_btn.setToolTip(tr("ui.edit_image.tip"))  # icon only: the row must fit the narrow column
         for key, (lbl, _) in self.quick.items():
-            lbl.setText(tr(f"param.{key}.label"))
-            lbl.setToolTip(tr(f"param.{key}.help"))
+            lbl.setText(tr(param_text_key(self.params.method(), key, "label")))
+            lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
         self.result_title.setText(tr("ui.result"))
         self.export_btns["svg1"].setText(tr("ui.export_svg1"))
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))

@@ -193,9 +193,29 @@ def score_run(svg_path: str, target_img: Image.Image, device, reporter: Reporter
         return None
 
 
+def plateaued(loss_eval: list[float], eval_interval: int, since: int) -> bool:
+    """Turbo mode: the eval loss improved by less than ``TURBO_PLATEAU`` (relative) during the last
+    ``TURBO_PLATEAU_ITERS`` iterations. Only evaluations from iteration ``since`` on count (evaluation i
+    is iteration i * eval_interval), so the check needs no state of its own."""
+    eval_interval = max(int(eval_interval), 1)
+    window = max(2, schema.TURBO_PLATEAU_ITERS // eval_interval)
+    values = loss_eval[-(-int(since) // eval_interval):]
+    if len(values) <= window:
+        return False
+    before, recent = min(values[:-window]), min(values[-window:])
+    return recent > before - schema.TURBO_PLATEAU * abs(before)
+
+
 def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: Reporter | None = None,
-               control: Control | None = None, device: torch.device | None = None) -> SeedResult:
-    """One optimisation run (one seed) – equivalent of ``painterly_rendering.py``."""
+               control: Control | None = None, device: torch.device | None = None, stop_at: int | None = None,
+               finalize: bool = False, plan_left: int | None = None) -> SeedResult:
+    """One optimisation run (one seed) – equivalent of ``painterly_rendering.py``.
+
+    For the turbo mode's pruning: ``stop_at`` runs only the first iterations and keeps the checkpoint
+    (status "partial", nothing is finished or saved), ``finalize`` finishes a run from its checkpoint
+    without optimising further (the sketch is marked ``pruned``). ``plan_left``: iterations of the job
+    that follow this run, for a time estimate of the whole job.
+    """
     from .losses import Loss
     from .painter import Painter, PainterOptimizer
 
@@ -267,8 +287,9 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
         active_time = float(ck["active_time"])
         start = time.time() - active_time
         checkpoint.set_rng_state(ck["rng"])
-        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}", code="resume_at",
-                       seed=seed, it=first_epoch)
+        if first_epoch < (stop_at or args.num_iter) and not finalize:
+            reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}", code="resume_at",
+                           seed=seed, it=first_epoch)
 
     def save_checkpoint(done_epoch: int, renderer=renderer, optimizer=optimizer):
         checkpoint.save(run_dir, {
@@ -285,9 +306,15 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     saver = checkpoint.Timer()
     previews = checkpoint.Timer(checkpoint.PREVIEW_S, due_now=True)
     reporter.event("stage", seed=seed, name="optimizing")
+    turbo = schema.turbo(settings)
+    plateau_from = schema.turbo_prune_iter(args.num_iter) if schema.turbo_prunes(settings) else 0
+    end = args.num_iter if stop_at is None else min(int(stop_at), args.num_iter)
+    if finalize:
+        end = first_epoch
+    partial = False
     epoch = first_epoch - 1
     try:
-        for epoch in range(first_epoch, args.num_iter):
+        for epoch in range(first_epoch, end):
             if control.should_stop():
                 if epoch > first_epoch or ck is not None:
                     save_checkpoint(epoch - 1)  # "Continue" goes on from here
@@ -350,6 +377,12 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
                                            code="converged", seed=seed, it=epoch)
                             break
                         terminate = True
+                    last_stage = stage == args.num_stages - 1
+                    if turbo and last_stage and plateaued(configs_to_save["loss_eval"], args.eval_interval,
+                                                          max(stage * stage_len, plateau_from)):
+                        reporter.event("log", message=f"seed {seed}: no more progress – stopped at iteration "
+                                                      f"{epoch}", code="plateau", seed=seed, it=epoch)
+                        break
 
             if counter == 0 and args.attention_init:
                 preview = renderer.attention_preview()
@@ -360,16 +393,28 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
             counter += 1
             active_time = time.time() - start
             per_it = active_time / counter
+            job_eta = {} if plan_left is None else {"eta_job": True}
             reporter.event("iteration", seed=seed, it=epoch, total=args.num_iter, loss=float(loss.item()),
                            loss_eval=loss_eval_value, best_loss=float(best_loss), best_iter=best_iter,
-                           losses={k: float(v.item()) for k, v in losses_dict.items()},
-                           elapsed=active_time, eta=per_it * (args.num_iter - counter))
+                           losses={k: float(v.item()) for k, v in losses_dict.items()}, elapsed=active_time,
+                           eta=per_it * (end - counter + (plan_left or 0)), **job_eta)
             if svg_text is not None and (previews.due() or epoch == args.num_iter - 1):
                 reporter.event("preview", seed=seed, it=epoch, svg=svg_text)
             if saver.due():
                 save_checkpoint(epoch)
+        else:
+            partial = end < args.num_iter and not finalize
     except Cancelled:
         status = "cancelled"
+    if partial:  # the first part of a turbo run: kept for later, nothing is finished yet
+        if epoch >= first_epoch:
+            save_checkpoint(epoch)
+        best_svg = os.path.join(run_dir, "best_iter.svg")
+        result = SeedResult(seed=seed, run_name=run_name, run_dir=run_dir, best_loss=float(best_loss),
+                            best_iter=int(best_iter), iterations_done=counter, best_svg=best_svg, status="partial",
+                            method="clipasso", seconds=round(active_time, 1))
+        del loss_func, renderer, optimizer
+        return result
     if status == "done":
         checkpoint.remove(run_dir)
 
@@ -384,7 +429,7 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     final_config.update({
         "best_loss": float(best_loss), "best_iter": int(best_iter), "best_iter_fc": int(best_iter_fc),
         "iterations_done": counter, "status": status, "seconds": active_time,
-        "settings": schema.normalize(settings),
+        "settings": schema.normalize(settings), "pruned": bool(finalize),
     })
     with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(final_config, f, indent=2, default=str)
@@ -397,9 +442,11 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
 
     result = SeedResult(seed=seed, run_name=run_name, run_dir=run_dir, best_loss=float(best_loss),
                         best_iter=int(best_iter), iterations_done=counter, best_svg=best_svg, status=status,
-                        method="clipasso", clip_score=clip_sc, seconds=round(active_time, 1))
+                        method="clipasso", clip_score=clip_sc, seconds=round(active_time, 1), pruned=bool(finalize))
+    with open(best_svg, encoding="utf-8") as f:
+        best_text = f.read()
     reporter.event("seed_done", seed=seed, best_loss=result.best_loss, best_iter=result.best_iter,
-                   status=status, run_dir=run_dir, svg=open(best_svg, encoding="utf-8").read(), clip_score=clip_sc)
+                   status=status, run_dir=run_dir, svg=best_text, clip_score=clip_sc, pruned=result.pruned)
     del loss_func, renderer, optimizer
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -456,6 +503,9 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
         results = impl.run_cells(settings, target, job_dir, cells, reporter, control, device)
         for r in results:
             jobs.save_result(r)
+    if schema.turbo_prunes(settings) and not hasattr(impl, "run_cells") and len(seeds) > 1:
+        results = _run_pruned(impl, settings, target, job_dir, seeds, old, reporter, control, device)
+        seeds = []
     for seed in seeds if not hasattr(impl, "run_cells") else ():
         if control and control.should_stop():
             break
@@ -466,3 +516,58 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     if not finish:
         return results
     return finish_job(job_dir, target, settings, jobs.merge_results(old, results), reporter)
+
+
+def _run_pruned(impl, settings: dict, target: str, job_dir: str, seeds: list[int], old: dict[int, SeedResult],
+                reporter: Reporter, control: Control | None, device) -> list[SeedResult]:
+    """Turbo mode: every seed runs to ``TURBO_PRUNE_AT`` of its iterations, then only the best one goes on;
+    the others are finished as they are (``pruned``). The choice follows from the saved checkpoints and
+    results, so a continued job makes the same one."""
+    total = int(settings["num_iter"])
+    stop = schema.turbo_prune_iter(total)
+    results: list[SeedResult] = []
+    partial: dict[int, SeedResult] = {}
+
+    def run_dir(seed):
+        return os.path.join(job_dir, run_name_for(target, settings, seed))
+
+    def stopped() -> list[SeedResult]:
+        """Cancelled: the seeds that wait at the quarter count as cancelled (they continue from there)."""
+        handled = {r.seed for r in results}
+        for seed, r in partial.items():
+            if seed not in handled:
+                r.status = "cancelled"
+                jobs.save_result(r)
+                results.append(r)
+        return results
+
+    for k, seed in enumerate(seeds):
+        if control and control.should_stop():
+            return stopped()
+        left = stop * (len(seeds) - k - 1) + (total - stop)
+        r = impl.run_single(settings, target, run_dir(seed), seed, reporter, control, device, stop_at=stop,
+                            plan_left=left)
+        if r.status == "partial":
+            partial[seed] = r
+        else:  # finished early (converged) or cancelled
+            jobs.save_result(r)
+            results.append(r)
+            if r.status == "cancelled":
+                return stopped()
+    finished = [r for r in list(old.values()) + results if r.status == "done" and not r.pruned]
+    best = min(list(partial.values()) + finished, key=lambda r: r.best_loss, default=None)
+    for seed in partial:
+        if best is not None and seed == best.seed:
+            continue
+        if control and control.should_stop():
+            return stopped()
+        r = impl.run_single(settings, target, run_dir(seed), seed, reporter, control, device, finalize=True)
+        jobs.save_result(r)
+        results.append(r)
+    if best is not None and best.status == "partial":
+        if control and control.should_stop():
+            return stopped()
+        r = impl.run_single(settings, target, run_dir(best.seed), best.seed, reporter, control, device, plan_left=0)
+        jobs.save_result(r)
+        results.append(r)
+    return results

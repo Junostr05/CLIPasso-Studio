@@ -18,6 +18,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from ...clip_ import clip
+from ...losses import AugmentBank
 
 _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
@@ -70,10 +71,16 @@ def compute_grad_norm_losses(losses: dict, model_params: list, params: list) -> 
 
 class CLIPLayersLoss(nn.Module):
     """``CLIPConvLoss`` for ViT-B/32: per-layer distance of the sketch and target token features,
-    on the image plus ``num_augs`` random perspective / crop augmentations (same for both)."""
+    on the image plus ``num_augs`` random perspective / crop augmentations (same for both).
 
-    def __init__(self, layers: list[int], device, num_augs: int = 4, loss_type: str = "L2", model=None):
+    With ``bank_seed`` (turbo mode) the augmentations come from an :class:`AugmentBank` drawn from that
+    seed, whose target features are computed once."""
+
+    def __init__(self, layers: list[int], device, num_augs: int = 4, loss_type: str = "L2", model=None,
+                 bank_seed: int | None = None):
         super().__init__()
+        self.bank_seed = bank_seed
+        self.bank: AugmentBank | None = None
         self.layers = sorted({int(layer) for layer in layers})
         self.device = device
         self.num_augs = int(num_augs)
@@ -100,9 +107,24 @@ class CLIPLayersLoss(nn.Module):
             return (1 - torch.cosine_similarity(x.float(), y.float(), dim=-1)).mean()
         return torch.square(x - y).mean()
 
+    def _forward_bank(self, x: torch.Tensor, y: torch.Tensor, mode: str) -> dict:
+        upto = self.layers[-1]
+        if self.bank is None:
+            self.bank = AugmentBank(self.bank_seed, y.shape[-1], 0.8)
+            self.bank.build(self.normalize_transform(y), y, lambda b: [
+                f for i, f in enumerate(vit_layer_features(self.model.visual, b, upto)) if i in self.layers])
+        picked = self.bank.pick(self.num_augs) if mode == "train" else []
+        xs = torch.cat([self.normalize_transform(x)] + [self.bank.apply(x, i) for i in picked], dim=0)
+        xs_feats = vit_layer_features(self.model.visual, xs, upto)
+        ys = self.bank.targets(picked)
+        return {f"clip_vit_l{layer}": self._distance(xs_feats[layer].float(), y_feats.float())
+                for layer, y_feats in zip(self.layers, ys)}
+
     def forward(self, sketch: torch.Tensor, target: torch.Tensor, mode: str = "train") -> dict:
         x = sketch.to(self.device)
         y = target.to(self.device)
+        if self.bank_seed is not None:
+            return self._forward_bank(x, y, mode)
         sketch_augs, img_augs = [self.normalize_transform(x)], [self.normalize_transform(y)]
         if mode == "train":
             for _ in range(self.num_augs):
@@ -125,10 +147,12 @@ class SceneLoss(nn.Module):
 
     def __init__(self, layer_weights: dict[int, float], device, num_augs: int = 4, loss_type: str = "L2",
                  width_optim: bool = False, width_loss_weight: float = 1.0, ratio: float = 0.0,
-                 gradnorm: bool = False, clip_model=None, ratio_detach_clip: bool = False):
+                 gradnorm: bool = False, clip_model=None, ratio_detach_clip: bool = False,
+                 bank_seed: int | None = None):
         super().__init__()
         self.layer_weights = {int(k): float(v) for k, v in layer_weights.items() if v}
-        self.clip_loss = CLIPLayersLoss(list(self.layer_weights), device, num_augs, loss_type, clip_model)
+        self.clip_loss = CLIPLayersLoss(list(self.layer_weights), device, num_augs, loss_type, clip_model,
+                                        bank_seed)
         self.width_optim = bool(width_optim)
         self.width_loss_weight = float(width_loss_weight)
         self.ratio = float(ratio)

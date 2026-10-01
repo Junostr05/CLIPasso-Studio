@@ -82,6 +82,16 @@ def tiny_sd15_loader(condition: str, device):
             tiny_text_encoder().to(device), alphas_cumprod_from_config({}))
 
 
+def tiny_taesd(device="cpu"):
+    """Replacement for ``controlsketch.sds.load_taesd``: the TAESD structure with 8 channels."""
+    from diffusers import AutoencoderTiny
+
+    torch.manual_seed(0)
+    vae = AutoencoderTiny(encoder_block_out_channels=(8, 8, 8, 8), decoder_block_out_channels=(8, 8, 8, 8),
+                          num_encoder_blocks=(1, 1, 1, 1), num_decoder_blocks=(1, 1, 1, 1))
+    return vae.requires_grad_(False).eval().to(device)
+
+
 def tiny_lama(device="cpu"):
     """LaMa generator with the big-lama structure but 8 base channels and one residual block."""
     from .methods.scenesketch.lama import LamaGenerator

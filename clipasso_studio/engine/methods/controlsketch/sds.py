@@ -3,6 +3,10 @@
 The rendered sketch is encoded with the VAE, noised at a random timestep in [50, 950) and denoised by
 the UNet with classifier-free guidance, where the ControlNet (condition image of the input) steers
 the conditional branch. The SDS gradient w(t) * (eps_pred - eps) is pushed back into the latent.
+
+Turbo mode: the Tiny AutoEncoder (TAESD) encodes the sketch instead of the SD VAE (on a CPU 8 s -> 1 s
+for encoder and backward pass at 512 px), and on CPUs with bfloat16 support (AVX512-BF16 / AMX) the
+UNet and ControlNet run in bfloat16 (about 2x).
 """
 
 from __future__ import annotations
@@ -32,8 +36,10 @@ def alphas_cumprod_from_config(config: dict) -> torch.Tensor:
 class ControlSDSLoss:
     def __init__(self, unet, controlnet, vae, text_embeddings: torch.Tensor, uncond_embeddings: torch.Tensor,
                  condition_image: torch.Tensor, alphas_cumprod: torch.Tensor, guidance_scale: float = 100,
-                 conditioning_scale: float = 0.15, diffusion_timesteps: int = 1000, device="cpu"):
+                 conditioning_scale: float = 0.15, diffusion_timesteps: int = 1000, device="cpu",
+                 bf16: bool = False):
         self.unet, self.controlnet, self.vae = unet, controlnet, vae
+        self.bf16 = bool(bf16)  # bfloat16 autocast for UNet + ControlNet (CPU, no gradient through them)
         self.device = torch.device(device)
         self.dtype = next(unet.parameters()).dtype
         self.text = text_embeddings.to(self.device, self.dtype)
@@ -49,8 +55,13 @@ class ControlSDSLoss:
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         """x: rendered sketch [1, 3, H, W] in [0, 1] (requires grad) -> scalar surrogate loss."""
         x = x * 2.0 - 1.0
-        latent = self.vae.encode(x.to(self.dtype)).latent_dist.sample() * self.scaling
-        with torch.no_grad():
+        encoded = self.vae.encode(x.to(self.dtype))
+        # TAESD gives the (already scaled) latents, the SD VAE a distribution to sample from
+        latent = getattr(encoded, "latents", None)
+        if latent is None:
+            latent = encoded.latent_dist.sample()
+        latent = latent * self.scaling
+        with torch.no_grad(), torch.autocast("cpu", dtype=torch.bfloat16, enabled=self.bf16):
             t = torch.randint(50, max(self.t_high, 51), (latent.shape[0],), device=self.device, dtype=torch.long)
             eps = torch.randn_like(latent)
             a = self.alphas[t].view(-1, 1, 1, 1)
@@ -100,6 +111,25 @@ def load_sd15(condition: str, device):
         m.to(memory_format=torch.channels_last)
     config = json.loads((root / "scheduler" / "scheduler_config.json").read_text(encoding="utf-8"))
     return unet, controlnet, vae, tokenizer, text_encoder, alphas_cumprod_from_config(config)
+
+
+def load_taesd(device):
+    """The Tiny AutoEncoder for SD (turbo mode); only its encoder is used."""
+    _hf_offline()
+    from diffusers import AutoencoderTiny
+
+    vae = AutoencoderTiny.from_pretrained(str(model_store.model_dir("taesd")), torch_dtype=model_dtype(device))
+    vae.requires_grad_(False)
+    vae.eval()
+    return vae.to(device)
+
+
+def cpu_bf16_fast() -> bool:
+    """Does this CPU compute bfloat16 natively (AVX512-BF16 or AMX)? Otherwise bfloat16 is slower."""
+    try:
+        return bool(torch.cpu._is_avx512_bf16_supported() or torch.cpu._is_amx_tile_supported())
+    except Exception:
+        return False
 
 
 def embed_text(tokenizer, text_encoder, caption: str, device) -> tuple[torch.Tensor, torch.Tensor]:

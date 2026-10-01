@@ -50,7 +50,7 @@ def plan_workers(settings: dict, n_seeds: int, auto: bool = True, cuda: bool = F
     """How many worker processes compute the seeds of a job at the same time."""
     from .. import settings_schema as schema
 
-    if n_seeds <= 1:
+    if n_seeds <= 1 or schema.turbo_prunes(settings):  # (turbo: the seeds are compared halfway)
         return 1
     if settings.get("multiprocess"):  # chosen in the settings: always (like the original scripts)
         return min(n_seeds, MAX_PARALLEL_WORKERS)

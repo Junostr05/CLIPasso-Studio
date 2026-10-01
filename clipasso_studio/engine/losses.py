@@ -16,6 +16,8 @@ import collections
 import torch
 import torch.nn as nn
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
+from torchvision.transforms import functional as TF
 
 from . import nets
 from .clip_ import clip
@@ -33,6 +35,63 @@ def _affine_augmentations(args, normalize=True):
     if normalize:
         augs.append(transforms.Normalize(_CLIP_MEAN, _CLIP_STD))
     return transforms.Compose(augs)
+
+
+AUG_BANK_SIZE = 64  # augmentations of the target kept in turbo mode
+AUG_BANK_BYTES = 256e6  # ... at most this much memory for their CLIP features
+
+
+class AugmentBank:
+    """Turbo mode: a fixed set of the perspective + crop augmentations (drawn like the random ones) whose
+    CLIP features of the target are computed once. Every step picks ``n`` of them (with the global RNG,
+    so a continued run picks the same) and applies the same transformation to the sketch: the target no
+    longer goes through CLIP in every step.
+
+    ``encode(batch)`` returns the features to keep, a list of tensors with the batch as first dimension.
+    Entry 0 of the bank is the target without augmentation (``base(target)``).
+    """
+
+    def __init__(self, seed: int, size: int, scale: float, count: int = AUG_BANK_SIZE, crop: int = 224):
+        self.size, self.crop = int(size), int(crop)
+        dummy = torch.empty(1, self.size, self.size)
+        with torch.random.fork_rng(devices=[]):  # the run's own random numbers stay untouched
+            torch.manual_seed(int(seed) * 7919 + 17)
+            self.params = []
+            for _ in range(int(count)):
+                start, end = transforms.RandomPerspective.get_params(self.size, self.size, 0.5)
+                box = transforms.RandomResizedCrop.get_params(dummy, (scale, scale), (1.0, 1.0))
+                self.params.append((start, end, box))
+        self.features: list[torch.Tensor] | None = None
+
+    def apply(self, x: torch.Tensor, i: int) -> torch.Tensor:
+        """Augmentation ``i`` of a [N, 3, H, W] image (normalised for CLIP)."""
+        start, end, (top, left, h, w) = self.params[i]
+        x = TF.perspective(x, start, end, InterpolationMode.BILINEAR, fill=[0.0] * x.shape[1])
+        x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR, antialias=True)
+        return TF.normalize(x, _CLIP_MEAN, _CLIP_STD)
+
+    def build(self, base: torch.Tensor, target: torch.Tensor, encode, chunk: int = 16) -> None:
+        """Features of the target without augmentation (``base``: already normalised) and of every
+        augmentation; fewer augmentations are kept if their features would need too much memory."""
+        with torch.no_grad():
+            feats = [f.detach() for f in encode(base)]
+            per_item = sum(f[:1].numel() * f.element_size() for f in feats)
+            keep = min(len(self.params), max(8, int(AUG_BANK_BYTES // max(per_item, 1))))
+            self.params = self.params[:keep]
+            parts = [[f] for f in feats]
+            for i in range(0, keep, chunk):
+                batch = torch.cat([self.apply(target, j) for j in range(i, min(i + chunk, keep))])
+                for acc, f in zip(parts, encode(batch)):
+                    acc.append(f.detach())
+            self.features = [torch.cat(acc) for acc in parts]
+
+    def pick(self, n: int) -> list[int]:
+        return torch.randperm(len(self.params))[:n].tolist() if n > 0 else []
+
+    def targets(self, picked: list[int]) -> list[torch.Tensor]:
+        """Kept features for [target, augmentation picked[0], picked[1], ...]."""
+        index = torch.tensor([0] + [i + 1 for i in picked], device=self.features[0].device)
+        return [f.index_select(0, index) for f in self.features]
 
 
 class Loss(nn.Module):
@@ -368,11 +427,54 @@ class CLIPConvLoss(torch.nn.Module):
 
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.counter = 0
+        # turbo: the CLIP features of the (augmented) target are computed once (AugmentBank)
+        self.turbo = bool(getattr(args, "turbo", False))
+        self.bank: AugmentBank | None = None
+        self._weighted = [i for i, w in enumerate(self.args.clip_conv_layer_weights) if w]
+
+    def _encode(self, batch: torch.Tensor):
+        if self.clip_model_name.startswith("RN"):
+            return self.forward_inspection_clip_resnet(batch.contiguous())
+        return self.visual_encoder(batch)
+
+    def _kept(self, batch: torch.Tensor) -> list[torch.Tensor]:
+        """What the turbo bank keeps of the target: the weighted layers and the fc features."""
+        fc, conv = self._encode(batch)
+        return [conv[i] for i in self._weighted if i < len(conv)] + [fc]
+
+    def _forward_turbo(self, x: torch.Tensor, y: torch.Tensor, mode: str) -> dict:
+        if self.bank is None:
+            self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)))
+            self.bank.build(self.normalize_transform(y), y, self._kept)
+        augment = mode == "train" and "affine" in self.args.augemntations
+        picked = self.bank.pick(self.num_augs) if augment and self.augment_both else []
+        sketch_augs = [self.normalize_transform(x)]
+        if augment and self.augment_both:
+            sketch_augs += [self.bank.apply(x, i) for i in picked]
+        elif mode == "train":  # augmented sketch against the plain target, as without turbo
+            sketch_augs += [self.augment_trans(torch.cat([x, y]))[0].unsqueeze(0) for _ in range(self.num_augs)]
+        xs = torch.cat(sketch_augs, dim=0).to(self.device)
+        xs_fc, xs_conv = self._encode(xs)
+        ys = self.bank.targets(picked)
+        if len(picked) + 1 != xs.shape[0]:  # the plain target for every sketch
+            ys = [f[:1].expand(xs.shape[0], *f.shape[1:]) for f in ys]
+        metric = self.distance_metrics[self.clip_conv_loss_type]
+        out = {}
+        for k, layer in enumerate(i for i in self._weighted if i < len(xs_conv)):
+            w = self.args.clip_conv_layer_weights[layer]
+            out[f"clip_conv_loss_layer{layer}"] = metric([xs_conv[layer]], [ys[k]], self.clip_model_name)[0] * w
+        if self.clip_fc_loss_weight:
+            fc_loss = (1 - torch.cosine_similarity(xs_fc, ys[-1], dim=1)).mean()
+            out["fc"] = fc_loss * self.clip_fc_loss_weight
+        self.counter += 1
+        return out
 
     def forward(self, sketch, target, mode="train"):
         conv_loss_dict = {}
         x = sketch.to(self.device)
         y = target.to(self.device)
+        if self.turbo:
+            return self._forward_turbo(x, y, mode)
         sketch_augs, img_augs = [self.normalize_transform(x)], [self.normalize_transform(y)]
         if mode == "train":
             for _ in range(self.num_augs):

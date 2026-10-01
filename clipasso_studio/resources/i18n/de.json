@@ -733,5 +733,12 @@
  "ui.settings.parallel_tip": "CLIPasso und SwiftSketch: Ab 6 CPU-Kernen und genug freiem Arbeitsspeicher laufen die Skizzen eines Jobs nebeneinander statt nacheinander (jede mit ihrem Anteil der Kerne). Auf einer GPU nicht verwendet.",
  "ui.settings.keep_models": "Modelle zwischen Jobs geladen lassen",
  "ui.settings.keep_models_tip": "Der nächste Job der Warteschlange startet, ohne PyTorch und die Modelle neu zu laden (spart 5–60 s pro Job). Sie bleiben bis 5 Minuten nach dem letzten Job im Arbeitsspeicher.",
- "ui.update.placing": "Die neue Version wird neben diese kopiert …"
+ "ui.update.placing": "Die neue Version wird neben diese kopiert …",
+ "param.turbo.label": "Turbo-Modus",
+ "param.turbo.help": "Schneller, mit leicht anderem Ergebnis: Die CLIP-Merkmale des augmentierten Bildes werden nur einmal berechnet, bei mehreren Skizzen rechnet nach einem Viertel der Iterationen nur die beste weiter, und eine Skizze endet, sobald sie kaum noch besser wird.",
+ "param.controlsketch.turbo.help": "Schneller, mit leicht anderem Ergebnis: Die Skizze wird mit dem kleinen Autoencoder TAESD (10 MB Download) statt des Stable-Diffusion-VAE codiert und auf einer 384-px- statt 512-px-Fläche gezeichnet (am Ende sieht sie gleich groß aus); auf CPUs mit bfloat16 (AVX-512 BF16 oder AMX) rechnet Stable Diffusion außerdem in bfloat16.",
+ "param.scenesketch.turbo.help": "Schneller, mit leicht anderem Ergebnis: Die CLIP-Merkmale des augmentierten Bildes werden nur einmal berechnet, bei zwei oder mehr Skizzen pro Teil rechnet nach einem Viertel der Iterationen nur die bessere weiter, und eine Treue-Skizze endet, sobald sie kaum noch besser wird.",
+ "ui.log.plateau": "Skizze {seed} wurde kaum noch besser – bei Iteration {it} beendet (Turbo-Modus)",
+ "ui.seed_pruned": "{value} · aussortiert",
+ "ui.models.purpose.taesd": "Kleiner Autoencoder für den Turbo-Modus von ControlSketch (statt des Stable-Diffusion-VAE)."
 }

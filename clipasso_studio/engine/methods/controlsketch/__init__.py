@@ -32,6 +32,7 @@ from ..requirements import controlsketch as required_models  # noqa: F401
 from ..requirements import controlsketch_uses_sdxl as uses_sdxl
 
 _cache: dict[tuple, object] = {}
+TURBO_RENDER = 384  # turbo mode: canvas of the optimisation instead of the default 512 (stroke width scaled)
 
 
 def release_models() -> None:
@@ -111,6 +112,10 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     run_name = os.path.basename(run_dir.rstrip("/\\"))
     set_seed(seed)
     size = int(s["render_size"])
+    width = float(s["width"])
+    turbo = schema.turbo(s)
+    if turbo and size == 512:  # a smaller canvas; the output looks the same (widths scale with it)
+        size, width = TURBO_RENDER, width * TURBO_RENDER / size
     out_size = int(s["output_svg_size"])
     condition = s["condition"]
     stamp = (os.path.abspath(target), os.path.getmtime(target), str(device), s["fix_scale"], size,
@@ -119,7 +124,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     # --------------------------------------------------------------- input
     reporter.event("stage", seed=seed, name="mask" if s["mask_object"] and s.get("mask_model", "u2net") != "u2net"
                    else "loading")
-    inp = _cached(("input",) + stamp, lambda: prepare_input(s, target, device))
+    inp = _cached(("input",) + stamp, lambda: prepare_input({**s, "render_size": size}, target, device))
     inp["full"].save(os.path.join(run_dir, "input.png"))
     inp["canvas"].save(os.path.join(run_dir, "input_canvas.png"))
     mask_img = _png_mask(inp["full_mask"])
@@ -165,7 +170,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         preview.save(os.path.join(run_dir, "attention_map.png"))
         reporter.event("attention", seed=seed, png=_png_bytes(preview))
     painter = P.StrokePainter(int(s["num_strokes"]), int(s["num_segments"]), int(s["control_points_per_seg"]),
-                              float(s["width"]), size, device, start)
+                              width, size, device, start)
     painter.init_strokes()
 
     # --------------------------------------------------------------- SDS loss
@@ -190,11 +195,15 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
             torch.cuda.empty_cache()
     text, empty = _cache[text_key]
     dtype = sds.model_dtype(device)
-    loss_fn = sds.ControlSDSLoss(models["unet"], models["controlnet"], models["vae"], text, empty,
+    vae = models["vae"]
+    if turbo:
+        vae = _cached(("taesd", str(device)), lambda: sds.load_taesd(device))
+    loss_fn = sds.ControlSDSLoss(models["unet"], models["controlnet"], vae, text, empty,
                                  conditions.condition_tensor(cond_img, size, device, dtype), models["alphas"],
                                  guidance_scale=s["diffusion_guidance_scale"],
                                  conditioning_scale=s["conditioning_scale"],
-                                 diffusion_timesteps=s["diffusion_timesteps"], device=device)
+                                 diffusion_timesteps=s["diffusion_timesteps"], device=device,
+                                 bf16=turbo and device.type == "cpu" and sds.cpu_bf16_fast())
     optimizer = torch.optim.Adam(painter.parameters(), lr=float(s["lr"]), betas=(0.9, 0.9), eps=1e-6)
     scorer = get_scorer(device)
 
@@ -292,7 +301,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     best_loss = round(1.0 - clip_sc / 100.0, 4) if clip_sc is not None else 1.0
     config = {
         "method": "controlsketch", "target": target, "seed": seed, "output_dir": run_dir, "device": str(device),
-        "caption": caption, "object_scale": inp["info"], "best_loss": best_loss, "best_iter": max(counter - 1, 0),
+        "caption": caption, "object_scale": inp["info"], "canvas": size, "best_loss": best_loss,
+        "best_iter": max(counter - 1, 0),
         "iterations_done": counter, "status": status, "seconds": active_time, "clip_score": clip_sc,
         "clip_scores": scores, "sds_loss": losses, "stroke_order": order, "settings": s,
     }

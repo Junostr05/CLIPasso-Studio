@@ -126,6 +126,7 @@ PARAMS: tuple[Param, ...] = (
     Param("perceptual_weight", 0.0, "float", "loss", cli="perceptual_weight", minimum=0.0, maximum=10.0,
           step=0.1, decimals=3, enabled_if=lambda s: s.get("percep_loss", "none") != "none"),
     # ------------------------------------------------------------------- optim
+    Param("turbo", False, "bool", "optim", advanced=False),
     Param("lr", 1.0, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
     Param("lr_scheduler", False, "bool", "optim", cli="lr_scheduler"),
     Param("force_sparse", False, "bool", "optim", cli="force_sparse"),
@@ -276,6 +277,7 @@ CONTROL_PARAMS: tuple[Param, ...] = (
           decimals=2),
     Param("diffusion_guidance_scale", 100, "int", "sds", cli="diffusion_guidance_scale", minimum=1, maximum=200),
     Param("diffusion_timesteps", 1000, "int", "sds", cli="diffusion_timesteps", minimum=100, maximum=1000, step=50),
+    Param("turbo", False, "bool", "optim", advanced=False),
     Param("lr", 0.8, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
     Param("save_interval", 100, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
 ) + _hardware(multiprocess=False)
@@ -382,6 +384,7 @@ SCENE_PARAMS: tuple[Param, ...] = (
           enabled_if=lambda s: bool(s.get("attention_init")) and bool(s.get("split_scene"))),
     Param("clip_conv_loss_type", "L2", "choice", "loss", cli="clip_conv_loss_type", choices=("L2", "Cos", "L1")),
     Param("num_aug_clip", 4, "int", "loss", cli="num_aug_clip", minimum=0, maximum=32),
+    Param("turbo", False, "bool", "optim", advanced=False),
     Param("lr", 0.0001, "float", "optim", cli="lr", minimum=0.0000001, maximum=1.0, step=0.00005, decimals=6),
     Param("save_interval", 100, "int", "basics", cli="save_interval", minimum=1, maximum=1000, advanced=False),
 ) + _hardware(multiprocess=False)
@@ -495,6 +498,14 @@ def scene_cells(settings: dict) -> list[int]:
     return [scene_cell_id(layer, level) for layer in scene_layers(settings) for level in range(levels + 1)]
 
 
+def scene_part_iterations(settings: dict, num_iter: int) -> int:
+    """Iterations of one fidelity part (all its seeds); in turbo mode only the best seed runs to the end."""
+    n = int(settings.get("num_sketches", 1))
+    if turbo_prunes(settings):
+        return num_iter + (n - 1) * min(turbo_prune_iter(num_iter), num_iter)
+    return n * num_iter
+
+
 def scene_cell_iterations(settings: dict, cell: int) -> int:
     layer, level = divmod(int(cell), 100)
     n = int(settings.get("num_sketches", 1))
@@ -503,7 +514,8 @@ def scene_cell_iterations(settings: dict, cell: int) -> int:
         obj = int(settings.get("object_num_iter", 1000))
         if layer < 8:
             obj = max(int(round(obj * 0.6)), 1)
-        return n * (int(settings.get("num_iter", 1501)) + (obj if split else 0))
+        return scene_part_iterations(settings, int(settings.get("num_iter", 1501))) + (
+            scene_part_iterations(settings, obj) if split else 0)
     return n * (2 if split else 1) * int(settings.get("simplify_num_iter", 401))
 
 
@@ -574,6 +586,29 @@ def num_strokes(settings: dict[str, Any]) -> int:
     if method == "scenesketch":
         return int(settings.get("num_strokes", 64))
     return 32  # SwiftSketch checkpoints are trained for 32 strokes
+
+
+# Turbo mode (``turbo``): a little different result in less time. With several sketches every one runs to
+# TURBO_PRUNE_AT of its iterations, then only the best continues; a sketch stops early once its loss has
+# improved by less than TURBO_PLATEAU over TURBO_PLATEAU_ITERS iterations.
+TURBO_PRUNE_AT = 0.25
+TURBO_PLATEAU = 0.005
+TURBO_PLATEAU_ITERS = 300
+
+
+def turbo(settings: dict[str, Any]) -> bool:
+    return bool(settings.get("turbo")) and any(p.key == "turbo" for p in METHOD_PARAMS[method_of(settings)])
+
+
+def turbo_prune_iter(num_iter: int) -> int:
+    """Iteration count after which the weaker sketches of a turbo job stop."""
+    return max(1, -(-int(num_iter) * int(TURBO_PRUNE_AT * 100) // 100))
+
+
+def turbo_prunes(settings: dict[str, Any]) -> bool:
+    """Does a turbo job of these settings stop its weaker sketches early (CLIPasso, SceneSketch)?"""
+    return turbo(settings) and method_of(settings) in ("clipasso", "scenesketch") \
+        and int(settings.get("num_sketches", 1)) > 1
 
 
 def text_value(value: Any) -> str:

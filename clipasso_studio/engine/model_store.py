@@ -136,6 +136,11 @@ CONTROLSKETCH_SPECS = (
     _controlnet_spec("scribble", "lllyasviel/sd-controlnet-scribble", "864edcd5ccc6ee2695eeebea5b4512100c83e7b3"),
     _controlnet_spec("seg", "lllyasviel/sd-controlnet-seg", "ecdcb5645b5099c9a7500a504fb9ab3f743c4d96"),
     _controlnet_spec("normal", "lllyasviel/sd-controlnet-normal", "1cbed9b3ca84422e4a2f23c14b9f5a114742b31d"),
+    # Tiny AutoEncoder for SD (MIT): the turbo mode encodes the sketch with it instead of the SD VAE
+    _hf_spec("taesd", "controlsketch/taesd", "madebyollin/taesd", "614f76814bbe30edbe2e627ace1c2234c81a2c0e", (
+        ("config.json", "config.json"),
+        ("diffusion_pytorch_model.safetensors", "diffusion_pytorch_model.safetensors", 9_793_292),
+    ), 10),
     # condition detectors
     _hf_spec("dpt-hybrid", "controlsketch/dpt-hybrid-midas", "Intel/dpt-hybrid-midas",
              "11eaf7a1cf4bd70740697dbc216f98980c0aeb03", (

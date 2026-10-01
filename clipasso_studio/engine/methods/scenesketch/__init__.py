@@ -268,7 +268,22 @@ def _load_part(run_dir: str, device) -> RunResult | None:
 
 def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) -> RunResult:
     """One optimisation (``painterly_rendering.py`` with the SceneSketch options)."""
-    from ...pipeline import set_seed
+    return _drive(_steps(ctx, cfg, seed, run_dir, inputs))
+
+
+def _drive(steps) -> RunResult:
+    """Runs :func:`_steps` to its end."""
+    try:
+        while True:
+            next(steps)
+    except StopIteration as end:
+        return end.value
+
+
+def _steps(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict, pause_at: int | None = None):
+    """:func:`_train` as a generator: with ``pause_at`` (turbo mode) it stops once after that many
+    iterations and yields the eval loss of the sketch so far; the RunResult is its return value."""
+    from ...pipeline import plateaued, set_seed
     from .loss import SceneLoss
 
     s, device = ctx.s, ctx.device
@@ -308,10 +323,12 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
         from ...clip_ import clip
 
         ctx.clip_model, _ = clip.load("ViT-B/32", device, jit=False)
+    turbo = schema.turbo(s)
     loss_fn = SceneLoss(cfg.layer_weights, device, num_augs=int(s["num_aug_clip"]),
                         loss_type=s["clip_conv_loss_type"], width_optim=cfg.width_optim,
                         width_loss_weight=float(s["width_loss_weight"]), ratio=cfg.ratio, gradnorm=cfg.gradnorm,
-                        clip_model=ctx.clip_model, ratio_detach_clip=RATIO_DETACH_CLIP)
+                        clip_model=ctx.clip_model, ratio_detach_clip=RATIO_DETACH_CLIP,
+                        bank_seed=seed if turbo else None)
     points_opt = torch.optim.Adam(painter.mlp.parameters(), lr=float(s["lr"]))
     width_opt = torch.optim.Adam(painter.mlp_width.parameters(), lr=float(s["width_lr"])) if cfg.width_optim else None
     if cfg.load_optim and states.get("points_opt") is not None:
@@ -339,6 +356,13 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
         if ctx.control.should_stop():
             ctx.cancelled = True
             break
+        if epoch == pause_at:
+            rng = checkpoint.rng_state()  # (the extra evaluation leaves the run as it is)
+            with torch.no_grad():
+                w_eval, _, _ = loss_fn(painter.render(), cfg.target, painter.stroke_probs,
+                                       painter.strokes_in_canvas(), painter.mlp_width, painter.mlp, "eval")
+            checkpoint.set_rng_state(rng)
+            yield float(sum(w_eval.values()).item())
         paused_at = time.time()
         ctx.control.wait_if_paused()
         started += time.time() - paused_at
@@ -376,6 +400,13 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
                 best_loss, best_index = value, len(loss_eval) - 1
                 if not cfg.width_optim:
                     best_state = _snapshot(painter, points_opt, None)
+            if turbo and not cfg.width_optim and epoch >= (pause_at or 0) \
+                    and plateaued(loss_eval, int(cfg.eval_interval), 0):
+                ctx.reporter.event("log", message=f"seed {seed}: no more progress – stopped at iteration {epoch}",
+                                   code="plateau", seed=seed, it=epoch)
+                ctx.active += time.time() - t0
+                _progress(ctx, float(loss.item()), None, cfg.name)
+                break
         ctx.active += time.time() - t0
         score = None
         scoring = kept is not None and epoch % score_every == 0
@@ -465,6 +496,10 @@ def _score_paths(ctx: _Ctx, paths, inputs) -> float | None:
 # ----------------------------------------------------------------------------- parts and cells
 
 
+def _eval_min(r: RunResult) -> float:
+    return min(r.loss_eval) if r.loss_eval else float("inf")
+
+
 def _run_part(ctx: _Ctx, cfg: PartConfig, inputs: dict) -> RunResult:
     """``run_sketch.py``: all seeds, the best one wins (lowest eval loss, or lowest normalised loss
     when strokes are removed)."""
@@ -472,14 +507,58 @@ def _run_part(ctx: _Ctx, cfg: PartConfig, inputs: dict) -> RunResult:
     ctx.reporter.event("stage", seed=ctx.cell, name=f"scene_{cfg.name}")
     results = []
     base = int(ctx.s["seed"])
-    for j in range(int(ctx.s["num_sketches"])):
-        seed = base + j * 1000
-        results.append(_train(ctx, cfg, seed, os.path.join(ctx.job_dir, "runs", tag, f"seed{seed}"), inputs))
+    seeds = [base + j * 1000 for j in range(int(ctx.s["num_sketches"]))]
+    dirs = {seed: os.path.join(ctx.job_dir, "runs", tag, f"seed{seed}") for seed in seeds}
+    if schema.turbo_prunes(ctx.s) and not cfg.width_optim:
+        return _run_part_pruned(ctx, cfg, inputs, seeds, dirs)
+    for seed in seeds:
+        results.append(_train(ctx, cfg, seed, dirs[seed], inputs))
         if ctx.cancelled:
             break
     if cfg.width_optim:
         return min(results, key=lambda r: r.best_normalised_loss if r.best_normalised_loss is not None else 0.0)
-    return min(results, key=lambda r: min(r.loss_eval) if r.loss_eval else float("inf"))
+    return min(results, key=_eval_min)
+
+
+def _run_part_pruned(ctx: _Ctx, cfg: PartConfig, inputs: dict, seeds: list[int], dirs: dict) -> RunResult:
+    """Turbo mode: every seed runs to ``TURBO_PRUNE_AT`` of the iterations, then only the best one goes on
+    (the others are dropped; only the finished one is saved). A part that was interrupted starts again."""
+    total = int(cfg.num_iter)
+    stop = schema.turbo_prune_iter(total)
+    others = (len(seeds) - 1) * min(stop, total)
+    saved = [r for r in (_load_part(dirs[s], ctx.device) for s in seeds) if r is not None]
+    if saved:  # chosen and finished before the job was interrupted
+        best = min(saved, key=_eval_min)
+        ctx.done_iters += total + others
+        ctx.cell_done += total + others
+        ctx.reporter.event("log", message=f"SceneSketch: {cfg.name} (seed {best.seed}) restored", code="scene_restored",
+                           part=cfg.name, seed=best.seed)
+        _progress(ctx, _eval_min(best) if best.loss_eval else 0.0, None, cfg.name, count=False)
+        return best
+    running, values, rng = {}, {}, {}
+    finished: dict[int, RunResult] = {}
+    for seed in seeds:
+        steps = _steps(ctx, cfg, seed, dirs[seed], inputs, pause_at=stop)
+        try:
+            values[seed] = next(steps)
+        except StopIteration as end:  # cancelled, or too short to stop early
+            if ctx.cancelled:
+                for other in running.values():
+                    other.close()
+                return end.value
+            finished[seed] = end.value
+            values[seed] = _eval_min(end.value)
+            continue
+        running[seed] = steps
+        rng[seed] = checkpoint.rng_state()
+    best = min(values, key=values.get)
+    for seed, steps in running.items():
+        if seed != best:
+            steps.close()
+    if best in finished:
+        return finished[best]
+    checkpoint.set_rng_state(rng[best])
+    return _drive(running[best])
 
 
 def _clip_layer_loss(run: RunResult, layer: int, part: str) -> float:
@@ -579,8 +658,10 @@ def _write_cell(ctx: _Ctx, layer: int, level: int, bg: RunResult, obj: RunResult
 def _cell_iterations(ctx: _Ctx, cell: int) -> int:
     n = schema.scene_cell_iterations(ctx.s, cell)
     if ctx.skip_background:
-        per_seed = int(ctx.s["num_iter"]) if cell % 100 == 0 else int(ctx.s["simplify_num_iter"])
-        n -= int(ctx.s["num_sketches"]) * per_seed
+        if cell % 100 == 0:
+            n -= schema.scene_part_iterations(ctx.s, int(ctx.s["num_iter"]))
+        else:
+            n -= int(ctx.s["num_sketches"]) * int(ctx.s["simplify_num_iter"])
     return max(n, 1)
 
 

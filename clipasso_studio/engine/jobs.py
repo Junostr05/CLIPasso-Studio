@@ -30,6 +30,7 @@ class SeedResult:
     method: str = "clipasso"
     clip_score: float | None = None  # CLIP ViT-B/32 similarity sketch <-> input in percent (higher = better)
     seconds: float = 0.0
+    pruned: bool = False  # turbo mode: stopped early because another seed of the job was better
 
 
 def job_seeds(settings: dict) -> list[int]:
@@ -288,6 +289,7 @@ def job_summary(job_dir: str) -> dict | None:
         method = state.get("method") or schema.method_of(state.get("settings"))
         best = None
         if results:
+            results = [r for r in results if not r.pruned] or results
             scored = [r for r in results if r.clip_score is not None]
             best = max(scored, key=lambda r: r.clip_score) if method != "clipasso" and scored \
                 else min(results, key=lambda r: r.best_loss)
@@ -341,10 +343,11 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     if not results:
         raise RuntimeError("no sketch was produced")
     method = schema.method_of(settings)
-    if method != "clipasso" and all(r.clip_score is not None for r in results):
-        best = max(results, key=lambda r: r.clip_score)
+    candidates = [r for r in results if not r.pruned] or results  # (turbo) the sketch that was continued
+    if method != "clipasso" and all(r.clip_score is not None for r in candidates):
+        best = max(candidates, key=lambda r: r.clip_score)
     else:
-        best = min(results, key=lambda r: r.best_loss)
+        best = min(candidates, key=lambda r: r.best_loss)
     best_copy = os.path.join(job_dir, f"{best.run_name}_best.svg")
     for name in os.listdir(job_dir):  # a continued job may have another best sketch than before
         if name.endswith(("_best.svg", "_best.png")) and not name.startswith(f"{best.run_name}_best."):
