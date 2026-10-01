@@ -424,7 +424,7 @@ class StudioPage(QWidget):
         data = QGuiApplication.clipboard().mimeData()
         if data is not None:
             for url in data.urls() if data.hasUrls() else []:
-                path = url.toLocalFile()
+                path = os.path.normpath(url.toLocalFile())
                 if path.lower().endswith(IMAGE_EXT) and os.path.isfile(path):
                     self.set_image(path)
                     return True

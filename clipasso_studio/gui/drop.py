@@ -24,10 +24,11 @@ def image_files(folder: str, recursive: bool = False) -> list[str]:
 
 
 def dropped_paths(mime) -> list[str]:
-    """Local files and folders of a drop (QMimeData)."""
+    """Local files and folders of a drop (QMimeData), as the system writes paths (Qt gives "C:/x/y.png"
+    on Windows; joined with folder contents that would become "C:/x\\y.png")."""
     if mime is None or not mime.hasUrls():
         return []
-    return [u.toLocalFile() for u in mime.urls() if u.isLocalFile() and u.toLocalFile()]
+    return [os.path.normpath(u.toLocalFile()) for u in mime.urls() if u.isLocalFile() and u.toLocalFile()]
 
 
 def has_images(mime) -> bool:
