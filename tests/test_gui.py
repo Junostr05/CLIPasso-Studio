@@ -340,7 +340,7 @@ def test_shortcuts_and_paste(window, tmp_path):
     assert not studio.paste_image() and studio.image_path == str(other)
     assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
     keys = [lbl.text() for lbl in window.about.key_labels]
-    assert len(keys) == 6 and all(keys)
+    assert len(keys) == 7 and all(keys) and "Ctrl+C" in window.shortcuts
 
 
 def _interrupted_job(out, tmp_path):
