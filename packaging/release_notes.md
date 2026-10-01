@@ -1,10 +1,25 @@
-## CLIPasso Studio 2.4 – a much better object mask
+## CLIPasso Studio 2.4 – a much better mask, and you can fix it
 
-**BiRefNet finds the object.** Removing the background (CLIPasso, SwiftSketch, ControlSketch) and separating object and background (SceneSketch) now use **BiRefNet**, a state-of-the-art segmentation network, instead of U²-Net. It keeps fine parts (a sign's pole, a shower hose, thin legs), finds several objects (two teddy bears instead of one), and leaves no grey haze of background around the object – so the sketch shows what you wanted and nothing else.
-- Downloaded once on the first run that removes the background (444 MB, Hugging Face) – or on the Models page.
-- On a CPU it takes a few seconds per image (GPU: well under a second); the mask is cached, so the same image again – another seed, the parallel sketches, a re-run with other settings – does not compute it again.
-- **Mask model** in the image settings: *BiRefNet* (best, the default), *BiRefNet lite* (faster, 89 MB) or *U²-Net* (included, the mask of the original CLIPasso).
-- Jobs interrupted with 2.3 continue with U²-Net, so their sketches still match.
+**BiRefNet finds the object.** Removing the background (CLIPasso, SwiftSketch, ControlSketch) and separating object and background (SceneSketch) now use **BiRefNet**, a state-of-the-art segmentation network, instead of U²-Net. It keeps fine parts (a sign's pole, a shower hose, thin legs), finds several objects (two teddy bears instead of one) and leaves no grey haze of background around the object.
+- Downloaded once on the first run that removes the background (444 MB) – a few seconds per image on a CPU, well under one on a GPU. Masks are cached, so the same image is never computed twice.
+- **Mask model** in the image settings: *BiRefNet* (best, the default), *BiRefNet lite* (faster, 89 MB) or *U²-Net* (included, the original).
+
+**See and fix the mask before you start**
+- The studio shows the object on your photo as soon as you pick one (the eye button hides it).
+- **Edit mask** (brush icon): click a part to remove it, click next to the object to add an area of similar colour (magic wand), or paint with the brush; undo / redo. Every method uses your mask – also in the queue and when a job is continued.
+- **Fit the object** (CLIPasso, SwiftSketch): a small object in a large photo is cropped so it fills the canvas – a full-size sketch instead of a tiny one.
+
+**Export**
+- **Stroke by stroke**: GIF, MP4 and WebP can show the finished strokes being drawn one after another, like by hand (or the drawing process as before).
+- **SVG · animated**: an SVG that draws itself in the browser – for websites and presentations.
+- **PDF** for printing (vector, any size) – also in “Export all”.
+- **Copy** (Ctrl+C, or the gallery card menu): the sketch goes to the clipboard – paste it into Word, PowerPoint, Figma, Photoshop …
+
+**Workflow**
+- **Drag & drop** several images or whole folders onto the studio or the queue.
+- **When the queue is done**: sleep or shut down the PC after the last job (with a 60-second countdown) – for runs overnight.
+- **Model folder**: keep the downloaded models (up to ~10 GB) on another drive (Settings → Files).
+- A short **guide** on the first start (again via “Show the guide” on the About page).
 
 | File | For whom? |
 |---|---|

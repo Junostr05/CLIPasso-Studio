@@ -14,6 +14,7 @@ import argparse
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -83,6 +84,7 @@ def main() -> int:
             from clipasso_studio.gui import dialogs
 
             dialogs.wait_for_threads()  # e.g. the hardware probe of the settings page
+            w.studio.shutdown()
             w.close()
             app.quit()
             return
@@ -104,8 +106,13 @@ def main() -> int:
                 if sec in w.studio.params.sections and (sec != "sds" or method == "controlsketch"):
                     w.studio.params.sections[sec].set_expanded(sec in ("basics", "image", "init", "diffusion"))
 
+        deadline = time.time() + 180
+
         def grab():
             app.processEvents()
+            if getattr(w.studio, "mask_state", "") == "busy" and time.time() < deadline:
+                QTimer.singleShot(500, grab)  # the mask preview of the input is still being computed
+                return
             w.grab().save(str(out / f"{name}_{args.theme}_{args.lang}.png"))
             shoot(i + 1)
 
