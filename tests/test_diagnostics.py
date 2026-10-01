@@ -32,7 +32,7 @@ def test_app_log_is_rotated(user_data):
     stream.close()
     names = sorted(p.name for p in logs.logs_dir().iterdir())
     assert names == ["app.log", "app.log.1", "app.log.2"]
-    assert all(p.stat().st_size <= 108 for p in logs.logs_dir().iterdir())
+    assert all(p.stat().st_size <= 100 + 10 for p in logs.logs_dir().iterdir())  # (a line with "\r\n": 10 bytes)
     assert logs.tail(logs.logs_dir() / "app.log", 5)[-1] == "line 039"
     assert logs.tail(logs.logs_dir() / "app.log", 15)[0] == "line 025"  # also from app.log.1
 

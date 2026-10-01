@@ -63,8 +63,11 @@ class RotatingStream:
             finally:
                 self._open()
         n = self._file.write(text)
-        self._size += len(text.encode("utf-8", "replace"))
         self._file.flush()  # the last lines are wanted most after a crash
+        try:
+            self._size = self._file.tell()  # the bytes on the disk (Windows writes "\r\n" for "\n")
+        except (OSError, ValueError):
+            self._size += len(text.encode("utf-8", "replace"))
         return n
 
     def flush(self) -> None:
