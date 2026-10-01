@@ -2,6 +2,7 @@
 
 Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR ...] [--theme dark|light] [--lang de|en]
                                    [--pages studio,studio:swiftsketch,compare,...]
+                                   [--set canvas_style=ink ...] [--queue IMAGE[:METHOD] ...]
 
 ``studio:<method>`` shows the studio with that method selected (and the given job of that method,
 if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``).
@@ -31,6 +32,8 @@ def main() -> int:
     ap.add_argument("--pages", default="studio,compare,queue,gallery,models,settings,about")
     ap.add_argument("--size", default="1480x920")
     ap.add_argument("--models", default="", help="folder of downloaded models to show as installed")
+    ap.add_argument("--set", action="append", default=[], help="app setting KEY=VALUE (VALUE as JSON or text)")
+    ap.add_argument("--queue", action="append", default=[], help="IMAGE[:METHOD] waiting in the queue")
     args = ap.parse_args()
 
     # isolated user data so the real settings are untouched
@@ -57,6 +60,14 @@ def main() -> int:
     s.data["language"] = args.lang
     if args.job:
         s.data["output_dir"] = str(Path(args.job[0]).parent)
+    import json
+
+    for item in args.set:
+        key, _, value = item.partition("=")
+        try:
+            s.data[key] = json.loads(value)
+        except ValueError:
+            s.data[key] = value
     theme.load_fonts()
     theme.apply(app, args.theme)
     i18n.set_language(args.lang)
@@ -64,14 +75,20 @@ def main() -> int:
     from clipasso_studio.gui.main_window import MainWindow
 
     w = MainWindow()
+    if args.queue:
+        from clipasso_studio import settings_schema as schema
+
+        w.controller.start_next = lambda: None  # waiting only
+        for item in args.queue:
+            image, _, method = item.rpartition(":") if item.count(":") > (1 if os.name == "nt" else 0) \
+                else (item, "", "")
+            w.controller.enqueue(image, schema.default_settings(method or "clipasso"), start=False)
     width, height = (int(v) for v in args.size.split("x"))
     w.resize(width, height)
     w.show()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     pages = args.pages.split(",")
-
-    import json
 
     jobs = {}
     for j in args.job:
