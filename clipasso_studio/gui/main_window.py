@@ -230,6 +230,8 @@ class MainWindow(QMainWindow):
         self.queue.toast.connect(self.toast.show_message)
         self.controller.queue_idle.connect(self._queue_done)
         self.settings.busy_check = self.controller.is_busy
+        self.about.show_tour.connect(self.show_tour)
+        self.tour = None
         self.settings.models_dir_changed.connect(self._models_dir_changed)
         self.power_action = power.run  # replaced in tests
         self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
@@ -376,6 +378,24 @@ class MainWindow(QMainWindow):
         if self.studio.image_path:
             self.show_page("studio")
             self.studio.add_to_queue()
+
+    def show_tour(self):
+        """The guide through the app (first start, or "Show the guide" on the About page)."""
+        if self.tour is not None:
+            return
+        from .tour import Tour
+
+        self.tour = Tour(self)
+        self.tour.finished.connect(self._tour_finished)
+
+    def maybe_show_tour(self):
+        if not app_settings().get("tour_done"):
+            self.show_tour()
+
+    def _tour_finished(self, completed: bool):
+        self.tour = None
+        app_settings().set("tour_done", True)
+        self.show_page("studio")
 
     def _models_dir_changed(self):
         self.models.retranslate()  # the location line and every row

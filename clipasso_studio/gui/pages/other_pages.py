@@ -1059,6 +1059,8 @@ class SettingsPage(QWidget):
 
 # ====================================================================== about
 class AboutPage(QWidget):
+    show_tour = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("Page")
@@ -1083,6 +1085,9 @@ class AboutPage(QWidget):
         t.addWidget(self.version)
         t.addWidget(self.byline)
         top.addLayout(t, 1)
+        self.tour_btn = button("", "circle-help", "ghost")
+        self.tour_btn.clicked.connect(self.show_tour.emit)
+        top.addWidget(self.tour_btn, 0, Qt.AlignTop)
         hero.body.addLayout(top)
         self.desc = label("", None, wrap=True)
         hero.body.addWidget(self.desc)
@@ -1152,6 +1157,7 @@ class AboutPage(QWidget):
 
     def retranslate(self):
         self.version.setText(tr("ui.about.version", version=__version__, edition=tr(f"ui.edition.{EDITION}")))
+        self.tour_btn.setText(tr("ui.tour.show"))
         self.byline.setText(tr("ui.about.byline"))
         self.desc.setText(tr("ui.about.desc"))
         for b in self.link_buttons:

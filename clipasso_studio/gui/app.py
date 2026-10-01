@@ -82,6 +82,7 @@ def run_gui(argv: list[str] | None = None) -> int:
     _close_splash()
     from PySide6.QtCore import QTimer
 
+    QTimer.singleShot(600, window.maybe_show_tour)  # first start only
     QTimer.singleShot(1200, lambda: crash.show_previous_crash(window))
     QTimer.singleShot(2500, window.check_interrupted_jobs)
     QTimer.singleShot(4000, window.start_update_check)

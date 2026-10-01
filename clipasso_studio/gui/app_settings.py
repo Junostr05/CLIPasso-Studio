@@ -11,6 +11,7 @@ from .. import paths
 SETTINGS_VERSION = 2
 
 DEFAULTS: dict[str, Any] = {
+    "tour_done": False,  # the first-start guide was shown
     "settings_version": SETTINGS_VERSION,
     "language": "auto",
     "theme": "dark",
@@ -42,6 +43,8 @@ class AppSettings:
                     stored["language"] = "auto"
                 self.data.update(stored)
                 self.data["settings_version"] = SETTINGS_VERSION
+                if "tour_done" not in stored:  # used before the guide existed: only on request (About)
+                    self.data["tour_done"] = True
         except (OSError, ValueError):
             pass
 
