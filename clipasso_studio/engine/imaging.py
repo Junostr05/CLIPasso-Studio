@@ -86,6 +86,35 @@ def fix_image_scale(im: Image.Image, fill: int | tuple = 255) -> Image.Image:
     return Image.fromarray(new)
 
 
+FRAME_FILL = 0.85  # auto-framing: the object fills this share of the square crop
+FRAME_SMALL = 0.75  # ... when its longer side is below this share of the shorter image side
+
+
+def frame_object(im: Image.Image, mask: Image.Image, fill: float = FRAME_FILL,
+                 small: float = FRAME_SMALL) -> tuple[Image.Image, Image.Image, bool]:
+    """Auto-framing: a square crop around the object (``mask`` > 50 %) in which it fills ``fill`` of
+    the side – only for small objects; outside the image the crop is white (mask 0). Returns the
+    image, the mask and whether it was framed."""
+    m = np.asarray(mask.convert("L")) > 127
+    if not m.any():
+        return im, mask, False
+    ys, xs = np.nonzero(m)
+    x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
+    w, h = im.size
+    obj = max(x1 - x0, y1 - y0)
+    if obj >= small * min(w, h):
+        return im, mask, False
+    side = max(8, int(round(obj / fill)))
+    left = int(round((x0 + x1) / 2 - side / 2))
+    top = int(round((y0 + y1) / 2 - side / 2))
+    box = (max(left, 0), max(top, 0), min(left + side, w), min(top + side, h))
+    out = Image.new("RGB", (side, side), "white")
+    out.paste(im.convert("RGB").crop(box), (box[0] - left, box[1] - top))
+    out_mask = Image.new("L", (side, side), 0)
+    out_mask.paste(mask.convert("L").crop(box), (box[0] - left, box[1] - top))
+    return out, out_mask, True
+
+
 # A compact "viridis"-like colormap for attention map previews (no matplotlib needed).
 _VIRIDIS = np.array([
     [68, 1, 84], [72, 35, 116], [64, 67, 135], [52, 94, 141], [41, 120, 142], [32, 144, 140],

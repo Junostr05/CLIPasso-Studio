@@ -104,12 +104,13 @@ def release_models() -> None:
 
 
 def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Image.Image]:
-    """-> (network input image, mask image) like generate.py: mask -> masked image -> fix_scale."""
+    """-> (network input image, mask image) like generate.py: mask -> masked image -> fix_scale
+    (with auto-framing of small objects after the mask)."""
     from ...pipeline import load_rgb
 
     model = settings.get("mask_model", "u2net")
     key = ("input", os.path.abspath(target), os.path.getmtime(target), bool(settings["mask_object"]), model,
-           bool(settings["fix_scale"]), masking.edited_stamp(target))
+           bool(settings["fix_scale"]), bool(settings.get("frame_object")), masking.edited_stamp(target))
     if key in _cache:  # same image for every seed of a job
         return _cache[key]
     for k in [k for k in _cache if k[0] == "input"]:
@@ -119,6 +120,8 @@ def prepare_input(settings: dict, target: str, device) -> tuple[Image.Image, Ima
         matte = masking.soft_mask(device, image, model)
         image = masking.apply_soft_mask(image, matte)
         mask_img = Image.fromarray((matte * 255 + 0.5).astype(np.uint8), mode="L")
+        if settings.get("frame_object"):  # small objects fill the canvas
+            image, mask_img, _ = imaging.frame_object(image, mask_img)
     else:
         mask_img = Image.new("L", image.size, 255)
     if settings["fix_scale"]:

@@ -636,5 +636,7 @@
  "ui.mask_edit.apply": "Diese Maske verwenden",
  "ui.mask_edit.share": "Das Objekt bedeckt {pct} % des Bildes",
  "ui.mask_edit.empty": "Die Maske ist leer – füge einen Teil hinzu oder male das Objekt",
- "ui.mask_edit.nothing_here": "Hier wurde nichts gefunden – male es mit dem Pinsel (Hinzufügen)"
+ "ui.mask_edit.nothing_here": "Hier wurde nichts gefunden – male es mit dem Pinsel (Hinzufügen)",
+ "param.frame_object.label": "Objekt einpassen",
+ "param.frame_object.help": "Kleine Objekte werden vergrößert, damit sie das Bild füllen: Das Bild wird mit Rand um die Maske zugeschnitten. Nur mit „Hintergrund entfernen“; Objekte, die das Bild schon füllen, bleiben, wie sie sind. Nicht im Original (dort werden kleine Objekte zu kleinen Skizzen)."
 }

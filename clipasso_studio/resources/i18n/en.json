@@ -636,5 +636,7 @@
  "ui.mask_edit.apply": "Use this mask",
  "ui.mask_edit.share": "The object covers {pct} % of the image",
  "ui.mask_edit.empty": "The mask is empty – add a part or paint the object",
- "ui.mask_edit.nothing_here": "Nothing found here – paint it with the brush (Add)"
+ "ui.mask_edit.nothing_here": "Nothing found here – paint it with the brush (Add)",
+ "param.frame_object.label": "Fit the object",
+ "param.frame_object.help": "Small objects are enlarged so they fill the picture: the image is cropped around the mask with a margin. Only with “Remove background”; objects that already fill the picture stay as they are. Not in the original (where small objects get small sketches)."
 }

@@ -278,3 +278,68 @@ def test_studio_shows_mask_and_edit_state(qapp, data_home):
     assert not page.mask_row.isVisibleTo(page) and page.drop._overlay is None
     page.shutdown()
     settings_module._instance = None
+
+
+# ------------------------------------------------------------------------ auto-framing
+def test_frame_object_geometry():
+    from clipasso_studio.engine.imaging import FRAME_FILL, frame_object
+
+    im = Image.new("RGB", (400, 300), "white")
+    mask = Image.new("L", (400, 300), 0)
+    mask.paste(255, (300, 40, 360, 100))  # a 60 px object near the right edge
+    im.paste((200, 0, 0), (300, 40, 360, 100))
+    out, out_mask, framed = frame_object(im, mask)
+    side = round(60 / FRAME_FILL)
+    assert framed and out.size == (side, side) and out_mask.size == (side, side)
+    m = np.asarray(out_mask) > 127
+    ys, xs = np.nonzero(m)
+    assert (xs.max() - xs.min() + 1, ys.max() - ys.min() + 1) == (60, 60)
+    assert abs((xs.min() + xs.max()) / 2 - side / 2) <= 1  # centred
+    assert out.getpixel((side // 2, side // 2)) == (200, 0, 0)
+    big = Image.new("L", (400, 300), 0)
+    big.paste(255, (20, 20, 380, 280))  # already fills the picture
+    assert frame_object(im, big)[2] is False
+    assert frame_object(im, Image.new("L", (400, 300), 0))[2] is False
+    edge = Image.new("L", (400, 300), 0)
+    edge.paste(255, (0, 0, 40, 40))  # in the corner: the crop reaches outside, padded white / 0
+    out, out_mask, framed = frame_object(im, edge)
+    assert framed and out.getpixel((0, 0)) == (255, 255, 255) and out_mask.getpixel((0, 0)) == 0
+
+
+def test_frame_object_in_clipasso_and_swiftsketch(data_home):
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import masking, pipeline
+    from clipasso_studio.engine.imaging import load_rgb
+    from clipasso_studio.engine.methods import swiftsketch
+
+    src = str(data_home / "small.png")
+    Image.new("RGB", (300, 200), (90, 90, 90)).save(src)
+    m = np.zeros((200, 300), dtype=np.float32)
+    m[50:90, 100:140] = 1  # a 40 px object
+    masking.save_edited_mask(load_rgb(src), m)
+    s = {**schema.default_settings("clipasso"), "mask_object": True}
+    args = pipeline.build_args(s, src, 0, str(data_home / "run"), torch.device("cpu"))
+    _, mask_t, mask_img = pipeline.get_target(args)
+    assert mask_img.size == (47, 47) and float(mask_t.mean()) > 0.5  # framed: the object fills the canvas
+    args = pipeline.build_args({**s, "frame_object": False}, src, 0, str(data_home / "run"), torch.device("cpu"))
+    assert pipeline.get_target(args)[2].size == (300, 200)
+    sw = {**schema.default_settings("swiftsketch"), "mask_model": "u2net"}
+    image, mask_img = swiftsketch.prepare_input(sw, src, torch.device("cpu"))
+    assert image.size == (47, 47)
+    image, _ = swiftsketch.prepare_input({**sw, "frame_object": False}, src, torch.device("cpu"))
+    assert image.size == (300, 200)
+
+
+def test_frame_object_setting_and_old_jobs(tmp_path):
+    import json
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    for method in ("clipasso", "swiftsketch"):
+        p = next(p for p in schema.params_for(method) if p.key == "frame_object")
+        s = schema.default_settings(method)
+        assert s["frame_object"] is True and not p.advanced
+        assert p.enabled_if({**s, "mask_object": True}) and not p.enabled_if({**s, "mask_object": False})
+    (tmp_path / jobs.STATE_FILE).write_text(json.dumps({"target": "x.png", "settings": {"method": "clipasso"}}))
+    assert jobs.read_state(str(tmp_path))["settings"]["frame_object"] is False

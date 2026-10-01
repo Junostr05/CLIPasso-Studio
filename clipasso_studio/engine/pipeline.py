@@ -162,6 +162,8 @@ def get_target(args, u2net=None):
     masked_im, mask_img = masking.get_mask(args.device, target, model, net=u2net if model == "u2net" else None)
     if args.mask_object:
         target = masked_im
+        if getattr(args, "frame_object", False):  # small objects fill the canvas
+            target, mask_img, _ = imaging.frame_object(target, mask_img)
     if args.fix_scale:
         target = imaging.fix_image_scale(target)
         mask_img = imaging.fix_image_scale(mask_img, fill=0)
@@ -427,9 +429,11 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
     old: dict[int, SeedResult] = {}
     if resume:
         jobs.set_status(job_dir, "running")
-        # the mask the job started with (U2Net for jobs from before 2.4), so the rest matches
+        # the input the job started with (U2Net, no framing for jobs from before 2.4), so the rest matches
         saved = (jobs.read_state(job_dir) or {}).get("settings") or {}
-        settings["mask_model"] = saved.get("mask_model", settings.get("mask_model"))
+        for key in ("mask_model", "frame_object"):
+            if key in settings:
+                settings[key] = saved.get(key, settings[key])
         old = jobs.done_results(job_dir)
         if seeds is None:
             seeds = [s for s in job_seeds(settings) if s not in old]

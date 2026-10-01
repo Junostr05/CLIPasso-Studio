@@ -187,6 +187,7 @@ def read_state(job_dir: str) -> dict | None:
         return None
     if isinstance(state.get("settings"), dict):
         state["settings"].setdefault("mask_model", "u2net")  # jobs from before 2.4 were masked with U2Net
+        state["settings"].setdefault("frame_object", False)  # ... and not framed
     return state
 
 

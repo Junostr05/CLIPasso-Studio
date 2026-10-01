@@ -82,6 +82,8 @@ PARAMS: tuple[Param, ...] = (
     # ------------------------------------------------------------------- image
     Param("mask_object", False, "bool", "image", cli="mask_object", advanced=False),
     _mask_model(lambda s: clipasso_uses_mask(s)),
+    # not in the original: small objects are enlarged to fill the canvas (needs the masked input)
+    Param("frame_object", True, "bool", "image", advanced=False, enabled_if=_on("mask_object")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("image_scale", 224, "int", "image", cli="image_scale", minimum=64, maximum=1024, step=32),
     # ----------------------------------------------------------------- strokes
@@ -206,6 +208,7 @@ SWIFT_PARAMS: tuple[Param, ...] = (
     Param("seed", 20, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     Param("mask_object", True, "bool", "image", advanced=False),
     _mask_model(_on("mask_object")),
+    Param("frame_object", True, "bool", "image", advanced=False, enabled_if=_on("mask_object")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
     Param("guidance_param", 2.5, "float", "diffusion", cli="guidance_param", minimum=1.0, maximum=10.0, step=0.1,
           decimals=2),
