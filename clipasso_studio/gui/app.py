@@ -7,8 +7,10 @@ import sys
 
 
 def _close_splash() -> None:
+    # the worker processes are started from the same exe: they must not show the splash screen again
+    os.environ["PYINSTALLER_SUPPRESS_SPLASH_SCREEN"] = "1"
     try:
-        import pyi_splash  # type: ignore  # only available in the PyInstaller onefile build
+        import pyi_splash  # type: ignore  # only available in the PyInstaller builds
 
         pyi_splash.close()
     except Exception:

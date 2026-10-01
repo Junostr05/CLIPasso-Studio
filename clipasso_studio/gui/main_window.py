@@ -234,6 +234,7 @@ class MainWindow(QMainWindow):
         self.tour = None
         self.settings.models_dir_changed.connect(self._models_dir_changed)
         self.settings.keep_models_changed.connect(self.controller.set_keep_models)
+        QTimer.singleShot(1500, self._probe_hardware)  # GPU / CUDA, in a child process (no torch here)
         self.settings.release_worker = self.controller.release_worker
         self.models.release_worker = self.controller.release_worker
         self.power_action = power.run  # replaced in tests
@@ -468,6 +469,16 @@ class MainWindow(QMainWindow):
             self.update_bar.show_release(release)
 
     # ---------------------------------------------------------------- actions
+    def _probe_hardware(self):
+        from . import hardware
+
+        def done(text):
+            info = hardware.store(text)
+            self.settings.set_hardware(info)
+            self.studio.hardware_known()
+
+        dialogs.run_in_thread(self, hardware.probe, on_done=done, on_error=lambda msg: None)
+
     def show_running_job(self):
         """The sidebar's run indicator: the studio with the running job's live view."""
         self.show_page("studio")

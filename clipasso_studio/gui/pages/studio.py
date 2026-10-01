@@ -1226,6 +1226,12 @@ class StudioPage(QWidget):
         if busy:
             self.stage_badge.setText(tr("ui.live"))
 
+    def hardware_known(self):
+        """The hardware probe answered (GPU or not): estimates and hints follow it."""
+        self._update_estimate()
+        self._update_banner()
+        self.picker.refresh_status(self.params.all_settings())
+
     def _update_estimate(self):
         s = self.params.settings()
         method = self.params.method()

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from ... import settings_schema as schema
-from .. import model_store
+from .requirements import clipasso as required_models  # noqa: F401 (used by the dispatcher too)
 
 
 def run_single(settings, target, run_dir, seed, reporter=None, control=None, device=None):
@@ -12,13 +11,3 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     return pipeline.run_single(settings, target, run_dir, seed, reporter, control, device)
 
 
-def required_models(settings: dict) -> list[str]:
-    s = schema.normalize({**settings, "method": "clipasso"})
-    needed = {model_store.clip_key(s["clip_model_name"]), "u2net", model_store.clip_key("ViT-B/32")}
-    if s["attention_init"]:
-        needed.add(model_store.clip_key(s["saliency_clip_model"]) if s["saliency_model"] == "clip" else "dino")
-    if schema.clipasso_uses_mask(s):
-        needed.add(s["mask_model"])
-    if s["percep_loss"] == "LPIPS":
-        needed.add("vgg16")
-    return sorted(needed)

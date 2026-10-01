@@ -22,9 +22,8 @@ from PIL import Image
 from torch import nn
 
 from ... import model_store
+from ..requirements import DETECTOR_MODELS  # noqa: F401
 
-DETECTOR_MODELS = {"depth": "dpt-hybrid", "normal": "dpt-hybrid", "hed": "hed", "scribble": "hed", "seg": "upernet",
-                   "canny": None}
 
 
 def _hf_offline() -> None:

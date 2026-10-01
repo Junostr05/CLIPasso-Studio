@@ -3,7 +3,7 @@
 
 Environment variables:
     EDITION = cpu | gpu        (only used for naming)
-    MODE    = onefile | onedir (onefile = portable single exe with splash screen)
+    MODE    = onefile | onedir (onefile = portable single exe; both show a splash screen)
     MODELS  = folder with the converted models (default: ./models)
 """
 
@@ -97,20 +97,22 @@ if IS_WIN:  # the exe's file version, from the one place the version is kept
     os.makedirs(workpath, exist_ok=True)
     Path(version).write_text(_info, encoding="utf-8")
 
+# the splash screen shows until the window is up (both builds; the app suppresses it for its worker processes)
+splash = None
+if IS_WIN:
+    splash = Splash(
+        str(ROOT / "packaging" / "splash.png"),
+        binaries=a.binaries,
+        datas=a.datas,
+        text_pos=(56, 330),
+        text_size=9,
+        text_color="#9AA3B4",
+        minify_script=True,
+        always_on_top=False,
+    )
+
 if MODE == "onefile":
-    splash_args = []
-    if IS_WIN:
-        splash = Splash(
-            str(ROOT / "packaging" / "splash.png"),
-            binaries=a.binaries,
-            datas=a.datas,
-            text_pos=(56, 330),
-            text_size=9,
-            text_color="#9AA3B4",
-            minify_script=True,
-            always_on_top=False,
-        )
-        splash_args = [splash, splash.binaries]
+    splash_args = [splash, splash.binaries] if splash is not None else []
     exe = EXE(
         pyz,
         a.scripts,
@@ -132,6 +134,7 @@ if MODE == "onefile":
 else:
     exe = EXE(
         pyz,
+        *([splash] if splash is not None else []),
         a.scripts,
         [],
         exclude_binaries=True,
@@ -147,6 +150,7 @@ else:
     )
     coll = COLLECT(
         exe,
+        *([splash.binaries] if splash is not None else []),
         a.binaries,
         a.datas,
         strip=False,

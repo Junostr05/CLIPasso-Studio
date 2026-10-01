@@ -26,22 +26,13 @@ from ...jobs import SeedResult
 from ...renderer import Path, ShapeGroup, render_on_white
 from .diffusion import Sampler
 from .model import SwiftSketchNet
+from ..requirements import SWIFT_DIFFUSION_KEY as DIFFUSION_KEY
+from ..requirements import SWIFT_REFINE_KEY as REFINE_KEY
+from ..requirements import swiftsketch as required_models  # noqa: F401
 
 CANVAS = 224
-DIFFUSION_KEY = "swiftsketch:diffusion"
-REFINE_KEY = "swiftsketch:refine"
 
 _cache: dict[tuple, object] = {}
-
-
-def required_models(settings: dict) -> list[str]:
-    s = schema.normalize({**settings, "method": "swiftsketch"})
-    needed = {DIFFUSION_KEY, model_store.clip_key("RN101"), model_store.clip_key("ViT-B/32")}
-    if s["use_refine"]:
-        needed.add(REFINE_KEY)
-    if s["mask_object"]:
-        needed.add(s["mask_model"])
-    return sorted(needed)
 
 
 # ----------------------------------------------------------------------------- models

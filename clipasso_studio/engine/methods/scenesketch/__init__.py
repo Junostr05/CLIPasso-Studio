@@ -36,10 +36,11 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .... import settings_schema as schema
-from ... import checkpoint, imaging, masking, model_store
+from ... import checkpoint, imaging, masking
 from ...jobs import SeedResult
 from . import combine as C
 from .painter import MLPPainter, paths_to_svg, render_paths
+from ..requirements import scenesketch as required_models  # noqa: F401
 
 CANVAS = 224  # image_scale of the original
 SIMPLIFY_EVAL_INTERVAL = 100  # run_sketch.py defaults used by run_ratio.py
@@ -53,19 +54,6 @@ PLAIN_STD = 0.03  # a background with less variation than this is plain (only th
 RATIO_DETACH_CLIP = True
 
 _cache: dict = {}
-
-
-def required_models(settings: dict) -> list[str]:
-    s = schema.normalize({**settings, "method": "scenesketch"})
-    needed = {model_store.clip_key("ViT-B/32")}
-    if s["split_scene"]:
-        needed.update(("lama", s["mask_model"]))
-    if s["attention_init"]:
-        if s["saliency_model"] == "dino":
-            needed.add("dino")
-        else:
-            needed.add(model_store.clip_key(s["saliency_clip_model"]))
-    return sorted(needed)
 
 
 def release_models() -> None:

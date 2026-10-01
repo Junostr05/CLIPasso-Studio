@@ -34,4 +34,6 @@ def get(method: str):
 
 
 def required_models(settings: dict) -> list[str]:
-    return get(schema.method_of(settings)).required_models(settings)
+    from .requirements import BY_METHOD  # without importing the method (and PyTorch)
+
+    return BY_METHOD[schema.method_of(settings)](settings)

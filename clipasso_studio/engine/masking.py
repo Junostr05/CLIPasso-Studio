@@ -16,15 +16,10 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
-import torch
-import torch.nn.functional as F
 from PIL import Image
-from torchvision import transforms
-from torchvision.transforms import InterpolationMode
 
 from .. import paths
 from ..settings_schema import DEFAULT_MASK_MODEL, MASK_MODELS  # noqa: F401 (re-exported)
-from . import nets
 
 OBJECT_THRESHOLD = 0.5  # BiRefNet probability from which a pixel belongs to the object
 
@@ -33,6 +28,12 @@ _cache: dict[tuple, np.ndarray] = {}  # the last BiRefNet result (the same image
 
 def get_mask_u2net(device, pil_im: Image.Image, net=None):
     """Returns (masked image with white background, binary mask as PIL 'L' image at full size)."""
+    import torch
+    from torchvision import transforms
+    from torchvision.transforms import InterpolationMode
+
+    from . import nets
+
     w, h = pil_im.size[0], pil_im.size[1]
     im_size = min(w, h)
     data_transforms = transforms.Compose([
@@ -222,6 +223,11 @@ def _write_cached(path: Path, q: np.ndarray) -> None:
 
 
 def _predict(device, im: Image.Image, model: str, net=None) -> np.ndarray:
+    import torch
+    import torch.nn.functional as F
+
+    from . import nets
+
     from .birefnet import MEAN, SIZE, STD
 
     x = torch.from_numpy(np.asarray(im.resize((SIZE, SIZE), Image.BILINEAR), dtype=np.float32) / 255.0)
@@ -321,6 +327,12 @@ def u2net_soft_mask(device, pil_im: Image.Image, net=None) -> np.ndarray:
     Stands in for the BRIA RMBG-1.4 matte that SwiftSketch / ControlSketch use (``get_mask``):
     min-max normalised, bilinearly resized to the input resolution.
     """
+    import torch
+    from torchvision import transforms
+    from torchvision.transforms import InterpolationMode
+
+    from . import nets
+
     w, h = pil_im.size
     tf = transforms.Compose([
         transforms.Resize(min(320, min(w, h)), interpolation=InterpolationMode.BICUBIC),

@@ -592,7 +592,7 @@ class ParamPanel(QWidget):
                 " " + tr("ui.model_download_hint", size=size_of(["blip"])) if blip_missing else ""))
         else:
             self.fields["caption"].set_warning(None)
-        from ...engine.methods.controlsketch.conditions import DETECTOR_MODELS
+        from ...engine.methods.requirements import DETECTOR_MODELS
 
         cond_keys = [f"controlnet:{s['condition']}"] + ([DETECTOR_MODELS[s["condition"]]]
                                                         if DETECTOR_MODELS.get(s["condition"]) else [])

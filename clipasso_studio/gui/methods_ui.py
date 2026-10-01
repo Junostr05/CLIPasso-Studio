@@ -40,15 +40,12 @@ def download_mb(keys) -> float:
 
 
 def has_cuda() -> bool:
-    global _cuda
-    if _cuda is None:
-        try:
-            import torch
+    """A usable NVIDIA GPU, as the last hardware probe found it (gui/hardware.py; False until then)."""
+    if _cuda is not None:  # set by tests
+        return _cuda
+    from . import hardware
 
-            _cuda = bool(torch.cuda.is_available() and torch.cuda.device_count() > 0)
-        except Exception:
-            _cuda = False
-    return _cuda
+    return hardware.has_cuda()
 
 
 def iterations(settings: dict) -> int:

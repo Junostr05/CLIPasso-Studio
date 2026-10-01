@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-import torch
 
 from .. import paths
 from .errors import UserError
@@ -455,6 +454,8 @@ def _drop_partial(raw: Path) -> None:
 def _half(state: dict) -> dict:
     """float16 copy of a state dict; tensors that do not fit into float16 (e.g. large
     BatchNorm statistics) stay float32."""
+    import torch  # here: the GUI imports this module and starts without PyTorch
+
     out = {}
     for k, v in state.items():
         if torch.is_tensor(v) and v.is_floating_point() and v.numel():
@@ -468,6 +469,8 @@ def _half(state: dict) -> dict:
 
 def convert(spec: ModelSpec, raw: Path, dest: Path) -> None:
     """Turn a downloaded checkpoint into the stored format."""
+    import torch  # here: the GUI imports this module and starts without PyTorch
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     if spec.kind == "clip":
         try:
@@ -501,6 +504,8 @@ def _swiftsketch_checkpoint(raw: Path) -> dict:
 
     The optimizer state is dropped, as are the sinusoidal position tables (recomputed by the model).
     """
+    import torch  # here: the GUI imports this module and starts without PyTorch
+
     with zipfile.ZipFile(raw) as zf:
         names = zf.namelist()
         args_name = next(n for n in names if n.rsplit("/", 1)[-1] == "args.json")
@@ -552,6 +557,8 @@ def _hf_download(url: str, target: Path, progress: ProgressFn | None, cancel, at
 
 
 def _convert_hf_file(src: Path, dst: Path, f: HFFile) -> None:
+    import torch  # here: the GUI imports this module and starts without PyTorch
+
     dst.parent.mkdir(parents=True, exist_ok=True)
     if not f.local.endswith(".safetensors"):
         shutil.copyfile(src, dst)
@@ -631,6 +638,8 @@ def uninstall(spec_key: str) -> None:
 
 
 def load_state(spec_key: str) -> dict:
+    import torch  # here: the GUI imports this module and starts without PyTorch
+
     state = torch.load(str(require(spec_key)), map_location="cpu", weights_only=True)
     return state
 

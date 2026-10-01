@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
-import torch
-import torch.nn.functional as F
 from PIL import Image
+
+if TYPE_CHECKING:  # imported where it is used: the GUI starts without PyTorch
+    import torch
 
 
 def load_rgb(path: str) -> Image.Image:
@@ -22,6 +24,8 @@ def load_rgb(path: str) -> Image.Image:
 
 
 def _gauss_kernel(sigma: float, truncate: float = 4.0) -> torch.Tensor:
+    import torch
+
     radius = int(truncate * float(sigma) + 0.5)
     x = torch.arange(-radius, radius + 1, dtype=torch.float64)
     k = torch.exp(-0.5 * (x / sigma) ** 2)
@@ -30,6 +34,8 @@ def _gauss_kernel(sigma: float, truncate: float = 4.0) -> torch.Tensor:
 
 def _pad_reflect(x: torch.Tensor, r: int, dim: int) -> torch.Tensor:
     """Pad like scipy.ndimage mode 'reflect' (d c b a | a b c d | d c b a)."""
+    import torch
+
     n = x.shape[dim]
     idx = []
     for i in range(-r, n + r):
@@ -40,6 +46,9 @@ def _pad_reflect(x: torch.Tensor, r: int, dim: int) -> torch.Tensor:
 
 def gaussian_filter(im: np.ndarray, sigma: float) -> np.ndarray:
     """Equivalent of ``scipy.ndimage.gaussian_filter(im, sigma)`` for 2D arrays."""
+    import torch
+    import torch.nn.functional as F
+
     t = torch.from_numpy(np.asarray(im, dtype=np.float64))
     k = _gauss_kernel(sigma)
     r = (k.numel() - 1) // 2

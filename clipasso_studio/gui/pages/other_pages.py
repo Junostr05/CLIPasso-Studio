@@ -942,10 +942,11 @@ class SettingsPage(QWidget):
         col.addWidget(self.system)
         col.addStretch(1)
         root.addWidget(_scroll(host), 1)
-        self._gpu_text = ""
+        from .. import hardware
+
+        self._hardware = hardware.cached()  # the main window probes again after the start
         i18n.language_changed.connect(lambda _: self.retranslate())
         self.retranslate()
-        QTimer.singleShot(1500, self._probe_hardware)
 
     @staticmethod
     def _row(lbl, widget):
@@ -1033,29 +1034,25 @@ class SettingsPage(QWidget):
         self.models_edit.setText(str(folder))
         self.models_hint.setText(tr("ui.settings.models_hint", size=_size_text(model_store.folder_size(folder) / 1e6)))
 
-    def _probe_hardware(self):
-        def probe(progress=None):
-            import torch
-
-            lines = [f"PyTorch {torch.__version__}"]
-            if torch.cuda.is_available():
-                from ...engine.pipeline import cuda_arch_supported
-
-                for i in range(torch.cuda.device_count()):
-                    prop = torch.cuda.get_device_properties(i)
-                    ok = "" if cuda_arch_supported(i) else f"  ⚠ {tr('ui.settings.gpu_unsupported')}"
-                    lines.append(f"GPU {i}: {prop.name} · {prop.total_memory / 2 ** 30:.1f} GB{ok}")
-            elif torch.version.cuda:
-                lines.append(f"CUDA {torch.version.cuda}: {tr('ui.settings.gpu_none')}")
-            else:
-                lines.append("CUDA: –")
-            return "\n".join(lines)
-
-        dialogs.run_in_thread(self, probe, on_done=self._set_gpu, on_error=self._set_gpu)
-
-    def _set_gpu(self, text):
-        self._gpu_text = text
+    def set_hardware(self, info: dict | None):
+        """The answer of the hardware probe (gui/hardware.py)."""
+        self._hardware = info
         self.retranslate()
+
+    def _hardware_text(self) -> str:
+        info = self._hardware
+        if not info:
+            return ""
+        if info.get("error"):
+            return f"PyTorch: {info['error']}"
+        lines = [f"PyTorch {info.get('torch', '?')}"]
+        for i, gpu in enumerate(info.get("gpus", [])):
+            ok = "" if gpu.get("supported", True) else f"  ⚠ {tr('ui.settings.gpu_unsupported')}"
+            lines.append(f"GPU {i}: {gpu.get('name', '?')} · {gpu.get('memory_gb', 0):.1f} GB{ok}")
+        if not info.get("gpus"):
+            lines.append(f"CUDA {info['cuda_build']}: {tr('ui.settings.gpu_none')}" if info.get("cuda_build")
+                         else "CUDA: –")
+        return "\n".join(lines)
 
     def retranslate(self):
         self.title.setText(tr("ui.settings.title"))
@@ -1094,8 +1091,9 @@ class SettingsPage(QWidget):
         info = [f"{APP_NAME} {__version__} · {edition}",
                 f"{platform.system()} {platform.release()} · Python {platform.python_version()}",
                 f"CPU: {os.cpu_count()} {tr('ui.threads')}"]
-        if self._gpu_text:
-            info.append(self._gpu_text)
+        hw = self._hardware_text()
+        if hw:
+            info.append(hw)
         info.append(f"{tr('ui.models.title')}: {paths.bundled_models_dir()}")
         self.system_info.setText("\n".join(info))
 

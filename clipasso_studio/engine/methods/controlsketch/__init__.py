@@ -24,31 +24,14 @@ from PIL import Image
 from torchvision import transforms
 
 from .... import settings_schema as schema
-from ... import checkpoint, imaging, masking, model_store
+from ... import checkpoint, imaging, masking
 from ...jobs import SeedResult
 from ...renderer import render_on_white
 from . import painter as P
-from .conditions import DETECTOR_MODELS
+from ..requirements import controlsketch as required_models  # noqa: F401
+from ..requirements import controlsketch_uses_sdxl as uses_sdxl
 
 _cache: dict[tuple, object] = {}
-
-
-def required_models(settings: dict) -> list[str]:
-    s = schema.normalize({**settings, "method": "controlsketch"})
-    needed = {"sd15", f"controlnet:{s['condition']}", model_store.clip_key("ViT-B/32")}
-    if s["mask_object"]:
-        needed.add(s["mask_model"])
-    if DETECTOR_MODELS.get(s["condition"]):
-        needed.add(DETECTOR_MODELS[s["condition"]])
-    if not schema.text_value(s["caption"]):
-        needed.add("blip")
-    if uses_sdxl(s):
-        needed.add("sdxl")
-    return sorted(needed)
-
-
-def uses_sdxl(s: dict) -> bool:
-    return bool(s["use_init_method"]) and s["attn_model"] == "diffusion" and bool(schema.text_value(s["object_name"]))
 
 
 def release_models() -> None:

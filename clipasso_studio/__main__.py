@@ -269,8 +269,9 @@ class _Tee:
 
 
 def _close_splash() -> None:
+    os.environ["PYINSTALLER_SUPPRESS_SPLASH_SCREEN"] = "1"  # not again in the worker processes
     try:
-        import pyi_splash  # type: ignore  # only present in the PyInstaller onefile build
+        import pyi_splash  # type: ignore  # only present in the PyInstaller builds
 
         pyi_splash.close()
     except Exception:
