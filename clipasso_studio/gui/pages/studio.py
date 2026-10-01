@@ -100,6 +100,7 @@ class StudioPage(QWidget):
         self.input_card.body.addWidget(self.input_title)
         self.drop = ImageDropZone()
         self.drop.image_dropped.connect(self.set_image)
+        self.drop.images_dropped.connect(self.images_dropped)
         self.drop.clicked.connect(self.browse_image)
         self.input_card.body.addWidget(self.drop, 1)
         self.file_label = label("", "faint")
@@ -389,6 +390,30 @@ class StudioPage(QWidget):
         dlg = ImageEditDialog(self.image_path, self)
         if dlg.exec() and dlg.result_path:
             self.set_image(dlg.result_path)
+
+    def images_dropped(self, paths: list[str]):
+        """Several images (or a folder) dropped: the first is opened; all of them can go to the queue."""
+        if not paths:
+            return
+        self.set_image(paths[0])
+        if len(paths) == 1:
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(tr("ui.drop_many.title"))
+        box.setText(tr("ui.drop_many.text", n=len(paths)))
+        add = box.addButton(tr("ui.drop_many.queue", n=len(paths)), QMessageBox.AcceptRole)
+        box.addButton(tr("ui.drop_many.first"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is add:
+            self.queue_paths(paths)
+
+    def queue_paths(self, paths: list[str]) -> int:
+        settings = self.params.settings()
+        for p in paths:
+            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        self.toast.emit(tr("ui.queue.added", n=len(paths)), "success")
+        return len(paths)
 
     def paste_image(self) -> bool:
         """Ctrl+V: an image, an image file or the path of an image from the clipboard. A pasted image is

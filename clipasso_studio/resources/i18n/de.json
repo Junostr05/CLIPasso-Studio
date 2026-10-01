@@ -229,7 +229,7 @@
  "ui.queue.clear": "Fertige entfernen",
  "ui.queue.run": "Starten",
  "ui.queue.auto": "Nächsten Auftrag automatisch starten",
- "ui.queue.empty": "Die Warteschlange ist leer.",
+ "ui.queue.empty": "Die Warteschlange ist leer – lege Bilder oder Ordner hier ab oder füge sie mit den Schaltflächen oben hinzu.",
  "ui.queue.details": "{strokes} Striche · {iters} Iterationen · {sketches} Skizze(n)",
  "ui.queue.up": "Nach oben",
  "ui.queue.down": "Nach unten",
@@ -653,5 +653,10 @@
  "ui.copy": "Kopieren",
  "ui.copy_tip": "Legt die Skizze in die Zwischenablage (Bild und SVG) mit deinen letzten Export-Einstellungen – zum Einfügen in Word, PowerPoint, Figma, Photoshop …",
  "ui.copied": "Skizze in die Zwischenablage kopiert",
- "ui.shortcut.copy": "Skizze kopieren"
+ "ui.shortcut.copy": "Skizze kopieren",
+ "ui.drop_many.title": "Mehrere Bilder",
+ "ui.drop_many.text": "Du hast {n} Bilder abgelegt. Das erste ist im Studio geöffnet – alle mit den aktuellen Einstellungen zur Warteschlange hinzufügen?",
+ "ui.drop_many.queue": "Alle {n} zur Warteschlange",
+ "ui.drop_many.first": "Nur dieses",
+ "ui.queue.added": "{n} Bilder zur Warteschlange hinzugefügt"
 }

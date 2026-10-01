@@ -16,6 +16,7 @@ from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import jobs, model_store
 from .. import crash, dialogs, icons, methods_ui, shortcuts, theme
+from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
@@ -49,20 +50,6 @@ def _scroll(widget: QWidget) -> QScrollArea:
 
 def _status_role(status: str) -> str:
     return {"done": "badge-success", "failed": "badge-warning", "cancelled": "badge-warning"}.get(status, "badge")
-
-
-def image_files(folder: str, recursive: bool = False) -> list[str]:
-    """Images in a folder, sorted by name; folders of the app's own results are skipped."""
-    out = []
-    for dirpath, dirnames, filenames in os.walk(folder):
-        if os.path.isfile(os.path.join(dirpath, "job.json")) or os.path.isfile(os.path.join(dirpath, jobs.STATE_FILE)):
-            dirnames[:] = []
-            continue
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith((".", "_edited", "_pasted")))
-        out += [os.path.join(dirpath, f) for f in sorted(filenames, key=str.lower) if f.lower().endswith(IMAGE_EXT)]
-        if not recursive:
-            break
-    return out
 
 
 def scan_jobs(unfinished: bool = False) -> list[tuple[str, dict]]:
@@ -167,9 +154,11 @@ class QueueRow(Card):
 
 class QueuePage(QWidget):
     open_in_studio = Signal(str)
+    toast = Signal(str, str)
 
     def __init__(self, controller: JobController, settings_provider, parent=None):
         super().__init__(parent)
+        self.setAcceptDrops(True)  # images and folders dropped onto the queue are added
         self.setObjectName("Page")
         self.controller = controller
         self.settings_provider = settings_provider
@@ -234,6 +223,27 @@ class QueuePage(QWidget):
         n = self.add_folder(folder, recursive)
         if n == 0:
             QMessageBox.information(self, tr("ui.queue.add_folder"), tr("ui.queue.folder_empty"))
+
+    def add_paths(self, paths: list[str]) -> int:
+        """Queue images (dropped files / folders) with the current settings; returns their number."""
+        settings = self.settings_provider()
+        for p in paths:
+            self.controller.enqueue(p, settings, start=not self.controller.is_busy())
+        if paths:
+            self.toast.emit(tr("ui.queue.added", n=len(paths)), "success")
+        return len(paths)
+
+    def dragEnterEvent(self, e):  # noqa: N802
+        if has_images(e.mimeData()):
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):  # noqa: N802
+        paths = dropped_images(e.mimeData())
+        if paths:
+            e.acceptProposedAction()
+            self.add_paths(paths)
+        else:
+            self.toast.emit(tr("ui.queue.folder_empty"), "info")
 
     def add_folder(self, folder: str, recursive: bool = False) -> int:
         """Queue every image of a folder with the current settings (result folders of the app are

@@ -10,10 +10,10 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from .. import icons, theme
+from ..drop import IMAGE_EXT, dropped_images, has_images  # noqa: F401 (IMAGE_EXT re-exported)
 from ..i18n import tr
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.webp *.tif *.tiff)"
-IMAGE_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff")
 
 
 def svg_renderer(svg: str | bytes | None) -> QSvgRenderer | None:
@@ -443,6 +443,7 @@ class ImageDropZone(QFrame):
     """Drag & drop target that shows the chosen image."""
 
     image_dropped = Signal(str)
+    images_dropped = Signal(list)  # several images, or a folder
     clicked = Signal()
 
     def __init__(self, parent=None):
@@ -471,7 +472,7 @@ class ImageDropZone(QFrame):
         self.update()
 
     def dragEnterEvent(self, e):  # noqa: N802
-        if self._accepts(e.mimeData()):
+        if has_images(e.mimeData()):
             self._hover = True
             e.acceptProposedAction()
             self.update()
@@ -482,23 +483,16 @@ class ImageDropZone(QFrame):
 
     def dropEvent(self, e):  # noqa: N802
         self._hover = False
-        path = self._accepts(e.mimeData())
-        if path:
-            self.image_dropped.emit(path)
+        paths = dropped_images(e.mimeData())
+        if len(paths) == 1:
+            self.image_dropped.emit(paths[0])
+        elif paths:
+            self.images_dropped.emit(paths)
         self.update()
 
     def mouseReleaseEvent(self, e):  # noqa: N802
         if e.button() == Qt.LeftButton:
             self.clicked.emit()
-
-    @staticmethod
-    def _accepts(mime) -> str | None:
-        if mime.hasUrls():
-            for url in mime.urls():
-                path = url.toLocalFile()
-                if path.lower().endswith(IMAGE_EXT):
-                    return path
-        return None
 
     def paintEvent(self, event):  # noqa: N802
         pal = theme.current()

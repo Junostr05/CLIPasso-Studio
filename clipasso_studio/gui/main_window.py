@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
 from .. import APP_NAME, __version__, paths
 from . import dialogs, icons, methods_ui, shortcuts, theme, updates
 from .app_settings import app_settings
+from .drop import dropped_images, has_images
 from .controller import JobController
 from .i18n import i18n, tr
 from .pages.compare import ComparePage
@@ -226,6 +227,8 @@ class MainWindow(QMainWindow):
         self.compare.open_job.connect(self._open_job)
         self.compare.toast.connect(self.toast.show_message)
         self.gallery.toast.connect(self.toast.show_message)
+        self.queue.toast.connect(self.toast.show_message)
+        self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
         self.settings.theme_changed.connect(self.apply_theme)
         self.controller.job_event.connect(self._on_job_event)
         self.controller.job_finished.connect(self._on_job_finished)
@@ -369,6 +372,21 @@ class MainWindow(QMainWindow):
         if self.studio.image_path:
             self.show_page("studio")
             self.studio.add_to_queue()
+
+    def dragEnterEvent(self, e):  # noqa: N802
+        if has_images(e.mimeData()):
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):  # noqa: N802
+        paths = dropped_images(e.mimeData())
+        if not paths:
+            return
+        e.acceptProposedAction()
+        if self.stack.currentWidget() is self.queue:
+            self.queue.add_paths(paths)
+        else:
+            self.show_page("studio")
+            self.studio.images_dropped(paths)
 
     def _shortcut_copy(self):
         if self.stack.currentWidget() is self.studio:

@@ -229,7 +229,7 @@
  "ui.queue.clear": "Remove finished",
  "ui.queue.run": "Start",
  "ui.queue.auto": "Start the next job automatically",
- "ui.queue.empty": "The queue is empty.",
+ "ui.queue.empty": "The queue is empty – drop images or folders here, or add them with the buttons above.",
  "ui.queue.details": "{strokes} strokes · {iters} iterations · {sketches} sketch(es)",
  "ui.queue.up": "Move up",
  "ui.queue.down": "Move down",
@@ -653,5 +653,10 @@
  "ui.copy": "Copy",
  "ui.copy_tip": "Puts the sketch on the clipboard (image and SVG) with your last export choices – paste it into Word, PowerPoint, Figma, Photoshop …",
  "ui.copied": "Sketch copied to the clipboard",
- "ui.shortcut.copy": "Copy the sketch"
+ "ui.shortcut.copy": "Copy the sketch",
+ "ui.drop_many.title": "Several images",
+ "ui.drop_many.text": "You dropped {n} images. The first one is open in the studio – add all of them to the queue with the current settings?",
+ "ui.drop_many.queue": "Add all {n} to the queue",
+ "ui.drop_many.first": "Only this one",
+ "ui.queue.added": "{n} images added to the queue"
 }
