@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QM
 from ... import paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, masking, model_store
-from .. import dialogs, icons, mask_view, methods_ui, theme
+from .. import dialogs, icons, mask_view, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -188,6 +188,14 @@ class StudioPage(QWidget):
         b.clicked.connect(lambda _=False: self.export("svg1"))
         grid.addWidget(b, 3, 0)
         self.export_btns["svg1"] = b
+        b = button("PDF", "file-down", "ghost")  # vector PDF for printing
+        b.clicked.connect(lambda _=False: self.export("pdf"))
+        grid.addWidget(b, 3, 1)
+        self.export_btns["pdf"] = b
+        b = button("", "copy", "ghost")  # the sketch on the clipboard (PNG + SVG)
+        b.clicked.connect(lambda _=False: self.copy_sketch())
+        grid.addWidget(b, 5, 0, 1, 2)
+        self.export_btns["copy"] = b
         # SceneSketch: every sketch of the matrix at once
         b = button("", "layers", "ghost")
         b.clicked.connect(lambda _=False: self.export("matrix"))
@@ -1042,6 +1050,15 @@ class StudioPage(QWidget):
         if dlg.exec():
             self.toast.emit(tr("ui.exported", path=getattr(dlg, "saved_path", "")), "success")
 
+    def copy_sketch(self) -> bool:
+        """Ctrl+C: the shown sketch as image + SVG on the clipboard, with the last export choices."""
+        sel = self._selected_run()
+        if not sel:
+            return False
+        dialogs.copy_sketch(sel[0])
+        self.toast.emit(tr("ui.copied"), "success")
+        return True
+
     def open_folder(self):
         folder = self.view_dir or app_settings().get("output_dir")
         if folder and os.path.isdir(folder):
@@ -1231,6 +1248,9 @@ class StudioPage(QWidget):
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
         self.export_btns["webp"].setToolTip(tr("ui.export_webp_tip"))
         self.export_btns["svganim"].setText(tr("ui.export_svganim"))
+        self.export_btns["pdf"].setToolTip(tr("ui.export_pdf_tip"))
+        self.export_btns["copy"].setText(shortcuts.with_key(tr("ui.copy"), "Ctrl+C"))
+        self.export_btns["copy"].setToolTip(tr("ui.copy_tip"))
         self.export_btns["svganim"].setToolTip(tr("ui.export_svganim_tip"))
         self.export_btns["matrix"].setText(tr("ui.export_matrix"))
         self.export_btns["matrix"].setToolTip(tr("ui.export_matrix_tip"))

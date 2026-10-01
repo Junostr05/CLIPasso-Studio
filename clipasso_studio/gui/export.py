@@ -116,6 +116,51 @@ def export_png(src_svg: str, dest: str, size: int = 1024, stroke_color: str | No
     svg_to_qimage(svg, size, bg).save(dest)
 
 
+PDF_WIDTH_CM = 15.0
+
+
+def export_pdf(src_svg: str, dest: str, width_cm: float = PDF_WIDTH_CM, stroke_color: str | None = None,
+               width_scale: float = 1.0, background: str | None = None, style: str = "plain") -> None:
+    """Vector PDF of the sketch (one page in the sketch's aspect ratio, ``width_cm`` wide) – for printing."""
+    from PySide6.QtCore import QMarginsF, QSizeF
+    from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
+
+    with open(src_svg, encoding="utf-8") as f:
+        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
+    renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
+    box = renderer.viewBoxF()
+    aspect = box.height() / box.width() if box.width() > 0 and box.height() > 0 else 1.0
+    w_mm = max(float(width_cm), 1.0) * 10.0
+    size = QPageSize(QSizeF(w_mm, w_mm * aspect), QPageSize.Unit.Millimeter, "Sketch",
+                     QPageSize.SizeMatchPolicy.ExactMatch)
+    writer = QPdfWriter(dest)
+    writer.setPageLayout(QPageLayout(size, QPageLayout.Orientation.Portrait, QMarginsF(0, 0, 0, 0)))
+    writer.setResolution(1200)
+    writer.setCreator("CLIPasso Studio")
+    writer.setTitle(os.path.splitext(os.path.basename(dest))[0])
+    p = QPainter(writer)
+    rect = QRectF(0, 0, writer.width(), writer.height())
+    if background:
+        p.fillRect(rect, QColor(background))
+    renderer.render(p, rect)
+    p.end()
+
+
+def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None, width_scale: float = 1.0,
+                background: str | None = "#FFFFFF", style: str = "plain"):
+    """Clipboard content of a sketch: a PNG image and the SVG (``image/svg+xml``). No plain text –
+    word processors would paste the SVG code instead of the picture."""
+    from PySide6.QtCore import QMimeData
+
+    with open(svg_path, encoding="utf-8") as f:
+        svg = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
+    data = QMimeData()
+    data.setImageData(svg_to_qimage(svg, size, QColor(background) if background else None))
+    with_bg = stylize_svg(restyle_svg(svg, None, 1.0, background), "plain") if background else svg
+    data.setData("image/svg+xml", QByteArray(with_bg.encode("utf-8")))
+    return data
+
+
 def _iter_number(path: str) -> int:
     m = re.search(r"svg_iter(\d+)\.svg$", path)
     return int(m.group(1)) if m else -1
@@ -592,7 +637,7 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
     return len(cells)
 
 
-BATCH_FORMATS = ("svg", "svg1", "png")
+BATCH_FORMATS = ("svg", "svg1", "png", "pdf")
 
 
 def _unique(path: str) -> str:
@@ -620,10 +665,12 @@ def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", s
         stem = os.path.splitext(os.path.basename(summary.get("target") or job_dir))[0]
         method = summary.get("method") or "clipasso"
         suffix = "_1layer" if fmt == "svg1" else ""
-        ext = "png" if fmt == "png" else "svg"
+        ext = fmt if fmt in ("png", "pdf") else "svg"
         dest = _unique(os.path.join(folder, f"{stem}_{method}{suffix}.{ext}"))
         if fmt == "png":
             export_png(src, dest, size, stroke_color, width_scale, background, style)  # None: transparent
+        elif fmt == "pdf":
+            export_pdf(src, dest, PDF_WIDTH_CM, stroke_color, width_scale, background, style)
         elif fmt == "svg1":
             export_single_layer_svg(src, dest, stroke_color, width_scale)
         else:

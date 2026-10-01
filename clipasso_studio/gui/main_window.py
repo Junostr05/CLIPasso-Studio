@@ -225,6 +225,7 @@ class MainWindow(QMainWindow):
         self.gallery.continue_job.connect(self.continue_job)
         self.compare.open_job.connect(self._open_job)
         self.compare.toast.connect(self.toast.show_message)
+        self.gallery.toast.connect(self.toast.show_message)
         self.settings.theme_changed.connect(self.apply_theme)
         self.controller.job_event.connect(self._on_job_event)
         self.controller.job_finished.connect(self._on_job_finished)
@@ -344,6 +345,7 @@ class MainWindow(QMainWindow):
         for seq in ("Ctrl+Shift+Return", "Ctrl+Shift+Enter"):
             add(seq, self._shortcut_queue)
         add("Ctrl+E", self._shortcut_export)
+        add("Ctrl+C", self._shortcut_copy)  # text fields keep their own Ctrl+C
         add("Ctrl+Z", self.studio.undo_edit)  # eraser (text fields keep their own undo)
         for seq in ("Ctrl+Y", "Ctrl+Shift+Z"):
             add(seq, self.studio.redo_edit)
@@ -367,6 +369,10 @@ class MainWindow(QMainWindow):
         if self.studio.image_path:
             self.show_page("studio")
             self.studio.add_to_queue()
+
+    def _shortcut_copy(self):
+        if self.stack.currentWidget() is self.studio:
+            self.studio.copy_sketch()
 
     def _shortcut_export(self):
         if self.studio.export_btns["svg"].isEnabled():

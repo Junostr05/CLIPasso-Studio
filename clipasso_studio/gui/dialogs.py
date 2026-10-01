@@ -6,7 +6,7 @@ import os
 
 import shiboken6
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout,
                                QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
 
@@ -163,7 +163,20 @@ ANIMATIONS = ("gif", "mp4", "webp")
 TIMED = ANIMATIONS + ("svganim",)  # formats with a drawing length
 EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg"}
 FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
-           "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)"}
+           "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)"}
+
+
+def copy_sketch(svg_path: str) -> None:
+    """Put a sketch on the clipboard with the choices of the last export (white instead of a
+    transparent background – many programs paste transparency as black)."""
+    st = app_settings()
+    stroke = st.get("export_stroke", "#000000")
+    background = st.get("export_background", "#FFFFFF")
+    data = export.sketch_mime(svg_path, 1024, None if str(stroke).lower() == "#000000" else stroke,
+                              float(st.get("export_width", 1.0)),
+                              "#FFFFFF" if background in (None, "", "transparent") else background,
+                              st.get("export_style", "plain"))
+    QGuiApplication.clipboard().setMimeData(data)
 
 
 def _stroke_count(svg_path: str) -> int:
@@ -222,7 +235,7 @@ class ExportDialog(QDialog):
         if fmt != "svg1":  # the plotter SVG stays plain lines
             form.addRow(tr("ui.brush.label"), self.style)
         self.background = ColorButton("#FFFFFF" if fmt not in ("svg", "svganim") else "transparent",
-                                      allow_transparent=fmt in ("svg", "png", "webp", "matrix", "svganim"))
+                                      allow_transparent=fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf"))
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
         self.size = QSpinBox()
@@ -230,8 +243,16 @@ class ExportDialog(QDialog):
         self.size.setSingleStep(128)
         self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
-        if fmt not in ("svg", "svg1", "svganim"):
+        if fmt not in ("svg", "svg1", "svganim", "pdf"):
             form.addRow(tr("ui.size"), self.size)
+        self.width_cm = QDoubleSpinBox()  # PDF: the printed width
+        self.width_cm.setRange(2.0, 200.0)
+        self.width_cm.setSingleStep(1.0)
+        self.width_cm.setDecimals(1)
+        self.width_cm.setSuffix(" cm")
+        self.width_cm.setValue(float(app_settings().get("export_pdf_width", export.PDF_WIDTH_CM)))
+        if fmt == "pdf":
+            form.addRow(tr("ui.export_pdf_width"), self.width_cm)
         # animations: the drawing process (optimisation history) or the finished strokes one by one
         self.process_frames = len(export.animation_frames(run_dir)) if fmt in ANIMATIONS else 0
         self.strokes = _stroke_count(svg_path) if fmt in TIMED else 0
@@ -337,6 +358,11 @@ class ExportDialog(QDialog):
         bg = None if bg == "transparent" else bg
         style = self.style.currentData() if self.fmt != "svg1" else "plain"
         app_settings().set("export_style", self.style.currentData())
+        # remembered for "Copy" (Ctrl+C), which has no dialog
+        app_settings().set("export_stroke", self.stroke.color())
+        app_settings().set("export_width", self.width_scale.value())
+        if self.fmt != "svg1":
+            app_settings().set("export_background", self.background.color())
         if self.fmt in ANIMATIONS and self.mode.isEnabled():
             app_settings().set("export_anim_mode", self.mode.currentData())
         try:
@@ -346,6 +372,10 @@ class ExportDialog(QDialog):
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value())
             elif self.fmt == "png":
                 export.export_png(self.svg_path, dest, self.size.value(), stroke, self.width_scale.value(), bg,
+                                  style)
+            elif self.fmt == "pdf":
+                app_settings().set("export_pdf_width", self.width_cm.value())
+                export.export_pdf(self.svg_path, dest, self.width_cm.value(), stroke, self.width_scale.value(), bg,
                                   style)
             elif self.fmt == "svganim":
                 export.export_animated_svg(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
@@ -441,7 +471,7 @@ class BatchExportDialog(QDialog):
         form.setSpacing(10)
         self.format = QComboBox()
         for key in export.BATCH_FORMATS:
-            self.format.addItem({"svg": "SVG", "svg1": tr("ui.export_svg1"), "png": "PNG"}[key], key)
+            self.format.addItem({"svg": "SVG", "svg1": tr("ui.export_svg1"), "png": "PNG", "pdf": "PDF"}[key], key)
         self.format.currentIndexChanged.connect(self._format_changed)
         form.addRow(tr("ui.batch.format"), self.format)
         self.stroke = ColorButton("#000000")

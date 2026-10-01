@@ -646,5 +646,12 @@
  "ui.export_svganim": "SVG · animiert",
  "ui.export_svganim_tip": "Ein SVG, das sich im Browser Strich für Strich selbst zeichnet – für Webseiten",
  "ui.export_desc.svganim": "Die fertige Skizze zeichnet sich Strich für Strich selbst und beginnt nach der Pause von vorn – in jedem Browser, auf Webseiten und in Präsentationen (CSS-Animation; Bildprogramme zeigen die fertige Skizze).",
- "ui.export_timing_svg": "{strokes} Striche · wiederholt sich alle {total} s"
+ "ui.export_timing_svg": "{strokes} Striche · wiederholt sich alle {total} s",
+ "ui.export_desc.pdf": "Vektor-PDF zum Drucken – scharf in jeder Größe; die Seite hat die Form der Skizze.",
+ "ui.export_pdf_width": "Breite",
+ "ui.export_pdf_tip": "Vektor-PDF zum Drucken",
+ "ui.copy": "Kopieren",
+ "ui.copy_tip": "Legt die Skizze in die Zwischenablage (Bild und SVG) mit deinen letzten Export-Einstellungen – zum Einfügen in Word, PowerPoint, Figma, Photoshop …",
+ "ui.copied": "Skizze in die Zwischenablage kopiert",
+ "ui.shortcut.copy": "Skizze kopieren"
 }

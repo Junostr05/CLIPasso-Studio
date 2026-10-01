@@ -401,6 +401,7 @@ class GalleryCard(Card):
             menu.addAction(icons.icon("play"), tr("ui.continue"), lambda: self.action.emit("continue", self.job_dir))
         menu.addAction(icons.icon("folder-open"), tr("ui.gallery.show_folder"),
                        lambda: self.action.emit("folder", self.job_dir))
+        menu.addAction(icons.icon("copy"), tr("ui.copy"), lambda: self.action.emit("copy", self.job_dir))
         menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if self.favourite else "ui.gallery.favourite"),
                        self.star.toggle)
         menu.addSeparator()
@@ -413,6 +414,7 @@ class GalleryPage(QWidget):
     open_job = Signal(str)
     job_deleted = Signal(str)
     continue_job = Signal(str)
+    toast = Signal(str, str)
 
     SORTS = ("newest", "score")
 
@@ -505,6 +507,12 @@ class GalleryPage(QWidget):
     def _card_action(self, kind: str, job_dir: str):
         if kind == "folder":
             QDesktopServices.openUrl(QUrl.fromLocalFile(job_dir))
+        elif kind == "copy":
+            summary = jobs.job_summary(job_dir)
+            src = jobs.best_sketch(summary) if summary else None
+            if src and os.path.isfile(src):
+                dialogs.copy_sketch(src)
+                self.toast.emit(tr("ui.copied"), "success")
         elif kind == "continue":
             self.continue_job.emit(job_dir)
         elif kind == "favourite":

@@ -646,5 +646,12 @@
  "ui.export_svganim": "SVG · animated",
  "ui.export_svganim_tip": "An SVG that draws itself stroke by stroke in the browser – for websites",
  "ui.export_desc.svganim": "The finished sketch draws itself stroke by stroke and starts again after the pause – in every browser, on websites and in presentations (CSS animation; image editors show the finished sketch).",
- "ui.export_timing_svg": "{strokes} strokes · repeats every {total} s"
+ "ui.export_timing_svg": "{strokes} strokes · repeats every {total} s",
+ "ui.export_desc.pdf": "Vector PDF for printing – sharp at any size; the page has the shape of the sketch.",
+ "ui.export_pdf_width": "Width",
+ "ui.export_pdf_tip": "Vector PDF for printing",
+ "ui.copy": "Copy",
+ "ui.copy_tip": "Puts the sketch on the clipboard (image and SVG) with your last export choices – paste it into Word, PowerPoint, Figma, Photoshop …",
+ "ui.copied": "Sketch copied to the clipboard",
+ "ui.shortcut.copy": "Copy the sketch"
 }

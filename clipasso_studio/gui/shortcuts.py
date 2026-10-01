@@ -11,6 +11,7 @@ SHORTCUTS = (
     ("Ctrl+Return", "ui.shortcut.start"),
     ("Ctrl+Shift+Return", "ui.shortcut.queue"),
     ("Ctrl+E", "ui.shortcut.export"),
+    ("Ctrl+C", "ui.shortcut.copy"),
     ("Ctrl+1", "ui.shortcut.pages"),
 )
 
