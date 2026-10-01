@@ -75,6 +75,7 @@ class JobController(QObject):
     job_started = Signal(object)
     job_event = Signal(object, str, dict)
     job_finished = Signal(object)
+    queue_idle = Signal(object)  # the queue ran out on its own (the last job, not cancelled by the user)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -228,6 +229,8 @@ class JobController(QObject):
                 self.start_next()
             if not self.is_busy():
                 _keep_awake(False)
+                if not self.pending() and job.status != "cancelled":
+                    self.queue_idle.emit(job)
 
     # ------------------------------------------------------------ persistence
     def _persist_queue(self):

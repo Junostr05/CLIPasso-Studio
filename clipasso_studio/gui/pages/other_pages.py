@@ -15,12 +15,12 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QGridLayout, QHBo
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import jobs, model_store
-from .. import crash, dialogs, icons, methods_ui, shortcuts, theme
+from .. import crash, dialogs, icons, methods_ui, power, shortcuts, theme
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
-from ..widgets.canvas import IMAGE_EXT, IMAGE_FILTER, SketchCanvas
+from ..widgets.canvas import IMAGE_FILTER, SketchCanvas
 from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label, tool_button
 
 try:
@@ -192,6 +192,18 @@ class QueuePage(QWidget):
         opts.addWidget(self.auto)
         opts.addWidget(self.auto_label)
         opts.addStretch(1)
+        # what the PC does when the last job is done (this session only – reset after it ran)
+        self.done_label = label("", "muted")
+        self.done_combo = QComboBox()
+        for key in power.ACTIONS:
+            self.done_combo.addItem("", key)
+        self.done_combo.currentIndexChanged.connect(self._done_changed)
+        self.ran_since_choice = False
+        controller.job_started.connect(lambda _: setattr(self, "ran_since_choice", True))
+        opts.addWidget(self.done_label)
+        opts.addWidget(self.done_combo)
+        self.done_label.setVisible(power.available())
+        self.done_combo.setVisible(power.available())
         root.addLayout(opts)
         host = QWidget()
         self.list_lay = QVBoxLayout(host)
@@ -223,6 +235,16 @@ class QueuePage(QWidget):
         n = self.add_folder(folder, recursive)
         if n == 0:
             QMessageBox.information(self, tr("ui.queue.add_folder"), tr("ui.queue.folder_empty"))
+
+    def done_action(self) -> str:
+        return self.done_combo.currentData() or "nothing"
+
+    def set_done_action(self, action: str) -> None:
+        self.done_combo.setCurrentIndex(max(self.done_combo.findData(action), 0))
+
+    def _done_changed(self):
+        # a job that is already running counts: its end is "the queue is done"
+        self.ran_since_choice = self.controller.is_busy()
 
     def add_paths(self, paths: list[str]) -> int:
         """Queue images (dropped files / folders) with the current settings; returns their number."""
@@ -293,6 +315,10 @@ class QueuePage(QWidget):
         self.clear_btn.setText(tr("ui.queue.clear"))
         self.run_btn.setText(tr("ui.queue.run"))
         self.auto_label.setText(tr("ui.queue.auto"))
+        self.done_label.setText(tr("ui.queue.when_done"))
+        for i, key in enumerate(power.ACTIONS):
+            self.done_combo.setItemText(i, tr(f"ui.queue.done_{key}"))
+        self.done_combo.setToolTip(tr("ui.queue.when_done_tip"))
         self.empty.setText(tr("ui.queue.empty"))
         self.rebuild()
 

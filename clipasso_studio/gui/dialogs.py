@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 import shiboken6
-from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout,
                                QHBoxLayout, QMessageBox, QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget)
@@ -164,6 +164,60 @@ TIMED = ANIMATIONS + ("svganim",)  # formats with a drawing length
 EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg"}
 FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
            "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)"}
+
+
+class CountdownDialog(QDialog):
+    """"The queue is done – the PC goes to sleep / shuts down in 60 s" with Cancel and Now; accepted
+    when the time is up or on Now."""
+
+    SECONDS = 60
+
+    def __init__(self, action: str, parent=None):
+        super().__init__(parent)
+        self.action = action
+        self.left = self.SECONDS
+        self.setWindowTitle(tr("ui.queue.done_title"))
+        self.setMinimumWidth(400)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(12)
+        lay.addWidget(label(tr("ui.queue.done_title"), "h2"))
+        self.text = label("", "muted", wrap=True)
+        lay.addWidget(self.text)
+        self.bar = QProgressBar()
+        self.bar.setRange(0, self.SECONDS)
+        self.bar.setTextVisible(False)
+        lay.addWidget(self.bar)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        cancel = button(tr("ui.cancel"), None, "ghost")
+        cancel.clicked.connect(self.reject)
+        now = button(tr(f"ui.queue.done_now_{action}"), None, "primary")
+        now.clicked.connect(self.accept)
+        row.addWidget(cancel)
+        row.addWidget(now)
+        lay.addLayout(row)
+        cancel.setFocus()
+        self.timer = QTimer(self)
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start()
+        self._show()
+
+    def _show(self):
+        self.text.setText(tr(f"ui.queue.done_text_{self.action}", s=self.left))
+        self.bar.setValue(self.SECONDS - self.left)
+
+    def _tick(self):
+        self.left -= 1
+        self._show()
+        if self.left <= 0:
+            self.timer.stop()
+            self.accept()
+
+    def done(self, result):
+        self.timer.stop()
+        super().done(result)
 
 
 def copy_sketch(svg_path: str) -> None:

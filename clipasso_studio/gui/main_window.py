@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import dialogs, icons, methods_ui, shortcuts, theme, updates
+from . import dialogs, icons, methods_ui, power, shortcuts, theme, updates
 from .app_settings import app_settings
 from .drop import dropped_images, has_images
 from .controller import JobController
@@ -228,6 +228,8 @@ class MainWindow(QMainWindow):
         self.compare.toast.connect(self.toast.show_message)
         self.gallery.toast.connect(self.toast.show_message)
         self.queue.toast.connect(self.toast.show_message)
+        self.controller.queue_idle.connect(self._queue_done)
+        self.power_action = power.run  # replaced in tests
         self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
         self.settings.theme_changed.connect(self.apply_theme)
         self.controller.job_event.connect(self._on_job_event)
@@ -372,6 +374,17 @@ class MainWindow(QMainWindow):
         if self.studio.image_path:
             self.show_page("studio")
             self.studio.add_to_queue()
+
+    def _queue_done(self, job):
+        """The last job of the queue ended: sleep / shut down if chosen (after a countdown)."""
+        action = self.queue.done_action()
+        if action == "nothing" or not self.queue.ran_since_choice:
+            return
+        self.queue.set_done_action("nothing")  # once, and only for this session
+        dlg = dialogs.CountdownDialog(action, self)
+        if dlg.exec():
+            app_settings().save()
+            self.power_action(action)
 
     def dragEnterEvent(self, e):  # noqa: N802
         if has_images(e.mimeData()):

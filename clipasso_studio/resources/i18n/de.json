@@ -658,5 +658,15 @@
  "ui.drop_many.text": "Du hast {n} Bilder abgelegt. Das erste ist im Studio geöffnet – alle mit den aktuellen Einstellungen zur Warteschlange hinzufügen?",
  "ui.drop_many.queue": "Alle {n} zur Warteschlange",
  "ui.drop_many.first": "Nur dieses",
- "ui.queue.added": "{n} Bilder zur Warteschlange hinzugefügt"
+ "ui.queue.added": "{n} Bilder zur Warteschlange hinzugefügt",
+ "ui.queue.when_done": "Wenn fertig:",
+ "ui.queue.when_done_tip": "Was der PC nach dem letzten Auftrag der Warteschlange tut – für Läufe über Nacht. Nur für diese Sitzung; ein Countdown lässt dich abbrechen.",
+ "ui.queue.done_nothing": "Nichts tun",
+ "ui.queue.done_sleep": "Energie sparen",
+ "ui.queue.done_shutdown": "Herunterfahren",
+ "ui.queue.done_title": "Die Warteschlange ist fertig",
+ "ui.queue.done_text_sleep": "Der PC wechselt in {s} s in den Energiesparmodus.",
+ "ui.queue.done_text_shutdown": "Der PC fährt in {s} s herunter. Deine Skizzen sind gespeichert.",
+ "ui.queue.done_now_sleep": "Jetzt Energie sparen",
+ "ui.queue.done_now_shutdown": "Jetzt herunterfahren"
 }

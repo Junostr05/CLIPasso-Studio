@@ -658,5 +658,15 @@
  "ui.drop_many.text": "You dropped {n} images. The first one is open in the studio – add all of them to the queue with the current settings?",
  "ui.drop_many.queue": "Add all {n} to the queue",
  "ui.drop_many.first": "Only this one",
- "ui.queue.added": "{n} images added to the queue"
+ "ui.queue.added": "{n} images added to the queue",
+ "ui.queue.when_done": "When done:",
+ "ui.queue.when_done_tip": "What the PC does after the last job of the queue – for runs overnight. Only for this session; a countdown lets you stop it.",
+ "ui.queue.done_nothing": "Do nothing",
+ "ui.queue.done_sleep": "Sleep",
+ "ui.queue.done_shutdown": "Shut down",
+ "ui.queue.done_title": "The queue is done",
+ "ui.queue.done_text_sleep": "The PC goes to sleep in {s} s.",
+ "ui.queue.done_text_shutdown": "The PC shuts down in {s} s. Your sketches are saved.",
+ "ui.queue.done_now_sleep": "Sleep now",
+ "ui.queue.done_now_shutdown": "Shut down now"
 }
