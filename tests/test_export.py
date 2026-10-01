@@ -1,22 +1,13 @@
 import json
-import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 SVG = """<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
 <defs/><g>
 <path d="M 20 30 C 40 {y} 60 90 80 50" fill="none" stroke="rgb(0, 0, 0)" stroke-opacity="1" stroke-width="1.5"
  stroke-linecap="round" stroke-linejoin="round"/>
 </g></svg>"""
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from PySide6.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
 
 
 @pytest.fixture

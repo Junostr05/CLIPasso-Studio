@@ -1,17 +1,25 @@
 [project]
 name = "clipasso-studio"
-version = "2.4.0"
+dynamic = ["version"]
 description = "Desktop app for vector sketching from photos: CLIPasso, SwiftSketch, ControlSketch and SceneSketch"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "CC-BY-NC-SA-4.0" }
 
+[tool.setuptools.dynamic]
+version = { attr = "clipasso_studio.__version__" }  # the one place the version is kept
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: long end-to-end runs of every option (need the models)"]
+timeout = 600  # s per test (pytest-timeout); slow tests get more, see tests/conftest.py
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 
 [tool.ruff]
 line-length = 120
 extend-exclude = ["clipasso_studio/engine/clip_/model.py", "clipasso_studio/engine/clip_/simple_tokenizer.py",
                   "clipasso_studio/engine/u2net", "clipasso_studio/engine/dino"]
+
+[tool.ruff.lint]
+# pinned rule set (the defaults change between ruff versions; the version is pinned in requirements/dev.txt)
+select = ["E", "F", "W"]

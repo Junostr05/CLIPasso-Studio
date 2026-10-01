@@ -6,7 +6,6 @@ import time
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
        '<path d="M 10 10 C 60 60 120 60 200 200" stroke="rgb(0, 0, 0)" stroke-width="3" fill="none"/></svg>')

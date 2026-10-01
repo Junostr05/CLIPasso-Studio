@@ -8,6 +8,7 @@ Environment variables:
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -86,7 +87,15 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 icon = str(ROOT / "packaging" / "app.ico") if IS_WIN else None
-version = str(ROOT / "packaging" / "version_info.txt") if IS_WIN else None
+version = None
+if IS_WIN:  # the exe's file version, from the one place the version is kept
+    _ver = re.search(r'__version__ = "([^"]+)"', (ROOT / "clipasso_studio" / "__init__.py").read_text()).group(1)
+    _nums = [int(n) for n in re.findall(r"\d+", _ver)[:3]]
+    _info = (ROOT / "packaging" / "version_info.in").read_text(encoding="utf-8")
+    _info = _info.replace("{version}", _ver).replace("{vtuple}", str(tuple(_nums + [0] * (4 - len(_nums)))))
+    version = os.path.join(workpath, "version_info.txt")
+    os.makedirs(workpath, exist_ok=True)
+    Path(version).write_text(_info, encoding="utf-8")
 
 if MODE == "onefile":
     splash_args = []

@@ -1,11 +1,8 @@
 """When the queue is done: sleep / shut down after a countdown (only once, only if chosen)."""
 
-import os
 import time
 
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 @pytest.fixture

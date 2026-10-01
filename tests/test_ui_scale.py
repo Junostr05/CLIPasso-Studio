@@ -5,8 +5,6 @@ import sys
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 
 @pytest.fixture
 def settings(tmp_path, monkeypatch):

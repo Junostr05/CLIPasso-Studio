@@ -1,5 +1,5 @@
 ; Inno Setup script for CLIPasso Studio.
-; Compile with:  ISCC.exe /DEdition=CPU /DSourceDir=..\dist\CLIPassoStudio /DOutputDir=..\release installer.iss
+; Compile with:  ISCC.exe /DEdition=CPU /DAppVersion=x.y.z /DSourceDir=..\dist\CLIPassoStudio /DOutputDir=..\release installer.iss
 ; The GPU edition is larger than 2 GB and is split into Setup.exe + *.bin slices (DiskSpanning).
 
 #ifndef Edition
@@ -12,7 +12,7 @@
   #define OutputDir "..\release"
 #endif
 #ifndef AppVersion
-  #define AppVersion "2.4.0"
+  #error Pass the version: /DAppVersion=x.y.z (the CI takes it from clipasso_studio.__version__)
 #endif
 
 #define AppName "CLIPasso Studio"

@@ -1,11 +1,9 @@
 """Brush styles of the export: ink, pencil, marker."""
 
-import os
 import xml.etree.ElementTree as ET
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 NS = "{http://www.w3.org/2000/svg}"
 SVG = """<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
@@ -14,13 +12,6 @@ SVG = """<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="224" heigh
  stroke-width="2"/>
 <path d="M 150 150 L 200 190" fill="none" stroke="#ff0000" stroke-width="3"/>
 </g></svg>"""
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from PySide6.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
 
 
 def _paths(svg):

@@ -1,10 +1,8 @@
 """The eraser: hit tests on strokes, removing them, and the edited sketch used everywhere."""
 
-import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 SVG = """<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
 <g>

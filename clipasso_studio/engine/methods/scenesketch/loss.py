@@ -66,7 +66,7 @@ class CLIPLayersLoss(nn.Module):
 
     def __init__(self, layers: list[int], device, num_augs: int = 4, loss_type: str = "L2", model=None):
         super().__init__()
-        self.layers = sorted(set(int(l) for l in layers))
+        self.layers = sorted({int(layer) for layer in layers})
         self.device = device
         self.num_augs = int(num_augs)
         self.loss_type = loss_type
@@ -107,7 +107,8 @@ class CLIPLayersLoss(nn.Module):
         xs_feats = vit_layer_features(self.model.visual, xs, upto)
         with torch.no_grad():
             ys_feats = vit_layer_features(self.model.visual, ys, upto)
-        return {f"clip_vit_l{l}": self._distance(xs_feats[l].float(), ys_feats[l].float()) for l in self.layers}
+        return {f"clip_vit_l{layer}": self._distance(xs_feats[layer].float(), ys_feats[layer].float())
+                for layer in self.layers}
 
 
 class SceneLoss(nn.Module):

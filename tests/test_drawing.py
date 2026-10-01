@@ -1,13 +1,11 @@
 """Stroke-by-stroke animation (GIF / WebP / MP4) and the self-drawing SVG."""
 
 import json
-import os
 import time
 import xml.etree.ElementTree as ET
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # three strokes: a long one (drawn first), a short one far away, one starting near the long one's end
 SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224"><g>'
@@ -15,13 +13,6 @@ SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox
        '<path d="M 10 10 C 40 10 80 10 110 10" stroke="black" stroke-width="3" fill="none"/>'
        '<path d="M 120 15 L 150 40" stroke="black" stroke-width="2" fill="none"/>'
        '</g></svg>')
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from PySide6.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
 
 
 def test_route_and_frames():

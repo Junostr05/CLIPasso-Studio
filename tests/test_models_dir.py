@@ -6,8 +6,6 @@ import sys
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 
 @pytest.fixture
 def data_home(tmp_path, monkeypatch):

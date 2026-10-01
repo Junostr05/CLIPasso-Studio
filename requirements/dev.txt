@@ -1,5 +1,7 @@
 -r app.txt
 pytest>=8
+pytest-timeout==2.4.0
+ruff==0.16.9
 # reference implementations for the tests of engine/imaging.py
 scipy
 scikit-image

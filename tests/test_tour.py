@@ -5,8 +5,6 @@ import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 
 @pytest.fixture
 def make_window(tmp_path, monkeypatch):

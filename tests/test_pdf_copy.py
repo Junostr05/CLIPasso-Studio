@@ -1,11 +1,9 @@
 """PDF export and copying a sketch to the clipboard."""
 
-import os
 import re
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="112" viewBox="0 0 224 112">'
        '<path d="M 10 10 C 60 100 120 100 200 100" stroke="black" stroke-width="2" fill="none"/></svg>')

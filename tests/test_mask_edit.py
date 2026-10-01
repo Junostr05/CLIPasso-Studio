@@ -1,14 +1,13 @@
 """Mask preview & touch-up: edited masks in all methods, the editor tools, the preview process."""
 
 import os
-import time
 
 import numpy as np
 import pytest
 import torch
 from PIL import Image
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+from tests.helpers import wait_until
 
 
 @pytest.fixture
@@ -134,13 +133,6 @@ def _photo_buffer():
     return buf
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from PySide6.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
-
-
 def test_canvas_click_paint_undo(qapp):
     from PySide6.QtGui import QImage
 
@@ -204,13 +196,8 @@ def test_overlay_veils_the_background(qapp):
 
 
 # --------------------------------------------------------------------------- preview
-def _wait(app, cond, timeout=120):
-    end = time.time() + timeout
-    while not cond():
-        if time.time() > end:
-            raise AssertionError("timed out")
-        app.processEvents()
-        time.sleep(0.02)
+def _wait(app, condition, timeout=120):
+    wait_until(app, condition, timeout)
 
 
 def test_preview_from_the_cache_needs_no_process(qapp, data_home):
