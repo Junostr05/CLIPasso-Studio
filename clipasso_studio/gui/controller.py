@@ -13,6 +13,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from .. import settings_schema as schema
 from ..engine import jobs
 from ..engine.runner import JobRunner
+from . import methods_ui
 from .app_settings import app_settings
 
 _ids = itertools.count(1)
@@ -160,7 +161,9 @@ class JobController(QObject):
             return None
         out = app_settings().get("output_dir")
         try:
-            self.runner.start(nxt.settings, nxt.target, out, job_dir=nxt.resume_dir)
+            self.runner.start(nxt.settings, nxt.target, out, job_dir=nxt.resume_dir,
+                              auto_parallel=app_settings().get("parallel_sketches", "auto") == "auto",
+                              cuda=methods_ui.has_cuda())
         except Exception as exc:  # e.g. output folder not writable
             nxt.status = "failed"
             nxt.message = str(exc)

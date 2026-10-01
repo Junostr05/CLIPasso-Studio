@@ -4,6 +4,10 @@ The GUI never imports torch for a run: it starts worker processes (``spawn``), r
 progress events through a queue and controls them with pause / stop events. With
 ``multiprocess`` the seeds of a job are distributed over several workers (like
 ``run_object_sketching.py --multiprocess 1``); the best sketch is selected afterwards.
+
+On a CPU with enough cores and memory the seeds of CLIPasso and SwiftSketch also run in parallel
+automatically (:func:`plan_workers`): their networks are small and leave most cores idle. Each worker
+then gets its share of the physical cores (hyper-threads would only compete for the same core).
 """
 
 from __future__ import annotations
@@ -18,6 +22,40 @@ from dataclasses import dataclass, field
 from . import jobs
 
 MAX_PARALLEL_WORKERS = 4
+AUTO_MIN_CORES = 6  # physical cores before the seeds of a job run in parallel automatically
+RAM_PER_WORKER = {"clipasso": 2.5e9, "swiftsketch": 1.5e9}  # bytes a worker needs at most (about)
+RAM_RESERVE = 2e9  # left for the app and the system
+
+
+def hardware_info() -> tuple[int, int]:
+    """(physical CPU cores, available memory in bytes) – without importing torch."""
+    try:
+        import psutil
+
+        cores = psutil.cpu_count(logical=False) or max(1, (os.cpu_count() or 2) // 2)
+        return int(cores), int(psutil.virtual_memory().available)
+    except Exception:
+        return max(1, (os.cpu_count() or 2) // 2), 0
+
+
+def plan_workers(settings: dict, n_seeds: int, auto: bool = True, cuda: bool = False,
+                 hw: tuple[int, int] | None = None) -> int:
+    """How many worker processes compute the seeds of a job at the same time."""
+    from .. import settings_schema as schema
+
+    if n_seeds <= 1:
+        return 1
+    if settings.get("multiprocess"):  # chosen in the settings: always (like the original scripts)
+        return min(n_seeds, MAX_PARALLEL_WORKERS)
+    method = schema.method_of(settings)
+    device = settings.get("device", "auto")
+    if not auto or method not in RAM_PER_WORKER or device == "cuda" or (device == "auto" and cuda):
+        return 1
+    cores, available = hw or hardware_info()
+    if cores < AUTO_MIN_CORES:
+        return 1
+    by_memory = int((available - RAM_RESERVE) // RAM_PER_WORKER[method])
+    return max(1, min(n_seeds, MAX_PARALLEL_WORKERS, cores // 2, by_memory))
 
 
 class _QueueReporter:
@@ -44,14 +82,17 @@ class _EventControl:
 
 
 def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finish, q, stop_event, pause_event,
-                 threads, resume=False):
-    """Entry point of a worker process."""
+                 threads, resume=False, share=1):
+    """Entry point of a worker process. ``threads``: the number chosen in the settings (0 = automatic);
+    ``share``: workers running at the same time, which divide the physical cores among them."""
     reporter = _QueueReporter(q, worker_id)
     try:
         import torch
 
         if threads:
             torch.set_num_threads(int(threads))
+        elif share > 1:  # torch starts with one thread per physical core
+            torch.set_num_threads(max(1, torch.get_num_threads() // int(share)))
         from . import pipeline
         from .model_store import ModelMissingError
 
@@ -95,8 +136,10 @@ class JobRunner:
         self.job: Job | None = None
 
     # ----------------------------------------------------------------- control
-    def start(self, settings: dict, target: str, output_root: str, job_dir: str = "") -> Job:
-        """Start a job; with ``job_dir`` an interrupted / cancelled job continues in its folder."""
+    def start(self, settings: dict, target: str, output_root: str, job_dir: str = "", auto_parallel: bool = False,
+              cuda: bool = False) -> Job:
+        """Start a job; with ``job_dir`` an interrupted / cancelled job continues in its folder.
+        ``auto_parallel``: run the seeds in parallel when the CPU is big enough (``cuda``: a GPU is there)."""
         if self.is_running():
             raise RuntimeError("a job is already running")
         from .. import settings_schema as schema
@@ -118,19 +161,15 @@ class JobRunner:
         seeds = jobs.job_seeds(settings)
         if resume and schema.method_of(settings) != "scenesketch":
             seeds = [s for s in seeds if s not in job.resumed]
-        n_workers = 1
-        if settings.get("multiprocess") and len(seeds) > 1:
-            n_workers = min(len(seeds), MAX_PARALLEL_WORKERS)
+        n_workers = plan_workers(settings, len(seeds), auto=auto_parallel, cuda=cuda)
         job.parallel = n_workers > 1
         threads = int(settings.get("num_threads", 0))
-        if job.parallel and not threads:
-            threads = max(1, (os.cpu_count() or 2) // n_workers)
         chunks = [seeds[i::n_workers] for i in range(n_workers)]
         for wid, chunk in enumerate(chunks):
             p = self._ctx.Process(
                 target=_worker_main,
                 args=(wid, settings, target, output_root, job.job_dir, chunk, not job.parallel, self._queue,
-                      self._stop, self._pause, threads, resume and wid == 0),
+                      self._stop, self._pause, threads, resume and wid == 0, n_workers),
                 daemon=True,
             )
             p.start()

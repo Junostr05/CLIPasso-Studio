@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QM
 
 from ... import paths
 from ... import settings_schema as schema
-from ...engine import imaging, jobs, masking, model_store
+from ...engine import imaging, jobs, masking, model_store, runner
 from .. import dialogs, icons, mask_view, methods_ui, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
@@ -934,7 +934,9 @@ class StudioPage(QWidget):
         self.stat_time.value.setText(imaging.eta_string(data["elapsed"]))
         remaining_seeds = sum(1 for s in job.seeds if job.seed_progress.get(s, 0) < 1.0) - 1
         eta = data["eta"]
-        if not data.get("eta_job") and not job.settings.get("multiprocess") and remaining_seeds > 0:
+        running = self.controller.runner.job
+        parallel = running is not None and running.parallel
+        if not data.get("eta_job") and not parallel and remaining_seeds > 0:
             eta += remaining_seeds * data["elapsed"] / max(it, 1) * total
         self.stat_eta.value.setText(imaging.eta_string(eta))
         self.chart.total = total
@@ -1238,8 +1240,10 @@ class StudioPage(QWidget):
             if s["clip_model_name"] in ("RN50x4", "RN50x16", "ViT-B/16"):
                 per_it *= 2
         sketches = s["num_sketches"]
-        if s.get("multiprocess") and sketches > 1:
-            sketches = math.ceil(sketches / min(sketches, 4)) * 1.6
+        workers = runner.plan_workers(s, sketches, auto=app_settings().get("parallel_sketches", "auto") == "auto",
+                                      cuda=gpu)
+        if workers > 1:  # in parallel (each worker has fewer cores: not quite workers x faster)
+            sketches = math.ceil(sketches / workers) * 1.6
         secs = per_it * methods_ui.iterations(s) * sketches + methods_ui.SETUP_SECONDS[method] * s["num_sketches"]
         if method == "scenesketch":
             secs = per_it * methods_ui.total_iterations(s) + methods_ui.SETUP_SECONDS[method] * len(

@@ -113,8 +113,8 @@
  "param.device.choice.cuda": "NVIDIA GPU (CUDA)",
  "param.gpunum.label": "GPU index",
  "param.gpunum.help": "Which GPU to use if there are several.",
- "param.multiprocess.label": "Compute sketches in parallel",
- "param.multiprocess.help": "Computes several sketches at the same time in separate processes. Needs a lot of memory (about 2–3 GB per sketch).",
+ "param.multiprocess.label": "Always compute in parallel",
+ "param.multiprocess.help": "Always computes several sketches at the same time in their own processes (needs about 2–3 GB of memory per sketch). Without it, a CPU with 6 or more cores does this by itself when there is enough memory (Settings).",
  "param.num_threads.label": "CPU threads",
  "param.num_threads.help": "Number of CPU threads for PyTorch. 0 = automatic.",
  "nav.studio": "Studio",
@@ -728,5 +728,7 @@
  "ui.settings.gpu_none": "no usable NVIDIA GPU/driver found → CPU",
  "ui.save_interval_note": "≈ {n} steps per sketch for the “drawing process” animation",
  "ui.export_every_step": "Every step",
- "ui.export_every_step_tip": "Sets the length so that each saved step of the drawing process gets its own frame. How many steps there are is set before the run: “Save a step every … iterations” (1 = every iteration)."
+ "ui.export_every_step_tip": "Sets the length so that each saved step of the drawing process gets its own frame. How many steps there are is set before the run: “Save a step every … iterations” (1 = every iteration).",
+ "ui.settings.parallel": "Compute several sketches at once on a big CPU",
+ "ui.settings.parallel_tip": "CLIPasso and SwiftSketch: with 6 or more CPU cores and enough free memory, the sketches of a job run side by side instead of one after the other (each with its share of the cores). Not used on a GPU."
 }

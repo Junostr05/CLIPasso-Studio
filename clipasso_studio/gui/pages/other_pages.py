@@ -913,6 +913,11 @@ class SettingsPage(QWidget):
         self.updates.setChecked(bool(s.get("check_updates")))
         self.updates.toggled.connect(lambda v: s.set("check_updates", v))
         self.behaviour.body.addLayout(self._row(self.updates_label, self.updates))
+        self.parallel_label = label("", None)
+        self.parallel = ToggleSwitch()  # several sketches of a job at the same time on a big CPU
+        self.parallel.setChecked(s.get("parallel_sketches", "auto") == "auto")
+        self.parallel.toggled.connect(lambda v: s.set("parallel_sketches", "auto" if v else "off"))
+        self.behaviour.body.addLayout(self._row(self.parallel_label, self.parallel))
         col.addWidget(self.behaviour)
 
         self.system = Card()
@@ -1065,6 +1070,9 @@ class SettingsPage(QWidget):
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))
         self.updates_label.setText(tr("ui.settings.check_updates"))
+        self.parallel_label.setText(tr("ui.settings.parallel"))
+        self.parallel_label.setToolTip(tr("ui.settings.parallel_tip"))
+        self.parallel.setToolTip(tr("ui.settings.parallel_tip"))
         self.logs_btn.setText(tr("ui.crash.open_logs"))
         self.logs_btn.setToolTip(tr("ui.settings.logs_tip"))
         self.system_title.setText(tr("ui.settings.system"))

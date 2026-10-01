@@ -297,3 +297,23 @@ def test_update_bar_offers_install(qapp, tmp_path, monkeypatch):
     w.controller.shutdown()
     w.close()
     settings_module._instance = None
+
+
+def test_plan_workers():
+    """The seeds of a job run in parallel automatically only on a big CPU with enough memory."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine.runner import plan_workers
+
+    clip = schema.default_settings("clipasso")  # 3 sketches
+    gb = 1_000_000_000
+    assert plan_workers(clip, 3, auto=True, hw=(8, 16 * gb)) == 3
+    assert plan_workers(clip, 3, auto=True, hw=(4, 32 * gb)) == 1  # too few cores
+    assert plan_workers(clip, 3, auto=True, hw=(8, 6 * gb)) == 1  # 6 - 2 GB reserve: room for one
+    assert plan_workers(clip, 3, auto=True, hw=(16, 9 * gb)) == 2
+    assert plan_workers(clip, 3, auto=False, hw=(16, 64 * gb)) == 1  # switched off
+    assert plan_workers(clip, 3, auto=True, cuda=True, hw=(16, 64 * gb)) == 1  # the GPU computes
+    assert plan_workers({**clip, "device": "cpu"}, 3, auto=True, cuda=True, hw=(16, 64 * gb)) == 3
+    assert plan_workers(clip, 1, auto=True, hw=(16, 64 * gb)) == 1
+    assert plan_workers({**clip, "multiprocess": True}, 3, auto=False, hw=(2, 0)) == 3  # always, when chosen
+    ctrl = schema.default_settings("controlsketch")
+    assert plan_workers({**ctrl, "num_sketches": 3}, 3, auto=True, hw=(16, 64 * gb)) == 1  # big models
