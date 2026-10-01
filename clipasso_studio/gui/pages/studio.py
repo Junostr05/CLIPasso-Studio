@@ -257,6 +257,9 @@ class StudioPage(QWidget):
         self.resume_banner = Banner()  # an interrupted / cancelled job is shown: "Continue"
         self.resume_banner.action.connect(self.continue_viewed_job)
         center.body.addWidget(self.resume_banner)
+        self.running_banner = Banner()  # another result is shown while a job runs: back to it
+        self.running_banner.action.connect(self.show_running_job)
+        center.body.addWidget(self.running_banner)
         self.banner = Banner()
         self.banner.action.connect(self._download_missing)
         center.body.addWidget(self.banner)
@@ -495,7 +498,7 @@ class StudioPage(QWidget):
             self._mask_failed(path, model, str(exc))
             return
         if prob is None:
-            self._mask_failed(path, model, "no mask in the cache")
+            self._mask_failed(path, model, tr("ui.mask.not_cached"))
             return
         self._mask = {"key": (path, model), "prob": prob, "edited": edited is not None}
         mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
@@ -799,8 +802,50 @@ class StudioPage(QWidget):
         self._set_status("ui.status.starting")
         self._update_buttons()
 
+    @staticmethod
+    def _record_live(job: QueuedJob, kind: str, data: dict):
+        """Keep the latest previews of every job, so the studio can show it again (show_running_job)."""
+        live = job.live
+        seed = data.get("seed")
+        if kind == "job_start":
+            live["device"] = data.get("device", "")
+        elif kind in ("input", "condition"):
+            live[kind] = data
+        elif kind == "attention":
+            live.setdefault("attention", {})[seed] = data
+        elif kind == "preview":
+            live.setdefault("preview", {})[seed] = data
+        elif kind == "seed_done":
+            live.setdefault("seed_done", {})[seed] = data
+            live.get("preview", {}).pop(seed, None)
+        elif kind == "iteration":
+            live.setdefault("iteration", {})[seed] = data
+
+    def show_running_job(self):
+        """Show the running job again (after a result of the gallery was opened during the run)."""
+        job = self.controller.current
+        if job is None or not self.controller.is_busy():
+            return
+        live = dict(job.live)
+        self._job_started(job)
+        if live.get("device"):
+            self._job_event(job, "job_start", {"device": live["device"]})
+        for kind in ("input", "condition"):
+            if kind in live:
+                self._job_event(job, kind, live[kind])
+        for kind in ("attention", "preview", "seed_done"):
+            for data in live.get(kind, {}).values():
+                self._job_event(job, kind, data)
+        last = live.get("iteration", {}).get(self.selected_seed)
+        if last is not None:
+            self._on_iteration(job, last)
+        self._update_buttons()
+
     def _job_event(self, job: QueuedJob, kind: str, data: dict):
+        self._record_live(job, kind, data)
         if job is not self.view_job:
+            if kind in ("iteration", "seed_done") and self.running_banner.isVisible():
+                self._update_running_banner()  # its progress
             return
         seed = data.get("seed")
         if kind == "job_start":
@@ -864,7 +909,13 @@ class StudioPage(QWidget):
             key = f"ui.warn.{data.get('code', '')}"
             self.toast.emit(tr(key) if i18n.has(key) else data.get("message", ""), "warning")
         elif kind == "log":
-            self.toast.emit(data.get("message", ""), "info")
+            key = f"ui.log.{data.get('code', '')}"
+            params = {k: v for k, v in data.items() if k not in ("code", "message")}
+            try:
+                text = tr(key, **params) if i18n.has(key) else data.get("message", "")
+            except (KeyError, IndexError, ValueError):
+                text = data.get("message", "")
+            self.toast.emit(text, "info")
         elif kind == "error":
             self._show_error(data)
         self._update_buttons()
@@ -908,6 +959,7 @@ class StudioPage(QWidget):
 
     def _job_finished(self, job: QueuedJob):
         if job is not self.view_job:
+            self._update_running_banner()
             return
         self.progress.setValue(1000 if job.status == "done" else self.progress.value())
         if job.status == "done":
@@ -937,6 +989,11 @@ class StudioPage(QWidget):
     # ================================================================ results
     def show_job_dir(self, job_dir: str):
         """Display a job from the gallery (finished, or interrupted with the sketches done so far)."""
+        current = self.controller.current
+        if (self.controller.is_busy() and current.job_dir
+                and os.path.normcase(os.path.abspath(current.job_dir)) == os.path.normcase(os.path.abspath(job_dir))):
+            self.show_running_job()  # the running job itself: its live view
+            return
         summary = jobs.job_summary(job_dir)
         if summary is None:
             return
@@ -993,6 +1050,12 @@ class StudioPage(QWidget):
                 self.canvas.set_mask(QPixmap(mask))
             if r["run_name"] == summary.get("best_run"):
                 self.best_seed = seed
+        # the image as the method used it (masked, framed, padded): the photo/sketch slider lines up
+        ordered = sorted(runs, key=lambda r: r.get("run_name") != summary.get("best_run"))
+        processed = next((p for p in (os.path.join(r["run_dir"], "input.png") for r in ordered) if os.path.isfile(p)),
+                         None)
+        if processed:
+            self.canvas.set_input(QPixmap(processed))
         for s, t in self.thumbs.items():
             t.set_best(s == self.best_seed)
             if s == self.best_seed:
@@ -1229,7 +1292,17 @@ class StudioPage(QWidget):
         for b in (self.reuse_btn,):
             b.setEnabled(has_result)
         self.folder_btn.setEnabled(bool(self.view_dir) or bool(app_settings().get("output_dir")))
+        self._update_running_banner()
         self.result_hint.setText(tr("ui.result_hint_ready") if has_result else tr("ui.result_hint_empty"))
+
+    def _update_running_banner(self):
+        job = self.controller.current
+        if self.controller.is_busy() and job is not self.view_job:
+            self.running_banner.show_message(tr("ui.running_elsewhere", name=job.name, pct=f"{job.progress:.0%}"),
+                                             button_text=tr("ui.show_running"), icon_name="play")
+            self.running_banner.button.setIcon(icons.icon("eye", theme.current().on_accent))
+        else:
+            self.running_banner.hide()
 
     def showEvent(self, e):  # noqa: N802
         super().showEvent(e)

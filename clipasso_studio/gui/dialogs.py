@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
 from ..engine import model_store
 from . import brush, export, theme
 from .app_settings import app_settings
-from .i18n import tr
+from .i18n import i18n, tr
 from .widgets.common import button, label
 
 
@@ -57,8 +57,32 @@ class ColorButton(QPushButton):
                            f" border-radius: 8px; padding: 6px 12px; font-weight: 600; }}")
 
 
+def error_text(exc: BaseException) -> str:
+    """The message of an error in the app's language (engine.errors.UserError has a text key)."""
+    code = getattr(exc, "code", None)
+    if code and i18n.has(f"ui.err.{code}"):
+        params = dict(getattr(exc, "params", {}) or {})
+        if "model" in params:
+            params.setdefault("name", model_display_name(params["model"]))
+        try:
+            return tr(f"ui.err.{code}", **params)
+        except (KeyError, IndexError, ValueError):
+            pass
+    return str(exc)
+
+
+def set_progress(bar: QProgressBar, done, total) -> None:
+    """Show ``done`` of ``total`` on a bar in per mille (byte counts of big downloads do not fit the
+    32-bit range of QProgressBar); a total <= 0 shows a busy bar."""
+    if total > 0:
+        bar.setRange(0, 1000)
+        bar.setValue(max(0, min(1000, int(1000 * done / total))))
+    else:
+        bar.setRange(0, 0)
+
+
 class _Worker(QObject):
-    progress = Signal(int, int)
+    progress = Signal("qint64", "qint64")  # 64 bit: downloads over 2 GiB (SDXL, the GPU update)
     finished = Signal(str)
     failed = Signal(str)
 
@@ -72,7 +96,7 @@ class _Worker(QObject):
             result = self.fn(*self.args, progress=lambda a, b: self.progress.emit(int(a), int(b)), **self.kwargs)
             self.finished.emit(str(result))
         except Exception as exc:
-            self.failed.emit(str(exc))
+            self.failed.emit(error_text(exc))
 
 
 class _Relay(QObject):
@@ -91,7 +115,7 @@ class _Relay(QObject):
     def _owner_alive(self) -> bool:
         return self.owner is None or shiboken6.isValid(self.owner)
 
-    @Slot(int, int)
+    @Slot("qint64", "qint64")
     def progress(self, done: int, total: int):
         if self.on_progress and self._owner_alive():
             self.on_progress(done, total)
@@ -184,8 +208,7 @@ class BusyDialog(QDialog):
 
     def progress(self, done: int, total: int):
         if total > 0:
-            self.bar.setRange(0, total)
-            self.bar.setValue(done)
+            set_progress(self.bar, done, total)
 
     def fail(self, message: str):
         self.error = message
@@ -316,12 +339,16 @@ class ExportDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(10)
         form.setLabelAlignment(Qt.AlignLeft)
-        self.stroke = ColorButton("#000000")
+        remembered = app_settings()  # the choices of the last export
+        self.stroke = ColorButton(str(remembered.get("export_stroke", "#000000") or "#000000"))
         form.addRow(tr("ui.stroke_color"), self.stroke)
         self.width_scale = QDoubleSpinBox()
         self.width_scale.setRange(0.1, 10.0)
         self.width_scale.setSingleStep(0.1)
-        self.width_scale.setValue(1.0)
+        try:
+            self.width_scale.setValue(float(remembered.get("export_width", 1.0) or 1.0))
+        except (TypeError, ValueError):
+            self.width_scale.setValue(1.0)
         self.width_scale.setSuffix(" ×")
         form.addRow(tr("ui.stroke_width_scale"), self.width_scale)
         self.style = QComboBox()
@@ -332,8 +359,11 @@ class ExportDialog(QDialog):
         self.style.setCurrentIndex(max(self.style.findData(last), 0))
         if fmt != "svg1":  # the plotter SVG stays plain lines
             form.addRow(tr("ui.brush.label"), self.style)
-        self.background = ColorButton("#FFFFFF" if fmt not in ("svg", "svganim") else "transparent",
-                                      allow_transparent=fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf"))
+        allow_transparent = fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf")
+        bg = remembered.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svganim") else "transparent")
+        if bg == "transparent" and not allow_transparent:
+            bg = "#FFFFFF"
+        self.background = ColorButton(bg, allow_transparent=allow_transparent)
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
         self.size = QSpinBox()
@@ -444,12 +474,17 @@ class ExportDialog(QDialog):
     def _save(self):
         ext = FILTERS[self.ext]
         suffix = {"svg1": "_1layer", "matrix": "_matrix", "svganim": "_animated"}.get(self.fmt, "")
-        start = os.path.join(os.path.expanduser("~"), f"{self.default_name}{suffix}.{self.ext}")
+        folder = app_settings().get("export_dir") or ""
+        if not os.path.isdir(folder):
+            folder = os.path.expanduser("~")
+        start = os.path.join(folder, f"{self.default_name}{suffix}.{self.ext}")
         dest, _ = QFileDialog.getSaveFileName(self, tr("ui.save_as"), start, ext)
         if not dest:
             return
         if not dest.lower().endswith("." + self.ext):
             dest += "." + self.ext
+        app_settings().set("export_dir", os.path.dirname(os.path.abspath(dest)))
+        app_settings().set("export_last_format", self.fmt)
         stroke = self.stroke.color()
         stroke = None if stroke.lower() == "#000000" else stroke
         bg = self.background.color()
@@ -511,7 +546,7 @@ class ExportDialog(QDialog):
                                   hold=self.hold.value(), **common)
                 return
         except Exception as exc:
-            self._failed(str(exc))
+            self._failed(error_text(exc))
             return
         self._finished(dest)
 
@@ -736,12 +771,10 @@ class UpdateDownloadDialog(QDialog):
         self.status.setText(tr("ui.update.downloading"))
 
         def prog(a, b):
+            set_progress(self.bar, a, b)
             if b <= 0:
-                self.bar.setRange(0, 0)
                 self.status.setText(tr("ui.update.checking"))
             else:
-                self.bar.setRange(0, 1000)
-                self.bar.setValue(int(1000 * a / b))
                 self.status.setText(tr("ui.update.progress", done=f"{a / 1e6:.0f}", total=f"{b / 1e6:.0f}"))
 
         def done(path):
@@ -835,12 +868,9 @@ class ModelDownloadDialog(QDialog):
         def prog(a, b):
             if self._cancel:
                 return
+            set_progress(self.bar, a, b)
             if b <= 0:  # downloaded; checking and converting
-                self.bar.setRange(0, 0)
                 self.status.setText(tr("ui.preparing_model", name=name))
-            else:
-                self.bar.setRange(0, b)
-                self.bar.setValue(a)
 
         def done(_):
             self.busy = False

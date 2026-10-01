@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from typing import Any
 
 from .. import paths
@@ -34,19 +36,17 @@ class AppSettings:
     def __init__(self):
         self._path = paths.app_settings_file()
         self.data = dict(DEFAULTS)
-        try:
-            stored = json.loads(self._path.read_text(encoding="utf-8"))
-            if isinstance(stored, dict):
-                if not isinstance(stored.get("settings_version"), int) and stored.get("language") == "de":
-                    # up to 2.0.0 German was the fixed default and got written to the file with every
-                    # other setting, so a stored "de" was usually never chosen → follow the system language
-                    stored["language"] = "auto"
-                self.data.update(stored)
-                self.data["settings_version"] = SETTINGS_VERSION
-                if "tour_done" not in stored:  # used before the guide existed: only on request (About)
-                    self.data["tour_done"] = True
-        except (OSError, ValueError):
-            pass
+        stored = paths.read_settings_file()  # falls back to the backup of a damaged file
+        if stored is not None:
+            if not isinstance(stored.get("settings_version"), int) and stored.get("language") == "de":
+                # up to 2.0.0 German was the fixed default and got written to the file with every
+                # other setting, so a stored "de" was usually never chosen → follow the system language
+                stored["language"] = "auto"
+            self.data.update(stored)
+            self.data["settings_version"] = SETTINGS_VERSION
+            if "tour_done" not in stored:  # used before the guide existed: only on request (About)
+                self.data["tour_done"] = True
+            self._backup()
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.data.get(key, DEFAULTS.get(key, default))
@@ -55,9 +55,32 @@ class AppSettings:
         self.data[key] = value
         self.save()
 
-    def save(self) -> None:
+    def _backup(self) -> None:
+        """The settings that loaded fine, as settings.json.bak (used if settings.json gets damaged)."""
         try:
-            self._path.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
+            self._path.with_name(self._path.name + ".bak").write_text(json.dumps(self.data, indent=2),
+                                                                       encoding="utf-8")
+        except OSError:
+            pass
+
+    def save(self) -> None:
+        """Write to a temporary file and replace settings.json with it: an interrupted write (crash,
+        power loss) never leaves a half-written file, which would reset all settings and the queue."""
+        tmp = self._path.with_name(self._path.name + ".tmp")
+        try:
+            tmp.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
+        except OSError:
+            return
+        for attempt in range(5):
+            try:
+                os.replace(tmp, self._path)
+                return
+            except PermissionError:  # Windows: the file is open in another program for a moment
+                time.sleep(0.05 * (attempt + 1))
+            except OSError:
+                break
+        try:
+            tmp.unlink()
         except OSError:
             pass
 

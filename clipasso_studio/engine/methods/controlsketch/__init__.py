@@ -150,7 +150,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         from .caption import caption_image
 
         caption = _cached(("caption",) + stamp, lambda: caption_image(inp["canvas"], device))
-    reporter.event("log", message=f"seed {seed}: SDS prompt: \"{caption}\"")
+    reporter.event("log", message=f"seed {seed}: SDS prompt: \"{caption}\"", code="sds_prompt", seed=seed,
+                   caption=caption)
 
     # --------------------------------------------------------------- condition
     reporter.event("stage", seed=seed, name="condition")
@@ -236,7 +237,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         active_time = float(ck["active_time"])
         start_time = time.time() - active_time
         checkpoint.set_rng_state(ck["rng"])
-        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}")
+        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}", code="resume_at",
+                       seed=seed, it=first_epoch)
 
     def save_checkpoint(done_epoch: int, painter=painter, optimizer=optimizer):
         checkpoint.save(run_dir, {"epoch": done_epoch, "counter": counter, "points": painter.points(),

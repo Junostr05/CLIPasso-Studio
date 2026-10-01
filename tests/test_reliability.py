@@ -2,29 +2,18 @@
 
 import json
 import os
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from PySide6.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
+from tests.helpers import wait_until
 
 
 def _wait(app, condition, timeout=10.0):
-    end = time.time() + timeout
-    while not condition():
-        if time.time() > end:
-            raise AssertionError("timed out")
-        app.processEvents()
-        time.sleep(0.01)
+    wait_until(app, condition, timeout)
 
 
 # ------------------------------------------------------------------ updates
@@ -253,6 +242,31 @@ def test_download_and_install_command(tmp_path):
     exe_dir.mkdir()
     placed = updates.place_portable(path, "v9.0.0", exe=str(exe_dir / "CLIPassoStudio-CPU-Portable.exe"))
     assert placed == str(exe_dir / "CLIPassoStudio-GPU-Setup-9.0.0.exe") and os.path.isfile(placed)
+
+
+def test_install_scope_follows_the_installation(tmp_path, monkeypatch):
+    """An all-users installation (Program Files) is updated for all users, a per-user one per user."""
+    from clipasso_studio.gui import updates
+
+    def scope_of(registered, writable=True):
+        monkeypatch.setattr(updates, "_registered_scope", lambda edition: registered)
+        monkeypatch.setattr(updates, "_folder_writable", lambda folder: writable)
+        return updates.install_command("setup.exe", "installed", app_dir=str(tmp_path), edition="gpu")[1][-2]
+
+    assert scope_of("all") == "/ALLUSERS"
+    assert scope_of("user", writable=False) == "/CURRENTUSER"  # the registration wins
+    assert scope_of(None, writable=False) == "/ALLUSERS"
+    assert scope_of(None, writable=True) == "/CURRENTUSER"
+    monkeypatch.undo()
+    assert updates._folder_writable(str(tmp_path)) and not os.listdir(tmp_path)  # the probe file is gone
+    assert not updates._folder_writable(str(tmp_path / "missing"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the Windows registry")
+def test_registered_scope_of_an_unknown_edition():
+    from clipasso_studio.gui import updates
+
+    assert updates._registered_scope("no-such-edition") is None
 
 
 def test_update_bar_offers_install(qapp, tmp_path, monkeypatch):

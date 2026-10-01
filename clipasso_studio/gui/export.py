@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
 from ..engine import jobs
+from ..engine.errors import UserError
 from .brush import stylize_svg
 
 ET.register_namespace("", "http://www.w3.org/2000/svg")
@@ -258,7 +259,7 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
     A transparent ``background`` (None) is kept in WebP; GIF and MP4 fall back to white."""
     frames = animation_frames(run_dir)
     if not frames:
-        raise FileNotFoundError("no intermediate SVGs (svg_logs) found")
+        raise UserError("export_no_logs", "no intermediate SVGs (svg_logs) found")
 
     def read(i):
         with open(frames[i], encoding="utf-8") as f:
@@ -477,7 +478,7 @@ def export_drawing(svg_path: str, dest: str, size: int = 512, stroke_color: str 
         keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
     drawing = Drawing(svg, keep_order)
     if not drawing.strokes:
-        raise ValueError("the sketch has no strokes")
+        raise UserError("export_no_strokes", "the sketch has no strokes")
     length = default_drawing_length(len(drawing.strokes)) if length is None else length
     n = max(2, round(length * DRAW_STEPS_PER_SECOND))
     return _encode(lambda i: drawing.frame((i + 1) / n), n, dest, size, n / length, stroke_color, width_scale,
@@ -613,7 +614,7 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
             with open(path, encoding="utf-8") as f:
                 cells[int(r["seed"])] = stylize_svg(restyle_svg(f.read(), stroke_color, width_scale), style)
     if not cells:
-        raise FileNotFoundError("no sketches in this job")
+        raise UserError("export_no_sketches", "no sketches in this job")
     bg = QColor(background) if background else None
     try:
         with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:

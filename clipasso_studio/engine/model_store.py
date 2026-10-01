@@ -29,6 +29,7 @@ from typing import Callable
 import torch
 
 from .. import paths
+from .errors import UserError
 
 ProgressFn = Callable[[int, int], None]
 
@@ -339,12 +340,12 @@ def _open_gdrive(file_id: str):
         resp.close()
         form = re.search(r'<form[^>]*id="download-form"[^>]*action="([^"]+)"', page)
         if not form:
-            raise RuntimeError("Google Drive refused the download (daily quota exceeded?) – try again later "
-                               "or download the file manually and use 'Import' on the Models page")
+            raise UserError("gdrive_quota", "Google Drive refused the download (daily quota exceeded?) – try "
+                            "again later or download the file manually and use 'Import' on the Models page")
         fields = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"', page))
         url = html.unescape(form.group(1)) + "?" + urllib.parse.urlencode(
             {k: html.unescape(v) for k, v in fields.items()})
-    raise RuntimeError("Google Drive did not start the download")
+    raise UserError("gdrive_no_start", "Google Drive did not start the download")
 
 
 def _download_url(url: str, dest: Path, progress: ProgressFn | None, cancel: Callable[[], bool] | None,
@@ -442,7 +443,8 @@ def download_raw(spec: ModelSpec, workdir: Path, progress: ProgressFn | None = N
             target.unlink(missing_ok=True)
             continue
         return target
-    raise RuntimeError(f"Could not download {spec.key}:\n" + "\n".join(errors))
+    raise UserError("download_failed", f"Could not download {spec.key}:\n" + "\n".join(errors), model=spec.key,
+                    details="\n".join(errors))
 
 
 def _drop_partial(raw: Path) -> None:
@@ -593,8 +595,8 @@ def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
             _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel, size=f.size)
             size = target.stat().st_size
             if f.size and size != f.size:
-                raise RuntimeError(f"Could not download {spec.key}: {f.remote} has {size} bytes, "
-                                   f"expected {f.size}")
+                raise UserError("download_size", f"Could not download {spec.key}: {f.remote} has {size} bytes, "
+                                f"expected {f.size}", model=spec.key, file=f.remote)
             done += f.size or size
         if progress:
             progress(0, 0)  # converting

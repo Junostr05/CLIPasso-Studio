@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 
 from .. import __version__, paths
+from ..engine.errors import UserError
 
 RELEASES_API = "https://api.github.com/repos/Junostr05/CLIPasso-Studio/releases/latest"
 RELEASES_PAGE = "https://github.com/Junostr05/CLIPasso-Studio/releases/latest"
@@ -119,7 +120,7 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
         edition, mode = build_info()
     files, sums = update_files(release, edition, mode)
     if not files or sums is None:
-        raise RuntimeError("this release has no files for this edition")
+        raise UserError("update_no_files", "this release has no files for this edition")
     dest = Path(dest_dir) if dest_dir else updates_dir(release["tag"])
     dest.mkdir(parents=True, exist_ok=True)
     sums_path = dest / sums["name"]
@@ -131,7 +132,7 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
         target = dest / f["name"]
         digest = expected.get(f["name"])
         if not digest:
-            raise RuntimeError(f"{f['name']} is missing in {sums['name']}")
+            raise UserError("update_no_checksum", f"{f['name']} is missing in {sums['name']}", file=f["name"])
         ok_marker = target.with_name(target.name + ".ok")
         if not (target.is_file() and ok_marker.is_file() and target.stat().st_size == f["size"]):
             offset = target.stat().st_size if target.is_file() and target.stat().st_size < f["size"] else 0
@@ -144,7 +145,8 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
                 progress(0, 0)  # checking
             if _sha256(target) != digest:
                 target.unlink()
-                raise RuntimeError(f"{f['name']}: the checksum does not match – please try again")
+                raise UserError("update_checksum", f"{f['name']}: the checksum does not match – please try again",
+                                file=f["name"])
             ok_marker.write_text(digest, encoding="utf-8")
         done += f["size"]
         if progress:
@@ -152,12 +154,59 @@ def download_update(release: dict, edition: str | None = None, mode: str | None 
     return str(dest / files[0]["name"])
 
 
-def install_command(path: str, mode: str, app_dir: str | None = None) -> tuple[str, list[str]]:
+APP_GUID = "{7C1E2B64-3F7A-4E56-9B8B-C1A55C0D2A11}"  # AppId of packaging/installer.iss (+ "_<EDITION>")
+_UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{guid}_{edition}_is1"
+
+
+def _registered_scope(edition: str) -> str | None:
+    """Where Inno Setup registered this edition: "all" (HKLM), "user" (HKCU) or None (unknown)."""
+    if sys.platform != "win32":
+        return None
+    import winreg
+
+    key = _UNINSTALL_KEY.format(guid=APP_GUID, edition=edition.upper())
+    for hive, scope in ((winreg.HKEY_LOCAL_MACHINE, "all"), (winreg.HKEY_CURRENT_USER, "user")):
+        for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
+            try:
+                winreg.CloseKey(winreg.OpenKey(hive, key, 0, winreg.KEY_READ | view))
+                return scope
+            except OSError:
+                continue
+    return None
+
+
+def _folder_writable(folder: str) -> bool:
+    """Can this user create files in ``folder``? (os.access(W_OK) is always true for folders on Windows.)"""
+    probe = os.path.join(folder, f".clipasso-write-test-{os.getpid()}")
+    try:
+        with open(probe, "w", encoding="utf-8"):
+            pass
+    except OSError:
+        return False
+    try:
+        os.remove(probe)
+    except OSError:
+        pass
+    return True
+
+
+def all_users_install(app_dir: str, edition: str = "cpu") -> bool:
+    """Was the app installed for all users? The installer's registration decides; without one, a
+    folder that needs admin rights to write (e.g. under Program Files) means all users."""
+    scope = _registered_scope(edition)
+    if scope is not None:
+        return scope == "all"
+    return not _folder_writable(app_dir)
+
+
+def install_command(path: str, mode: str, app_dir: str | None = None,
+                    edition: str | None = None) -> tuple[str, list[str]]:
     """How to start the downloaded update. The installer runs silently for the same kind of
-    installation (all users when the app folder is not writable, e.g. under Program Files)."""
+    installation as the running app (all users or the current user only)."""
     if mode == "installed":
         app_dir = app_dir or os.path.dirname(sys.executable)
-        scope = "/CURRENTUSER" if os.access(app_dir, os.W_OK) else "/ALLUSERS"
+        edition = edition or build_info()[0]
+        scope = "/ALLUSERS" if all_users_install(app_dir, edition) else "/CURRENTUSER"
         return path, ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", scope, "/UPDATE"]
     return path, []
 

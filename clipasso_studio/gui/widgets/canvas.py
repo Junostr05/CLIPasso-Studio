@@ -328,8 +328,9 @@ class MatrixView(QWidget):
             return
         _, y0, _, _, transposed = self._geometry()
         p.setPen(QColor(pal.muted))
-        head = [str(level) for level in range(self.levels + 1)] if transposed else [f"L{l}" for l in self.layers]
-        side = [f"L{l}" for l in self.layers] if transposed else [str(level) for level in range(self.levels + 1)]
+        layers = [f"L{layer}" for layer in self.layers]
+        levels = [str(level) for level in range(self.levels + 1)]
+        head, side = (levels, layers) if transposed else (layers, levels)
         for i, text in enumerate(head):
             r = self._cell_rect(0, i) if transposed else self._cell_rect(i, 0)
             p.drawText(QRectF(r.left(), y0 - 20, r.width(), 18), Qt.AlignCenter, text)
@@ -551,14 +552,14 @@ class SeedThumb(QFrame):
         self.view = SketchCanvas()
         self.view.setMinimumSize(70, 70)
         self.view.setFixedSize(74, 74)
-        self.caption = QLabel(f"Seed {seed}")
+        self.caption = QLabel(tr("ui.seed", seed=seed))
         self.caption.setProperty("role", "faint")
         self.caption.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.view, 0, Qt.AlignHCenter)
         lay.addWidget(self.caption)
         self._selected = False
         self._best = False
-        self.setToolTip(f"Seed {seed}")
+        self.setToolTip(tr("ui.seed", seed=seed))
 
     def set_svg(self, svg: str):
         self.view.set_svg(svg)

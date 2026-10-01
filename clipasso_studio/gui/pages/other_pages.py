@@ -361,9 +361,10 @@ class GalleryCard(Card):
     clicked = Signal(str)
     action = Signal(str, str)  # (kind, job folder): "folder", "favourite", "delete"
 
-    def __init__(self, job_dir: str, summary: dict, parent=None):
+    def __init__(self, job_dir: str, summary: dict, parent=None, active: bool = False):
         super().__init__(parent, margins=12, spacing=8)
         self.job_dir = job_dir
+        self.active = active  # the queue is working on it
         self.favourite = bool(summary.get("favourite"))
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedWidth(220)
@@ -396,9 +397,12 @@ class GalleryCard(Card):
             badges.addWidget(label(f"Loss {min(r.get('best_loss', 99) for r in runs):.3f}", "badge"))
         badges.addStretch(1)
         self.body.addLayout(badges)
-        self.can_continue = jobs.summary_can_continue(summary)
+        self.can_continue = jobs.summary_can_continue(summary) and not active
         self.state_label = None
-        if self.can_continue:
+        if active:
+            self.state_label = label(tr("ui.gallery.state_active"), "badge")
+            self.body.addWidget(self.state_label, 0, Qt.AlignLeft)
+        elif self.can_continue:
             done, total = summary["progress"]
             self.state_label = label(tr(f"ui.gallery.state_{summary['state']}", done=done, total=total),
                                      "badge-warning")
@@ -414,6 +418,7 @@ class GalleryCard(Card):
         self.folder.clicked.connect(lambda: self.action.emit("folder", self.job_dir))
         self.delete = tool_button("trash-2", tr("ui.gallery.delete"), 16)
         self.delete.clicked.connect(lambda: self.action.emit("delete", self.job_dir))
+        self.delete.setEnabled(not active)
         tools.addWidget(self.star)
         tools.addStretch(1)
         self.cont = None
@@ -442,8 +447,9 @@ class GalleryCard(Card):
         menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if self.favourite else "ui.gallery.favourite"),
                        self.star.toggle)
         menu.addSeparator()
-        menu.addAction(icons.icon("trash-2", theme.current().danger), tr("ui.gallery.delete"),
-                       lambda: self.action.emit("delete", self.job_dir))
+        delete = menu.addAction(icons.icon("trash-2", theme.current().danger), tr("ui.gallery.delete"),
+                                lambda: self.action.emit("delete", self.job_dir))
+        delete.setEnabled(not self.active)
         menu.exec(e.globalPos())
 
 
@@ -455,9 +461,13 @@ class GalleryPage(QWidget):
 
     SORTS = ("newest", "score")
 
-    def __init__(self, parent=None):
+    def __init__(self, controller=None, parent=None):
         super().__init__(parent)
         self.setObjectName("Page")
+        self.controller = controller
+        if controller is not None:  # new and finished results appear without "Refresh"
+            controller.job_started.connect(lambda _: self._refresh_if_shown())
+            controller.job_finished.connect(lambda _: self._refresh_if_shown())
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(16)
@@ -511,6 +521,13 @@ class GalleryPage(QWidget):
         os.makedirs(folder, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
+    def _refresh_if_shown(self):
+        if self.isVisible():
+            QTimer.singleShot(0, self.refresh)
+
+    def _active(self) -> set[str]:
+        return self.controller.active_dirs() if self.controller is not None else set()
+
     def scan(self) -> list[tuple[str, dict]]:
         return scan_jobs(unfinished=True)
 
@@ -529,8 +546,9 @@ class GalleryPage(QWidget):
                        else float("-inf"), reverse=True)
         self._shown = [(d, s) for d, s in items if jobs.best_sketch(s)]
         self.export_btn.setEnabled(bool(self._shown))
+        active = self._active()
         for n, (job_dir, summary) in enumerate(items):
-            card = GalleryCard(job_dir, summary)
+            card = GalleryCard(job_dir, summary, active=os.path.normcase(os.path.abspath(job_dir)) in active)
             card.clicked.connect(self.open_job.emit)
             card.action.connect(self._card_action)
             self.grid.addWidget(card, n // cols, n % cols)
@@ -569,6 +587,9 @@ class GalleryPage(QWidget):
 
     def delete_job(self, job_dir: str, confirm: bool = True) -> bool:
         name = os.path.basename(os.path.normpath(job_dir))
+        if os.path.normcase(os.path.abspath(job_dir)) in self._active():
+            QMessageBox.information(self, tr("ui.gallery.delete"), tr("ui.gallery.delete_active", name=name))
+            return False
         if confirm and QMessageBox.question(self, tr("ui.gallery.delete"),
                                             tr("ui.gallery.delete_q", name=name)) != QMessageBox.Yes:
             return False
@@ -1006,10 +1027,10 @@ class SettingsPage(QWidget):
 
                 for i in range(torch.cuda.device_count()):
                     prop = torch.cuda.get_device_properties(i)
-                    ok = "" if cuda_arch_supported(i) else "  ⚠ not supported by this build → CPU"
+                    ok = "" if cuda_arch_supported(i) else f"  ⚠ {tr('ui.settings.gpu_unsupported')}"
                     lines.append(f"GPU {i}: {prop.name} · {prop.total_memory / 2 ** 30:.1f} GB{ok}")
             elif torch.version.cuda:
-                lines.append(f"CUDA {torch.version.cuda}: no usable NVIDIA GPU/driver found → CPU")
+                lines.append(f"CUDA {torch.version.cuda}: {tr('ui.settings.gpu_none')}")
             else:
                 lines.append("CUDA: –")
             return "\n".join(lines)

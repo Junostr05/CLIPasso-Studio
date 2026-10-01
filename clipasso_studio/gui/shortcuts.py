@@ -12,6 +12,8 @@ SHORTCUTS = (
     ("Ctrl+Shift+Return", "ui.shortcut.queue"),
     ("Ctrl+E", "ui.shortcut.export"),
     ("Ctrl+C", "ui.shortcut.copy"),
+    ("Ctrl+Z", "ui.shortcut.undo"),
+    ("Ctrl+Y", "ui.shortcut.redo"),
     ("Ctrl+1", "ui.shortcut.pages"),
 )
 

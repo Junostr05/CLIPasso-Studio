@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+from tests.helpers import wait_until
 
 SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
        '<path d="M 10 10 C 60 {y} 120 {y} 200 200" stroke="black" stroke-width="2" fill="none"/></svg>')
@@ -29,12 +29,7 @@ def qapp(tmp_path_factory):
 
 
 def _wait(app, condition, timeout=30.0):
-    end = time.time() + timeout
-    while not condition():
-        if time.time() > end:
-            raise AssertionError("timed out")
-        app.processEvents()
-        time.sleep(0.01)
+    wait_until(app, condition, timeout)
 
 
 def test_run_in_thread_calls_back_in_the_gui_thread(qapp):
@@ -62,6 +57,33 @@ def test_run_in_thread_calls_back_in_the_gui_thread(qapp):
     assert seen["progress"] == (True, (1, 2))
     assert seen["done"] == (True, ("ok",))
     assert seen["error"] == (True, ("boom",))
+
+
+def test_progress_of_downloads_over_2_gib(qapp):
+    """Byte counts above the 32-bit range (SDXL ~6.9 GB, the GPU update ~3.3 GB) arrive unchanged."""
+    from PySide6.QtWidgets import QProgressBar, QWidget
+
+    from clipasso_studio.gui import dialogs
+
+    owner = QWidget()
+    seen = []
+
+    def work(progress):
+        progress(5_000_000_000, 6_938_011_392)
+        return "ok"
+
+    done = []
+    dialogs.run_in_thread(owner, work, on_progress=lambda a, b: seen.append((a, b)), on_done=done.append)
+    _wait(qapp, lambda: done)
+    assert seen == [(5_000_000_000, 6_938_011_392)]
+    bar = QProgressBar()
+    dialogs.set_progress(bar, *seen[0])
+    assert (bar.minimum(), bar.maximum(), bar.value()) == (0, 1000, 720)
+    dialogs.set_progress(bar, 0, -1)
+    assert bar.maximum() == 0  # busy
+    busy = dialogs.BusyDialog("moving")
+    busy.progress(3_000_000_000, 4_000_000_000)
+    assert busy.bar.value() == 750
 
 
 def test_consecutive_background_jobs(qapp):
@@ -250,3 +272,33 @@ def test_matrix_export_dialog(qapp, tmp_path, monkeypatch):
     _wait(qapp, lambda: dlg.result() == QDialog.Accepted)
     with zipfile.ZipFile(dest) as z:
         assert {"L8_level0.svg", "L8_level1.png", "matrix.png"} <= set(z.namelist())
+
+
+def test_export_dialog_remembers_the_last_choices(qapp, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+
+    from clipasso_studio.gui import dialogs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    run = _run_dir(tmp_path, frames=3)
+    s = app_settings()
+    s.data.update(export_stroke="#ff0000", export_width=2.5, export_background="transparent",
+                  export_dir=str(tmp_path / "exports"))
+    os.makedirs(tmp_path / "exports", exist_ok=True)
+    png = dialogs.ExportDialog("png", str(run / "best_iter.svg"), str(run), "out")
+    assert png.stroke.color().lower() == "#ff0000" and png.width_scale.value() == 2.5
+    assert png.background.color() == "transparent"
+    gif = dialogs.ExportDialog("gif", str(run / "best_iter.svg"), str(run), "out")
+    assert gif.background.color().lower() == "#ffffff"  # no transparency in a GIF
+    starts = []
+
+    def fake_save(parent, title, start, filt):
+        starts.append(start)
+        return str(tmp_path / "elsewhere" / "sketch.png"), filt
+
+    os.makedirs(tmp_path / "elsewhere", exist_ok=True)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", fake_save)
+    png._save()
+    assert os.path.dirname(starts[0]) == str(tmp_path / "exports")
+    assert s.get("export_dir") == str(tmp_path / "elsewhere") and s.get("export_last_format") == "png"
+    assert os.path.isfile(tmp_path / "elsewhere" / "sketch.png")

@@ -40,6 +40,7 @@ class ParamField(QWidget):
         self.param = param
         self.method = method
         self._value = param.default
+        self.start = param.default  # what "reset" goes back to (SceneSketch: its standard preset)
         self._updating = False
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -296,10 +297,15 @@ class ParamField(QWidget):
         return self._value
 
     def reset(self):
-        self.set_value(self.param.default, emit=True)
+        self.set_value(self.start, emit=True)
+
+    def set_start(self, value) -> None:
+        self.start = value
+        self._sync_reset()
+        self.reset_btn.setToolTip(tr("ui.reset_default", value=str(value)))
 
     def _sync_reset(self):
-        changed = self._value != self.param.default
+        changed = self._value != self.start
         self.reset_btn.setVisible(changed)
         self.title.setStyleSheet(f"color: {theme.current().accent_hover};" if changed else "")
 
@@ -328,7 +334,7 @@ class ParamField(QWidget):
         self.info.setToolTip(f"<div style='max-width:320px'>{tip}</div>")
         self.title.setToolTip(self.info.toolTip())
         self.reset_btn.setIcon(icons.icon("rotate-ccw", theme.current().muted))
-        self.reset_btn.setToolTip(tr("ui.reset_default", value=str(p.default)))
+        self.reset_btn.setToolTip(tr("ui.reset_default", value=str(self.start)))
         if p.kind == "choice":
             for i in range(self.combo.count()):
                 self.combo.setItemText(i, _choice_text(p, self.combo.itemData(i), self.method))
@@ -350,6 +356,16 @@ class ParamField(QWidget):
         return all(part in hay for part in q.split())
 
 
+def start_settings(method: str) -> dict:
+    """The settings a method starts with (and "Reset" goes back to): the paper's defaults, except for
+    SceneSketch, whose paper settings (the full 3 x 9 matrix) take hours even on a GPU – it starts
+    with its standard preset (one column); the paper settings are the "Quality" preset."""
+    s = schema.default_settings(method)
+    if method == "scenesketch":
+        s = schema.apply_preset(s, "standard")
+    return schema.normalize(s)
+
+
 class _MethodPage:
     """Fields and sections of one method (only the page of the active method is visible)."""
 
@@ -362,6 +378,7 @@ class _MethodPage:
         self.fields: dict[str, ParamField] = {}
         self.sections: dict[str, CollapsibleSection] = {}
         params = schema.params_for(method)
+        start = start_settings(method)
         for group in schema.METHOD_GROUPS[method]:
             sec = CollapsibleSection("", GROUP_ICONS.get(group), expanded=group in ("basics", "image"))
             self.sections[group] = sec
@@ -369,6 +386,7 @@ class _MethodPage:
                 if p.group != group:
                     continue
                 f = ParamField(p, method)
+                f.set_start(start.get(p.key, p.default))
                 f.changed.connect(on_change)
                 self.fields[p.key] = f
                 sec.body.addWidget(f)
@@ -386,8 +404,7 @@ class ParamPanel(QWidget):
         self._per_method = {m: schema.normalize(schema.default_settings(m)) for m in schema.METHODS}
         # SceneSketch's paper settings (the full 3 x 9 matrix) take hours even on a GPU: start with its
         # standard preset (one column); the paper settings are the "Quality" preset
-        self._per_method["scenesketch"] = schema.normalize(
-            schema.apply_preset(schema.default_settings("scenesketch"), "standard"))
+        self._per_method["scenesketch"] = start_settings("scenesketch")
         self._settings = dict(self._per_method[self._method])
         self._preset = "standard"
         self._applying = False
@@ -516,7 +533,7 @@ class ParamPanel(QWidget):
         self._update_preset_hint()
 
     def reset_all_fields(self):
-        self.set_settings(schema.default_settings(self._method))
+        self.set_settings(start_settings(self._method))
 
     def _field_changed(self, key, value):
         if self._applying:
@@ -542,7 +559,8 @@ class ParamPanel(QWidget):
         elif self._method == "controlsketch":
             self._after_change_controlsketch(s)
         for group, sec in self.sections.items():
-            n = sum(1 for p in schema.params_for(self._method) if p.group == group and s[p.key] != p.default)
+            n = sum(1 for p in schema.params_for(self._method)
+                    if p.group == group and p.key in self.fields and s[p.key] != self.fields[p.key].start)
             base = tr(f"group.{group}")
             sec.set_title(f"{base}   ·  {tr('ui.n_changed', n=n)}" if n else base)
 

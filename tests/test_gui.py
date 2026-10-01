@@ -2,8 +2,6 @@ import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 
 @pytest.fixture(scope="module")
 def window(tmp_path_factory):
@@ -199,7 +197,6 @@ def test_compare_page_and_models_page(window):
 
 def test_loading_a_swiftsketch_result(window, tmp_path):
     import json
-    import os
 
     from clipasso_studio import settings_schema as schema
 
@@ -236,7 +233,6 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
 
 def _fake_job(out, name, target, clip, method="swiftsketch", created="2026-09-29 12:00:00"):
     import json
-    import os
 
     from PIL import Image
 
@@ -266,7 +262,6 @@ def _fake_job(out, name, target, clip, method="swiftsketch", created="2026-09-29
 
 def test_gallery_favourites_sorting_and_delete(window, tmp_path):
     import json
-    import os
 
     from clipasso_studio.gui.app_settings import app_settings
 
@@ -315,7 +310,6 @@ def test_gallery_favourites_sorting_and_delete(window, tmp_path):
 
 
 def test_shortcuts_and_paste(window, tmp_path):
-    import os
 
     from PySide6.QtGui import QColor, QGuiApplication, QImage
 
@@ -340,11 +334,24 @@ def test_shortcuts_and_paste(window, tmp_path):
     assert not studio.paste_image() and studio.image_path == str(other)
     assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
     keys = [lbl.text() for lbl in window.about.key_labels]
-    assert len(keys) == 7 and all(keys) and "Ctrl+C" in window.shortcuts
+    assert len(keys) == 9 and all(keys) and "Ctrl+C" in window.shortcuts
+    # undo / redo of sketch edits only act on the studio page
+    calls = []
+    studio.undo_edit, studio.redo_edit = (lambda: calls.append("undo")), (lambda: calls.append("redo"))
+    try:
+        window.show_page("gallery")
+        window.shortcuts["Ctrl+Z"].activated.emit()
+        window.shortcuts["Ctrl+Y"].activated.emit()
+        assert calls == []
+        window.show_page("studio")
+        window.shortcuts["Ctrl+Z"].activated.emit()
+        window.shortcuts["Ctrl+Shift+Z"].activated.emit()
+        assert calls == ["undo", "redo"]
+    finally:
+        del studio.undo_edit, studio.redo_edit
 
 
 def _interrupted_job(out, tmp_path):
-    import os
 
     from PIL import Image
 
@@ -369,7 +376,6 @@ def _interrupted_job(out, tmp_path):
 
 
 def test_continue_an_interrupted_job(window, tmp_path, monkeypatch):
-    import os
     import shutil
 
     from PySide6.QtWidgets import QMessageBox
@@ -402,3 +408,107 @@ def test_continue_an_interrupted_job(window, tmp_path, monkeypatch):
     assert controller.continue_job(job, start=False) is None
     controller.remove(queued.id)
     window.show_page("studio")
+
+
+def test_reopened_job_shows_the_processed_input(window, tmp_path):
+    """The photo/sketch slider uses the image the method saw (framed / padded), not the cropped original."""
+    from PIL import Image
+
+    from clipasso_studio.gui.app_settings import app_settings
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "processed_job", str(tmp_path / "wide.png"), 31.0)
+    window.studio.show_job_dir(job)
+    assert window.studio.canvas._input.width() == 20  # the 30×20 original, centre-cropped
+    Image.new("RGB", (224, 224), "white").save(os.path.join(job, "processed_job_run", "input.png"))
+    window.studio.show_job_dir(job)
+    assert window.studio.canvas._input.width() == 224
+
+
+def test_back_to_the_running_job(window, tmp_path):
+    """A result opened from the gallery during a run: the running job can be shown and paused again."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.controller import QueuedJob
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    target = str(tmp_path / "running.png")
+    other = _fake_job(out, "other_job", str(tmp_path / "other.png"), 30.0)
+    from PIL import Image
+
+    Image.new("RGB", (40, 40), "white").save(target)
+    studio, controller = window.studio, window.controller
+    job = QueuedJob(target=target, settings=schema.default_settings("swiftsketch"), status="running",
+                    job_dir=str(tmp_path / "running_job"))
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224"><path d="M 5 5 L 90 90" '
+           'stroke="black" stroke-width="2" fill="none"/></svg>')
+    controller.current = job
+    try:
+        controller.job_started.emit(job)
+        seed = job.seeds[0]
+        controller.job_event.emit(job, "preview", {"seed": seed, "svg": svg})
+        assert studio.view_job is job and studio.pause_btn.isEnabled()
+        studio.show_job_dir(other)  # the gallery opens another result
+        assert studio.view_job is None and not studio.pause_btn.isEnabled()
+        assert studio.running_banner.isVisibleTo(studio) and "running.png" in studio.running_banner.text.text()
+        controller.job_event.emit(job, "preview", {"seed": seed, "svg": svg.replace("90 90", "80 80")})
+        studio.running_banner.button.click()
+        assert studio.view_job is job and studio.pause_btn.isEnabled()
+        assert "80 80" in studio.canvas.svg() and not studio.running_banner.isVisibleTo(studio)
+    finally:
+        controller.current = None
+        studio._update_buttons()
+
+
+def test_gallery_knows_the_running_job(window, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.controller import QueuedJob
+
+    out = app_settings().get("output_dir")
+    job_dir = _interrupted_job(out, tmp_path)
+    jobs.set_status(job_dir, "running")  # as while it runs
+    controller = window.controller
+    job = QueuedJob(target=str(tmp_path / "x.png"), settings=schema.default_settings("clipasso"), status="running",
+                    job_dir=job_dir)
+    controller.jobs.append(job)
+    controller.current = job
+    try:
+        window.show_page("gallery")
+        window.gallery.refresh()
+        card = next(c for c in window.gallery.cards if c.job_dir == job_dir)
+        assert card.active and not card.can_continue and card.cont is None and not card.delete.isEnabled()
+        told = []
+        monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: told.append(a))
+        assert not window.gallery.delete_job(job_dir) and told and os.path.isdir(job_dir)
+    finally:
+        controller.current = None
+        controller.jobs.remove(job)
+    window.gallery.refresh()
+    card = next(c for c in window.gallery.cards if c.job_dir == job_dir)
+    assert not card.active and card.can_continue
+    window.show_page("studio")
+
+
+def test_scenesketch_reset_goes_back_to_the_standard_preset(window):
+    from clipasso_studio import settings_schema as schema
+
+    panel = window.studio.params
+    panel.set_method("scenesketch")
+    standard = schema.apply_preset(schema.default_settings("scenesketch"), "standard")
+    panel.fields["num_iter"].set_value(77, emit=True)
+    panel.fields["num_iter"].reset()
+    assert panel.settings()["num_iter"] == standard["num_iter"]
+    panel.fields["num_iter"].set_value(77, emit=True)
+    panel.reset_all_fields()
+    s = panel.settings()
+    assert s["num_iter"] == standard["num_iter"] and s["num_iter"] != schema.default_settings("scenesketch")["num_iter"]
+    assert not panel.fields["num_iter"].reset_btn.isVisibleTo(panel)
+    panel.set_method("clipasso")
+    panel.reset_all_fields()
+    assert panel.settings()["num_iter"] == schema.default_settings("clipasso")["num_iter"]

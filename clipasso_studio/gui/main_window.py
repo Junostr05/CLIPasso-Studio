@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
                 ri.addWidget(self.run_bar)
                 self.run_indicator.setVisible(False)
                 self.run_indicator.setCursor(Qt.PointingHandCursor)
-                self.run_indicator.mouseReleaseEvent = lambda e: self.show_page("studio")
+                self.run_indicator.mouseReleaseEvent = lambda e: self.show_running_job()
                 sv.addWidget(self.run_indicator)
             sv.addWidget(b, 0, Qt.AlignHCenter)
         h.addWidget(side)
@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
         self.studio = StudioPage(self.controller)
         self.compare = ComparePage(self.controller, self.studio)
         self.queue = QueuePage(self.controller, lambda: self.studio.params.settings())
-        self.gallery = GalleryPage()
+        self.gallery = GalleryPage(self.controller)
         self.models = ModelsPage()
         self.settings = SettingsPage()
         self.about = AboutPage()
@@ -355,9 +355,9 @@ class MainWindow(QMainWindow):
             add(seq, self._shortcut_queue)
         add("Ctrl+E", self._shortcut_export)
         add("Ctrl+C", self._shortcut_copy)  # text fields keep their own Ctrl+C
-        add("Ctrl+Z", self.studio.undo_edit)  # eraser (text fields keep their own undo)
+        add("Ctrl+Z", self._shortcut_undo)  # sketch edits (text fields keep their own undo)
         for seq in ("Ctrl+Y", "Ctrl+Shift+Z"):
-            add(seq, self.studio.redo_edit)
+            add(seq, self._shortcut_redo)
         for i, (key, _) in enumerate(NAV):
             add(f"Ctrl+{i + 1}", lambda k=key: self.show_page(k))
 
@@ -428,14 +428,27 @@ class MainWindow(QMainWindow):
             self.show_page("studio")
             self.studio.images_dropped(paths)
 
+    def _shortcut_undo(self):
+        if self.stack.currentWidget() is self.studio:  # not from another page, where nothing shows it
+            self.studio.undo_edit()
+
+    def _shortcut_redo(self):
+        if self.stack.currentWidget() is self.studio:
+            self.studio.redo_edit()
+
     def _shortcut_copy(self):
         if self.stack.currentWidget() is self.studio:
             self.studio.copy_sketch()
 
     def _shortcut_export(self):
-        if self.studio.export_btns["svg"].isEnabled():
+        """Ctrl+E: export again in the format used last (SVG at first)."""
+        fmt = app_settings().get("export_last_format") or "svg"
+        btn = self.studio.export_btns.get(fmt)
+        if btn is None or btn.isHidden():
+            fmt, btn = "svg", self.studio.export_btns["svg"]
+        if btn.isEnabled():
             self.show_page("studio")
-            self.studio.export("svg")
+            self.studio.export(fmt)
 
     # ---------------------------------------------------------------- updates
     def start_update_check(self, url: str = updates.RELEASES_API):
@@ -452,6 +465,11 @@ class MainWindow(QMainWindow):
             self.update_bar.show_release(release)
 
     # ---------------------------------------------------------------- actions
+    def show_running_job(self):
+        """The sidebar's run indicator: the studio with the running job's live view."""
+        self.show_page("studio")
+        self.studio.show_running_job()
+
     def show_page(self, key: str):
         self.stack.setCurrentWidget(self.pages[key])
         self.nav_buttons[key].setChecked(True)

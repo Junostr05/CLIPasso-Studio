@@ -188,7 +188,8 @@ def score_run(svg_path: str, target_img: Image.Image, device, reporter: Reporter
         return round(get_scorer(device).score_svg(svg_path, target_img), 2)
     except Exception as exc:  # scoring is informative only
         if reporter:
-            reporter.event("log", message=f"CLIP score unavailable: {exc}")
+            reporter.event("log", message=f"CLIP score unavailable: {exc}", code="clip_score_unavailable",
+                           error=str(exc))
         return None
 
 
@@ -266,7 +267,8 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
         active_time = float(ck["active_time"])
         start = time.time() - active_time
         checkpoint.set_rng_state(ck["rng"])
-        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}")
+        reporter.event("log", message=f"seed {seed}: continuing at iteration {first_epoch}", code="resume_at",
+                       seed=seed, it=first_epoch)
 
     def save_checkpoint(done_epoch: int, renderer=renderer, optimizer=optimizer):
         checkpoint.save(run_dir, {
@@ -296,7 +298,8 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
                 stage += 1
                 renderer.init_image(stage=stage)
                 optimizer.init_optimizers()
-                reporter.event("log", message=f"stage {stage + 1}/{args.num_stages}: +{args.num_paths} strokes")
+                reporter.event("log", message=f"stage {stage + 1}/{args.num_stages}: +{args.num_paths} strokes",
+                               code="stage", stage=stage + 1, stages=args.num_stages, n=args.num_paths)
 
             renderer.set_random_noise(epoch)
             if args.lr_scheduler:
@@ -342,7 +345,8 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
 
                     if abs(cur_delta) <= min_delta:
                         if terminate:
-                            reporter.event("log", message=f"seed {seed}: converged at iteration {epoch}")
+                            reporter.event("log", message=f"seed {seed}: converged at iteration {epoch}",
+                                           code="converged", seed=seed, it=epoch)
                             break
                         terminate = True
 

@@ -290,7 +290,8 @@ def _train(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict) ->
         ctx.done_iters += total
         ctx.cell_done += total
         ctx.reporter.event("log", message=f"SceneSketch: {os.path.basename(os.path.dirname(run_dir))} "
-                                          f"(seed {seed}) restored")
+                                          f"(seed {seed}) restored", code="scene_restored",
+                           part=os.path.basename(os.path.dirname(run_dir)), seed=seed)
         _progress(ctx, min(saved.loss_eval) if saved.loss_eval else 0.0, None, cfg.name, count=False)
         return saved
     os.makedirs(os.path.join(run_dir, "svg_logs"), exist_ok=True)
@@ -689,7 +690,8 @@ def run_cells(settings, target, job_dir, cells, reporter=None, control=None, dev
                                                 "ratio_object": rat_obj[level - 1] if rat_obj else None})
             prev_bg, prev_obj = new_bg, new_obj
     if ctx.cancelled:
-        reporter.event("log", message="SceneSketch: cancelled – the finished sketches are kept")
+        reporter.event("log", message="SceneSketch: cancelled – the finished sketches are kept",
+                       code="scene_cancelled")
     if cell_images:
         C.matrix_image(cell_images, ctx.layers, ctx.levels).save(os.path.join(job_dir, "matrix.png"))
     ctx.clip_model = None

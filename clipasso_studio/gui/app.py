@@ -77,6 +77,14 @@ def run_gui(argv: list[str] | None = None) -> int:
     theme.apply(app, settings.get("theme"))
     i18n.set_language(settings.get("language"))
 
+    from . import instance
+
+    if not instance.acquire():  # the app is already open: show it instead
+        _close_splash()
+        instance.tell_already_running()
+        return 0
+    app.aboutToQuit.connect(instance.release)
+
     from .main_window import MainWindow
 
     window = MainWindow()

@@ -60,13 +60,24 @@ def default_models_dir() -> Path:
     return user_data_dir() / "models"
 
 
+def read_settings_file() -> dict | None:
+    """The stored app settings: settings.json, or its backup (settings.json.bak) when the file is
+    missing or damaged (e.g. the computer lost power while it was written)."""
+    main = app_settings_file()
+    for path in (main, main.with_name(main.name + ".bak")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return None
+
+
 def _stored_setting(key: str):
     """A value of settings.json read directly (worker processes have no app settings object)."""
-    try:
-        data = json.loads(app_settings_file().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data.get(key) if isinstance(data, dict) else None
+    data = read_settings_file()
+    return data.get(key) if data else None
 
 
 def downloaded_models_dir() -> Path:

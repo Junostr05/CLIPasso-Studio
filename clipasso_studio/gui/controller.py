@@ -34,6 +34,7 @@ class QueuedJob:
     eta: float = float("nan")
     device: str = ""
     resume_dir: str = ""  # "Continue": the interrupted job folder
+    live: dict = field(default_factory=dict, repr=False, compare=False)  # latest previews (studio)
 
     @property
     def name(self) -> str:
@@ -135,6 +136,17 @@ class JobController(QObject):
     def clear_finished(self) -> None:
         self.jobs = [j for j in self.jobs if j.status in ("queued", "running", "paused")]
         self.queue_changed.emit()
+
+    def active_dirs(self) -> set[str]:
+        """Job folders the queue is working on or will continue (normalised): not "interrupted" in the
+        gallery, and not to be deleted."""
+        out = set()
+        for j in self.jobs:
+            if j.status in ("running", "paused") or (j.status == "queued" and j.resume_dir):
+                for d in (j.job_dir, j.resume_dir):
+                    if d:
+                        out.add(os.path.normcase(os.path.abspath(d)))
+        return out
 
     def is_busy(self) -> bool:
         return self.current is not None and self.current.status in ("running", "paused")

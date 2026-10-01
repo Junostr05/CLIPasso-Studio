@@ -55,3 +55,39 @@ def test_settings_language_default_and_migration(monkeypatch, tmp_path, stored, 
     assert saved["language"] == expected and saved["settings_version"] == app_settings_mod.SETTINGS_VERSION
     if stored and "theme" in stored:
         assert saved["theme"] == stored["theme"]
+
+
+def test_every_error_and_hint_code_has_a_text():
+    """Codes of engine hints ("log" events) and UserErrors have texts in both languages."""
+    import json
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / "clipasso_studio"
+    texts = {lang: json.loads((root / "resources" / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+             for lang in ("en", "de")}
+    source = "\n".join(p.read_text(encoding="utf-8") for p in root.rglob("*.py"))
+    errors = set(re.findall(r'UserError\(\s*"([a-z_]+)"', source))
+    hints = set(re.findall(r'event\(\s*"log",.{0,300}?code="([a-z_]+)"', source, re.S))
+    assert len(errors) >= 10 and len(hints) >= 7
+    for lang, data in texts.items():
+        for code in errors:
+            assert f"ui.err.{code}" in data, (lang, code)
+        for code in hints:
+            assert f"ui.log.{code}" in data, (lang, code)
+
+
+def test_error_text_is_translated(qapp):
+    from clipasso_studio.engine.errors import UserError
+    from clipasso_studio.gui import dialogs
+    from clipasso_studio.gui.i18n import i18n
+
+    before = i18n.lang
+    try:
+        i18n.set_language("de")
+        text = dialogs.error_text(UserError("download_failed", "Could not download sdxl", model="sdxl",
+                                            details="timeout"))
+        assert "konnte nicht" in text and "timeout" in text and "sdxl" not in text.split("\n")[0].lower()
+        assert dialogs.error_text(ValueError("plain")) == "plain"
+    finally:
+        i18n.set_language(before)
