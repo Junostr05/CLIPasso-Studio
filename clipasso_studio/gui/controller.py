@@ -59,6 +59,9 @@ class QueuedJob:
         return data
 
 
+WARM_IDLE_MINUTES = 5  # the waiting worker keeps its models this long after a job
+
+
 def _keep_awake(on: bool) -> None:
     if sys.platform != "win32":
         return
@@ -81,13 +84,18 @@ class JobController(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.runner = JobRunner()
+        self.runner = JobRunner(keep_warm=bool(app_settings().get("keep_models_loaded", True)))
         self.jobs: list[QueuedJob] = []
         self.current: QueuedJob | None = None
         self.auto_start = True
         self._timer = QTimer(self)
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._poll)
+        # the worker with the models of the last job ends after some minutes without a job
+        self._idle = QTimer(self)
+        self._idle.setInterval(30_000)
+        self._idle.timeout.connect(self._release_idle)
+        self._idle.start()
         self._restore_queue()
 
     # ------------------------------------------------------------------ queue
@@ -203,8 +211,22 @@ class JobController(QObject):
 
     def shutdown(self):
         self._timer.stop()
+        self._idle.stop()
         self.runner.kill()
         _keep_awake(False)
+
+    def set_keep_models(self, on: bool) -> None:
+        """Keep the worker (and its models) between jobs, or not."""
+        self.runner.keep_warm = bool(on)
+        if not on:
+            self.runner.shutdown_warm()
+
+    def release_worker(self) -> None:
+        """End the waiting worker now (e.g. before models are moved or removed: it keeps their files open)."""
+        self.runner.shutdown_warm()
+
+    def _release_idle(self):
+        self.runner.release_idle(float(app_settings().get("warm_idle_minutes", WARM_IDLE_MINUTES)) * 60)
 
     # ----------------------------------------------------------------- events
     def _poll(self):

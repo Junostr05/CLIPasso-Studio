@@ -233,6 +233,9 @@ class MainWindow(QMainWindow):
         self.about.show_tour.connect(self.show_tour)
         self.tour = None
         self.settings.models_dir_changed.connect(self._models_dir_changed)
+        self.settings.keep_models_changed.connect(self.controller.set_keep_models)
+        self.settings.release_worker = self.controller.release_worker
+        self.models.release_worker = self.controller.release_worker
         self.power_action = power.run  # replaced in tests
         self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
         self.settings.theme_changed.connect(self.apply_theme)

@@ -730,5 +730,7 @@
  "ui.export_every_step": "Jeder Zwischenstand",
  "ui.export_every_step_tip": "Stellt die Länge so ein, dass jeder gespeicherte Zwischenstand ein eigenes Bild bekommt. Wie viele es gibt, legst du vor dem Lauf fest: „Zwischenstand alle … Iterationen“ (1 = jede Iteration).",
  "ui.settings.parallel": "Auf großen CPUs mehrere Skizzen gleichzeitig rechnen",
- "ui.settings.parallel_tip": "CLIPasso und SwiftSketch: Ab 6 CPU-Kernen und genug freiem Arbeitsspeicher laufen die Skizzen eines Jobs nebeneinander statt nacheinander (jede mit ihrem Anteil der Kerne). Auf einer GPU nicht verwendet."
+ "ui.settings.parallel_tip": "CLIPasso und SwiftSketch: Ab 6 CPU-Kernen und genug freiem Arbeitsspeicher laufen die Skizzen eines Jobs nebeneinander statt nacheinander (jede mit ihrem Anteil der Kerne). Auf einer GPU nicht verwendet.",
+ "ui.settings.keep_models": "Modelle zwischen Jobs geladen lassen",
+ "ui.settings.keep_models_tip": "Der nächste Job der Warteschlange startet, ohne PyTorch und die Modelle neu zu laden (spart 5–60 s pro Job). Sie bleiben bis 5 Minuten nach dem letzten Job im Arbeitsspeicher."
 }

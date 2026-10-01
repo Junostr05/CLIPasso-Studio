@@ -730,5 +730,7 @@
  "ui.export_every_step": "Every step",
  "ui.export_every_step_tip": "Sets the length so that each saved step of the drawing process gets its own frame. How many steps there are is set before the run: “Save a step every … iterations” (1 = every iteration).",
  "ui.settings.parallel": "Compute several sketches at once on a big CPU",
- "ui.settings.parallel_tip": "CLIPasso and SwiftSketch: with 6 or more CPU cores and enough free memory, the sketches of a job run side by side instead of one after the other (each with its share of the cores). Not used on a GPU."
+ "ui.settings.parallel_tip": "CLIPasso and SwiftSketch: with 6 or more CPU cores and enough free memory, the sketches of a job run side by side instead of one after the other (each with its share of the cores). Not used on a GPU.",
+ "ui.settings.keep_models": "Keep the models loaded between jobs",
+ "ui.settings.keep_models_tip": "The next job of the queue starts without loading PyTorch and the models again (saves 5–60 s per job). They stay in memory until 5 minutes after the last job."
 }

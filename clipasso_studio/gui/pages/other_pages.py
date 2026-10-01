@@ -736,6 +736,7 @@ class ModelRow(Card):
         path, _ = QFileDialog.getOpenFileName(self, tr("ui.models.import_tip"), os.path.expanduser("~"), "ZIP (*.zip)")
         if not path:
             return
+        self.page.release_worker()  # a worker with loaded models keeps their files open (Windows)
         self.action.setEnabled(False)
 
         def done(_):
@@ -751,6 +752,7 @@ class ModelRow(Card):
     def _action(self):
         if model_store.find(self.key):
             if QMessageBox.question(self, tr("ui.models.remove"), tr("ui.models.remove_q")) == QMessageBox.Yes:
+                self.page.release_worker()
                 model_store.uninstall(self.key)
         else:
             dialogs.ask_download_missing(self, [self.key])
@@ -761,6 +763,7 @@ class ModelsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("Page")
+        self.release_worker = lambda: None  # the main window: end the warm worker (it keeps model files open)
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(16)
@@ -810,10 +813,12 @@ class ModelsPage(QWidget):
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
     models_dir_changed = Signal()
+    keep_models_changed = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.busy_check = lambda: False  # the main window: is a job running?
+        self.release_worker = lambda: None  # the main window: end the warm worker
         self.setObjectName("Page")
         s = app_settings()
         root = QVBoxLayout(self)
@@ -913,6 +918,11 @@ class SettingsPage(QWidget):
         self.updates.setChecked(bool(s.get("check_updates")))
         self.updates.toggled.connect(lambda v: s.set("check_updates", v))
         self.behaviour.body.addLayout(self._row(self.updates_label, self.updates))
+        self.warm_label = label("", None)
+        self.warm = ToggleSwitch()  # the worker stays open between jobs with its models loaded
+        self.warm.setChecked(bool(s.get("keep_models_loaded", True)))
+        self.warm.toggled.connect(lambda v: (s.set("keep_models_loaded", v), self.keep_models_changed.emit(v)))
+        self.behaviour.body.addLayout(self._row(self.warm_label, self.warm))
         self.parallel_label = label("", None)
         self.parallel = ToggleSwitch()  # several sketches of a job at the same time on a big CPU
         self.parallel.setChecked(s.get("parallel_sketches", "auto") == "auto")
@@ -975,6 +985,7 @@ class SettingsPage(QWidget):
         if self.busy_check():
             QMessageBox.information(self, tr("ui.settings.models_dir"), tr("ui.settings.models_busy"))
             return False
+        self.release_worker()  # its loaded models keep their files open (Windows)
         old = paths.downloaded_models_dir()
         if folder is None:
             folder = QFileDialog.getExistingDirectory(self, tr("ui.settings.models_dir"), str(old))
@@ -1070,6 +1081,9 @@ class SettingsPage(QWidget):
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))
         self.updates_label.setText(tr("ui.settings.check_updates"))
+        self.warm_label.setText(tr("ui.settings.keep_models"))
+        self.warm_label.setToolTip(tr("ui.settings.keep_models_tip"))
+        self.warm.setToolTip(tr("ui.settings.keep_models_tip"))
         self.parallel_label.setText(tr("ui.settings.parallel"))
         self.parallel_label.setToolTip(tr("ui.settings.parallel_tip"))
         self.parallel.setToolTip(tr("ui.settings.parallel_tip"))

@@ -98,6 +98,31 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
     return report
 
 
+def _selftest_warm(out_dir: str) -> dict:
+    """Two jobs in a row in the worker that stays open (the queue with "keep the models loaded")."""
+    import time
+
+    from . import paths
+    from .engine.runner import JobRunner
+
+    settings = {"num_iter": 2, "num_sketches": 1, "num_paths": 4, "mask_model": "u2net", "device": "cpu"}
+    runner = JobRunner(keep_warm=True)
+    pids, done = [], 0
+    try:
+        for i in range(2):
+            runner.start(settings, str(paths.resource("samples", "camel.png")), os.path.join(out_dir, f"warm{i}"))
+            deadline = time.time() + 600
+            while runner.is_running() and time.time() < deadline:
+                done += sum(1 for kind, _ in runner.poll() if kind == "job_done")
+                time.sleep(0.2)
+            pids.append(runner.warm_pid())
+    finally:
+        runner.kill()
+    ok = done == 2 and pids[0] is not None and pids[0] == pids[1]
+    print(f"selftest: warm worker {'ok' if ok else 'FAILED'} (jobs done {done}, pids {pids})", flush=True)
+    return {"ok": ok}
+
+
 def _selftest_mask(out_dir: str) -> dict:
     """BiRefNet with random weights at a reduced input size: the operations of the port and the
     safetensors round trip of its weights work in the packaged app (the methods above use U2Net)."""
@@ -211,6 +236,7 @@ def selftest(out_dir: str | None = None) -> int:
     methods = _selftest_diffusion_methods(out_dir)
     methods["resume"] = _selftest_resume(out_dir)
     methods["mask"] = _selftest_mask(out_dir)
+    methods["warm"] = _selftest_warm(out_dir)
     report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
               "clipasso": {"ok": ok, "best_svg": summary["best_svg"]}, **methods}
     print("selftest: " + json.dumps(report), flush=True)
