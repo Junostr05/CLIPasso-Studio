@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import (Property, QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, QTimer, Signal)
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
-from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
-                               QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPropertyAnimation, QRectF, QSize, Qt, QTimer, Signal)
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter
+from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
+                               QLabel, QLayout, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
 from .. import icons, theme
 
@@ -145,7 +145,11 @@ class SegmentedControl(QFrame):
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
         self._buttons: dict[str, QPushButton] = {}
+        self._labels: dict[str, str] = {}
+        self._icons: dict[str, str] = {}
+        self._compact = False
         for key, text in items:
+            self._labels[key] = text
             b = QPushButton(text)
             b.setObjectName("Segment")
             b.setCheckable(True)
@@ -177,15 +181,69 @@ class SegmentedControl(QFrame):
 
     def set_text(self, key: str, text: str) -> None:
         if key in self._buttons:
-            self._buttons[key].setText(text)
-            self._fit(self._buttons[key])
+            self._labels[key] = text
+            self._show(key)
+
+    def set_icons(self, names: dict[str, str]) -> None:
+        """Icons for the compact look (:meth:`set_compact`)."""
+        self._icons = dict(names)
+
+    def set_compact(self, compact: bool) -> None:
+        """Icons with the label as tooltip instead of the labels – when the labels do not fit."""
+        compact = compact and bool(self._icons)
+        if compact == self._compact:
+            return
+        self._compact = compact
+        for key in self._buttons:
+            self._show(key)
+
+    def is_compact(self) -> bool:
+        return self._compact
+
+    COMPACT_BUTTON = 38
+
+    def full_width(self) -> int:
+        """The width with the labels (also while compact)."""
+        keys = [k for k, b in self._buttons.items() if not b.isHidden()]
+        return self._frame_width(len(keys)) + sum(self._label_width(self._buttons[k], self._labels[k]) for k in keys)
+
+    def compact_width(self) -> int:
+        """The width with icons (labels without an icon keep their width)."""
+        keys = [k for k, b in self._buttons.items() if not b.isHidden()]
+        return self._frame_width(len(keys)) + sum(
+            self.COMPACT_BUTTON if k in self._icons else self._label_width(self._buttons[k], self._labels[k])
+            for k in keys)
+
+    def _frame_width(self, n: int) -> int:
+        lay = self.layout()
+        m = lay.contentsMargins()
+        return lay.spacing() * max(n - 1, 0) + m.left() + m.right() + 2
+
+    def _show(self, key: str) -> None:
+        b = self._buttons[key]
+        if self._compact and key in self._icons:
+            p = theme.current()
+            b.setText("")
+            b.setIcon(icons.icon(self._icons[key], p.muted, active_color=p.text))
+            b.setIconSize(QSize(16, 16))
+            b.setToolTip(self._labels[key])
+            b.setMinimumWidth(self.COMPACT_BUTTON)
+        else:
+            b.setIcon(QIcon())
+            b.setToolTip("")
+            b.setText(self._labels[key])
+            self._fit(b)
 
     @staticmethod
-    def _fit(b: QPushButton) -> None:
+    def _label_width(b: QPushButton, text: str) -> int:
         """Wide enough for the label in the bold font of the checked state (padding 12 px each side)."""
         f = QFont(b.font())
         f.setWeight(QFont.Weight.DemiBold)
-        b.setMinimumWidth(QFontMetrics(f).horizontalAdvance(b.text()) + 28)
+        return QFontMetrics(f).horizontalAdvance(text) + 28
+
+    @classmethod
+    def _fit(cls, b: QPushButton) -> None:
+        b.setMinimumWidth(cls._label_width(b, b.text()))
 
     def set_enabled(self, key: str, enabled: bool) -> None:
         if key in self._buttons:
@@ -194,6 +252,80 @@ class SegmentedControl(QFrame):
     def set_visible(self, key: str, visible: bool) -> None:
         if key in self._buttons:
             self._buttons[key].setVisible(visible)
+
+
+class WrapRow(QWidget):
+    """``first`` and ``second`` side by side when they fit, else ``second`` in a line below (e.g. the
+    view tabs and the tools above the sketch: squeezed into one line, the tabs' labels overlapped).
+    ``tail`` stays at the right end of the first line. A :class:`SegmentedControl` as ``first`` shows
+    icons instead of its labels when even they alone do not fit (SceneSketch has six views)."""
+
+    SPACING = 8
+
+    def __init__(self, first: QWidget, second: QWidget, tail: QWidget | None = None, parent=None):
+        super().__init__(parent)
+        self._first, self._second, self._tail = first, second, tail
+        self._grid = QGridLayout(self)
+        self._grid.setSizeConstraint(QLayout.SetNoConstraint)  # the minimum: see minimumSizeHint
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(self.SPACING)
+        self._grid.setVerticalSpacing(6)
+        self._wrapped: bool | None = None
+        for w in (first, second, tail):
+            if w is not None:
+                w.installEventFilter(self)  # shown / hidden / resized parts: check again
+        self._place(False)
+
+    def is_wrapped(self) -> bool:
+        return bool(self._wrapped)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        """Narrow enough for the compact tabs over the tools (the parts adapt, see :meth:`_update`)."""
+        first = self._first.compact_width() if hasattr(self._first, "compact_width") else \
+            self._first.minimumSizeHint().width()
+        widths = [first] + [w.minimumSizeHint().width() for w in (self._second, self._tail)
+                            if w is not None and not w.isHidden()]
+        return QSize(max(widths), super().minimumSizeHint().height())
+
+    def _needed(self) -> int:
+        parts = [w for w in (self._first, self._second, self._tail) if w is not None and not w.isHidden()]
+        return sum(w.sizeHint().width() for w in parts) + self.SPACING * max(len(parts) - 1, 0)
+
+    def _place(self, wrapped: bool) -> None:
+        if wrapped == self._wrapped:
+            return
+        self._wrapped = wrapped
+        g = self._grid
+        for w in (self._first, self._second, self._tail):
+            if w is not None:
+                g.removeWidget(w)
+        for c in range(3):
+            g.setColumnStretch(c, 0)
+        g.addWidget(self._first, 0, 0, Qt.AlignLeft | Qt.AlignVCenter)
+        if wrapped:
+            g.addWidget(self._second, 1, 0, 1, 2, Qt.AlignLeft | Qt.AlignVCenter)
+            tail_col = 1
+        else:
+            g.addWidget(self._second, 0, 1, Qt.AlignLeft | Qt.AlignVCenter)
+            tail_col = 2
+        g.setColumnStretch(tail_col, 1)
+        if self._tail is not None:
+            g.addWidget(self._tail, 0, tail_col, Qt.AlignRight | Qt.AlignVCenter)
+
+    def _update(self) -> None:
+        width = self.width()
+        if width > 0 and hasattr(self._first, "set_compact"):  # labels that do not fit: icons
+            self._first.set_compact(self._first.full_width() > width)
+        self._place(width > 0 and self._needed() > width)
+
+    def resizeEvent(self, event):  # noqa: N802
+        super().resizeEvent(event)
+        self._update()
+
+    def eventFilter(self, obj, event):  # noqa: N802
+        if event.type() in (QEvent.Show, QEvent.Hide, QEvent.LayoutRequest):
+            QTimer.singleShot(0, self, self._update)  # (dropped when the row is gone by then)
+        return False
 
 
 class CollapsibleSection(QWidget):

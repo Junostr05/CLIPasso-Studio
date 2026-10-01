@@ -22,7 +22,7 @@ from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SketchCanvas, load_pixmap)
-from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, button, label, tool_button
+from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, WrapRow, button, label, tool_button
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel, param_text_key
 
@@ -235,10 +235,14 @@ class StudioPage(QWidget):
         # ----------------------------------------------------------- center pane
         center = Card(margins=18, spacing=12)
         center.setMinimumWidth(420)
-        top = QHBoxLayout()
         self.modes = SegmentedControl([(m, "") for m in SketchCanvas.MODES])
+        self.modes.set_icons({"sketch": "pen-tool", "compare": "flip-horizontal-2", "attention": "eye",
+                              "mask": "scan", "condition": "mountain", "matrix": "layers"})
         self.modes.changed.connect(self._mode_changed)
-        top.addWidget(self.modes)
+        tools = QWidget()  # the edit tools and the brush style; below the view tabs when they do not fit
+        tools_row = QHBoxLayout(tools)
+        tools_row.setContentsMargins(0, 0, 0, 0)
+        tools_row.setSpacing(2)
         # eraser: touch up the finished sketch (edited.svg, the original stays)
         self.edit_tools = QWidget()
         et = QHBoxLayout(self.edit_tools)
@@ -258,7 +262,7 @@ class StudioPage(QWidget):
         self.continue_btn.clicked.connect(self.continue_with_clipasso)
         for b in (self.eraser_btn, self.pen_btn, self.undo_btn, self.redo_btn, self.revert_btn, self.continue_btn):
             et.addWidget(b)
-        top.addWidget(self.edit_tools)
+        tools_row.addWidget(self.edit_tools)
         # brush style the sketches are shown in – also while they are computed; the export starts with it
         self.style_btn = tool_button("palette", "", 18)
         self.style_btn.setPopupMode(QToolButton.InstantPopup)
@@ -272,15 +276,14 @@ class StudioPage(QWidget):
             self.style_group.addAction(action)
             self.style_actions[key] = action
         self.style_btn.setMenu(self.style_menu)
-        top.addWidget(self.style_btn)
+        tools_row.addWidget(self.style_btn)
         self._edit_undo: dict[int, list[str]] = {}
         self._edit_redo: dict[int, list[str]] = {}
         self._edit_changed = False
-        top.addStretch(1)
         self.stage_badge = label("", "badge")
         self.stage_badge.setVisible(False)
-        top.addWidget(self.stage_badge)
-        center.body.addLayout(top)
+        self.canvas_header = WrapRow(self.modes, tools, self.stage_badge)
+        center.body.addWidget(self.canvas_header)
         self.resume_banner = Banner()  # an interrupted / cancelled job is shown: "Continue"
         self.resume_banner.action.connect(self.continue_viewed_job)
         center.body.addWidget(self.resume_banner)
