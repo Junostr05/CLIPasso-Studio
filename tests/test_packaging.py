@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_version_is_kept_in_one_place():
-    assert re.fullmatch(r"\d+\.\d+\.\d+", clipasso_studio.__version__)
+    assert re.fullmatch(r"\d+\.\d+\.\d+((a|b|rc)\d+)?", clipasso_studio.__version__)  # (PEP 440: 3.1.0b1)
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert 'dynamic = ["version"]' in pyproject
     assert not re.search(r'^version\s*=\s*"', pyproject, re.M)

@@ -1,38 +1,18 @@
-## CLIPasso Studio 3.0 – faster, draw along, one line, free format
+## CLIPasso Studio 3.1 beta 1 – older graphics cards (GTX 9xx / 10xx)
 
-**Turbo mode** (CLIPasso, ControlSketch, SceneSketch) – a switch in the input card: faster, with a slightly different result.
-- The CLIP features of a fixed set of 64 augmentations are computed once instead of every step; with several sketches all run to a quarter and only the best one is finished; a sketch stops once it no longer improves.
-- ControlSketch encodes with the small **TAESD** decoder (10 MB, downloaded on first use), works on a 384 px canvas and, on CPUs with AVX512-BF16/AMX, in bfloat16.
-- Measured on 4 CPU cores: CLIPasso 1.02 → 0.70 s per iteration (a standard job with 3 sketches about 3× faster with the pruning), ControlSketch 15.1 → 2.3 s per iteration.
+**A pre-release for testing** – the app does not offer it as an update; 3.0.0 stays the current version until 3.1.0.
 
-**Draw, continue, one line**
-- **Brush style live**: ink, pencil or marker right in the studio, also while the sketch is being computed (palette in the bar above the sketch).
-- **Pen + Continue with CLIPasso**: draw your own strokes into a finished sketch; CLIPasso adds new strokes around them and keeps yours fixed.
-- **One line**: CLIPasso draws the subject in one single continuous stroke.
+**Older NVIDIA cards on the GPU edition**
+- NVIDIA cards older than the GTX 16xx – e.g. a **GTX 1060** or GTX 970 – now compute on the graphics card instead of the processor. They are not in the app's PyTorch build (CUDA 12.8 starts with compute capability 7.5), so the GPU edition detects such a card at the start and offers an **add-on**: the official PyTorch 2.11 build with CUDA 12.6 (2.6 GB download, 4.1 GB on the disk, checked by SHA-256, downloaded from download.pytorch.org). After a restart the app uses it automatically, also in its worker processes. Newer cards need nothing and download nothing.
+- **Settings → System → Older graphics cards**: download the add-on, switch it on or off, remove it. **Graphics card precision**: *Automatic* (float16 for Stable Diffusion, ControlNet, BLIP and BiRefNet, as before) or *Always fp32* – to compare speed and memory on an older card.
+- An update to a version with another PyTorch asks to download the matching add-on again; add-ons of earlier versions are removed.
 
-**Faster without turbo** – the same algorithms and the same quality as 2.4:
-- New stroke rasterizer: a CLIPasso render step takes 47–62 instead of 68–152 ms, one line of 48 segments 40 instead of 4059 ms, ControlSketch 639 instead of 1752 ms (measured on a CPU).
-- The models stay loaded between the jobs of a queue; on a CPU with at least 6 cores and enough memory the sketches of a CLIPasso or SwiftSketch job run in parallel.
-- The app starts without loading PyTorch; exports run in the background.
-- Note: the results are not bit-identical to 2.4 – tiny rounding differences of the new renderer grow over thousands of optimisation steps.
-
-**Formats and inputs**
-- **Free aspect ratio**: export in the shape of the photo or cropped to the strokes (with a margin) – SVG, PNG, PDF, animations, copy and *Export all*.
-- **HEIC/HEIF** (iPhone), **AVIF**, TIFF, BMP, GIF; photos are turned upright by their EXIF rotation.
-- **Webcam** photo and a **Recent images** menu in the studio.
-
-**Gallery, queue, watched folder**
-- **Gallery 2.0**: fast with thousands of sketches; multi-select (delete, export, favourite), title / notes / tags with a filter, sorting by score, duration, strokes or name, keyboard.
-- **Queue**: reorder by dragging; pause, cancel, retry per row; details with *Load into the studio* and *Replace by the studio settings*; total time left. Failed and cancelled jobs stay after a restart.
-- **Watched folder** (Settings): images saved into a folder are sketched and exported by themselves.
-
-**Reliability**
-- Graphics memory full → continue on the CPU or with smaller settings; finished sketches are kept.
-- **Copy / save diagnostics** (Settings → System); rotated app log; the crash log of a crashed worker process is shown with the error.
-- **Storage** (Settings): clear the mask cache, thumbnails, old updates and pasted images; when the output folder changes, the results can move along.
-- Downloads check the free space first, verify every model by checksum and continue after an interruption, also from another mirror.
-- The installer removes the libraries of the old version when updating, names the shortcuts per edition (CPU and GPU side by side) and, when uninstalling, asks whether to remove the models and app data too.
-- *What's new?* in the update notice, *Check now* in the settings.
+**Please test (GTX 1060 6 GB)**
+1. Install the GPU edition below (`CLIPassoStudio-GPU-Setup.exe` + both `.bin` files in one folder).
+2. At the first start the app offers the add-on for your card – *Download now*, then restart.
+3. Settings → System should show *Active: PyTorch 2.11.0 with CUDA 12.6*, the card without “not supported”, and the studio *Device: GPU*.
+4. CLIPasso and SceneSketch with the *Fast* preset; ControlSketch once with *Automatic* and once with *Always fp32* precision (it may run out of the 6 GB with fp32 – the app then offers to continue on the CPU).
+5. *Copy diagnostics* (Settings → System) and send it together with the times.
 
 | File | For whom? |
 |---|---|

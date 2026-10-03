@@ -1,3 +1,12 @@
+## Neu in 3.1: ältere Grafikkarten
+
+- **GTX 9xx / 10xx auf der Grafikkarte:** NVIDIA-Karten vor der GTX 16xx (z. B. GTX 1060, GTX 970) rechnen jetzt auf der Grafikkarte statt auf dem Prozessor. Die App erkennt eine solche Karte selbst und bietet ein Zusatzpaket an: PyTorch mit CUDA 12.6, 2,6 GB Download. Neuere Karten brauchen es nicht.
+- **Einstellungen → System:** das Zusatzpaket laden, ein- und ausschalten oder entfernen, dazu die *Rechengenauigkeit der Grafikkarte* (fp16 oder zum Vergleichen immer fp32).
+
+---
+
+**Neu in 3.0**
+
 ## Zeichnen, weiterrechnen, eine Linie
 
 - **Pinselstil live:** Tinte, Bleistift oder Marker direkt in der Vorschau – auch während die Skizze entsteht (Palette in der Leiste über der Skizze).
