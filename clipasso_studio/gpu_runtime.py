@@ -31,6 +31,7 @@ PACKAGES = ("torch", "torchgen", "functorch", "torchvision")  # imported from th
 SETTING = "gpu_runtime"  # app setting: the name of the runtime that is switched on ("" = off)
 ENV = "CLIPASSO_GPU_RUNTIME"  # a runtime folder to use, whatever the settings say (CI, tests; set for workers)
 MARKER = "runtime.json"
+SYSTEM_LIBS = ("vcruntime", "msvcp", "concrt", "vcomp", "api-ms-", "ucrtbase", "libgomp", "libstdc++")  # shared
 _PYTORCH = "https://download.pytorch.org/whl/cu126/"
 
 
@@ -307,18 +308,26 @@ def check() -> dict:
     if site is not None:
         root = os.path.normcase(os.path.abspath(site))
         info["ok"] = os.path.normcase(os.path.abspath(torch.__file__)).startswith(root)
-        try:  # every library of PyTorch / CUDA must come from the runtime, not from the bundled PyTorch
+        lib = Path(site) / "torch" / "lib"  # every library the runtime has must be loaded from there
+        names = {p.name.lower() for p in lib.iterdir() if p.is_file()} if lib.is_dir() else set()
+        names = {n for n in names if n.endswith((".dll", ".so")) or ".so." in n}
+        names -= {n for n in names if n.startswith(SYSTEM_LIBS)}
+        try:
             import psutil
 
+            loaded = set()
             for mm in psutil.Process().memory_maps():
-                path = os.path.normcase(mm.path)
-                name = os.path.basename(path)
-                if name.endswith((".dll", ".pyd", ".so")) and name.startswith(("torch", "c10", "cu", "nv", "_c")) and \
-                        os.sep + "torch" in path and not path.startswith(root):
-                    info["outside"].append(mm.path)
+                path = os.path.normcase(os.path.abspath(mm.path))
+                name = os.path.basename(path).lower()
+                if name in names:
+                    if path.startswith(root):
+                        loaded.add(name)
+                    else:
+                        info["outside"].append(mm.path)
+            info["loaded"] = len(loaded)  # (none would mean the check saw nothing)
         except Exception as exc:  # noqa: BLE001 - reported
             info["maps_error"] = str(exc)
-        info["ok"] = info["ok"] and not info["outside"]
+        info["ok"] = info["ok"] and not info["outside"] and (info.get("loaded", 0) > 0 or not names)
     else:
         info["ok"] = not os.environ.get(ENV)
     return info
