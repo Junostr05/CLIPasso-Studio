@@ -185,8 +185,9 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         return {"unet": unet, "controlnet": controlnet, "vae": vae, "tokenizer": tokenizer,
                 "text_encoder": text_encoder, "alphas": alphas}
 
-    sd_key = ("sd", (condition, str(device)))
-    text_key = ("text", caption, str(device))
+    dtype = sds.model_dtype(device)  # (the precision setting may change between jobs of the warm worker)
+    sd_key = ("sd", (condition, str(device), str(dtype)))
+    text_key = ("text", caption, str(device), str(dtype))
     for k in [k for k in _cache if k[0] == "sd" and k != sd_key]:
         del _cache[k]  # another ControlNet / device: free the memory first
     if text_key not in _cache and sd_key in _cache and _cache[sd_key]["text_encoder"] is None:
@@ -198,10 +199,9 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     text, empty = _cache[text_key]
-    dtype = sds.model_dtype(device)
     vae = models["vae"]
     if turbo:
-        vae = _cached(("taesd", str(device)), lambda: sds.load_taesd(device))
+        vae = _cached(("taesd", str(device), str(dtype)), lambda: sds.load_taesd(device))
     loss_fn = sds.ControlSDSLoss(models["unet"], models["controlnet"], vae, text, empty,
                                  conditions.condition_tensor(cond_img, size, device, dtype), models["alphas"],
                                  guidance_scale=s["diffusion_guidance_scale"],

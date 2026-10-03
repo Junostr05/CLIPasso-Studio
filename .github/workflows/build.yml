@@ -195,6 +195,25 @@ jobs:
           Get-Content "$env:RUNNER_TEMP\selftest_onedir\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 120
           Get-Content "$env:RUNNER_TEMP\selftest_onedir\selftest.json" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "self-test failed with exit code $($p.ExitCode)" }
+      - name: PyTorch for older GPUs (CUDA 12.6 add-on)
+        if: env.SKIP != 'true' && matrix.edition == 'gpu'
+        shell: pwsh
+        run: |
+          # the exe downloads and unpacks the add-on like the app does, then must load PyTorch from it
+          # (not the bundled one) in itself and in its worker processes; no GPU here: the self-test runs on the CPU
+          $rt = "$env:RUNNER_TEMP\gpu_runtime"
+          $exe = "dist\CLIPassoStudio\CLIPassoStudio.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--gpu-runtime-install", $rt -Wait -PassThru -NoNewWindow
+          Get-Content "$rt\install.log" -Tail 15 -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "installing the add-on failed" }
+          $env:CLIPASSO_GPU_RUNTIME = (Get-ChildItem $rt -Directory | Where-Object Name -like "torch-*").FullName
+          $p = Start-Process -FilePath $exe -ArgumentList "--gpu-runtime-check", "$env:RUNNER_TEMP\gpu_runtime.json" -Wait -PassThru -NoNewWindow
+          Get-Content "$env:RUNNER_TEMP\gpu_runtime.json" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "the add-on's PyTorch was not used" }
+          $p = Start-Process -FilePath $exe -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_runtime" -Wait -PassThru -NoNewWindow
+          Get-Content "$env:RUNNER_TEMP\selftest_runtime\selftest.log" -Tail 40 -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "self-test with the add-on failed" }
+          Remove-Item -Recurse -Force $rt
       - name: PyInstaller (onefile portable exe)
         if: env.SKIP != 'true' && matrix.edition == 'cpu'
         shell: pwsh

@@ -84,7 +84,9 @@ class ControlSDSLoss:
 
 
 def model_dtype(device) -> torch.dtype:
-    return torch.float16 if torch.device(device).type == "cuda" else torch.float32
+    from ...precision import gpu_dtype
+
+    return gpu_dtype(device)
 
 
 def load_sd15(condition: str, device):

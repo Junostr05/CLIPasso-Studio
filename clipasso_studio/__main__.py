@@ -3,6 +3,8 @@
     CLIPassoStudio.exe              start the GUI
     CLIPassoStudio.exe --cli ...    command line mode (arguments of the original scripts, --method X)
     CLIPassoStudio.exe --selftest   short end-to-end runs of all methods used by the build pipeline
+    CLIPassoStudio.exe --gpu-runtime-install ROOT    download + unpack the PyTorch for older GPUs (CI)
+    CLIPassoStudio.exe --gpu-runtime-check OUT.json  which PyTorch this process loads (CI)
 """
 
 from __future__ import annotations
@@ -10,6 +12,10 @@ from __future__ import annotations
 import multiprocessing
 import os
 import sys
+
+from . import gpu_runtime
+
+gpu_runtime.activate()  # (from source; the frozen app does it in packaging/launch.py)
 
 
 def _attach_console() -> None:
@@ -96,6 +102,19 @@ def _selftest_diffusion_methods(out_dir: str) -> dict:
         report[method] = {"ok": bool(ok and summary.get("clip_score") is not None),
                           "clip_score": summary.get("clip_score"), "best_svg": svg}
     return report
+
+
+def _selftest_gpu_runtime() -> dict:
+    """With the PyTorch for older GPUs switched on: this process and a child process (like the workers) use it."""
+    import json
+
+    from .gui import hardware
+
+    here = gpu_runtime.check()
+    child = json.loads(hardware.probe())
+    ok = bool(here["ok"] and child.get("runtime") == gpu_runtime.active_name() and child.get("torch") == here["torch"])
+    print(f"selftest: gpu runtime {'ok' if ok else 'FAILED'} – here {here}, child process {child}", flush=True)
+    return {"ok": ok, "torch": here["torch"], "cuda": here["cuda"]}
 
 
 def _selftest_warm(out_dir: str) -> dict:
@@ -258,6 +277,8 @@ def selftest(out_dir: str | None = None) -> int:
     methods["resume"] = _selftest_resume(out_dir)
     methods["mask"] = _selftest_mask(out_dir)
     methods["warm"] = _selftest_warm(out_dir)
+    if gpu_runtime.active() or os.environ.get(gpu_runtime.ENV):
+        methods["gpu_runtime"] = _selftest_gpu_runtime()
     if sys.platform == "win32":  # (on Linux Qt Multimedia needs the PulseAudio library of the system)
         methods["inputs"] = _selftest_inputs(out_dir)
     report = {"ok": ok and all(r["ok"] for r in methods.values()), "seconds": round(time.time() - start, 1),
@@ -301,10 +322,46 @@ def _close_splash() -> None:
         pass
 
 
+def _gpu_runtime_tool(argv: list[str]) -> int:
+    """``--gpu-runtime-install ROOT`` / ``--gpu-runtime-check OUT.json`` for the build pipeline (the windowed
+    exe has no console the CI could read: the install logs to ROOT/install.log, the check writes OUT.json)."""
+    import json
+    import time
+    from pathlib import Path
+
+    if "--gpu-runtime-install" in argv:
+        root = Path(argv[argv.index("--gpu-runtime-install") + 1])
+        root.mkdir(parents=True, exist_ok=True)
+        with open(root / "install.log", "a", encoding="utf-8") as log:
+            last = [0.0]
+
+            def progress(done, total):
+                if total and time.time() - last[0] > 5:
+                    last[0] = time.time()
+                    log.write(f"{done / 1e6:.0f} / {total / 1e6:.0f} MB\n")
+                    log.flush()
+
+            try:
+                path = gpu_runtime.install(root=root, progress=progress)
+            except Exception:
+                import traceback
+
+                log.write(traceback.format_exc())
+                return 1
+            log.write(f"installed: {path}\n")
+        return 0
+    out = argv[argv.index("--gpu-runtime-check") + 1]
+    info = gpu_runtime.check()
+    Path(out).write_text(json.dumps(info, indent=2), encoding="utf-8")
+    return 0 if info["ok"] else 3
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if "--cli" in argv or "--selftest" in argv:
+    if "--cli" in argv or "--selftest" in argv or any(a.startswith("--gpu-runtime-") for a in argv):
         _close_splash()
+    if "--gpu-runtime-install" in argv or "--gpu-runtime-check" in argv:
+        return _gpu_runtime_tool(argv)
     if "--cli" in argv:
         _attach_console()
         _ensure_streams("cli.log")

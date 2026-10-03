@@ -20,7 +20,9 @@ def caption_image(image: Image.Image, device) -> str:
     from transformers import BlipForConditionalGeneration, BlipProcessor
 
     path = str(model_store.model_dir("blip"))
-    dtype = torch.float16 if torch.device(device).type == "cuda" else torch.float32
+    from ...precision import gpu_dtype
+
+    dtype = gpu_dtype(device)
     processor = BlipProcessor.from_pretrained(path)
     model = BlipForConditionalGeneration.from_pretrained(path, torch_dtype=dtype).to(device).eval()
     inputs = processor(images=image.convert("RGB"), text=_PROMPT, return_tensors="pt").to(device)

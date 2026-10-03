@@ -33,6 +33,9 @@ DEFAULTS: dict[str, Any] = {
     "watch_move_done": False,
     "keep_models_loaded": True,  # the worker stays open between jobs with its models (runner keep_warm)
     "parallel_sketches": "auto",  # "auto": the sketches of a job in parallel on a big CPU (runner.plan_workers)
+    "gpu_runtime": "",  # the PyTorch for older graphics cards that is switched on (gpu_runtime.py), "" = off
+    "gpu_runtime_dismissed": "",  # its offer was declined ("don't ask again") for this runtime
+    "gpu_precision": "auto",  # "auto": float16 for the big networks on the GPU, "fp32": always full precision
     "skipped_version": "",
     "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,

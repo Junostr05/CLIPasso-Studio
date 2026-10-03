@@ -13,10 +13,16 @@ from .app_settings import app_settings
 
 
 def _probe_main(q) -> None:
+    from .. import gpu_runtime
+
+    gpu_runtime.activate()  # (normally done at the start of the process)
     try:
         import torch
 
-        info = {"torch": torch.__version__, "cuda_build": torch.version.cuda or "", "gpus": []}
+        from .. import gpu_runtime
+
+        info = {"torch": torch.__version__, "cuda_build": torch.version.cuda or "", "gpus": [],
+                "runtime": gpu_runtime.active_name()}  # "": the bundled PyTorch, else the one for older GPUs
         info["cuda"] = bool(torch.cuda.is_available() and torch.cuda.device_count() > 0)
         if info["cuda"]:
             from ..engine.pipeline import cuda_arch_supported
@@ -24,7 +30,8 @@ def _probe_main(q) -> None:
             for i in range(torch.cuda.device_count()):
                 prop = torch.cuda.get_device_properties(i)
                 info["gpus"].append({"name": prop.name, "memory_gb": round(prop.total_memory / 2 ** 30, 1),
-                                     "supported": bool(cuda_arch_supported(i))})
+                                     "supported": bool(cuda_arch_supported(i)),
+                                     "capability": [int(prop.major), int(prop.minor)]})
         q.put(info)
     except Exception as exc:  # no usable PyTorch: reported, the app still works
         q.put({"error": f"{type(exc).__name__}: {exc}"})
@@ -59,13 +66,17 @@ def store(text: str) -> dict:
 
 
 def cached() -> dict | None:
-    """The last answer of this app version, or None (not probed yet)."""
+    """The last answer of this app version (and the same PyTorch for older GPUs), or None (not probed yet)."""
+    from .. import gpu_runtime
+
     info = app_settings().get("hardware")
-    if isinstance(info, dict) and info.get("version") == __version__ and "error" not in info:
+    if isinstance(info, dict) and info.get("version") == __version__ and "error" not in info and \
+            info.get("runtime", "") == gpu_runtime.active_name():
         return info
     return None
 
 
 def has_cuda() -> bool:
+    """A GPU this PyTorch can compute on (one it has no kernels for does not count)."""
     info = cached()
-    return bool(info and info.get("cuda"))
+    return bool(info and info.get("cuda") and any(g.get("supported", True) for g in info.get("gpus") or [{}]))

@@ -850,6 +850,7 @@ class SettingsPage(QWidget):
         self.system_info = label("", "mono", wrap=True)
         self.system_info.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.system.body.addWidget(self.system_info)
+        self._build_gpu_runtime(self.system.body)
         self.logs_btn = button("", "folder-open", "ghost")
         self.logs_btn.clicked.connect(crash.open_logs_folder)
         self.diag_copy_btn = button("", "copy", "ghost")
@@ -1176,6 +1177,109 @@ class SettingsPage(QWidget):
         self._hardware = info
         self.retranslate()
 
+    # ------------------------------------------------------- PyTorch for older GPUs
+    def _build_gpu_runtime(self, body):
+        """Older graphics cards (GTX 9xx / 10xx): the extra PyTorch with CUDA 12.6 (gpu_runtime) and the
+        precision of the GPU."""
+        from ... import gpu_runtime
+
+        self.gpurt_box = QWidget()
+        col = QVBoxLayout(self.gpurt_box)
+        col.setContentsMargins(0, 6, 0, 2)
+        col.setSpacing(6)
+        self.gpurt_title = label("", "h3")
+        self.gpurt_state = label("", "faint", wrap=True)
+        col.addWidget(self.gpurt_title)
+        col.addWidget(self.gpurt_state)
+        row = QHBoxLayout()
+        self.gpurt_load = button("", "download", "ghost")
+        self.gpurt_load.clicked.connect(self._gpurt_download)
+        self.gpurt_switch_label = label("", None)
+        self.gpurt_switch = ToggleSwitch()
+        self.gpurt_switch.toggled.connect(self._gpurt_switched)
+        self.gpurt_remove = button("", "trash-2", "ghost")
+        self.gpurt_remove.clicked.connect(self._gpurt_remove)
+        for w in (self.gpurt_load, self.gpurt_switch_label, self.gpurt_switch, self.gpurt_remove):
+            row.addWidget(w)
+        row.addStretch(1)
+        col.addLayout(row)
+        self.gpu_precision_label = label("", None)
+        self.gpu_precision = QComboBox()
+        for value in ("auto", "fp32"):
+            self.gpu_precision.addItem("", value)
+        self.gpu_precision.setCurrentIndex(max(self.gpu_precision.findData(app_settings().get("gpu_precision")), 0))
+        self.gpu_precision.currentIndexChanged.connect(
+            lambda _: app_settings().set("gpu_precision", self.gpu_precision.currentData()))
+        col.addLayout(self._row(self.gpu_precision_label, self.gpu_precision))
+        body.addWidget(self.gpurt_box)
+        self._gpurt_rt = gpu_runtime.LEGACY
+
+    def gpu_runtime_visible(self) -> bool:
+        from ... import gpu_runtime
+        from .. import gpu_runtime_ui
+
+        return gpu_runtime_ui.available_here() or gpu_runtime.is_installed() or bool(gpu_runtime.active()) or \
+            bool(gpu_runtime.helps(self._hardware))
+
+    def refresh_gpu_runtime(self) -> str:
+        from ... import gpu_runtime
+        from .. import gpu_runtime_ui
+
+        st = gpu_runtime_ui.state()
+        rt = gpu_runtime.LEGACY
+        self.gpurt_box.setVisible(self.gpu_runtime_visible())
+        self.gpurt_title.setText(tr("ui.gpurt.row_title"))
+        if st == "active":
+            text = tr("ui.gpurt.state_active", torch=gpu_runtime.TORCH_VERSION, cuda=rt.cuda)
+        elif st == "missing":
+            text = tr("ui.gpurt.state_missing", download=gpu_runtime_ui.gb(rt.download_size))
+        else:
+            text = tr(f"ui.gpurt.state_{st}")
+        self.gpurt_state.setText(text)
+        self.gpurt_load.setVisible(st == "missing")
+        self.gpurt_load.setText(tr("ui.gpurt.load_btn"))
+        for w in (self.gpurt_switch_label, self.gpurt_switch, self.gpurt_remove):
+            w.setVisible(st != "missing")
+        self.gpurt_switch_label.setText(tr("ui.gpurt.switch"))
+        self.gpurt_switch.blockSignals(True)
+        self.gpurt_switch.setChecked(st in ("active", "restart"))
+        self.gpurt_switch.blockSignals(False)
+        self.gpurt_remove.setText(tr("ui.gpurt.remove_btn"))
+        self.gpu_precision_label.setText(tr("ui.gpurt.precision"))
+        self.gpu_precision_label.setToolTip(tr("ui.gpurt.precision_tip"))
+        self.gpu_precision.setToolTip(tr("ui.gpurt.precision_tip"))
+        self.gpu_precision.setItemText(0, tr("ui.gpurt.precision_auto"))
+        self.gpu_precision.setItemText(1, tr("ui.gpurt.precision_fp32"))
+        return st
+
+    def _gpurt_download(self):
+        from .. import gpu_runtime_ui
+
+        gpu_runtime_ui.download(self)
+        self.refresh_gpu_runtime()
+
+    def _gpurt_switched(self, on: bool):
+        from .. import gpu_runtime_ui
+
+        gpu_runtime_ui.switch(on)
+        self.refresh_gpu_runtime()
+        gpu_runtime_ui.ask_restart(self)
+
+    def _gpurt_remove(self, confirm: bool = True) -> bool:
+        from ... import gpu_runtime
+        from .. import gpu_runtime_ui
+
+        rt = gpu_runtime.LEGACY
+        if confirm and QMessageBox.question(self, tr("ui.gpurt.row_title"),
+                                            tr("ui.gpurt.remove_q", disk=gpu_runtime_ui.gb(rt.unpacked))) \
+                != QMessageBox.Yes:
+            return False
+        gpu_runtime_ui.switch(False)
+        if not gpu_runtime.remove():  # in use by this app: deleted at the next start
+            QMessageBox.information(self, tr("ui.gpurt.row_title"), tr("ui.gpurt.removed_later"))
+        self.refresh_gpu_runtime()
+        return True
+
     def _hardware_text(self) -> str:
         info = self._hardware
         if not info:
@@ -1258,6 +1362,7 @@ class SettingsPage(QWidget):
             info.append(hw)
         info.append(f"{tr('ui.models.title')}: {paths.bundled_models_dir()}")
         self.system_info.setText("\n".join(info))
+        self.refresh_gpu_runtime()
 
 
 # ====================================================================== about

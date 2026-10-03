@@ -133,7 +133,9 @@ def load_pipeline(device, spec_key: str = "sdxl"):
     _hf_offline()
     from diffusers import DDIMScheduler, StableDiffusionXLPipeline
 
-    dtype = torch.float16 if torch.device(device).type == "cuda" else torch.float32
+    from ...precision import gpu_dtype
+
+    dtype = gpu_dtype(device)
     scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                               set_alpha_to_one=False)
     pipe = StableDiffusionXLPipeline.from_pretrained(str(model_store.model_dir(spec_key)), torch_dtype=dtype,

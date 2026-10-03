@@ -125,6 +125,9 @@ def _worker_main(worker_id, settings, target, output_root, job_dir, seeds, finis
                  threads, resume=False, share=1):
     """Entry point of a worker process. ``threads``: the number chosen in the settings (0 = automatic);
     ``share``: workers running at the same time, which divide the physical cores among them."""
+    from .. import gpu_runtime
+
+    gpu_runtime.activate()  # (normally done at the start of the process: packaging/launch.py, __main__)
     reporter = _QueueReporter(q, worker_id)
     fault_log = logs.start_worker_log()
     try:
@@ -165,6 +168,9 @@ def release_cached_models() -> None:
 
 def _warm_main(job_q, q, stop_event, pause_event):
     """A worker that runs one job after the other (see the module docstring)."""
+    from .. import gpu_runtime
+
+    gpu_runtime.activate()
     fault_log = logs.start_worker_log()
     try:
         _warm_loop(job_q, q, stop_event, pause_event)

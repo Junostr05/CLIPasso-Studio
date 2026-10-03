@@ -295,6 +295,9 @@ class MainWindow(QMainWindow):
 
         if not self.close():
             return False
+        from .. import gpu_runtime
+
+        gpu_runtime.forget_for_children()  # the new process follows the settings (PyTorch for older GPUs)
         program, args = restart_command()
         QProcess.startDetached(program, args)
         QApplication.quit()
@@ -338,6 +341,9 @@ class MainWindow(QMainWindow):
         program, args = updates.install_command(path, mode)
         if not self.close():  # a running job: the user decided to keep it
             return False
+        from .. import gpu_runtime
+
+        gpu_runtime.forget_for_children()
         QProcess.startDetached(program, args)
         QApplication.quit()
         return True
@@ -547,8 +553,14 @@ class MainWindow(QMainWindow):
         from .storage import write_uninstall_info
 
         write_uninstall_info()
-        dialogs.run_in_thread(self, lambda progress=None: updates.remove_old_updates(),
-                              on_error=lambda msg: None)
+
+        def tidy(progress=None):
+            from .. import gpu_runtime
+
+            gpu_runtime.cleanup()  # PyTorch for older GPUs of earlier versions, or removed
+            return updates.remove_old_updates()
+
+        dialogs.run_in_thread(self, tidy, on_error=lambda msg: None)
 
     def check_updates_now(self) -> None:
         """Settings → "Check for updates now": also when the automatic check is off; says the result."""
@@ -604,8 +616,18 @@ class MainWindow(QMainWindow):
             info = hardware.store(text)
             self.settings.set_hardware(info)
             self.studio.hardware_known()
+            QTimer.singleShot(0, lambda: self.offer_gpu_runtime(info))
 
         dialogs.run_in_thread(self, hardware.probe, on_done=done, on_error=lambda msg: None)
+
+    def offer_gpu_runtime(self, info: dict | None) -> str | None:
+        """A graphics card the bundled PyTorch cannot use (GTX 10xx …): offer the PyTorch for older cards."""
+        from . import gpu_runtime_ui
+
+        answer = gpu_runtime_ui.offer(self, info)
+        if answer is not None:
+            self.settings.refresh_gpu_runtime()
+        return answer
 
     def show_running_job(self):
         """The sidebar's run indicator: the studio with the running job's live view."""

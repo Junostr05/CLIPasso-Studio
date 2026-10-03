@@ -234,9 +234,10 @@ def _predict(device, im: Image.Image, model: str, net=None) -> np.ndarray:
     x = ((x - torch.tensor(MEAN)) / torch.tensor(STD)).permute(2, 0, 1)[None].to(device)
     own = net is None
     net = net or nets.load_birefnet(device, model)
-    on_gpu = torch.device(device).type == "cuda"
+    from .precision import half_precision
+
     # on a GPU in half precision: half the memory and about twice as fast at 1024 px
-    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.float16, enabled=on_gpu):
+    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.float16, enabled=half_precision(device)):
         logits = net(x).float()
     prob = F.interpolate(logits.sigmoid(), size=(im.height, im.width), mode="bilinear", align_corners=False)
     prob = prob[0, 0].clamp(0, 1).cpu().numpy()

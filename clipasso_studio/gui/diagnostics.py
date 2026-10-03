@@ -18,7 +18,7 @@ from .. import APP_NAME, __version__, logs, paths
 
 LOG_LINES = 50
 SETTING_KEYS = ("language", "theme", "ui_scale", "canvas_style", "keep_models_loaded", "parallel_sketches",
-                "watch_enabled", "check_updates")
+                "watch_enabled", "check_updates", "gpu_runtime", "gpu_precision")
 
 
 def _gb(n: float) -> str:
@@ -63,10 +63,13 @@ def hardware_lines(info: dict | None) -> list[str]:
         return ["PyTorch: not checked yet"]
     if info.get("error"):
         return [f"PyTorch: {info['error']}"]
-    lines = [f"PyTorch {info.get('torch', '?')} · CUDA build {info.get('cuda_build') or '–'}"]
+    runtime = f" · runtime {info['runtime']}" if info.get("runtime") else ""  # PyTorch for older GPUs
+    lines = [f"PyTorch {info.get('torch', '?')} · CUDA build {info.get('cuda_build') or '–'}{runtime}"]
     for i, gpu in enumerate(info.get("gpus") or []):
         note = "" if gpu.get("supported", True) else " · NOT SUPPORTED by this PyTorch"
-        lines.append(f"GPU {i}: {gpu.get('name', '?')} · {gpu.get('memory_gb', 0):.1f} GB{note}")
+        cap = gpu.get("capability")
+        cap = f" · compute {cap[0]}.{cap[1]}" if isinstance(cap, list) and len(cap) == 2 else ""
+        lines.append(f"GPU {i}: {gpu.get('name', '?')} · {gpu.get('memory_gb', 0):.1f} GB{cap}{note}")
     if not info.get("gpus"):
         lines.append("GPU: none usable (CPU only)")
     return lines
