@@ -1,0 +1,39 @@
+{
+  "version": "3.1.0",
+  "date": "2026-10-05",
+  "calibration_gflops": 327.2,
+  "cases": {
+    "clipasso": {
+      "scores": [
+        70.37,
+        85.71
+      ],
+      "mean_score": 78.04,
+      "wall": 376.1,
+      "sec_per_it": 1.231,
+      "peak_rss": 2899243008
+    },
+    "swiftsketch": {
+      "scores": [
+        80.4,
+        83.73,
+        82.15,
+        82.24
+      ],
+      "mean_score": 82.13,
+      "wall": 11.7,
+      "sec_per_it": 0.035,
+      "peak_rss": 2431086592
+    },
+    "scenesketch": {
+      "scores": [
+        67.12
+      ],
+      "mean_score": 67.12,
+      "wall": 203.1,
+      "sec_per_it": 0.643,
+      "peak_rss": 1724796928
+    }
+  },
+  "source": "CI run 68 (ubuntu-latest), code of 3.1.0 for these cases"
+}

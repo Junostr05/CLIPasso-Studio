@@ -3,9 +3,14 @@
 Each case runs in its own process, so its peak memory is its own. The result – the CLIP score of every sketch,
 the time, the peak memory – is compared with ``benchmarks/baseline.json``:
 
-- a CLIP score lower by more than ``SCORE_FAIL`` points on average fails (exit code 1),
+- a CLIP score lower by more than ``SCORE_FAIL`` points on average fails (exit code 1), by more than
+  ``SCORE_WARN`` warns,
 - a time longer by more than ``TIME_WARN`` (after scaling with a matrix-multiplication calibration of the
   computer, CI machines differ) or more memory than ``RSS_WARN`` warns.
+
+The same code gives different sketches on different CPUs (tiny rounding differences grow over the optimisation:
+measured 72.1 and 67.1 for the same SceneSketch run on two machines), hence the wide limit for a failure: it is
+meant for real breakage (a broken loss or renderer costs far more), the warning for drifts worth a look.
 
 A case whose models are not installed is skipped (``--fetch`` downloads them first).
 
@@ -33,7 +38,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 BASELINE = ROOT / "benchmarks" / "baseline.json"
-SCORE_FAIL = 2.0  # CLIP score points (mean over the sketches of a case)
+SCORE_FAIL = 5.0  # CLIP score points (mean over the sketches of a case)
+SCORE_WARN = 2.0
 TIME_WARN = 1.3  # x the (calibrated) time of the baseline
 RSS_WARN = 1.2  # x the peak memory of the baseline
 
@@ -139,6 +145,8 @@ def compare(current: dict, baseline: dict | None) -> tuple[list[dict], bool]:
                 row["verdict"] = "fail"
                 row["notes"].append(f"CLIP score {row['score_delta']:+.2f}")
                 failed = True
+            elif row["score_delta"] < -SCORE_WARN:
+                row["notes"].append(f"CLIP score {row['score_delta']:+.2f}")
             if base.get("wall"):
                 row["time_ratio"] = round(now["wall"] * speed / base["wall"], 2)
                 if row["time_ratio"] > TIME_WARN:
