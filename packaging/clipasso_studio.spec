@@ -95,6 +95,13 @@ version = None
 # stays byte for byte the same from one release to the next and an update leaves it out (75 MB). Set it to the
 # app's version when the libraries change (PyTorch, Qt, …) – then the exe changes anyway.
 EXE_VERSION = "3.3"
+# ... and for the same reason a fixed build time in its header (PyInstaller takes SOURCE_DATE_EPOCH; it would write
+# the current time) – together with PYTHONHASHSEED=0 for the build (CI), which fixes the order PyInstaller writes the
+# file list of the splash screen in. Without these two the exe differed in a few bytes from build to build.
+EXE_TIMESTAMP = 1791205567  # (the build time of the 3.3.0 exe)
+os.environ.setdefault("SOURCE_DATE_EPOCH", str(EXE_TIMESTAMP))
+if IS_WIN and os.environ.get("PYTHONHASHSEED") != "0":
+    print("WARNING: PYTHONHASHSEED is not 0 - the exe will differ from the last build (bigger updates)")
 if IS_WIN:
     _nums = [int(n) for n in EXE_VERSION.split(".")]
     _info = (ROOT / "packaging" / "version_info.in").read_text(encoding="utf-8")

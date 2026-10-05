@@ -231,6 +231,7 @@ jobs:
         shell: pwsh
         env:
           MODE: onedir
+          PYTHONHASHSEED: "0"  # (the same exe from build to build: small updates)
         run: pyinstaller --noconfirm --clean --workpath build\onedir --distpath dist packaging\clipasso_studio.spec
       - name: Self-test (onedir)
         if: env.SKIP != 'true'
@@ -264,6 +265,7 @@ jobs:
         shell: pwsh
         env:
           MODE: onefile
+          PYTHONHASHSEED: "0"  # (the same exe from build to build: small updates)
         run: |
           Remove-Item -Recurse -Force build\onedir -ErrorAction SilentlyContinue
           pyinstaller --noconfirm --workpath build\onefile --distpath dist packaging\clipasso_studio.spec

@@ -31,6 +31,10 @@ def test_version_info_template_is_filled_like_the_spec():
     assert m and (int(m.group(1)), int(m.group(2))) <= tuple(int(n) for n in clipasso_studio.__version__.split(".")[:2])
     assert '_info.replace("{version}", EXE_VERSION)' in spec and "_nums + [0] * (4 - len(_nums))" in spec
     assert 'module_collection_mode={"clipasso_studio": "pyc"}' in spec
+    # ... and byte for byte the same from build to build: a fixed build time, a fixed hash seed (splash file list)
+    assert 'os.environ.setdefault("SOURCE_DATE_EPOCH", str(EXE_TIMESTAMP))' in spec
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    assert workflow.count('PYTHONHASHSEED: "0"') == 2
 
 
 def _pins(path: Path) -> dict[str, str]:
