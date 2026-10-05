@@ -1,4 +1,10 @@
-## CLIPasso Studio 3.2 – steadier, faster, smaller updates
+## CLIPasso Studio 3.2.1 – SceneSketch on the graphics card
+
+**Fixed in 3.2.1**
+- SceneSketch on an NVIDIA card: a scene with an object stopped at the end of its first cell with “Expected all tensors to be on the same device” – the background strokes cut at the object were made on the processor while the others stayed on the graphics card. Found with the new self-test; the renderer now also brings strokes from different devices together.
+- The first small update: an app on 3.2.0 downloads only the files that changed (`…-Patch-from-3.2.0.exe` / `…-Portable-Patch-from-3.2.0.zip`).
+
+**New in 3.2**
 
 **Small updates**
 - Every release now carries the file list of each edition. From the next update on, the app downloads only the files that changed: a small patch for the installed app (`…-Patch-from-<version>.exe`, the same silent one-click install) and for the portable ZIP. A release with a new PyTorch has no patch – then the full files come as before. The single portable exe is always replaced as a whole.

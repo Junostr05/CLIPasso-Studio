@@ -1,5 +1,6 @@
 ## New in 3.2: steadier, faster, smaller updates
 
+- **3.2.1 – SceneSketch on the graphics card:** scenes with an object stopped on the graphics card at the end of the first cell (“Expected all tensors to be on the same device”). Fixed – found with the new self-test. This is the first small update: it downloads only the files that changed.
 - **Small updates:** from the next update on, the app downloads only the files that changed – usually megabytes instead of 1 GB (CPU) or 3.5 GB (GPU). When PyTorch changes, the whole package comes as before.
 - **Self-test:** Settings → System → *Self-test* checks every method, continuing, the background removal and loading the models in a few minutes.
 - **Report a problem:** on an error (and in the settings) *Report a problem …* prepares a report for GitHub – with the diagnostics, paths with your name shortened, and you see and can change everything first.
