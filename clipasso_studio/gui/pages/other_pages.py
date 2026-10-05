@@ -839,6 +839,15 @@ class SettingsPage(QWidget):
         self.parallel.setChecked(s.get("parallel_sketches", "auto") == "auto")
         self.parallel.toggled.connect(lambda v: s.set("parallel_sketches", "auto" if v else "off"))
         self.behaviour.body.addLayout(self._row(self.parallel_label, self.parallel))
+        self.multi_gpu_box = QWidget()  # (only with two or more graphics cards)
+        self.multi_gpu_label = label("", None)
+        self.multi_gpu = ToggleSwitch()  # the sketches of a job spread over the graphics cards
+        self.multi_gpu.setChecked(bool(s.get("multi_gpu", True)))
+        self.multi_gpu.toggled.connect(lambda v: s.set("multi_gpu", bool(v)))
+        row = self._row(self.multi_gpu_label, self.multi_gpu)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.multi_gpu_box.setLayout(row)
+        self.behaviour.body.addWidget(self.multi_gpu_box)
         col.addWidget(self.behaviour)
 
         self._build_watch(col)
@@ -860,6 +869,15 @@ class SettingsPage(QWidget):
         self.diag_save_btn.clicked.connect(self.save_diagnostics)
         row = QHBoxLayout()
         for b in (self.logs_btn, self.diag_copy_btn, self.diag_save_btn):
+            row.addWidget(b)
+        row.addStretch(1)
+        self.system.body.addLayout(row)
+        self.selftest_btn = button("", "circle-check", "ghost")
+        self.selftest_btn.clicked.connect(self.run_selftest)
+        self.report_btn = button("", "triangle-alert", "ghost")
+        self.report_btn.clicked.connect(self.report_problem)
+        row = QHBoxLayout()
+        for b in (self.selftest_btn, self.report_btn):
             row.addWidget(b)
         row.addStretch(1)
         self.system.body.addLayout(row)
@@ -1174,6 +1192,16 @@ class SettingsPage(QWidget):
             return ""
         return path
 
+    def run_selftest(self) -> dict | None:
+        from .. import selftest_ui
+
+        return selftest_ui.run(self)
+
+    def report_problem(self) -> None:
+        from .. import report
+
+        report.ReportDialog(self).exec()
+
     def set_hardware(self, info: dict | None):
         """The answer of the hardware probe (gui/hardware.py)."""
         self._hardware = info
@@ -1226,7 +1254,7 @@ class SettingsPage(QWidget):
         col.setSpacing(6)
         self.sdxl_label = label("", None)
         self.sdxl_choice = QComboBox()
-        for value in ("", "cpu", "clip"):
+        for value in ("", "offload", "cpu", "clip"):
             self.sdxl_choice.addItem("", value)
         self.sdxl_choice.setCurrentIndex(max(self.sdxl_choice.findData(
             app_settings().get(methods_ui.SDXL_SMALL_GPU) or ""), 0))
@@ -1250,7 +1278,7 @@ class SettingsPage(QWidget):
         self.sdxl_choice.setCurrentIndex(max(self.sdxl_choice.findData(value), 0))
         self.sdxl_choice.blockSignals(False)
         self.sdxl_label.setText(tr("ui.settings.sdxl_small_gpu"))
-        for i, key in enumerate(("ask", "cpu", "clip")):
+        for i, key in enumerate(("ask", "offload", "cpu", "clip")):
             self.sdxl_choice.setItemText(i, tr(f"ui.settings.sdxl_small_gpu.{key}"))
         self.sdxl_desc.setText(tr("ui.settings.sdxl_small_gpu.tip"))
 
@@ -1363,6 +1391,11 @@ class SettingsPage(QWidget):
         self.parallel_label.setText(tr("ui.settings.parallel"))
         self.parallel_label.setToolTip(tr("ui.settings.parallel_tip"))
         self.parallel.setToolTip(tr("ui.settings.parallel_tip"))
+        self.multi_gpu_label.setText(tr("ui.settings.multi_gpu"))
+        self.multi_gpu_label.setToolTip(tr("ui.settings.multi_gpu_tip"))
+        self.multi_gpu.setToolTip(tr("ui.settings.multi_gpu_tip"))
+        gpus = [g for g in (self._hardware or {}).get("gpus") or [] if g.get("supported", True)]
+        self.multi_gpu_box.setVisible(len(gpus) >= 2)
         self.watch_title.setText(tr("ui.watch.title"))
         self.watch_desc.setText(tr("ui.watch.desc"))
         self.watch_on_label.setText(tr("ui.watch.enabled"))
@@ -1389,6 +1422,10 @@ class SettingsPage(QWidget):
         self.diag_copy_btn.setToolTip(tr("ui.diag.tip"))
         self.diag_save_btn.setText(tr("ui.diag.save"))
         self.diag_save_btn.setToolTip(tr("ui.diag.tip"))
+        self.selftest_btn.setText(tr("ui.selftest.button"))
+        self.selftest_btn.setToolTip(tr("ui.selftest.desc"))
+        self.report_btn.setText(tr("ui.report.button"))
+        self.report_btn.setToolTip(tr("ui.report.tip"))
         self.system_title.setText(tr("ui.settings.system"))
         edition = tr(f"ui.edition.{EDITION}")
         info = [f"{APP_NAME} {__version__} · {edition}",

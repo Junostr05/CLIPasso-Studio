@@ -34,6 +34,7 @@ class QueuedJob:
     finished: float = 0.0
     eta: float = float("nan")
     device: str = ""
+    devices: set = field(default_factory=set, repr=False, compare=False)  # one per worker (several graphics cards)
     resume_dir: str = ""  # "Continue": the interrupted job folder
     oom: bool = False  # failed because the memory (of the GPU) ran out
     live: dict = field(default_factory=dict, repr=False, compare=False)  # latest previews (studio)
@@ -260,9 +261,11 @@ class JobController(QObject):
             return None
         out = app_settings().get("output_dir")
         try:
+            from .hardware import spread_gpus
+
             self.runner.start(nxt.settings, nxt.target, out, job_dir=nxt.resume_dir,
                               auto_parallel=app_settings().get("parallel_sketches", "auto") == "auto",
-                              cuda=methods_ui.has_cuda())
+                              cuda=methods_ui.has_cuda(), gpus=spread_gpus())
         except Exception as exc:  # e.g. output folder not writable
             nxt.status = "failed"
             nxt.message = str(exc)
@@ -328,6 +331,7 @@ class JobController(QObject):
         for kind, data in self.runner.poll():
             if kind == "job_start":
                 job.device = data.get("device", "")
+                job.devices.add(job.device)
             elif kind == "iteration":
                 seed = data["seed"]
                 job.seed_progress[seed] = (data["it"] + 1) / max(data["total"], 1)

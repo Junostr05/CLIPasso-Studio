@@ -175,16 +175,17 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         if uses_sdxl(s):
             from .sdxl_attention import object_attention
 
-            def tick(done, steps, on_cpu):  # SDXL on the CPU takes long: progress, pause and stop in between
-                if control.should_stop():
+            def tick(done, steps, mode, elapsed):  # SDXL piece by piece or on the CPU takes long: progress,
+                if control.should_stop():  # pause and stop in between
                     raise Cancelled()
                 control.wait_if_paused()
-                if on_cpu:
-                    reporter.event("stage", seed=seed, name="init_sdxl_cpu", step=done, steps=steps)
+                if mode != "gpu":
+                    reporter.event("stage", seed=seed, name=f"init_sdxl_{mode}", step=done, steps=steps,
+                                   elapsed=round(elapsed, 1))
 
             def log(code, **params):
-                reporter.event("log", message=f"seed {seed}: the SDXL attention runs on the CPU ({code})", code=code,
-                               seed=seed, **params)
+                reporter.event("log", message=f"seed {seed}: the SDXL attention does not fit on the graphics card "
+                                              f"({code})", code=code, seed=seed, **params)
 
             object_name = schema.text_value(s["object_name"])
             saved = os.path.join(run_dir, "sdxl_attention.npy")  # continuing the run does not compute it again
@@ -192,7 +193,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
                 attn = _load_array(saved)
                 if attn is None:
                     attn = _cached(("sdxl", object_name) + stamp, lambda: object_attention(
-                        inp["canvas"], object_name, device, size, tick=tick, log=log))
+                        inp["canvas"], object_name, device, size, place=s["sdxl_place"], tick=tick, log=log))
                     _save_array(saved, attn)
             except Cancelled:  # stopped during it: the strokes start evenly, the run ends before its first step
                 attn, stopped = torch.ones(size, size), True

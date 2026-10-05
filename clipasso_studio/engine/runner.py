@@ -33,6 +33,9 @@ WARM_MAX_JOBS = 20  # a fresh worker now and then (memory fragmentation)
 AUTO_MIN_CORES = 6  # physical cores before the seeds of a job run in parallel automatically
 RAM_PER_WORKER = {"clipasso": 2.5e9, "swiftsketch": 1.5e9}  # bytes a worker needs at most (about)
 RAM_RESERVE = 2e9  # left for the app and the system
+# methods whose sketches are independent: with several graphics cards one worker per card (SceneSketch's cells
+# build on each other)
+MULTI_GPU_METHODS = ("clipasso", "swiftsketch", "controlsketch")
 
 
 def hardware_info() -> tuple[int, int]:
@@ -46,13 +49,25 @@ def hardware_info() -> tuple[int, int]:
         return max(1, (os.cpu_count() or 2) // 2), 0
 
 
+def spreads_over_gpus(settings: dict, n_seeds: int, cuda: bool, gpus: int) -> bool:
+    """Do the seeds of this job run one worker per graphics card (``gpus`` usable cards)?"""
+    from .. import settings_schema as schema
+
+    device = settings.get("device", "auto")
+    return (gpus >= 2 and n_seeds > 1 and not schema.turbo_prunes(settings)
+            and schema.method_of(settings) in MULTI_GPU_METHODS and (device == "cuda" or (device == "auto" and cuda)))
+
+
 def plan_workers(settings: dict, n_seeds: int, auto: bool = True, cuda: bool = False,
-                 hw: tuple[int, int] | None = None) -> int:
-    """How many worker processes compute the seeds of a job at the same time."""
+                 hw: tuple[int, int] | None = None, gpus: int = 0) -> int:
+    """How many worker processes compute the seeds of a job at the same time. ``gpus``: graphics cards the
+    sketches may be spread over (0 / 1: no spreading)."""
     from .. import settings_schema as schema
 
     if n_seeds <= 1 or schema.turbo_prunes(settings):  # (turbo: the seeds are compared halfway)
         return 1
+    if spreads_over_gpus(settings, n_seeds, cuda, gpus):
+        return min(n_seeds, gpus)  # one worker per graphics card
     if settings.get("multiprocess"):  # chosen in the settings: always (like the original scripts)
         return min(n_seeds, MAX_PARALLEL_WORKERS)
     method = schema.method_of(settings)
@@ -292,9 +307,10 @@ class JobRunner:
 
     # ----------------------------------------------------------------- control
     def start(self, settings: dict, target: str, output_root: str, job_dir: str = "", auto_parallel: bool = False,
-              cuda: bool = False) -> Job:
+              cuda: bool = False, gpus: tuple[int, ...] = ()) -> Job:
         """Start a job; with ``job_dir`` an interrupted / cancelled job continues in its folder.
-        ``auto_parallel``: run the seeds in parallel when the CPU is big enough (``cuda``: a GPU is there)."""
+        ``auto_parallel``: run the seeds in parallel when the CPU is big enough (``cuda``: a GPU is there).
+        ``gpus``: the indices of the graphics cards the seeds may be spread over (one worker per card)."""
         if self.is_running():
             raise RuntimeError("a job is already running")
         from .. import settings_schema as schema
@@ -316,8 +332,9 @@ class JobRunner:
         seeds = jobs.job_seeds(settings)
         if resume and schema.method_of(settings) != "scenesketch":
             seeds = [s for s in seeds if s not in job.resumed]
-        n_workers = plan_workers(settings, len(seeds), auto=auto_parallel, cuda=cuda)
+        n_workers = plan_workers(settings, len(seeds), auto=auto_parallel, cuda=cuda, gpus=len(gpus))
         job.parallel = n_workers > 1
+        per_gpu = spreads_over_gpus(settings, len(seeds), cuda, len(gpus))
         threads = int(settings.get("num_threads", 0))
         self._idle_since = None
         if n_workers == 1 and self.keep_warm:
@@ -337,9 +354,10 @@ class JobRunner:
         self._pause = self._ctx.Event()
         chunks = [seeds[i::n_workers] for i in range(n_workers)]
         for wid, chunk in enumerate(chunks):
+            ws = {**settings, "device": "cuda", "gpunum": gpus[wid]} if per_gpu else settings
             p = self._ctx.Process(
                 target=_worker_main,
-                args=(wid, settings, target, output_root, job.job_dir, chunk, not job.parallel, self._queue,
+                args=(wid, ws, target, output_root, job.job_dir, chunk, not job.parallel, self._queue,
                       self._stop, self._pause, threads, resume and wid == 0, n_workers),
                 daemon=True,
             )

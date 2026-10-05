@@ -133,7 +133,9 @@ def token_index(tokenizer, prompt: str, position: int = 4) -> int:
     return words[min(position, len(words) - 1)] if words else 0
 
 
-def load_pipeline(device, spec_key: str = "sdxl"):
+def load_pipeline(device, spec_key: str = "sdxl", offload: bool = False):
+    """SDXL on ``device``. ``offload``: for a graphics card too small for it, the networks stay in the RAM and
+    every layer goes onto the card only while it computes (about 2 GB of graphics memory instead of 7)."""
     _hf_offline()
     from diffusers import DDIMScheduler, StableDiffusionXLPipeline
 
@@ -145,24 +147,36 @@ def load_pipeline(device, spec_key: str = "sdxl"):
     pipe = StableDiffusionXLPipeline.from_pretrained(str(model_store.model_dir(spec_key)), torch_dtype=dtype,
                                                      scheduler=scheduler)
     pipe.set_progress_bar_config(disable=True)
+    if offload:
+        # the VAE (small) stays on the card as a whole: ddim_inversion encodes the photo with it in float32
+        pipe._exclude_from_cpu_offload = ["vae"]
+        pipe.enable_sequential_cpu_offload(gpu_id=torch.device(device).index or 0)
+        return pipe
     return pipe.to(device)
 
 
-def run_device(device) -> torch.device:
-    """Where the SDXL step runs: on the CPU for a graphics card with less than ``SDXL_MIN_VRAM_GB`` (the rest of
-    ControlSketch stays on the card)."""
+MODES = ("gpu", "offload", "cpu")
+
+
+def run_mode(device, place: str = "offload") -> str:
+    """How the SDXL step runs: "gpu" (it fits), on a graphics card with less than ``SDXL_MIN_VRAM_GB``
+    "offload" (piece by piece) or "cpu" as ``place`` says, "cpu" without a graphics card. The rest of
+    ControlSketch stays on the card either way."""
     from ..requirements import sdxl_on_cpu
 
     device = torch.device(device)
-    if device.type == "cuda" and sdxl_on_cpu(torch.cuda.get_device_properties(device).total_memory / 2 ** 30):
-        return torch.device("cpu")
-    return device
+    if device.type != "cuda":
+        return "cpu"
+    if sdxl_on_cpu(torch.cuda.get_device_properties(device).total_memory / 2 ** 30):
+        return "cpu" if place == "cpu" else "offload"
+    return "gpu"
 
 
-def object_attention(image: Image.Image, object_name: str, device, size: int, tick=None, log=None) -> torch.Tensor:
-    """``sdxl_attention`` on the device it fits on: the CPU for a small graphics card, and the CPU as well when
-    the card runs out of memory. ``tick(step, steps, on_cpu)`` is called before every network step (pause and
-    stop; it may raise), ``log(code, **params)`` reports the move to the CPU."""
+def object_attention(image: Image.Image, object_name: str, device, size: int, place: str = "offload", tick=None,
+                     log=None) -> torch.Tensor:
+    """``sdxl_attention`` in the mode that fits (:func:`run_mode`); a graphics card that runs out of memory hands
+    it on: the whole card → piece by piece → the CPU. ``tick(step, steps, mode, elapsed)`` is called before every
+    network step (pause and stop; it may raise), ``log(code, **params)`` reports a mode other than the card."""
     import gc
 
     from ...runner import is_out_of_memory
@@ -171,35 +185,41 @@ def object_attention(image: Image.Image, object_name: str, device, size: int, ti
         if log is not None:
             log(code, **params)
 
-    run_on = run_device(device)
-    if run_on.type == "cuda":
-        try:
-            return sdxl_attention(image, object_name, run_on, size, tick=tick)
-        except Exception as exc:  # noqa: BLE001 - only running out of memory is handled
-            if not is_out_of_memory(exc):
-                raise
-        gc.collect()  # (outside the except block: the traceback no longer holds the tensors)
-        torch.cuda.empty_cache()
-        report("sdxl_cpu_oom")
-    elif torch.device(device).type == "cuda":
-        report("sdxl_cpu", gb=f"{torch.cuda.get_device_properties(device).total_memory / 2 ** 30:.0f}")
+    mode = run_mode(device, place)
+    chain = list(MODES[MODES.index(mode):])  # gpu → offload → cpu
+    if mode != "gpu" and torch.device(device).type == "cuda":
+        report(f"sdxl_{mode}", gb=f"{torch.cuda.get_device_properties(device).total_memory / 2 ** 30:.0f}")
     try:
-        return sdxl_attention(image, object_name, torch.device("cpu"), size, tick=tick)
+        for i, m in enumerate(chain):
+            if i:
+                gc.collect()  # (outside the except block: the traceback no longer holds the tensors)
+                torch.cuda.empty_cache()
+                report(f"sdxl_{m}_oom")
+            try:
+                return sdxl_attention(image, object_name, torch.device("cpu") if m == "cpu" else device, size,
+                                      tick=tick, offload=m == "offload")
+            except Exception as exc:  # noqa: BLE001 - only running out of graphics memory is handled
+                if m == "cpu" or not is_out_of_memory(exc):
+                    raise
     finally:
-        gc.collect()  # the SDXL model on the CPU (about 14 GB in float32) goes before Stable Diffusion loads
+        gc.collect()  # SDXL in the RAM (7–14 GB) goes before Stable Diffusion loads
+    raise AssertionError("unreachable")  # (the CPU either returns or raises)
 
 
 def sdxl_attention(image: Image.Image, object_name: str, device, size: int, pipe=None,
-                   steps: int = STEPS, tick=None) -> torch.Tensor:
+                   steps: int = STEPS, tick=None, offload: bool = False) -> torch.Tensor:
     """Attention of the object token -> [size, size] in [0, 1] (already squared like the original)."""
-    pipe = pipe or load_pipeline(device)
+    import time
+
+    pipe = pipe or load_pipeline(device, offload=offload)
     res = int(pipe.unet.config.sample_size * pipe.vae_scale_factor)
     prompt = PROMPT.format(object_name)
-    on_cpu = torch.device(device).type == "cpu"
+    mode = "cpu" if torch.device(device).type == "cpu" else "offload" if offload else "gpu"
+    start = time.time()
 
     def step(done):  # network steps done of the inversion and the generation
         if tick is not None:
-            tick(done, 2 * steps, on_cpu)
+            tick(done, 2 * steps, mode, time.time() - start)
 
     zts = ddim_inversion(pipe, np.array(image.convert("RGB").resize((res, res))), prompt, steps, 2.0, res, step)
     step(steps)

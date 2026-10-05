@@ -282,6 +282,9 @@ CONTROL_PARAMS: tuple[Param, ...] = (
           enabled_if=_on("use_init_method")),
     Param("object_name", "none", "text", "init", cli="object_name",
           enabled_if=lambda s: bool(s.get("use_init_method")) and s.get("attn_model") == "diffusion"),
+    # where SDXL runs on a graphics card with less than 8 GB: piece by piece on the card, or the CPU
+    Param("sdxl_place", "offload", "choice", "init", choices=("offload", "cpu"),
+          enabled_if=lambda s: bool(s.get("use_init_method")) and s.get("attn_model") == "diffusion"),
     Param("condition", "depth", "choice", "sds", cli="condition", choices=CONTROL_CONDITIONS),
     Param("conditioning_scale", 0.15, "float", "sds", cli="conditioning_scale", minimum=0.0, maximum=2.0, step=0.05,
           decimals=2),

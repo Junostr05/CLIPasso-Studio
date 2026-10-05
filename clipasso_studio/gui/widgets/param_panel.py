@@ -21,8 +21,9 @@ GROUP_ICONS = {
 }
 
 
-def ask_sdxl_on_cpu(parent, gb: str, minutes: int) -> tuple[str, bool]:
-    """SDXL chosen for a graphics card too small for it -> ("cpu" | "clip", remember the answer)."""
+def ask_sdxl_place(parent, gb: str, minutes: dict[str, int]) -> tuple[str, bool]:
+    """SDXL chosen for a graphics card too small for it -> ("offload" | "cpu" | "clip", remember the answer).
+    ``minutes``: the expected minutes of the SDXL step per mode."""
     from PySide6.QtWidgets import QMessageBox
 
     from ... import APP_NAME
@@ -31,15 +32,18 @@ def ask_sdxl_on_cpu(parent, gb: str, minutes: int) -> tuple[str, bool]:
     box.setIcon(QMessageBox.Question)
     box.setWindowTitle(APP_NAME)
     box.setText(tr("ui.sdxl_ask.text", gb=gb))
-    box.setInformativeText(tr("ui.sdxl_ask.info", minutes=minutes))
+    box.setInformativeText(tr("ui.sdxl_ask.info", offload=minutes["offload"], cpu=minutes["cpu"]))
+    offload = box.addButton(tr("ui.sdxl_ask.offload"), QMessageBox.AcceptRole)
     cpu = box.addButton(tr("ui.sdxl_ask.cpu"), QMessageBox.AcceptRole)
     clip = box.addButton(tr("ui.sdxl_ask.clip"), QMessageBox.RejectRole)
-    box.setDefaultButton(clip)
+    box.setDefaultButton(offload)
     box.setEscapeButton(clip)  # closed without an answer: nothing changes (CLIP stays)
     remember = QCheckBox(tr("ui.sdxl_ask.remember"))
     box.setCheckBox(remember)
     box.exec()
-    return ("cpu" if box.clickedButton() is cpu else "clip"), remember.isChecked()
+    clicked = box.clickedButton()
+    answer = "offload" if clicked is offload else "cpu" if clicked is cpu else "clip"
+    return answer, remember.isChecked()
 
 
 def param_text_key(method: str, key: str, suffix: str) -> str:
@@ -635,28 +639,34 @@ class ParamPanel(QWidget):
             self.fields["object_name"].set_warning(tr("ui.model_download_hint", size=size_of(["sdxl"])))
         else:
             self.fields["object_name"].set_warning(None)
-        card = methods_ui.small_card_for_sdxl(s) if diffusion else None  # SDXL then runs on the CPU
+        card = methods_ui.small_card_for_sdxl(s) if diffusion else None  # SDXL piece by piece or on the CPU
+        place = s.get("sdxl_place", "offload")
         self.fields["attn_model"].set_warning(
-            tr("ui.sdxl_cpu_hint", gb=f"{card.get('memory_gb', 0):.0f}", minutes=methods_ui.sdxl_cpu_minutes(s))
-            if card else None)
+            tr(f"ui.sdxl_{place}_hint", gb=f"{card.get('memory_gb', 0):.0f}",
+               minutes=methods_ui.sdxl_minutes(s, place)) if card else None)
 
     def _sdxl_chosen(self) -> bool:
         """SDXL was picked as the attention model: on a graphics card too small for it, ask (or follow the
-        remembered answer) whether its step runs on the CPU or CLIP is used instead. True: SDXL stays."""
+        remembered answer) whether it runs piece by piece on the card, on the CPU, or CLIP is used instead.
+        True: SDXL stays (``sdxl_place`` set to the answer)."""
         from ..app_settings import app_settings
 
         card = methods_ui.small_card_for_sdxl(self._settings)
         if card is None:
             return True
         choice = app_settings().get(methods_ui.SDXL_SMALL_GPU)
-        if choice not in ("cpu", "clip"):
-            choice, remember = ask_sdxl_on_cpu(self, f"{card.get('memory_gb', 0):.0f}",
-                                               methods_ui.sdxl_cpu_minutes(self._settings))
+        if choice not in ("offload", "cpu", "clip"):
+            minutes = {m: methods_ui.sdxl_minutes(self._settings, m) for m in ("offload", "cpu")}
+            choice, remember = ask_sdxl_place(self, f"{card.get('memory_gb', 0):.0f}", minutes)
             if remember:
                 app_settings().set(methods_ui.SDXL_SMALL_GPU, choice)
         elif choice == "clip":
             self._sdxl_note = True  # say why CLIP stays
-        return choice == "cpu"
+        if choice == "clip":
+            return False
+        if "sdxl_place" in self.fields and self._settings.get("sdxl_place") != choice:
+            self.fields["sdxl_place"].set_value(choice, emit=True)
+        return True
 
     def refresh_hints(self):
         """The hints that depend on the hardware (after the probe answered)."""

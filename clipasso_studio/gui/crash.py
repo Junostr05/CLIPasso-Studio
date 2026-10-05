@@ -100,10 +100,16 @@ def _show_dialog(log_path: str, details: str) -> None:
         box.setInformativeText(tr("ui.crash.text", path=log_path))
         box.setDetailedText(details)
         folder = box.addButton(tr("ui.crash.open_logs"), QMessageBox.ActionRole)
+        send = box.addButton(tr("ui.report.button"), QMessageBox.ActionRole)
         box.addButton(QMessageBox.Close)
         box.exec()
         if box.clickedButton() is folder:
             open_logs_folder()
+        elif box.clickedButton() is send:
+            from . import report as report_ui
+
+            lines = details.strip().splitlines()
+            report_ui.offer(QApplication.activeWindow(), lines[-1] if lines else "", details)
     finally:
         _state["showing"] = False
 
@@ -206,9 +212,19 @@ def show_previous_crash(parent=None) -> None:
     box.setText(tr("ui.crash.last_time"))
     box.setInformativeText(tr("ui.crash.last_time_text", path=str(path)))
     folder = box.addButton(tr("ui.crash.open_logs"), QMessageBox.ActionRole)
+    send = box.addButton(tr("ui.report.button"), QMessageBox.ActionRole)
     box.addButton(QMessageBox.Close)
     box.exec()
-    if box.clickedButton() is folder:
+    if box.clickedButton() is send:
+        from . import report as report_ui
+
+        try:
+            details = Path(path).read_text(encoding="utf-8", errors="replace")[-6000:]
+        except OSError:
+            details = ""
+        lines = details.strip().splitlines()
+        report_ui.offer(parent, lines[-1] if lines else "", details)
+    elif box.clickedButton() is folder:
         open_logs_folder()
 
 

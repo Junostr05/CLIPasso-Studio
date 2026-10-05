@@ -733,15 +733,32 @@ class StudioPage(QWidget):
         if not self._check_models():
             return
         self.params._after_change()
-        self.controller.enqueue(self.image_path, self.params.settings(), start=True)
+        settings = self._check_resources()
+        if settings is None:
+            return
+        self.controller.enqueue(self.image_path, settings, start=True)
         if self.controller.current and self.controller.current.target != self.image_path:
             self.toast.emit(tr("ui.added_to_queue"), "info")
 
     def add_to_queue(self):
         if not self.image_path or not self._check_models():
             return
-        self.controller.enqueue(self.image_path, self.params.settings(), start=not self.controller.is_busy())
+        settings = self._check_resources()
+        if settings is None:
+            return
+        self.controller.enqueue(self.image_path, settings, start=not self.controller.is_busy())
         self.toast.emit(tr("ui.added_to_queue"), "success")
+
+    def _check_resources(self) -> dict | None:
+        """The settings to run with: as they are, the smaller ones the user accepted when memory is short, or
+        None (cancelled)."""
+        from .. import resources
+
+        settings = self.params.settings()
+        checked = resources.confirm(self, settings)
+        if checked is not None and checked != settings:
+            self.params.set_settings(checked)  # (the smaller settings are visible in the panel)
+        return checked
 
     def toggle_pause(self):
         job = self.controller.current
@@ -926,11 +943,19 @@ class StudioPage(QWidget):
             return
         seed = data.get("seed")
         if kind == "job_start":
-            self.device_badge.setText(self._device_text(data.get("device", "")))
+            text = self._device_text(data.get("device", ""))
+            n = len(getattr(job, "devices", ()) or ())
+            self.device_badge.setText(f"{n}× {text}" if n > 1 else text)  # (one worker per graphics card)
         elif kind == "stage":
             n = job.seeds.index(seed) + 1 if seed in job.seeds else 1
             extra = {k: v for k, v in data.items() if k not in ("name", "seed", "n", "total")}  # e.g. step/steps
             self._set_status(f"ui.status.{data['name']}", n=n, total=len(job.seeds), **extra)
+            if data["name"].startswith("init_sdxl_") and data.get("step", 0) >= 3 and data.get("elapsed"):
+                rates = dict(app_settings().get("sec_per_it", {}) or {})  # SDXL piece by piece / on the CPU
+                rates["sdxl:" + data["name"][len("init_sdxl_"):]] = data["elapsed"] / data["step"]
+                app_settings().data["sec_per_it"] = rates
+                if data["step"] % 10 == 0:
+                    app_settings().set("sec_per_it", rates)
         elif kind == "input":
             self.canvas.set_input(_pixmap_from_png(data["png"]))
             self.canvas.set_mask(_pixmap_from_png(data["mask_png"]))
@@ -1067,7 +1092,13 @@ class StudioPage(QWidget):
         box.setInformativeText(data.get("message", ""))
         if data.get("traceback"):
             box.setDetailedText(data["traceback"])
+        send = box.addButton(tr("ui.report.button"), QMessageBox.ActionRole)
+        box.addButton(QMessageBox.Close)
         box.exec()
+        if box.clickedButton() is send:
+            from .. import report
+
+            report.offer(self, data.get("message", ""), data.get("traceback", ""))
 
     # ================================================================ results
     def show_job_dir(self, job_dir: str):
@@ -1307,8 +1338,8 @@ class StudioPage(QWidget):
         self._status_key = (key, fmt)
         self.status.setText(tr(key, **fmt))
         busy = key in ("ui.status.optimizing", "ui.status.loading", "ui.status.init", "ui.status.starting",
-                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models",
-                       "ui.status.init_sdxl_cpu") or key.startswith("ui.status.scene_")
+                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models") or \
+            key.startswith(("ui.status.scene_", "ui.status.init_sdxl_"))
         self.stage_badge.setVisible(busy)
         if busy:
             self.stage_badge.setText(tr("ui.live"))

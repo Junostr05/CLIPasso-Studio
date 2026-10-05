@@ -82,6 +82,23 @@ def has_cuda() -> bool:
     return bool(info and info.get("cuda") and any(g.get("supported", True) for g in info.get("gpus") or [{}]))
 
 
+def usable_gpus() -> tuple[int, ...]:
+    """The indices of the graphics cards this PyTorch can compute on (as the probe saw them)."""
+    info = cached()
+    if not info or not info.get("cuda"):
+        return ()
+    return tuple(i for i, g in enumerate(info.get("gpus") or []) if g.get("supported", True))
+
+
+def spread_gpus() -> tuple[int, ...]:
+    """The graphics cards the sketches of a job may be spread over: all usable ones with the setting
+    "Use several graphics cards" (on by default), else none."""
+    from .app_settings import app_settings
+
+    gpus = usable_gpus()
+    return gpus if len(gpus) >= 2 and app_settings().get("multi_gpu", True) else ()
+
+
 def job_gpu(settings: dict) -> dict | None:
     """The graphics card (as the probe saw it) a job with these settings computes on, like
     ``pipeline.resolve_device``; None: the CPU, or not known yet."""

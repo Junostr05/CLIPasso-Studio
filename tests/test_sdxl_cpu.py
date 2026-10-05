@@ -3,6 +3,7 @@ card; a card that runs out of memory hands the step to the CPU as well. Progress
 a continued run does not compute it again, and the settings say so when the model is chosen."""
 
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -29,60 +30,110 @@ def test_the_rule():
     assert 7 < SDXL_MIN_VRAM_GB < 8
 
 
-def test_run_device(monkeypatch):
+def test_run_mode(monkeypatch):
     _card(monkeypatch, 6.0)  # GTX 1060
-    assert S.run_device(torch.device("cuda", 0)) == torch.device("cpu")
-    assert S.run_device("cpu") == torch.device("cpu")
+    assert S.run_mode(torch.device("cuda", 0)) == "offload"
+    assert S.run_mode(torch.device("cuda", 0), place="cpu") == "cpu"
+    assert S.run_mode("cpu") == "cpu"
     _card(monkeypatch, 7.99)  # an "8 GB" card
-    assert S.run_device(torch.device("cuda", 0)) == torch.device("cuda", 0)
+    assert S.run_mode(torch.device("cuda", 0)) == "gpu"
 
 
 @pytest.fixture
 def calls(monkeypatch):
-    seen = []
+    seen, fail = [], {}  # fail: mode -> the error it raises
 
-    def fake(image, object_name, device, size, pipe=None, steps=S.STEPS, tick=None):
-        seen.append(torch.device(device))
-        if callable(seen_error[0]) and torch.device(device).type == "cuda":
-            raise seen_error[0]()
+    def fake(image, object_name, device, size, pipe=None, steps=S.STEPS, tick=None, offload=False):
+        mode = "cpu" if torch.device(device).type == "cpu" else "offload" if offload else "gpu"
+        seen.append(mode)
+        if mode in fail:
+            raise fail[mode]()
         return torch.zeros(size, size)
 
-    seen_error = [None]
     monkeypatch.setattr(S, "sdxl_attention", fake)
-    return seen, seen_error
+    return seen, fail
 
 
-def test_a_small_card_computes_it_on_the_cpu(monkeypatch, calls):
+def _logs():
+    out = []
+    return out, lambda code, **p: out.append((code, p))
+
+
+def test_a_small_card_computes_it_piece_by_piece_or_on_the_cpu(monkeypatch, calls):
     seen, _ = calls
-    logs = []
     _card(monkeypatch, 6.0)
-    attn = S.object_attention(None, "camel", torch.device("cuda", 0), 32,
-                              log=lambda code, **p: logs.append((code, p)))
-    assert attn.shape == (32, 32) and seen == [torch.device("cpu")]
-    assert logs == [("sdxl_cpu", {"gb": "6"})]
+    logs, log = _logs()
+    attn = S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=log)
+    assert attn.shape == (32, 32) and seen == ["offload"] and logs == [("sdxl_offload", {"gb": "6"})]
+    seen.clear()
+    logs, log = _logs()
+    S.object_attention(None, "camel", torch.device("cuda", 0), 32, place="cpu", log=log)
+    assert seen == ["cpu"] and logs == [("sdxl_cpu", {"gb": "6"})]
 
 
 def test_a_big_card_computes_it_itself(monkeypatch, calls):
     seen, _ = calls
-    logs = []
     _card(monkeypatch, 12.0)
-    S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=lambda code, **p: logs.append(code))
-    assert seen == [torch.device("cuda", 0)] and logs == []
+    logs, log = _logs()
+    S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=log)
+    assert seen == ["gpu"] and logs == []
     seen.clear()
-    S.object_attention(None, "camel", torch.device("cpu"), 32, log=lambda code, **p: logs.append(code))
-    assert seen == [torch.device("cpu")] and logs == []  # the CPU edition: nothing to say
+    S.object_attention(None, "camel", torch.device("cpu"), 32, log=log)
+    assert seen == ["cpu"] and logs == []  # the CPU edition: nothing to say
 
 
-def test_out_of_graphics_memory_goes_on_on_the_cpu(monkeypatch, calls):
-    seen, error = calls
-    logs = []
+def test_out_of_graphics_memory_goes_on_piece_by_piece_then_on_the_cpu(monkeypatch, calls):
+    seen, fail = calls
     _card(monkeypatch, 8.0)
-    error[0] = lambda: RuntimeError("CUDA out of memory. Tried to allocate 640.00 MiB")
-    S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=lambda code, **p: logs.append(code))
-    assert seen == [torch.device("cuda", 0), torch.device("cpu")] and logs == ["sdxl_cpu_oom"]
-    error[0] = lambda: ValueError("something else")
+    oom = lambda: RuntimeError("CUDA out of memory. Tried to allocate 640.00 MiB")  # noqa: E731
+    fail["gpu"] = oom
+    logs, log = _logs()
+    S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=log)
+    assert seen == ["gpu", "offload"] and [c for c, _ in logs] == ["sdxl_offload_oom"]
+    seen.clear()
+    fail["offload"] = oom
+    logs, log = _logs()
+    S.object_attention(None, "camel", torch.device("cuda", 0), 32, log=log)
+    assert seen == ["gpu", "offload", "cpu"] and [c for c, _ in logs] == ["sdxl_offload_oom", "sdxl_cpu_oom"]
+    fail.clear()
+    fail["gpu"] = lambda: ValueError("something else")
     with pytest.raises(ValueError):  # other errors are errors
         S.object_attention(None, "camel", torch.device("cuda", 0), 32)
+    fail.clear()
+    fail["cpu"] = oom
+    _card(monkeypatch, 6.0)
+    with pytest.raises(RuntimeError):  # (the CPU is the end of the chain)
+        S.object_attention(None, "camel", torch.device("cuda", 0), 32, place="cpu")
+
+
+def test_offload_loads_the_pipeline_piece_by_piece(monkeypatch):
+    """``load_pipeline(offload=True)``: the networks in the RAM, the (small) VAE on the card as a whole."""
+    import diffusers
+
+    from clipasso_studio.engine import model_store
+
+    calls = {}
+
+    class FakePipe:
+        _exclude_from_cpu_offload = []
+
+        def set_progress_bar_config(self, **kw):
+            pass
+
+        def enable_sequential_cpu_offload(self, gpu_id=None):
+            calls["offload"] = (gpu_id, list(self._exclude_from_cpu_offload))
+
+        def to(self, device):
+            calls["to"] = str(device)
+            return self
+
+    monkeypatch.setattr(diffusers.StableDiffusionXLPipeline, "from_pretrained",
+                        classmethod(lambda cls, *a, **k: FakePipe()))
+    monkeypatch.setattr(model_store, "model_dir", lambda key: Path("/nowhere"))
+    S.load_pipeline(torch.device("cuda", 1), offload=True)
+    assert calls == {"offload": (1, ["vae"])} and FakePipe._exclude_from_cpu_offload == []  # (not the class's)
+    S.load_pipeline(torch.device("cuda", 0))
+    assert calls["to"] == "cuda:0"
 
 
 @pytest.mark.skipif(not BUNDLED, reason="bundled models missing (run tools/fetch_models.py)")
@@ -106,11 +157,11 @@ def test_run_keeps_it_and_stops_during_it(monkeypatch, tmp_path):
 
     control = Ctl()
 
-    def fake(image, object_name, device, size, tick=None, log=None):
+    def fake(image, object_name, device, size, place="offload", tick=None, log=None):
         computed.append(object_name)
         for done in range(4):
             control.stop = done == stop_at[0]
-            tick(done, 4, True)
+            tick(done, 4, "cpu", 2.0 * done)
         attn = torch.zeros(size, size)
         attn[size // 4:3 * size // 4, size // 4:3 * size // 4] = 1
         return attn
@@ -170,20 +221,28 @@ def test_the_settings_say_so(own_settings, monkeypatch):
     card(6.0)
     panel = param_panel.ParamPanel()
     s = {**schema.default_settings("controlsketch"), "attn_model": "diffusion", "object_name": "camel"}
+    assert s["sdxl_place"] == "offload"
     panel.set_settings(s)  # (loaded settings: no question, only the hint)
     hint = panel.fields["attn_model"].warning
-    minutes = methods_ui.sdxl_cpu_minutes(s)
-    assert not hint.isHidden() and "6 GB" in hint.text() and str(minutes) in hint.text()
+    assert not hint.isHidden() and "6 GB" in hint.text() and str(methods_ui.sdxl_minutes(s, "offload")) in hint.text()
+    assert hint.text() == tr("ui.sdxl_offload_hint", gb="6", minutes=methods_ui.sdxl_minutes(s, "offload"))
+    panel.set_settings({**s, "sdxl_place": "cpu"})
+    assert hint.text() == tr("ui.sdxl_cpu_hint", gb="6", minutes=methods_ui.sdxl_minutes(s, "cpu"))
     panel.set_settings({**s, "attn_model": "clip"})
     assert hint.isHidden()
     panel.set_settings({**s, "device": "cpu"})  # everything on the CPU anyway
     assert hint.isHidden()
     no_sdxl = methods_ui.estimate_seconds({**s, "object_name": ""}, gpu=True)
-    assert methods_ui.estimate_seconds(s, gpu=True) - no_sdxl == pytest.approx(methods_ui.sdxl_cpu_seconds(s))
-    assert methods_ui.sdxl_cpu_seconds({"num_threads": 8}) == methods_ui.SDXL_CPU_SECONDS / 2  # all the cores
+    assert methods_ui.estimate_seconds(s, gpu=True) - no_sdxl == pytest.approx(methods_ui.SDXL_OFFLOAD_SECONDS)
+    assert methods_ui.estimate_seconds({**s, "sdxl_place": "cpu"}, gpu=True) - no_sdxl == pytest.approx(
+        methods_ui.sdxl_seconds(s, "cpu"))
+    assert methods_ui.sdxl_seconds({"num_threads": 8}, "cpu") == methods_ui.SDXL_CPU_SECONDS / 2  # all the cores
+    app_settings().set("sec_per_it", {"sdxl:offload": 3.0})  # measured on this computer
+    assert methods_ui.sdxl_seconds(s, "offload") == 300 and methods_ui.sdxl_minutes(s, "offload") == 5
 
     asked, answer = [], [("clip", False)]
-    monkeypatch.setattr(param_panel, "ask_sdxl_on_cpu", lambda parent, gb, minutes: asked.append(gb) or answer[0])
+    monkeypatch.setattr(param_panel, "ask_sdxl_place",
+                        lambda parent, gb, minutes: asked.append((gb, sorted(minutes))) or answer[0])
 
     def choose(value):  # as the user does
         combo = panel.fields["attn_model"].combo
@@ -191,21 +250,28 @@ def test_the_settings_say_so(own_settings, monkeypatch):
         return panel.settings()["attn_model"]
 
     panel.set_settings({**s, "attn_model": "clip"})
-    assert choose("diffusion") == "clip" and asked == ["6"]  # CLIP instead, not remembered
+    assert choose("diffusion") == "clip" and asked == [("6", ["cpu", "offload"])]  # CLIP instead, not remembered
     assert not app_settings().get(methods_ui.SDXL_SMALL_GPU)
-    answer[0] = ("cpu", True)
-    assert choose("diffusion") == "diffusion" and app_settings().get(methods_ui.SDXL_SMALL_GPU) == "cpu"
-    assert not hint.isHidden()
+    answer[0] = ("cpu", False)
+    assert choose("diffusion") == "diffusion" and panel.settings()["sdxl_place"] == "cpu"
+    assert not hint.isHidden() and not app_settings().get(methods_ui.SDXL_SMALL_GPU)
     choose("clip")
-    assert choose("diffusion") == "diffusion" and len(asked) == 2  # remembered: not asked again
+    answer[0] = ("offload", True)
+    assert choose("diffusion") == "diffusion" and panel.settings()["sdxl_place"] == "offload"
+    assert app_settings().get(methods_ui.SDXL_SMALL_GPU) == "offload"
+    choose("clip")
+    assert choose("diffusion") == "diffusion" and len(asked) == 3  # remembered: not asked again
+    app_settings().set(methods_ui.SDXL_SMALL_GPU, "cpu")  # (remembered by 3.1)
+    choose("clip")
+    assert choose("diffusion") == "diffusion" and panel.settings()["sdxl_place"] == "cpu" and len(asked) == 3
     app_settings().set(methods_ui.SDXL_SMALL_GPU, "clip")
     choose("clip")
-    assert choose("diffusion") == "clip" and len(asked) == 2
+    assert choose("diffusion") == "clip" and len(asked) == 3
     assert not hint.isHidden() and hint.text() == tr("ui.sdxl_clip_remembered")
 
     card(8.0)  # SDXL fits: no question, no hint
     panel.refresh_hints()
-    assert choose("diffusion") == "diffusion" and len(asked) == 2 and hint.isHidden()
+    assert choose("diffusion") == "diffusion" and len(asked) == 3 and hint.isHidden()
     assert methods_ui.estimate_seconds(s, gpu=True) == no_sdxl
 
 
@@ -220,6 +286,7 @@ def test_the_choice_in_the_settings(own_settings):
     assert not page.sdxl_box.isVisibleTo(page)  # a big card: nothing to choose
     page.set_hardware({"version": __version__, "cuda": True, "gpus": [{"name": "GTX 1060", "memory_gb": 6.0}]})
     assert page.sdxl_box.isVisibleTo(page) and page.sdxl_choice.currentData() == ""  # ask
+    assert [page.sdxl_choice.itemData(i) for i in range(page.sdxl_choice.count())] == ["", "offload", "cpu", "clip"]
     page.sdxl_choice.setCurrentIndex(page.sdxl_choice.findData("clip"))
     assert app_settings().get(methods_ui.SDXL_SMALL_GPU) == "clip"
     app_settings().set(methods_ui.SDXL_SMALL_GPU, "cpu")  # answered in the studio

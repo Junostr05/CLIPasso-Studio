@@ -283,12 +283,13 @@ def test_sdxl_attention_with_a_tiny_pipeline():
     assert attn.shape == (48, 48)
     assert float(attn.min()) >= 0 and abs(float(attn.max()) - 1) < 1e-5
     assert S.token_index(tok, "a portrait of a camel") == 5
-    assert ticks == [(i, 6, True) for i in range(7)]  # before every step: 3 of the inversion, 3 of the generation
+    assert [a[:3] for a in ticks] == [(i, 6, "cpu") for i in range(7)]  # before every step: 3 of the inversion,
+    assert all(a[3] >= 0 for a in ticks)  # 3 of the generation; with the seconds since the start
 
     class Stop(Exception):
         pass
 
-    def stop_in_the_generation(done, steps, on_cpu):
+    def stop_in_the_generation(done, steps, mode, elapsed):
         if done == 4:
             raise Stop()
 
