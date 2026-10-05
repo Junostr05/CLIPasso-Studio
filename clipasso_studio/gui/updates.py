@@ -111,9 +111,26 @@ def build_info(exe: str | None = None) -> tuple[str, str]:
     return edition, mode
 
 
-def update_files(release: dict, edition: str, mode: str) -> tuple[list[dict], dict | None]:
-    """The assets to download for this edition (main file first) and the checksum file."""
+def patch_name(edition: str, mode: str, current: str = __version__) -> str | None:
+    """The asset of a small update from ``current`` (only the changed files: tools/manifest.py, patch.iss)."""
     ed = edition.upper()
+    if mode == "installed":
+        return f"CLIPassoStudio-{ed}-Patch-from-{current}.exe"
+    if mode == "portable-zip":
+        return f"CLIPassoStudio-{ed}-Portable-Patch-from-{current}.zip"
+    return None  # (the single portable exe is always replaced as a whole)
+
+
+def update_files(release: dict, edition: str, mode: str,
+                 current: str = __version__) -> tuple[list[dict], dict | None]:
+    """The assets to download for this edition (main file first) and the checksum file – a patch from the
+    running version instead of the full files when the release has one."""
+    ed = edition.upper()
+    sums = next((a for a in release.get("assets", []) if a["name"] == f"SHA256SUMS-{ed}.txt"), None)
+    patch = patch_name(edition, mode, current)
+    patch_asset = next((a for a in release.get("assets", []) if a["name"] == patch), None) if patch else None
+    if patch_asset is not None:
+        return [patch_asset], sums
     if mode == "installed":
         prefix, main = f"CLIPassoStudio-{ed}-Setup", ".exe"  # + the .bin slices of the GPU setup
         assets = [a for a in release.get("assets", []) if a["name"].startswith(prefix)]
@@ -124,7 +141,6 @@ def update_files(release: dict, edition: str, mode: str) -> tuple[list[dict], di
     else:
         return [], None
     files = sorted(assets, key=lambda a: (not a["name"].endswith(main), a["name"]))
-    sums = next((a for a in release.get("assets", []) if a["name"] == f"SHA256SUMS-{ed}.txt"), None)
     return files, sums
 
 
@@ -306,9 +322,23 @@ AFTER_UPDATE_ARG = "--after-update"  # started by the previous portable version:
 APP_EXE = "CLIPassoStudio.exe"
 
 
+REMOVED_LIST = "removed.txt"  # in a patch ZIP: the files the new version does not have any more
+
+
+def _patch_root(names: list[str]) -> str | None:
+    """The folder of a patch ZIP's files ("" or "<folder>/"); None for a full portable ZIP."""
+    for n in names:
+        if n == REMOVED_LIST:
+            return ""
+        if n.endswith("/" + REMOVED_LIST) and n.count("/") == 1:
+            return n[: -len(REMOVED_LIST)]
+    return None
+
+
 def place_portable_zip(path: str, version: str, app_dir: str | None = None, progress=None) -> str:
     """Unpack the portable ZIP next to the running version's folder (or into Downloads when that place
-    is read-only) as ``CLIPasso Studio <version>``; returns the new exe."""
+    is read-only) as ``CLIPasso Studio <version>``; returns the new exe. A patch ZIP (only the changed files
+    and ``removed.txt``) is applied to a copy of the running version."""
     import zipfile
 
     app_dir = os.path.abspath(app_dir or os.path.dirname(sys.executable))
@@ -316,11 +346,15 @@ def place_portable_zip(path: str, version: str, app_dir: str | None = None, prog
     errors = []
     with zipfile.ZipFile(path) as zf:
         members = [m for m in zf.infolist() if not m.is_dir()]
-        exe = next((m.filename for m in members if m.filename.replace("\\", "/").rsplit("/", 1)[-1] == APP_EXE),
-                   None)
-        if exe is None:
-            raise UserError("update_no_files", f"{os.path.basename(path)} holds no {APP_EXE}")
-        root = exe.replace("\\", "/").rsplit("/", 1)[0] + "/" if "/" in exe.replace("\\", "/") else ""
+        patch = _patch_root([m.filename.replace("\\", "/") for m in members])
+        if patch is None:
+            exe = next((m.filename for m in members
+                        if m.filename.replace("\\", "/").rsplit("/", 1)[-1] == APP_EXE), None)
+            if exe is None:
+                raise UserError("update_no_files", f"{os.path.basename(path)} holds no {APP_EXE}")
+            root = exe.replace("\\", "/").rsplit("/", 1)[0] + "/" if "/" in exe.replace("\\", "/") else ""
+        else:
+            root = patch
         total = sum(m.file_size for m in members) or 1
         for parent in (os.path.dirname(app_dir), str(Path.home() / "Downloads")):
             target = os.path.join(parent, name)
@@ -330,12 +364,14 @@ def place_portable_zip(path: str, version: str, app_dir: str | None = None, prog
                 target = os.path.join(parent, f"{name} ({n})")
             tmp = target + ".partial"
             try:
-                ensure_space(parent, total, "update")
+                ensure_space(parent, total + (folder_size(app_dir) if patch is not None else 0), "update")
                 shutil.rmtree(tmp, ignore_errors=True)
+                if patch is not None:  # the running version, then the changed files over it
+                    shutil.copytree(app_dir, tmp)
                 done = 0
                 for m in members:
                     rel = m.filename.replace("\\", "/")
-                    if not rel.startswith(root):
+                    if not rel.startswith(root) or (patch is not None and rel == root + REMOVED_LIST):
                         continue
                     dest = os.path.normpath(os.path.join(tmp, rel[len(root):]))
                     if not dest.startswith(os.path.normpath(tmp) + os.sep):
@@ -346,6 +382,11 @@ def place_portable_zip(path: str, version: str, app_dir: str | None = None, prog
                     done += m.file_size
                     if progress:
                         progress(done, total)
+                if patch is not None:
+                    for rel in zf.read(root + REMOVED_LIST).decode("utf-8", "replace").splitlines():
+                        dest = os.path.normpath(os.path.join(tmp, rel.strip()))
+                        if rel.strip() and dest.startswith(os.path.normpath(tmp) + os.sep) and os.path.isfile(dest):
+                            os.remove(dest)
                 os.replace(tmp, target)
                 return os.path.join(target, APP_EXE)
             except UserError:

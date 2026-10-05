@@ -23,6 +23,10 @@ on:
         description: "Mark the release as a pre-release (experimental build, not 'latest')"
         type: boolean
         default: false
+      benchmark:
+        description: "Run the quality and speed benchmark (tools/benchmark.py)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -100,6 +104,47 @@ jobs:
           name: screenshots
           path: screenshots
           retention-days: 14
+
+  benchmark:
+    name: Benchmark (Linux, CPU)
+    # quality and speed against benchmarks/baseline.json (tools/benchmark.py): for releases, tags and pushes
+    # whose message contains [benchmark]
+    if: (github.event_name == 'workflow_dispatch' && inputs.benchmark) || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[benchmark]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/torch-cpu.txt
+          pip install -r requirements/dev.txt
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-bench-v1-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
+          restore-keys: |
+            models-bench-v1-
+            models-v2-
+      - name: Download models
+        # the bundled ones and those of SwiftSketch and SceneSketch (ControlSketch's ~3 GB are left out here)
+        run: |
+          python tools/fetch_models.py
+          python tools/fetch_models.py --only swiftsketch:diffusion,swiftsketch:refine,lama
+      - name: Benchmark
+        run: python tools/benchmark.py --cases clipasso,swiftsketch,scenesketch --out benchmark --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark
+          path: benchmark
+          retention-days: 30
 
   test-windows:
     name: Tests (Windows, CPU)
@@ -251,6 +296,71 @@ jobs:
           }
           Get-ChildItem release | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
           foreach ($f in Get-ChildItem release) { if ($f.Length -ge 2147483648) { throw "$($f.Name) is larger than 2 GiB" } }
+      - name: File list and small update from the previous release
+        # tools/manifest.py: the file list of this build goes with the release; a release after one that has
+        # a file list also gets a patch with only the changed files (installer: patch.iss, portable ZIP)
+        if: env.SKIP != 'true'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
+        run: |
+          $ed = "${{ matrix.edition }}".ToUpper()
+          $version = (python -c "import clipasso_studio; print(clipasso_studio.__version__)")
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          New-Item -ItemType Directory -Force build | Out-Null
+          python tools/manifest.py build dist\CLIPassoStudio --edition $ed --version $version --out "release\CLIPassoStudio-$ed-manifest.json"
+          if ($LASTEXITCODE -ne 0) { throw "manifest failed" }
+          if (-not $env:TAG) { exit 0 }
+          python tools/manifest.py previous --edition $ed --tag $env:TAG --repo "${{ github.repository }}" --out build\prev.json
+          if ($LASTEXITCODE -ne 0) { throw "reading the previous release failed" }
+          if (-not (Test-Path build\prev.json)) { exit 0 }
+          $info = python tools/manifest.py patch build\prev.json "release\CLIPassoStudio-$ed-manifest.json" dist\CLIPassoStudio build\patch | ConvertFrom-Json
+          $info | Format-List
+          if (-not $info.ok) { "the changes are too large for a patch – full files only"; exit 0 }
+          & $iscc /Q "/DEdition=$ed" "/DAppVersion=$version" "/DFromVersion=$($info.from)" "/DPatchDir=$pwd\build\patch" "/DRemovedList=$pwd\build\patch-removed.iss" "/DOutputDir=$pwd\release" packaging\patch.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC (patch) failed" }
+          if ($ed -eq "CPU") {
+            New-Item -ItemType Directory -Force build\patchzip | Out-Null
+            Copy-Item -Recurse build\patch build\patchzip\CLIPassoStudio
+            7z a -tzip -mx=5 "release\CLIPassoStudio-CPU-Portable-Patch-from-$($info.from).zip" ".\build\patchzip\CLIPassoStudio" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "7z (patch) failed" }
+          }
+          Get-ChildItem release | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+      - name: Small update test (install, patch, self-test, uninstall)
+        # a patch from a stand-in previous version (this build with three files "changed" and one file more):
+        # it must update the installation, delete the extra file, refuse another version, and the patched
+        # app and its uninstaller must work
+        if: env.SKIP != 'true' && matrix.edition == 'cpu'
+        shell: pwsh
+        run: |
+          $version = (python -c "import clipasso_studio; print(clipasso_studio.__version__)")
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $inst = "$env:RUNNER_TEMP\patchtest_app"
+          New-Item -ItemType Directory -Force build | Out-Null
+          python tools/manifest.py fake-previous release\CLIPassoStudio-CPU-manifest.json --version $version --out build\fake-prev.json
+          $info = python tools/manifest.py patch build\fake-prev.json release\CLIPassoStudio-CPU-manifest.json dist\CLIPassoStudio build\ptest | ConvertFrom-Json
+          $info | Format-List
+          if (-not $info.ok -or $info.changed -lt 3 -or $info.removed -ne 1) { throw "unexpected patch: $info" }
+          & $iscc /Q "/DEdition=CPU" "/DAppVersion=$version" "/DFromVersion=$version" "/DPatchDir=$pwd\build\ptest" "/DRemovedList=$pwd\build\ptest-removed.iss" "/DOutputDir=$pwd\build\ptest-out" packaging\patch.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC (test patch) failed" }
+          & $iscc /Q "/DEdition=CPU" "/DAppVersion=$version" "/DFromVersion=0.0.1" "/DPatchDir=$pwd\build\ptest" "/DRemovedList=$pwd\build\ptest-removed.iss" "/DOutputDir=$pwd\build\ptest-wrong" packaging\patch.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC (wrong-version patch) failed" }
+          $p = Start-Process "release\CLIPassoStudio-CPU-Setup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/DIR=$inst" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installing failed: $($p.ExitCode)" }
+          Set-Content "$inst\_internal\left_from_the_previous_version.txt" "old"
+          $p = Start-Process "build\ptest-wrong\CLIPassoStudio-CPU-Patch-from-0.0.1.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER" -Wait -PassThru
+          if ($p.ExitCode -eq 0) { throw "a patch for another version was installed" }
+          $p = Start-Process "build\ptest-out\CLIPassoStudio-CPU-Patch-from-$version.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "the patch failed: $($p.ExitCode)" }
+          if (Test-Path "$inst\_internal\left_from_the_previous_version.txt") { throw "the patch did not delete the removed file" }
+          $p = Start-Process "$inst\CLIPassoStudio.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_patched" -Wait -PassThru -NoNewWindow
+          Get-Content "$env:RUNNER_TEMP\selftest_patched\selftest.json" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "self-test of the patched app failed" }
+          $p = Start-Process "$inst\unins000.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "uninstalling failed: $($p.ExitCode)" }
+          Start-Sleep -Seconds 3
+          if (Test-Path "$inst\CLIPassoStudio.exe") { throw "the uninstaller left the app" }
       - uses: actions/upload-artifact@v4
         if: env.SKIP != 'true'
         with:
@@ -261,8 +371,9 @@ jobs:
 
   release:
     name: GitHub release
-    needs: [test, test-windows, build-windows]
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    needs: [test, test-windows, build-windows, benchmark]
+    # (the benchmark may be skipped, but not fail)
+    if: ${{ !failure() && !cancelled() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

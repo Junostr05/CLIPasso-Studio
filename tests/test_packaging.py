@@ -57,6 +57,7 @@ def test_installer_matches_the_app():
     iss = raw.decode("utf-8")
     if any(ord(c) > 127 for c in iss):
         assert raw.startswith(b"\xef\xbb\xbf")  # ISCC reads UTF-8 only with a BOM (German texts)
+    iss += (ROOT / "packaging" / "uninstall_code.iss").read_text(encoding="ascii")  # (#include)
     assert re.search(r'#define AppDataName "([^"]+)"', iss).group(1) == clipasso_studio.APP_ID
     assert f"AppGuid = '{updates.APP_GUID}'" in iss and "AppId={" + updates.APP_GUID + "_{#Edition}" in iss
     assert storage.MODELS_LOCATION in iss and storage.OUTPUT_LOCATION in iss

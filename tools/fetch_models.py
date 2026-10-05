@@ -21,13 +21,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dest", default=str(ROOT / "models"))
     parser.add_argument("--include-optional", action="store_true")
+    parser.add_argument("--only", default="", help="comma-separated model keys (e.g. for the benchmark); the "
+                                                   "manifest of the bundled models is left as it is")
     args = parser.parse_args()
     dest = Path(args.dest)
     dest.mkdir(parents=True, exist_ok=True)
+    only = {k.strip() for k in args.only.split(",") if k.strip()}
+    unknown = only - set(model_store.SPECS)
+    if unknown:
+        print(f"unknown model keys: {', '.join(sorted(unknown))}")
+        return 2
 
     manifest = {}
     for key, spec in model_store.SPECS.items():
-        if not spec.bundled and not args.include_optional:
+        if only and key not in only:
+            continue
+        if not only and not spec.bundled and not args.include_optional:
             continue
         target = dest / spec.filename
         if target.is_file():
@@ -47,7 +56,8 @@ def main() -> int:
         manifest[key] = {"file": spec.filename, "bytes": target.stat().st_size}
         print(f"[ ok ] {key}: {target.stat().st_size / 1e6:.1f} MB", flush=True)
 
-    (dest / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    if not only:
+        (dest / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return 0
 
 
