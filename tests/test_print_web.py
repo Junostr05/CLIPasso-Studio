@@ -86,10 +86,11 @@ def test_export_lottie_and_web_page(qapp, tmp_path, sketches):
     export.export_lottie(src, str(tmp_path / "a.json"), length=2.0, background="#ffffff")
     data = json.loads((tmp_path / "a.json").read_text())
     assert data["v"] and data["nm"] == "a" and len(data["layers"]) == 4
-    export.export_web_page(src, str(tmp_path / "<b>.html"), length=2.0, style="ink", paper={"kind": "blackboard"},
+    dest = tmp_path / "Tom & Jerry.html"  # (< and > are not allowed in Windows names)
+    export.export_web_page(src, str(dest), length=2.0, style="ink", paper={"kind": "blackboard"},
                            stroke_color="#f2f2ec")
-    page = (tmp_path / "<b>.html").read_text()
-    assert page.startswith("<!doctype html>") and "<title>&lt;b&gt;</title>" in page
+    page = dest.read_text()
+    assert page.startswith("<!doctype html>") and "<title>Tom &amp; Jerry</title>" in page
     assert "@keyframes" in page and "<button" in page and "data:image/jpeg" in page
     assert re.search(r"background: #2c3a33", page) and "color: #e8e8e8" in page  # light text on the board
 
