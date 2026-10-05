@@ -1,5 +1,6 @@
 ## New in 3.4: better sketches
 
+- **3.4.2 – phone and own presets:** on the phone you now export in every format of the app (PNG, SVG, PDF, GIF, MP4, WebP, Lottie, web page …) with all its settings – colour, style, paper, size, length or *No background*. *My presets* keep your settings under a name – on the PC with the bookmark button next to the presets, on the phone with a name and *Save* in the *Preset* card; both see the same presets. The phone page has a fixed address for bookmarks and the home screen; when the phone has forgotten the sign-in, a 6-digit PIN is enough (Settings → Phone & messages).
 - **3.4.1 – phone:** when a result of the gallery is open during a job, a button at the top leads back to the running job. In the queue, *Remove finished* clears away everything finished, cancelled or failed, and in the gallery the bin deletes a result (to the PC's recycle bin). New: *Also over Tailscale* (Settings → Phone & messages) – the remote then works away from home, too.
 - **Saved steps as the result:** with the clock button above the sketch you go through its saved steps and make one of them the result.
 - **Simplify:** a slider leaves out the least important strokes first – CLIP measures once per sketch how much each stroke adds.
