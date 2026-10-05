@@ -91,7 +91,10 @@ def cut_by_mask(paths, mask: np.ndarray, canvas: int, samples: int = 160, min_le
             sub = _subcurve(ctrl, t0, t1)
             if np.linalg.norm(np.diff(_bezier(sub, np.linspace(0, 1, 8)), axis=0), axis=1).sum() < min_length:
                 continue
-            out.append(renderer.Path(path.num_control_points, torch.tensor(sub, dtype=torch.float32),
+            # on the device of the stroke: the kept strokes stay on the graphics card, and the renderer
+            # stacks all of them
+            out.append(renderer.Path(path.num_control_points,
+                                     torch.tensor(sub, dtype=torch.float32, device=path.points.device),
                                      path.stroke_width, is_closed=False))
     return out
 

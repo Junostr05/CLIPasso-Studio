@@ -130,6 +130,31 @@ def test_cut_by_mask_keeps_exact_subcurves():
     assert C.cut_by_mask([path], np.zeros_like(mask), canvas) == [path]
 
 
+def test_cut_pieces_stay_on_the_device_of_the_stroke(monkeypatch):
+    """On the graphics card the uncut strokes stay there; the cut pieces must be made there too – the renderer
+    stacks all strokes ("Expected all tensors to be on the same device", SceneSketch on a GPU in 3.2.0)."""
+    canvas = 100
+    mask = np.zeros((canvas, canvas), dtype=bool)
+    mask[:, 40:60] = True
+    path = renderer.Path(torch.tensor([2]), torch.tensor([[10.0, 50.0], [35.0, 20.0], [65.0, 80.0], [90.0, 50.0]]),
+                         torch.tensor(1.5))
+    devices, real = [], torch.tensor
+
+    def tensor(data, *args, **kwargs):
+        devices.append(kwargs.get("device"))
+        return real(data, *args, **kwargs)
+
+    monkeypatch.setattr(C.torch, "tensor", tensor)
+    pieces = C.cut_by_mask([path], mask, canvas)
+    monkeypatch.undo()
+    assert len(pieces) == 2 and devices == [path.points.device] * 2
+    # the renderer brings strokes from different devices together, too
+    groups = [renderer.ShapeGroup(shape_ids=torch.tensor([i]), fill_color=None,
+                                  stroke_color=torch.tensor([0.0, 0.0, 0.0, 1.0])) for i in range(3)]
+    img = renderer.render_on_white(canvas, canvas, pieces + [path], groups)
+    assert img.shape == (canvas, canvas, 3) and float(img.min()) < 0.5
+
+
 def test_mlp_painter_and_width_optimisation():
     torch.manual_seed(0)
     pts = torch.rand(6, 4, 2) * 100 + 60

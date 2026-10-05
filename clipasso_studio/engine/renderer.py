@@ -138,7 +138,7 @@ def _prepare(shapes, shape_groups, s: int, device, dtype) -> list[_Item]:
         color = color.to(device=device, dtype=dtype)
         for sid in group.shape_ids.tolist():
             shape = shapes[int(sid)]
-            pts = shape.points.to(dtype) * s
+            pts = shape.points.to(device=device, dtype=dtype) * s  # (strokes made on another device, too)
             segs = _segments_of(pts, shape.num_control_points.tolist(), shape.is_closed)
             width = shape.stroke_width.to(device=device, dtype=dtype) * s
             items.append(_Item(segs, pts[:1], width, color))
