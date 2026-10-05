@@ -1,7 +1,8 @@
 ## New in 3.1: older graphics cards
 
 - **GTX 9xx / 10xx on the graphics card:** NVIDIA cards older than the GTX 16xx (e.g. GTX 1060, GTX 970) now compute on the graphics card instead of the processor. The app detects such a card by itself and offers an add-on: PyTorch with CUDA 12.6, 2.6 GB download. Newer cards do not need it.
-- **Settings → System:** download, switch on and off or remove the add-on, and the *graphics card precision* (fp16, or always fp32 to compare).
+- **Settings → System:** download, switch on and off or remove the add-on, and the switch *Always compute in fp32* (default: fp16, half the graphics memory).
+- **SDXL on cards below 8 GB:** when you choose the SDXL attention for ControlSketch, the app asks whether this one step computes on the processor (with all its cores, progress in the status line, pause and cancel work) or CLIP is used – remembered if you like, changeable under Settings → System. Everything after it computes on the graphics card again; if the graphics memory runs out on a bigger card too, SDXL moves to the processor by itself.
 
 ---
 

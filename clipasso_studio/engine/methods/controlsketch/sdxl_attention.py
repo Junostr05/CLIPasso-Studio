@@ -89,8 +89,10 @@ def _encode_prompt_with_negative(pipe, prompt: str, size: int):
     return ({k: torch.cat((unc_kw[k], cond_kw[k])) for k in cond_kw}, torch.cat((unc, cond)))
 
 
-def ddim_inversion(pipe, image: np.ndarray, prompt: str, steps: int, guidance_scale: float, size: int) -> torch.Tensor:
-    """Latents z_T .. z_0 of the DDIM inversion ([steps + 1, 4, h, w], noisiest first)."""
+def ddim_inversion(pipe, image: np.ndarray, prompt: str, steps: int, guidance_scale: float, size: int,
+                   tick=None) -> torch.Tensor:
+    """Latents z_T .. z_0 of the DDIM inversion ([steps + 1, 4, h, w], noisiest first); ``tick(i)`` before
+    every step."""
     vae_dtype = pipe.vae.dtype
     pipe.vae.to(dtype=torch.float32)
     x = torch.from_numpy(image).float() / 255.0
@@ -105,6 +107,8 @@ def ddim_inversion(pipe, image: np.ndarray, prompt: str, steps: int, guidance_sc
     all_latents = [z0.to(pipe.unet.dtype)]
     step = sched.config.num_train_timesteps // sched.num_inference_steps
     for i in range(sched.num_inference_steps):
+        if tick is not None:
+            tick(i)
         t = sched.timesteps[len(sched.timesteps) - i - 1]
         with torch.no_grad():
             noise = pipe.unet(torch.cat([latent] * 2), t, encoder_hidden_states=context,
@@ -144,16 +148,65 @@ def load_pipeline(device, spec_key: str = "sdxl"):
     return pipe.to(device)
 
 
+def run_device(device) -> torch.device:
+    """Where the SDXL step runs: on the CPU for a graphics card with less than ``SDXL_MIN_VRAM_GB`` (the rest of
+    ControlSketch stays on the card)."""
+    from ..requirements import sdxl_on_cpu
+
+    device = torch.device(device)
+    if device.type == "cuda" and sdxl_on_cpu(torch.cuda.get_device_properties(device).total_memory / 2 ** 30):
+        return torch.device("cpu")
+    return device
+
+
+def object_attention(image: Image.Image, object_name: str, device, size: int, tick=None, log=None) -> torch.Tensor:
+    """``sdxl_attention`` on the device it fits on: the CPU for a small graphics card, and the CPU as well when
+    the card runs out of memory. ``tick(step, steps, on_cpu)`` is called before every network step (pause and
+    stop; it may raise), ``log(code, **params)`` reports the move to the CPU."""
+    import gc
+
+    from ...runner import is_out_of_memory
+
+    def report(code, **params):
+        if log is not None:
+            log(code, **params)
+
+    run_on = run_device(device)
+    if run_on.type == "cuda":
+        try:
+            return sdxl_attention(image, object_name, run_on, size, tick=tick)
+        except Exception as exc:  # noqa: BLE001 - only running out of memory is handled
+            if not is_out_of_memory(exc):
+                raise
+        gc.collect()  # (outside the except block: the traceback no longer holds the tensors)
+        torch.cuda.empty_cache()
+        report("sdxl_cpu_oom")
+    elif torch.device(device).type == "cuda":
+        report("sdxl_cpu", gb=f"{torch.cuda.get_device_properties(device).total_memory / 2 ** 30:.0f}")
+    try:
+        return sdxl_attention(image, object_name, torch.device("cpu"), size, tick=tick)
+    finally:
+        gc.collect()  # the SDXL model on the CPU (about 14 GB in float32) goes before Stable Diffusion loads
+
+
 def sdxl_attention(image: Image.Image, object_name: str, device, size: int, pipe=None,
-                   steps: int = STEPS) -> torch.Tensor:
+                   steps: int = STEPS, tick=None) -> torch.Tensor:
     """Attention of the object token -> [size, size] in [0, 1] (already squared like the original)."""
     pipe = pipe or load_pipeline(device)
     res = int(pipe.unet.config.sample_size * pipe.vae_scale_factor)
     prompt = PROMPT.format(object_name)
-    zts = ddim_inversion(pipe, np.array(image.convert("RGB").resize((res, res))), prompt, steps, 2.0, res)
+    on_cpu = torch.device(device).type == "cpu"
+
+    def step(done):  # network steps done of the inversion and the generation
+        if tick is not None:
+            tick(done, 2 * steps, on_cpu)
+
+    zts = ddim_inversion(pipe, np.array(image.convert("RGB").resize((res, res))), prompt, steps, 2.0, res, step)
+    step(steps)
     offset = min(5, steps - 1)  # 5 of 50 steps like the original
 
     def on_step_end(p, i, t, kwargs):
+        step(steps + i + 1)
         latents = kwargs["latents"]
         latents[0] = zts[max(offset + 1, i + 1)].to(latents.device, latents.dtype)
         return {"latents": latents}

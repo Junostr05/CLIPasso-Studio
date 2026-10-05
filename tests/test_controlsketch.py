@@ -278,10 +278,23 @@ def test_sdxl_attention_with_a_tiny_pipeline():
                                      unet=unet, scheduler=sched)
     pipe.set_progress_bar_config(disable=True)
     img = Image.open(SAMPLE).convert("RGB")
-    attn = S.sdxl_attention(img, "camel", "cpu", 48, pipe=pipe, steps=3)
+    ticks = []
+    attn = S.sdxl_attention(img, "camel", "cpu", 48, pipe=pipe, steps=3, tick=lambda *a: ticks.append(a))
     assert attn.shape == (48, 48)
     assert float(attn.min()) >= 0 and abs(float(attn.max()) - 1) < 1e-5
     assert S.token_index(tok, "a portrait of a camel") == 5
+    assert ticks == [(i, 6, True) for i in range(7)]  # before every step: 3 of the inversion, 3 of the generation
+
+    class Stop(Exception):
+        pass
+
+    def stop_in_the_generation(done, steps, on_cpu):
+        if done == 4:
+            raise Stop()
+
+    with pytest.raises(Stop):  # (how a stop request of the job ends it)
+        S.sdxl_attention(img, "camel", "cpu", 48, pipe=pipe, steps=3, tick=stop_in_the_generation)
+    assert not any(isinstance(p, S._StoreProcessor) for p in pipe.unet.attn_processors.values())
 
 
 def test_without_background_removal_the_whole_picture_is_sketched(tmp_path, monkeypatch):

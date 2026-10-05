@@ -39,6 +39,16 @@ def controlsketch_uses_sdxl(s: dict) -> bool:
     return bool(s["use_init_method"]) and s["attn_model"] == "diffusion" and bool(schema.text_value(s["object_name"]))
 
 
+# SDXL (about 7 GB in float16) does not fit on smaller graphics cards: its attention step then runs on the CPU,
+# the rest of ControlSketch stays on the GPU. In GiB like the hardware probe ("8 GB" cards report about 8.0).
+SDXL_MIN_VRAM_GB = 7.5
+
+
+def sdxl_on_cpu(vram_gb: float) -> bool:
+    """Does the SDXL step run on the CPU on a graphics card with this much memory (GiB)?"""
+    return 0 < vram_gb < SDXL_MIN_VRAM_GB
+
+
 def controlsketch(settings: dict) -> list[str]:
     s = schema.normalize({**settings, "method": "controlsketch"})
     needed = {"sd15", f"controlnet:{s['condition']}", model_store.clip_key("ViT-B/32")}

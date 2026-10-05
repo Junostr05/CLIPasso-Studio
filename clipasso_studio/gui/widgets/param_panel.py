@@ -21,6 +21,27 @@ GROUP_ICONS = {
 }
 
 
+def ask_sdxl_on_cpu(parent, gb: str, minutes: int) -> tuple[str, bool]:
+    """SDXL chosen for a graphics card too small for it -> ("cpu" | "clip", remember the answer)."""
+    from PySide6.QtWidgets import QMessageBox
+
+    from ... import APP_NAME
+
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Question)
+    box.setWindowTitle(APP_NAME)
+    box.setText(tr("ui.sdxl_ask.text", gb=gb))
+    box.setInformativeText(tr("ui.sdxl_ask.info", minutes=minutes))
+    cpu = box.addButton(tr("ui.sdxl_ask.cpu"), QMessageBox.AcceptRole)
+    clip = box.addButton(tr("ui.sdxl_ask.clip"), QMessageBox.RejectRole)
+    box.setDefaultButton(clip)
+    box.setEscapeButton(clip)  # closed without an answer: nothing changes (CLIP stays)
+    remember = QCheckBox(tr("ui.sdxl_ask.remember"))
+    box.setCheckBox(remember)
+    box.exec()
+    return ("cpu" if box.clickedButton() is cpu else "clip"), remember.isChecked()
+
+
 def param_text_key(method: str, key: str, suffix: str) -> str:
     """i18n key of a parameter text; a method may override the shared text (param.<method>.<key>.*)."""
     specific = f"param.{method}.{key}.{suffix}"
@@ -408,6 +429,7 @@ class ParamPanel(QWidget):
         self._settings = dict(self._per_method[self._method])
         self._preset = "standard"
         self._applying = False
+        self._sdxl_note = False  # SDXL was turned back to CLIP by the remembered answer: say so once
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(12)
@@ -538,6 +560,13 @@ class ParamPanel(QWidget):
     def _field_changed(self, key, value):
         if self._applying:
             return
+        if self._method == "controlsketch" and key == "attn_model" and value == "diffusion" and \
+                not self._sdxl_chosen():
+            self.fields["attn_model"].set_value("clip", emit=True)  # CLIP instead
+            if self._sdxl_note:
+                self._sdxl_note = False
+                self.fields["attn_model"].set_warning(tr("ui.sdxl_clip_remembered"))
+            return
         self._settings[key] = value
         if self._method == "clipasso":
             if key == "percep_loss" and value != "none" and not self._settings.get("perceptual_weight"):
@@ -606,6 +635,32 @@ class ParamPanel(QWidget):
             self.fields["object_name"].set_warning(tr("ui.model_download_hint", size=size_of(["sdxl"])))
         else:
             self.fields["object_name"].set_warning(None)
+        card = methods_ui.small_card_for_sdxl(s) if diffusion else None  # SDXL then runs on the CPU
+        self.fields["attn_model"].set_warning(
+            tr("ui.sdxl_cpu_hint", gb=f"{card.get('memory_gb', 0):.0f}", minutes=methods_ui.sdxl_cpu_minutes(s))
+            if card else None)
+
+    def _sdxl_chosen(self) -> bool:
+        """SDXL was picked as the attention model: on a graphics card too small for it, ask (or follow the
+        remembered answer) whether its step runs on the CPU or CLIP is used instead. True: SDXL stays."""
+        from ..app_settings import app_settings
+
+        card = methods_ui.small_card_for_sdxl(self._settings)
+        if card is None:
+            return True
+        choice = app_settings().get(methods_ui.SDXL_SMALL_GPU)
+        if choice not in ("cpu", "clip"):
+            choice, remember = ask_sdxl_on_cpu(self, f"{card.get('memory_gb', 0):.0f}",
+                                               methods_ui.sdxl_cpu_minutes(self._settings))
+            if remember:
+                app_settings().set(methods_ui.SDXL_SMALL_GPU, choice)
+        elif choice == "clip":
+            self._sdxl_note = True  # say why CLIP stays
+        return choice == "cpu"
+
+    def refresh_hints(self):
+        """The hints that depend on the hardware (after the probe answered)."""
+        self._after_change()
 
     def _detect_preset(self):
         for name, values in schema.METHOD_PRESETS[self._method].items():

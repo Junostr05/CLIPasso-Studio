@@ -302,8 +302,11 @@ def test_settings_row(gui, monkeypatch):
     assert app_settings().get(gpu_runtime.SETTING) == "" and restarts == [1]
     assert page.refresh_gpu_runtime() == "off"
     assert page._gpurt_remove(confirm=False) and page.refresh_gpu_runtime() == "missing"
-    page.gpu_precision.setCurrentIndex(1)
+    assert not page.gpu_precision.isChecked() and page.gpu_precision_desc.text()  # a switch with its description
+    page.gpu_precision.setChecked(True)
     assert app_settings().get("gpu_precision") == "fp32"
+    page.gpu_precision.setChecked(False)
+    assert app_settings().get("gpu_precision") == "auto"
     monkeypatch.setattr(gui, "available_here", lambda: False)  # the CPU edition without the add-on
     page.refresh_gpu_runtime()
     assert not page.gpurt_box.isVisibleTo(page)

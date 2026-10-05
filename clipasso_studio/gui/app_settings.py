@@ -36,6 +36,7 @@ DEFAULTS: dict[str, Any] = {
     "gpu_runtime": "",  # the PyTorch for older graphics cards that is switched on (gpu_runtime.py), "" = off
     "gpu_runtime_dismissed": "",  # its offer was declined ("don't ask again") for this runtime
     "gpu_precision": "auto",  # "auto": float16 for the big networks on the GPU, "fp32": always full precision
+    "sdxl_small_gpu": "",  # SDXL chosen on a card with less than 8 GB: "" ask, "cpu" on the CPU, "clip" use CLIP
     "skipped_version": "",
     "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,

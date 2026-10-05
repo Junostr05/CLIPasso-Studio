@@ -929,7 +929,8 @@ class StudioPage(QWidget):
             self.device_badge.setText(self._device_text(data.get("device", "")))
         elif kind == "stage":
             n = job.seeds.index(seed) + 1 if seed in job.seeds else 1
-            self._set_status(f"ui.status.{data['name']}", n=n, total=len(job.seeds))
+            extra = {k: v for k, v in data.items() if k not in ("name", "seed", "n", "total")}  # e.g. step/steps
+            self._set_status(f"ui.status.{data['name']}", n=n, total=len(job.seeds), **extra)
         elif kind == "input":
             self.canvas.set_input(_pixmap_from_png(data["png"]))
             self.canvas.set_mask(_pixmap_from_png(data["mask_png"]))
@@ -1306,8 +1307,8 @@ class StudioPage(QWidget):
         self._status_key = (key, fmt)
         self.status.setText(tr(key, **fmt))
         busy = key in ("ui.status.optimizing", "ui.status.loading", "ui.status.init", "ui.status.starting",
-                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models") or \
-            key.startswith("ui.status.scene_")
+                       "ui.status.caption", "ui.status.condition", "ui.status.diffusion_models",
+                       "ui.status.init_sdxl_cpu") or key.startswith("ui.status.scene_")
         self.stage_badge.setVisible(busy)
         if busy:
             self.stage_badge.setText(tr("ui.live"))
@@ -1316,6 +1317,7 @@ class StudioPage(QWidget):
         """The hardware probe answered (GPU or not): estimates and hints follow it."""
         self._update_estimate()
         self._update_banner()
+        self.params.refresh_hints()
         self.picker.refresh_status(self.params.all_settings())
 
     def _update_estimate(self):

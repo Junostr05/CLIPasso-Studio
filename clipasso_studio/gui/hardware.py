@@ -80,3 +80,14 @@ def has_cuda() -> bool:
     """A GPU this PyTorch can compute on (one it has no kernels for does not count)."""
     info = cached()
     return bool(info and info.get("cuda") and any(g.get("supported", True) for g in info.get("gpus") or [{}]))
+
+
+def job_gpu(settings: dict) -> dict | None:
+    """The graphics card (as the probe saw it) a job with these settings computes on, like
+    ``pipeline.resolve_device``; None: the CPU, or not known yet."""
+    info = cached()
+    gpus = (info or {}).get("gpus") or []
+    if settings.get("device") == "cpu" or not (info or {}).get("cuda") or not gpus:
+        return None
+    gpu = gpus[min(int(settings.get("gpunum") or 0), len(gpus) - 1)]
+    return gpu if gpu.get("supported", True) else None

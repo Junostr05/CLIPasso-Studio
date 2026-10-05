@@ -85,6 +85,19 @@ def _cached(key, fn):
     return _cache[key]
 
 
+def _load_array(path: str) -> torch.Tensor | None:
+    try:
+        return torch.from_numpy(np.load(path))
+    except (OSError, ValueError, EOFError):  # not there (or not complete)
+        return None
+
+
+def _save_array(path: str, t: torch.Tensor) -> None:
+    with open(path + ".tmp", "wb") as f:
+        np.save(f, t.float().cpu().numpy())
+    os.replace(path + ".tmp", path)
+
+
 def _png_mask(mask: torch.Tensor) -> Image.Image:
     return Image.fromarray(((mask >= 0.5).float().cpu().numpy() * 255).astype(np.uint8), mode="L")
 
@@ -158,16 +171,36 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     attn = None
     start = None
     if s["use_init_method"]:
+        stopped = False
         if uses_sdxl(s):
-            from .sdxl_attention import sdxl_attention
+            from .sdxl_attention import object_attention
+
+            def tick(done, steps, on_cpu):  # SDXL on the CPU takes long: progress, pause and stop in between
+                if control.should_stop():
+                    raise Cancelled()
+                control.wait_if_paused()
+                if on_cpu:
+                    reporter.event("stage", seed=seed, name="init_sdxl_cpu", step=done, steps=steps)
+
+            def log(code, **params):
+                reporter.event("log", message=f"seed {seed}: the SDXL attention runs on the CPU ({code})", code=code,
+                               seed=seed, **params)
 
             object_name = schema.text_value(s["object_name"])
-            attn = _cached(("sdxl", object_name) + stamp, lambda: sdxl_attention(inp["canvas"], object_name, device,
-                                                                                  size))
+            saved = os.path.join(run_dir, "sdxl_attention.npy")  # continuing the run does not compute it again
+            try:
+                attn = _load_array(saved)
+                if attn is None:
+                    attn = _cached(("sdxl", object_name) + stamp, lambda: object_attention(
+                        inp["canvas"], object_name, device, size, tick=tick, log=log))
+                    _save_array(saved, attn)
+            except Cancelled:  # stopped during it: the strokes start evenly, the run ends before its first step
+                attn, stopped = torch.ones(size, size), True
         else:
             attn = _cached(("clip-attn",) + stamp, lambda: clip_attention(target_t, size, device))
-        points, _ = _cached(("points", int(s["num_strokes"]), s["attn_model"], schema.text_value(s["object_name"]))
-                            + stamp, lambda: init_points(attn, inp["mask"], int(s["num_strokes"])))
+        points_key = ("points", int(s["num_strokes"]), s["attn_model"], schema.text_value(s["object_name"])) + stamp
+        points, _ = init_points(attn, inp["mask"], int(s["num_strokes"])) if stopped else \
+            _cached(points_key, lambda: init_points(attn, inp["mask"], int(s["num_strokes"])))
         start = (points / size).tolist()
         shown = torch.pow(attn, 2) * inp["mask"]
         preview = imaging.attention_overlay(target_t, shown.cpu().numpy(), points[:, ::-1])

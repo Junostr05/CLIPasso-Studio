@@ -6,6 +6,7 @@ import math
 
 from .. import settings_schema as schema
 from ..engine import model_store
+from ..engine.methods.requirements import controlsketch_uses_sdxl
 
 NAMES = {"clipasso": "CLIPasso", "swiftsketch": "SwiftSketch", "controlsketch": "ControlSketch",
          "scenesketch": "SceneSketch"}
@@ -26,6 +27,12 @@ TURBO_SPEED = {
 }
 # seconds for loading models / preparing the input, per sketch
 SETUP_SECONDS = {"clipasso": 15, "swiftsketch": 10, "controlsketch": 60, "scenesketch": 5}
+# ControlSketch's SDXL attention on the CPU, once per job: 100 network steps at 1024 px of about 45 s each
+# (measured on 4 cores, it uses all of them: about that much faster with more); on a graphics card it is part
+# of the setup
+SDXL_CPU_SECONDS = 4500
+SDXL_MEASURED_CORES = 4
+SDXL_SMALL_GPU = "sdxl_small_gpu"  # app setting: what to do when SDXL is chosen for a small graphics card
 
 _cuda: bool | None = None
 
@@ -116,4 +123,29 @@ def estimate_seconds(settings: dict, gpu: bool | None = None) -> float:
         secs = per_it * total_iterations(s) + SETUP_SECONDS[method] * s["num_sketches"]
     if method == "scenesketch":
         secs = per_it * total_iterations(s) + SETUP_SECONDS[method] * len(schema.scene_cells(s))
+    if method == "controlsketch" and controlsketch_uses_sdxl(s) and (not gpu or small_card_for_sdxl(s)):
+        secs += sdxl_cpu_seconds(s)
     return float(secs)
+
+
+def sdxl_cpu_seconds(settings: dict) -> float:
+    """Expected time of the SDXL step on this computer's CPU: the measured one scaled by the cores it uses."""
+    from ..engine import runner
+
+    cores = int(settings.get("num_threads") or 0) or runner.hardware_info()[0]
+    return SDXL_CPU_SECONDS * SDXL_MEASURED_CORES / max(cores, 1)
+
+
+def sdxl_cpu_minutes(settings: dict) -> int:
+    """The same in minutes, rounded to 5."""
+    return max(5, int(round(sdxl_cpu_seconds(settings) / 300)) * 5)
+
+
+def small_card_for_sdxl(settings: dict) -> dict | None:
+    """The graphics card of a job with these settings when SDXL does not fit on it (the SDXL step then runs on
+    the CPU, the rest of ControlSketch on the card); else None."""
+    from ..engine.methods.requirements import sdxl_on_cpu
+    from .hardware import job_gpu
+
+    card = job_gpu(settings)
+    return card if card and sdxl_on_cpu(float(card.get("memory_gb") or 0)) else None

@@ -851,6 +851,7 @@ class SettingsPage(QWidget):
         self.system_info.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.system.body.addWidget(self.system_info)
         self._build_gpu_runtime(self.system.body)
+        self._build_sdxl_choice(self.system.body)
         self.logs_btn = button("", "folder-open", "ghost")
         self.logs_btn.clicked.connect(crash.open_logs_folder)
         self.diag_copy_btn = button("", "copy", "ghost")
@@ -925,6 +926,7 @@ class SettingsPage(QWidget):
     def showEvent(self, event):  # noqa: N802
         super().showEvent(event)
         self.refresh_storage()
+        self.refresh_sdxl_choice()  # (the studio may have remembered an answer)
 
     def _build_watch(self, col):
         """Watched folder: new images there are sketched by themselves and exported."""
@@ -1204,15 +1206,53 @@ class SettingsPage(QWidget):
         row.addStretch(1)
         col.addLayout(row)
         self.gpu_precision_label = label("", None)
-        self.gpu_precision = QComboBox()
-        for value in ("auto", "fp32"):
-            self.gpu_precision.addItem("", value)
-        self.gpu_precision.setCurrentIndex(max(self.gpu_precision.findData(app_settings().get("gpu_precision")), 0))
-        self.gpu_precision.currentIndexChanged.connect(
-            lambda _: app_settings().set("gpu_precision", self.gpu_precision.currentData()))
+        self.gpu_precision = ToggleSwitch()  # off: float16 for the big networks (the default), on: float32
+        self.gpu_precision.setChecked(app_settings().get("gpu_precision") == "fp32")
+        self.gpu_precision.toggled.connect(lambda on: app_settings().set("gpu_precision", "fp32" if on else "auto"))
         col.addLayout(self._row(self.gpu_precision_label, self.gpu_precision))
+        self.gpu_precision_desc = label("", "faint", wrap=True)
+        col.addWidget(self.gpu_precision_desc)
         body.addWidget(self.gpurt_box)
         self._gpurt_rt = gpu_runtime.LEGACY
+
+    def _build_sdxl_choice(self, body):
+        """ControlSketch's SDXL on a graphics card with less than 8 GB: ask, on the CPU, or CLIP instead (the
+        answer the studio remembered can be changed here)."""
+        from .. import methods_ui
+
+        self.sdxl_box = QWidget()
+        col = QVBoxLayout(self.sdxl_box)
+        col.setContentsMargins(0, 6, 0, 2)
+        col.setSpacing(6)
+        self.sdxl_label = label("", None)
+        self.sdxl_choice = QComboBox()
+        for value in ("", "cpu", "clip"):
+            self.sdxl_choice.addItem("", value)
+        self.sdxl_choice.setCurrentIndex(max(self.sdxl_choice.findData(
+            app_settings().get(methods_ui.SDXL_SMALL_GPU) or ""), 0))
+        self.sdxl_choice.currentIndexChanged.connect(
+            lambda _: app_settings().set(methods_ui.SDXL_SMALL_GPU, self.sdxl_choice.currentData()))
+        col.addLayout(self._row(self.sdxl_label, self.sdxl_choice))
+        self.sdxl_desc = label("", "faint", wrap=True)
+        col.addWidget(self.sdxl_desc)
+        body.addWidget(self.sdxl_box)
+
+    def refresh_sdxl_choice(self) -> None:
+        from ...engine.methods.requirements import sdxl_on_cpu
+        from .. import methods_ui
+
+        info = self._hardware or {}
+        small = any(g.get("supported", True) and sdxl_on_cpu(float(g.get("memory_gb") or 0))
+                    for g in info.get("gpus") or [])
+        value = app_settings().get(methods_ui.SDXL_SMALL_GPU) or ""
+        self.sdxl_box.setVisible(small or bool(value))
+        self.sdxl_choice.blockSignals(True)
+        self.sdxl_choice.setCurrentIndex(max(self.sdxl_choice.findData(value), 0))
+        self.sdxl_choice.blockSignals(False)
+        self.sdxl_label.setText(tr("ui.settings.sdxl_small_gpu"))
+        for i, key in enumerate(("ask", "cpu", "clip")):
+            self.sdxl_choice.setItemText(i, tr(f"ui.settings.sdxl_small_gpu.{key}"))
+        self.sdxl_desc.setText(tr("ui.settings.sdxl_small_gpu.tip"))
 
     def gpu_runtime_visible(self) -> bool:
         from ... import gpu_runtime
@@ -1245,11 +1285,8 @@ class SettingsPage(QWidget):
         self.gpurt_switch.setChecked(st in ("active", "restart"))
         self.gpurt_switch.blockSignals(False)
         self.gpurt_remove.setText(tr("ui.gpurt.remove_btn"))
-        self.gpu_precision_label.setText(tr("ui.gpurt.precision"))
-        self.gpu_precision_label.setToolTip(tr("ui.gpurt.precision_tip"))
-        self.gpu_precision.setToolTip(tr("ui.gpurt.precision_tip"))
-        self.gpu_precision.setItemText(0, tr("ui.gpurt.precision_auto"))
-        self.gpu_precision.setItemText(1, tr("ui.gpurt.precision_fp32"))
+        self.gpu_precision_label.setText(tr("ui.gpurt.precision_fp32"))
+        self.gpu_precision_desc.setText(tr("ui.gpurt.precision_tip"))
         return st
 
     def _gpurt_download(self):
@@ -1363,6 +1400,7 @@ class SettingsPage(QWidget):
         info.append(f"{tr('ui.models.title')}: {paths.bundled_models_dir()}")
         self.system_info.setText("\n".join(info))
         self.refresh_gpu_runtime()
+        self.refresh_sdxl_choice()
 
 
 # ====================================================================== about
