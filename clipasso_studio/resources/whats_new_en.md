@@ -1,4 +1,17 @@
-## New in 3.3: looks, sharing, order
+## New in 3.4: better sketches
+
+- **Saved steps as the result:** with the clock button above the sketch you go through its saved steps and make one of them the result.
+- **Simplify:** a slider leaves out the least important strokes first – CLIP measures once per sketch how much each stroke adds.
+- **Detail brush:** paint over the photo where the sketch should get more detail (orange) and where less (blue). For CLIPasso and ControlSketch.
+- **Portrait mode:** *Find face* in the detail brush marks the eyes, nose and mouth by itself – offline.
+- **Best sketch:** *Most similar* as before, *My taste* – rate sketches in the studio with thumbs up/down, from 10 ratings on the app learns what you like – or *Similar & beautiful* (experimental, with LAION’s aesthetic score).
+- **Phone remote 2.0:** *Choose picture* now also opens the gallery and files (not only the camera), and almost the whole studio works from the phone: method, presets, every parameter, time budget, detail brush, start, queue, live sketches, thumbs, downloads and the recent results.
+- **Time budget:** 5, 15 or 60 minutes (or your own) – the app sets everything so the job takes about that long on this computer.
+- **Smaller updates:** the program file (75 MB) only comes along when its libraries change.
+
+---
+
+**New in 3.3: looks, sharing, order**
 
 - **Six new brush styles:** charcoal, chalk, ballpoint pen, watercolour, neon and calligraphy – in the live preview (palette button of the studio) and in every export.
 - **Paper & background:** drawing paper, watercolour paper, kraft paper, linen and a blackboard, in any colour and with a vignette – in the preview and in every export. On a dark paper black strokes become light.

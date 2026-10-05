@@ -1,22 +1,22 @@
-## CLIPasso Studio 3.3 – looks, sharing and order
+## CLIPasso Studio 3.4 – better sketches
 
-**Looks**
-- **Six new brush styles:** charcoal, chalk, ballpoint pen, watercolour, neon and calligraphy (a broad nib) – next to plain, ink, pencil and marker. In the live preview (palette button of the studio) and in every export. Plain SVG geometry, so browsers, PDF readers and the app show the same picture.
-- **Paper & background:** drawing paper, watercolour paper, kraft paper, linen and a blackboard – textures the app makes itself – in any colour, with a vignette. In the preview and in PNG, PDF, GIF, MP4, WebP and SVG; on a dark paper black strokes become light.
+**Shape the result**
+- **Saved steps as the result** (clock button above the canvas): slide through the steps a sketch saved while it was computed and take one as the result. *Undo* brings the final one back; the original stays.
+- **Simplify** (slider button): the strokes that add the least go first. CLIP measures once per sketch (a few seconds) how far the likeness falls without each stroke; *Apply* keeps what you see (undo, the original stays).
+- **Detail brush** (sparkle button next to the photo): paint where the sketch should get more detail (orange) and where less (blue). CLIPasso and ControlSketch put more starting strokes into the orange parts and draw the blue parts more loosely (the photo is softened there). The map belongs to the picture – in the queue, when continuing and in the job folder.
+- **Portrait mode** (*Find face* in the detail brush): BlazeFace finds the face and marks the eyes, nose and mouth as “more detail”. It runs on this computer; the 0.4 MB model is included.
 
-**Sharing**
-- **Print layout** (studio, gallery selection, albums): A5, A4, A3, US Letter or a 50 × 70 cm poster, portrait or landscape, margins, one sketch per page or a contact sheet of up to 20, a title, a signature and names under the sketches – as a multi-page PDF or straight to the printer, with a preview.
-- **Lottie** (`.json`): the sketch drawing itself stroke by stroke for websites, apps and After Effects (lottie-web, LottieFiles); one layer per stroke, the background or paper below.
-- **Web page** (`.html`): one file in which the sketch draws itself, in its brush style and on its paper, with a button to draw it again – to send or upload.
-- **Phone remote (Wi-Fi):** Settings → *Phone & messages*: scan the QR code and see the status and a live preview on the phone, pause or cancel, or take a photo that is sketched right away. Only from the home network and only with the access code; off by default.
-- **Telegram message:** your own bot sends the finished sketch with its name, method and duration (or the error) to your phone. Only the Telegram Bot API; the token stays on this computer.
+**Choose the best sketch**
+- **Best sketch** (next to the number of sketches): *Most similar* – as before; *My taste* – rate sketches with thumbs up or down in the studio, and from 10 ratings on the app learns what you like (a small model on this computer, Settings → *My taste*); *Similar & beautiful (experimental)* – LAION’s aesthetic score counts as well. It was trained on photos: on sketches it reliably prefers clean lines over shaky ones, but it cannot tell a sketch from a scribble – so the look only ever decides among sketches at most 3 CLIP points behind the most similar one.
+**Phone remote 2.0**
+- **Pictures from anywhere:** *Take photo* opens the camera, *Choose picture* the gallery and files of the phone (before, only the camera opened); *From the PC* offers the recent pictures and the samples.
+- **The studio on the phone:** method, presets, every parameter (with its help text, advanced ones on request), time budget, the detail brush (paint with your finger, *Find face*), start, add to queue, pause, cancel – questions such as “memory is short” are answered on the phone, never at the computer.
+- **Watch and keep:** the live sketch with its numbers, all sketches of a job, thumbs up/down, brush style and paper, download as SVG or PNG; the recent results (open one to look at it again) and the queue.
 
-**Order**
-- **Albums** in the gallery: create them, drag sketches onto them or use the right-click menu, show one album, rename it, export or print it. A sketch knows its albums (in its own folder), so they move with it.
-- **Backup & move** (Settings → System): the settings, the queue with its pictures, the gallery – and the models, if wanted – in one `.clipbackup` file, and back on this or a new computer: the folders of the new computer stay, results already there are skipped, nothing is overwritten. Tokens and access codes are never in a backup.
+- **Time budget** (input card): 5, 15 or 60 minutes or your own: the app picks iterations, number of sketches, turbo mode and augmentations so the job takes about that long on this computer – from the measured times.
 
 **Small update**
-- An app on 3.2.1 downloads only the files that changed (`…-Patch-from-3.2.1.exe` / `…-Portable-Patch-from-3.2.1.zip`).
+- An app on 3.3.0 downloads only the files that changed (`…-Patch-from-3.3.0.exe` / `…-Portable-Patch-from-3.3.0.zip`). The program file now keeps its version number until its libraries change, so it no longer comes with every update (75 MB).
 
 | File | For whom? |
 |---|---|

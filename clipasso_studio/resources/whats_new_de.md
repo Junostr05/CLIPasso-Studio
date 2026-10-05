@@ -1,4 +1,17 @@
-## Neu in 3.3: Aussehen, Teilen, Ordnung
+## Neu in 3.4: bessere Skizzen
+
+- **Zwischenstand übernehmen:** Mit dem Uhr-Knopf über der Skizze gehst du durch die gespeicherten Schritte und machst einen davon zum Ergebnis.
+- **Vereinfachen:** Ein Regler lässt die unwichtigsten Striche zuerst weg – CLIP misst einmal pro Skizze, wie viel jeder Strich beiträgt.
+- **Detail-Pinsel:** Male über das Foto, wo die Skizze mehr Details bekommen soll (orange) und wo weniger (blau). Gilt für CLIPasso und ControlSketch.
+- **Porträt-Modus:** *Gesicht finden* im Detail-Pinsel markiert Augen, Nase und Mund von selbst – offline.
+- **Beste Skizze:** *Am ähnlichsten* wie bisher, *Mein Geschmack* – bewerte Skizzen im Studio mit Daumen hoch/runter, ab 10 Bewertungen lernt die App, was dir gefällt – oder *Ähnlich & schön* (experimentell, mit der Ästhetik-Bewertung von LAION).
+- **Handy-Fernsteuerung 2.0:** *Bild wählen* öffnet jetzt auch Galerie und Dateien (nicht nur die Kamera), und fast das ganze Studio geht vom Handy aus: Methode, Voreinstellungen, alle Parameter, Zeitbudget, Detail-Pinsel, Start, Warteschlange, Live-Skizzen, Daumen, Herunterladen und die letzten Ergebnisse.
+- **Zeitbudget:** 5, 15 oder 60 Minuten (oder eigene) – die App stellt alles so ein, dass der Auftrag auf diesem Computer etwa so lange dauert.
+- **Kleinere Updates:** Die Programmdatei (75 MB) kommt nur noch mit, wenn sich ihre Bibliotheken ändern.
+
+---
+
+**Neu in 3.3: Aussehen, Teilen, Ordnung**
 
 - **Sechs neue Pinselstile:** Kohle, Kreide, Kugelschreiber, Aquarell, Neon und Kalligrafie – in der Live-Vorschau (Paletten-Knopf im Studio) und in jedem Export.
 - **Papier & Hintergrund:** Zeichenpapier, Aquarellpapier, Packpapier, Leinen und Tafel, in jeder Farbe und mit Vignette – in der Vorschau und in jedem Export. Auf dunklem Papier werden schwarze Striche hell.
