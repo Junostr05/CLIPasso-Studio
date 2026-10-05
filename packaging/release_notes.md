@@ -1,17 +1,19 @@
-## CLIPasso Studio 3.1 – older graphics cards (GTX 9xx / 10xx)
+## CLIPasso Studio 3.2 – steadier, faster, smaller updates
 
-**Older NVIDIA cards on the GPU edition**
-- NVIDIA cards older than the GTX 16xx – e.g. a **GTX 1060** or GTX 970 – now compute on the graphics card instead of the processor. They are not in the app's PyTorch build (CUDA 12.8 starts with compute capability 7.5), so the GPU edition detects such a card at the start and offers an **add-on**: the official PyTorch 2.11 build with CUDA 12.6 (2.6 GB download, 4.1 GB on the disk, checked by SHA-256, downloaded from download.pytorch.org). After a restart the app uses it automatically, also in its worker processes. Newer cards need nothing and download nothing.
-- Tried on a GTX 1060 6 GB: the card is detected, CLIPasso and SceneSketch run on it – much faster than on the processor.
-- **Settings → System → Older graphics cards**: download the add-on, switch it on or off, remove it. An update to a version with another PyTorch asks to download the matching add-on again; add-ons of earlier versions are removed.
+**Small updates**
+- Every release now carries the file list of each edition. From the next update on, the app downloads only the files that changed: a small patch for the installed app (`…-Patch-from-<version>.exe`, the same silent one-click install) and for the portable ZIP. A release with a new PyTorch has no patch – then the full files come as before. The single portable exe is always replaced as a whole.
+- The CI installs every CPU build, applies a test patch to it (it must delete a removed file and refuse another version), runs the self-test of the patched app and uninstalls it again.
 
-**SDXL on graphics cards below 8 GB** (ControlSketch's optional *SDXL cross-attention*)
-- SDXL needs about 7 GB of graphics memory. On a smaller card the app asks when you choose it – *Compute on the processor* or *Use CLIP* – with *Remember my choice*; the answer can be changed under Settings → System.
-- On the processor this one step uses all cores (measured: about 75 min on 4 cores, faster with more; about 15 GB of RAM), shows its progress in the status line, can be paused and cancelled, and is kept with the run, so continuing it does not compute it again. Everything after it runs on the graphics card.
-- A bigger card that runs out of memory during SDXL hands the step to the processor by itself.
+**Steadier**
+- **Self-test** (Settings → System): short runs of every method, continuing a job, the background removal, the warm worker – with a result per part and its log.
+- **Report a problem …** (error dialogs, crash notice, Settings → System): a prepared GitHub issue with the error, its traceback and the diagnostics – paths with the user name shortened to `~`, shown and editable before anything is sent; a text too long for the address goes to the clipboard in full.
+- **Memory guard:** before a job starts or is queued, the app compares what it needs (measured per method) with the free RAM and the graphics memory, and offers smaller settings (or the processor) instead of failing after minutes.
+- **Quality benchmark in the CI:** fixed short runs of CLIPasso, SwiftSketch and SceneSketch on every release; a CLIP score that drops by more than 5 points fails the release; a drop of more than 2 points, slower runs or more memory are reported (times are scaled by a calibration of the CI machine; processors round a little differently, so small score changes only warn).
 
-**Precision**
-- **Always compute in fp32** (Settings → System): off by default – Stable Diffusion, ControlNet, BLIP and BiRefNet compute in fp16 on the graphics card as before (half the graphics memory, the same pictures). On: everything in fp32, to compare or if a card computes wrongly with fp16.
+**Faster**
+- **SDXL piece by piece on small graphics cards:** on cards below 8 GB, ControlSketch's optional SDXL attention now runs piece by piece on the card (the weights wait in the RAM, about 9 GB, the card needs about 2 GB) instead of only on the processor. The question when SDXL is chosen offers *Graphics card, piece by piece (recommended)*, *Processor* or *CLIP*; a full card falls back by itself: whole card → piece by piece → processor. The measured time per step goes into the estimates.
+- **Several graphics cards:** the sketches of a CLIPasso, SwiftSketch or ControlSketch job are spread over all usable cards, one worker per card (Settings → *Use several graphics cards*, on by default).
+- Measured and left out: int8 networks for ControlSketch on the processor were only about 10 % faster – not worth a change in the pictures.
 
 | File | For whom? |
 |---|---|

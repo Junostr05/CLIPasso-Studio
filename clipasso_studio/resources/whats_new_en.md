@@ -1,4 +1,15 @@
-## New in 3.1: older graphics cards
+## New in 3.2: steadier, faster, smaller updates
+
+- **Small updates:** from the next update on, the app downloads only the files that changed – usually megabytes instead of 1 GB (CPU) or 3.5 GB (GPU). When PyTorch changes, the whole package comes as before.
+- **Self-test:** Settings → System → *Self-test* checks every method, continuing, the background removal and loading the models in a few minutes.
+- **Report a problem:** on an error (and in the settings) *Report a problem …* prepares a report for GitHub – with the diagnostics, paths with your name shortened, and you see and can change everything first.
+- **Memory guard:** before the start the app checks whether the RAM and the graphics memory are enough, and otherwise suggests smaller settings – instead of failing after minutes.
+- **SDXL piece by piece on the graphics card:** on cards below 8 GB ControlSketch's SDXL attention now computes piece by piece on the graphics card (the pieces wait in the RAM) – much faster than on the processor. Progress in the status line; the measured time goes into the estimate.
+- **Several graphics cards:** the sketches of a job are spread over all cards (CLIPasso, SwiftSketch, ControlSketch).
+
+---
+
+**New in 3.1: older graphics cards**
 
 - **GTX 9xx / 10xx on the graphics card:** NVIDIA cards older than the GTX 16xx (e.g. GTX 1060, GTX 970) now compute on the graphics card instead of the processor. The app detects such a card by itself and offers an add-on: PyTorch with CUDA 12.6, 2.6 GB download. Newer cards do not need it.
 - **Settings → System:** download, switch on and off or remove the add-on, and the switch *Always compute in fp32* (default: fp16, half the graphics memory).
