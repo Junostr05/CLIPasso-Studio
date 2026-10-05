@@ -62,6 +62,10 @@ class _I18n(QObject):
     def has(self, key: str) -> bool:
         return key in self._data[self.lang] or key in self._data["en"]
 
+    def keys(self, prefix: str) -> list[str]:
+        """Every key that starts with ``prefix`` (in either language)."""
+        return sorted({k for d in self._data.values() for k in d if k.startswith(prefix)})
+
 
 i18n = _I18n()
 

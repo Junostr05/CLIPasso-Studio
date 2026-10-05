@@ -369,6 +369,29 @@ def main(argv: list[str] | None = None) -> int:
         from .cli import main as cli_main
 
         return cli_main(argv)
+    # the studio's "Simplify" (how much each stroke of a run's sketch adds) and thumbs (the sketch's CLIP embedding)
+    for flag in ("--importance", "--embed"):
+        if flag in argv:
+            _ensure_streams(f"{flag[2:]}.log")
+            idx = argv.index(flag)
+            if len(argv) <= idx + 1:
+                return 2
+            try:
+                if flag == "--importance":
+                    from .engine import importance
+
+                    print(importance.compute(argv[idx + 1]), flush=True)
+                else:
+                    from .engine import aesthetic
+
+                    aesthetic.compute_embedding(argv[idx + 1])
+                    print(os.path.join(argv[idx + 1], aesthetic.EMB_FILE), flush=True)
+                return 0
+            except Exception:
+                import traceback
+
+                traceback.print_exc()
+                return 1
     if "--selftest" in argv:
         _attach_console()
         _ensure_streams("selftest.log")

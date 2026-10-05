@@ -140,6 +140,71 @@ def estimate_seconds(settings: dict, gpu: bool | None = None) -> float:
     return float(secs)
 
 
+BUDGET_MINUTES = (5, 15, 60)  # the time budgets of the studio's input card (and "other …")
+
+
+def _budget_grid(method: str, s: dict):
+    """Variants of the settings a time budget may choose from (the knobs that cost time)."""
+    sketches = int(s.get("num_sketches", 1))
+    if method == "swiftsketch":
+        for refine in (True, False):
+            for n in range(max(sketches, 8), 0, -1):  # (more to choose the best from – but not a wall of them)
+                yield {"num_sketches": n, "use_refine": refine}
+    elif method == "clipasso":
+        for turbo in (False, True):
+            for n in sorted({sketches, 3, 2, 1}, reverse=True):
+                for it in (2001, 1500, 1000, 700, 500, 300, 150):
+                    for aug in (4, 2, 0):
+                        yield {"turbo": turbo, "num_sketches": n, "num_iter": it, "num_aug_clip": aug}
+    elif method == "controlsketch":
+        for turbo in (False, True):
+            for n in sorted({sketches, 2, 1}, reverse=True):
+                for it in (2000, 1500, 1000, 600, 300, 150):
+                    yield {"turbo": turbo, "num_sketches": n, "num_iter": it}
+    else:  # SceneSketch: the matrix the user chose stays as long as it can
+        levels = int(s.get("simplicity_levels", 8))
+        for lv in sorted({levels, min(levels, 4), min(levels, 2), 0}, reverse=True):
+            for turbo in (False, True):
+                for n in sorted({sketches, 1}, reverse=True):
+                    for it in (1501, 1000, 600, 300):
+                        yield {"turbo": turbo, "num_sketches": n, "num_iter": it, "simplicity_levels": lv}
+
+
+def _budget_quality(method: str, v: dict, s: dict) -> float:
+    """How good a variant is expected to be (larger: better) – iterations count most, then more sketches to
+    choose the best from; turbo costs a little, fewer abstraction levels change what SceneSketch makes."""
+    q = 0.0
+    if "num_iter" in v:
+        q += 3.0 * math.log(max(int(v["num_iter"]), 1))
+    q += 1.0 * math.log(1 + int(v.get("num_sketches", 1)))
+    q += 0.5 * math.log(1 + int(v.get("num_aug_clip", 0)))
+    q += 0.6 if v.get("use_refine") else 0.0
+    q -= 0.3 if v.get("turbo") else 0.0
+    if "simplicity_levels" in v:
+        q += 10.0 * int(v["simplicity_levels"]) / max(int(s.get("simplicity_levels", 8)), 1)
+    return q
+
+
+def fit_to_budget(settings: dict, seconds: float, gpu: bool | None = None) -> tuple[dict, float]:
+    """The changes to ``settings`` that give the best expected sketch within ``seconds`` (measured speed of this
+    computer, see :func:`estimate_seconds`) and the expected time. Nothing fits: the quickest variant."""
+    s = schema.normalize(settings)
+    method = schema.method_of(s)
+    best, best_q, quickest, quickest_secs = None, None, None, None
+    for variant in _budget_grid(method, s):
+        trial = {**s, **variant}
+        secs = estimate_seconds(trial, gpu)
+        if quickest_secs is None or secs < quickest_secs:
+            quickest, quickest_secs = variant, secs
+        if secs <= seconds:
+            q = _budget_quality(method, variant, s)
+            if best_q is None or q > best_q + 1e-9:
+                best, best_q = (variant, secs), q
+    variant, secs = best if best is not None else (quickest, quickest_secs)
+    changes = {k: v for k, v in (variant or {}).items() if s.get(k) != v}
+    return changes, float(secs or 0.0)
+
+
 def sdxl_seconds(settings: dict, mode: str) -> float:
     """Expected time of the SDXL step piece by piece through a small graphics card ("offload") or on the CPU:
     measured on this computer (``sec_per_it`` "sdxl:<mode>", seconds per network step), else the measurement

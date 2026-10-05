@@ -123,6 +123,28 @@ def describe(changes: dict) -> str:
     return ", ".join(parts)
 
 
+def shortage(settings: dict) -> tuple[str, dict | None] | None:
+    """Without asking (the phone): (what is short, in words; the smaller settings or None) – None when the memory
+    is enough, the check is switched off or the hardware is not known yet."""
+    from .app_settings import app_settings
+    from .hardware import cached, job_gpu
+    from .i18n import tr
+
+    if not app_settings().get(SETTING, True):
+        return None
+    if schema.normalize(settings).get("device") != "cpu" and cached() is None:
+        return None
+    n = need(settings, job_gpu(settings), app_settings().get("gpu_precision", "auto"))
+    if not n.short:
+        return None
+    lines = []
+    if "ram" in n.short:
+        lines.append(tr("ui.resources.ram", need=f"{n.ram / GB:.0f}", free=f"{n.ram_free / GB:.0f}"))
+    if "vram" in n.short:
+        lines.append(tr("ui.resources.vram", need=f"{n.vram / GB:.0f}", free=f"{n.vram_free / GB:.0f}"))
+    return " ".join(lines), suggestion(settings, n)
+
+
 def confirm(parent, settings: dict) -> dict | None:
     """Before a job is started or queued: the settings to use (perhaps smaller ones the user accepted), or None
     when the user cancels. Asks only when memory is short."""

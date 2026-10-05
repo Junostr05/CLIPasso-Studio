@@ -161,22 +161,37 @@ def get_target(args, u2net=None):
     """-> (target tensor [1,3,S,S], mask tensor [S,S], masked PIL, mask PIL) like the original get_target."""
     from . import framing
 
+    from . import details
+
     target = load_rgb(args.target)
     photo, region, pad = target.size, None, None
+    detail = details.detail_map(target)  # the detail brush (photo pixels), carried along as a picture
+    detail_img = details.as_image(detail) if detail is not None else None
     # an unused mask is only shown in the mask view: the bundled U2Net, as before
     model = getattr(args, "mask_model", "u2net") if args.mask_object or args.mask_object_attention else "u2net"
     masked_im, mask_img = masking.get_mask(args.device, target, model, net=u2net if model == "u2net" else None)
     if args.mask_object:
         target = masked_im
+    if detail is not None:  # less detail wanted: the picture is softened there
+        target = details.soften(target, detail)
+    if args.mask_object:
         if getattr(args, "frame_object", False):  # small objects fill the canvas
             box = imaging.frame_box(mask_img)
+            if detail_img is not None:
+                detail_img = imaging.frame_object(detail_img, mask_img)[0]
             target, mask_img, framed = imaging.frame_object(target, mask_img)
             region = box if framed else None
     if args.fix_scale:
         pad = framing.fix_scale_pad(*target.size)
         target = imaging.fix_image_scale(target)
         mask_img = imaging.fix_image_scale(mask_img, fill=0)
+        if detail_img is not None:
+            detail_img = imaging.fix_image_scale(detail_img)
     args.photo_frame = framing.photo_frame(photo, region, pad)  # where the photo lies on the canvas (export)
+    args.detail_canvas = None
+    if detail_img is not None:  # on the canvas, like the target: the attention of the start strokes is weighted
+        canvas = _canvas_transform(detail_img.size, args.image_scale)(detail_img)
+        args.detail_canvas = details.from_image(transforms.ToPILImage()(canvas))
 
     target_ = _canvas_transform(target.size, args.image_scale)(target).unsqueeze(0).to(args.device)
     mask_t = _canvas_transform(mask_img.size, args.image_scale, nearest=True)(mask_img)[0]
@@ -528,11 +543,25 @@ def run_job(settings: dict, target: str, output_root: str, reporter: Reporter | 
             break
         run_dir = os.path.join(job_dir, run_name_for(target, settings, seed))
         result = impl.run_single(settings, target, run_dir, seed, reporter, control, device)
-        jobs.save_result(result)
+        _keep(result, device)
         results.append(result)
     if not finish:
         return results
     return finish_job(job_dir, target, settings, jobs.merge_results(old, results), reporter)
+
+
+def _keep(result: SeedResult, device) -> None:
+    """Save a finished sketch's result, with its CLIP embedding next to it (for choosing the nicest sketch and for
+    the user's thumbs; CLIP is loaded anyway for the score)."""
+    jobs.save_result(result)
+    if result.status != "done" or not os.path.isfile(result.best_svg):
+        return
+    try:
+        from . import aesthetic
+
+        aesthetic.compute_embedding(result.run_dir, result.best_svg, device)
+    except Exception:  # informative only: the job goes on without it
+        pass
 
 
 def _run_pruned(impl, settings: dict, target: str, job_dir: str, seeds: list[int], old: dict[int, SeedResult],
@@ -567,7 +596,7 @@ def _run_pruned(impl, settings: dict, target: str, job_dir: str, seeds: list[int
         if r.status == "partial":
             partial[seed] = r
         else:  # finished early (converged) or cancelled
-            jobs.save_result(r)
+            _keep(r, device)
             results.append(r)
             if r.status == "cancelled":
                 return stopped()
@@ -579,12 +608,12 @@ def _run_pruned(impl, settings: dict, target: str, job_dir: str, seeds: list[int
         if control and control.should_stop():
             return stopped()
         r = impl.run_single(settings, target, run_dir(seed), seed, reporter, control, device, finalize=True)
-        jobs.save_result(r)
+        _keep(r, device)
         results.append(r)
     if best is not None and best.status == "partial":
         if control and control.should_stop():
             return stopped()
         r = impl.run_single(settings, target, run_dir(best.seed), best.seed, reporter, control, device, plan_left=0)
-        jobs.save_result(r)
+        _keep(r, device)
         results.append(r)
     return results

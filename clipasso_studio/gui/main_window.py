@@ -253,7 +253,7 @@ class MainWindow(QMainWindow):
         # the phone: the remote page in the home network and Telegram messages
         from .phone import PhoneLink
 
-        self.phone = PhoneLink(self.controller, lambda: self.studio.params.settings(), self)
+        self.phone = PhoneLink(self.controller, lambda: self.studio.params.settings(), self, studio=self.studio)
         self.phone.toast.connect(self.toast.show_message)
         self.settings.phone_card.set_link(self.phone)
         self.about.show_tour.connect(self.show_tour)

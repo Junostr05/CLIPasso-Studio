@@ -77,6 +77,16 @@ def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
                  enabled_if=enabled_if)
 
 
+# Which of several sketches is the best (``engine/aesthetic.py``): the one most like the photo, or that one weighed
+# against how nice it looks (LAION's aesthetic score, or the user's own taste from their thumbs up and down)
+BEST_BY = ("faithful", "beautiful", "mine")
+
+
+def _best_by() -> Param:
+    return Param("best_by", "faithful", "choice", "basics", choices=BEST_BY, advanced=False,
+                 enabled_if=lambda s: int(s.get("num_sketches", 1) or 1) > 1 and not s.get("turbo"))
+
+
 PARAMS: tuple[Param, ...] = (
     # ------------------------------------------------------------------ basics
     Param("num_paths", 16, "int", "basics", cli="num_paths", minimum=1, maximum=256, advanced=False,
@@ -84,6 +94,7 @@ PARAMS: tuple[Param, ...] = (
     Param("num_iter", 2001, "int", "basics", cli="num_iter", minimum=1, maximum=20000, step=100, advanced=False),
     Param("num_sketches", 3, "int", "basics", cli="num_sketches", minimum=1, maximum=16, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    _best_by(),
     # ------------------------------------------------------------------- image
     Param("mask_object", False, "bool", "image", cli="mask_object", advanced=False),
     _mask_model(lambda s: clipasso_uses_mask(s)),
@@ -217,6 +228,7 @@ def _hardware(multiprocess: bool = True) -> tuple[Param, ...]:
 SWIFT_PARAMS: tuple[Param, ...] = (
     Param("num_sketches", 1, "int", "basics", minimum=1, maximum=32, advanced=False),
     Param("seed", 20, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    _best_by(),
     Param("mask_object", True, "bool", "image", advanced=False),
     _mask_model(_on("mask_object")),
     Param("frame_object", True, "bool", "image", advanced=False, enabled_if=_on("mask_object")),
@@ -264,6 +276,7 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("num_iter", 2000, "int", "basics", cli="num_iter", minimum=1, maximum=20000, step=100, advanced=False),
     Param("num_sketches", 1, "int", "basics", minimum=1, maximum=16, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
+    _best_by(),
     Param("caption", "none", "text", "basics", cli="caption", advanced=False),
     # not in the original, which always removes the background (RMBG); off = the whole picture is sketched
     Param("mask_object", True, "bool", "image", advanced=False),

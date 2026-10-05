@@ -10,9 +10,11 @@ from PySide6.QtCore import QObject, Signal
 
 from .. import settings_schema as schema
 from ..engine import jobs
-from . import methods_ui, remote, telegram
+from . import brush, methods_ui, paper, remote, telegram
 from .app_settings import app_settings
 from .i18n import i18n, tr
+
+PAGE_TEXTS = "ui.phone.page."
 
 
 def _eta(seconds: float) -> str:
@@ -27,11 +29,15 @@ def _eta(seconds: float) -> str:
 class PhoneLink(QObject):
     toast = Signal(str, str)
 
-    def __init__(self, controller, settings_provider=None, parent=None):
+    def __init__(self, controller, settings_provider=None, parent=None, studio=None):
         super().__init__(parent)
+        from .phone_api import PhoneApi
+
         self.controller = controller
         self.settings_provider = settings_provider  # () -> the studio's settings (sketches sent from the phone)
         self.bridge = remote.RemoteBridge(self)
+        self.api = PhoneApi(controller, studio, self)  # the studio from the phone
+        self.bridge.handler = self.api.handle
         self.server: remote.RemoteServer | None = None
         self.error = ""
         self.notifier = telegram.Notifier(self)
@@ -70,9 +76,13 @@ class PhoneLink(QObject):
         return self.server is not None
 
     def retranslate(self):
-        keys = ("pause", "resume", "cancel", "cancel_ask", "new", "send", "pick", "sending", "queued_ok", "failed",
-                "running", "paused", "done", "idle", "eta", "queued", "offline")
-        texts = {k: tr(f"ui.phone.page.{k}") for k in keys}
+        texts = {k[len(PAGE_TEXTS):]: tr(k) for k in i18n.keys(PAGE_TEXTS)}
+        texts.update({f"style_{k}": tr(f"ui.brush.{k}") for k in brush.STYLES})
+        texts.update({f"paper_{k}": tr(f"ui.paper.{k}") for k in paper.KINDS})
+        texts.update(budget=tr("ui.budget.label"), detail_title=tr("ui.detail.title"), detail_hint=tr("ui.detail.hint"),
+                     tool_more=tr("ui.detail.tool_more"), tool_normal=tr("ui.detail.tool_normal"),
+                     tool_less=tr("ui.detail.tool_less"), face=tr("ui.detail.face"), rate_up=tr("ui.rate.up"),
+                     rate_down=tr("ui.rate.down"), estimate_none="")
         texts.update({f"method_{m}": methods_ui.name(m) for m in remote.METHODS})
         texts["lang"] = i18n.lang
         self.bridge.texts = texts
@@ -117,7 +127,7 @@ class PhoneLink(QObject):
         else:
             settings = schema.default_settings(method)
         self.controller.enqueue(path, settings, start=True)
-        self.toast.emit(tr("ui.phone.received", name=os.path.basename(path)), "success")
+        self.toast.emit(tr("ui.phone.received_queue", name=os.path.basename(path)), "success")
 
     def shutdown(self):
         if self.server is not None:

@@ -315,3 +315,111 @@ def test_phone_card(qapp, user_data):
     card.new_access_code()
     assert app_settings().get("remote_token") != old
     settings_module._instance = None
+
+
+# ----------------------------------------------------------------------------- the studio from the phone
+def _in_thread(qapp, fn, seconds=20.0):
+    """Run a request in a thread while the event loop runs (the server asks the GUI thread and waits)."""
+    import threading
+
+    box = {}
+
+    def run():
+        try:
+            box["value"] = fn()
+        except Exception as exc:  # (handed to the test)
+            box["error"] = exc
+
+    th = threading.Thread(target=run)
+    th.start()
+    assert _wait(qapp, lambda: not th.is_alive(), seconds)
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
+
+
+def _cookie(base):
+    from clipasso_studio.gui import remote
+
+    _status, headers, _ = _get(base + f"/?t={remote.token()}")
+    return headers["Set-Cookie"].split(";")[0]
+
+
+def test_page_and_its_files(server):
+    from clipasso_studio.gui import remote
+
+    _srv, bridge, base, _up = server
+    cookie = _cookie(base)
+    status, headers, body = _get(base + "/", cookie)
+    assert status == 200 and "script-src 'self'" in headers["Content-Security-Policy"]
+    assert b'id="cfg" type="application/json"' in body and remote.token().encode() in body
+    assert b"<script>" not in body.replace(b'<script src="/phone.js"></script>', b"")  # nothing runs inline
+    assert b'id="choose" type="file" accept="image/*" hidden' in body  # a file, not only the camera
+    assert b'capture="environment"' in body  # (the camera has a button of its own)
+    for name, kind in (("phone.js", "javascript"), ("phone.css", "css"), ("icon.png", "png")):
+        assert _get(base + "/" + name)[0] == 403
+        status, headers, data = _get(base + "/" + name, cookie)
+        assert status == 200 and kind in headers["Content-Type"] and data
+
+
+def test_page_texts_exist():
+    """Every text the page uses has a translation (or comes from the app's other texts)."""
+    import re
+
+    from clipasso_studio import paths
+    from clipasso_studio.gui.i18n import i18n
+
+    html = paths.resource("phone", "index.html").read_text(encoding="utf-8")
+    js = paths.resource("phone", "phone.js").read_text(encoding="utf-8")
+    used = set(re.findall(r'data-t="([a-z_]+)"', html)) | set(re.findall(r"\bT\.([a-z_]+)", js)) \
+        | set(re.findall(r'\bt\("([a-z_]+)"', js))
+    extra = {"detail_title", "detail_hint", "tool_more", "tool_normal", "tool_less", "face", "rate_up", "rate_down"}
+    page = {k[len("ui.phone.page."):] for k in i18n.keys("ui.phone.page.")}
+    assert used - page - extra == set()
+    for k in page:
+        assert i18n._data["de"].get("ui.phone.page." + k) and i18n._data["en"].get("ui.phone.page." + k), k
+
+
+def test_requests_go_to_the_app(server, qapp, monkeypatch):
+    from clipasso_studio.gui import remote
+
+    _srv, bridge, base, up = server
+    code = remote.token()
+    cookie = _cookie(base)
+    calls = []
+
+    def handler(action, data):
+        calls.append((action, data))
+        if action == "file_thing":
+            return {"_bytes": b"<svg/>", "_type": "image/svg+xml", "_name": "my sketch.svg"}
+        if action == "do_bad":
+            return {"ok": False, "error": "no"}
+        return {"ok": True, "action": action}
+
+    bridge.handler = handler
+    status, _, body = _in_thread(qapp, lambda: _get(base + "/api/get/studio?x=1", cookie))
+    assert status == 200 and json.loads(body)["action"] == "get_studio" and calls[-1] == ("get_studio", {"x": "1"})
+    status, headers, body = _in_thread(qapp, lambda: _get(base + "/api/file/thing?seed=3", cookie))
+    assert status == 200 and body == b"<svg/>" and headers["Content-Type"] == "image/svg+xml"
+    assert "attachment" in headers["Content-Disposition"] and "my%20sketch.svg" in headers["Content-Disposition"]
+    assert _get(base + "/api/get/studio")[0] == 403  # (no cookie)
+    head = {"X-Access": code, "Content-Type": "application/json"}
+    status, data = _in_thread(qapp, lambda: _post(base + "/api/do", json.dumps({"action": "set", "key": "k",
+                                                                                "value": 3}).encode(), head))
+    assert status == 200 and calls[-1] == ("do_set", {"action": "set", "key": "k", "value": 3})
+    assert _in_thread(qapp, lambda: _post(base + "/api/do", b'{"action": "bad"}', head))[0] == 400
+    assert _post(base + "/api/do", b'{"action": "set"}', {"Content-Type": "application/json"})[0] == 403
+    assert _in_thread(qapp, lambda: _post(base + "/api/do", b"not json", head))[0] == 400
+    assert _in_thread(qapp, lambda: _post(base + "/api/do", b'{"action": "../x"}', head))[0] == 404
+    # a picture for the studio (not the queue)
+    status, data = _in_thread(qapp, lambda: _post(base + "/api/upload", _png(), {
+        "X-Access": code, "X-Target": "studio", "X-Filename": "beach.png"}))
+    assert status == 200 and calls[-1][0] == "set_image" and calls[-1][1]["path"].endswith("beach.png")
+    # the painted detail map
+    status, data = _in_thread(qapp, lambda: _post(base + "/api/details", _png(), {"X-Access": code}))
+    assert status == 200 and calls[-1][0] == "set_details" and calls[-1][1]["png"].startswith(b"\x89PNG")
+    assert _post(base + "/api/details", b"GIF89a", {"X-Access": code})[0] == 415
+    # the app does not answer in time: "busy"
+    monkeypatch.setattr(remote, "CALL_TIMEOUT", 0.3)
+    status, _, body = _get(base + "/api/get/studio", cookie)  # (no events processed: no answer)
+    assert status == 503 and json.loads(body)["error"] == "busy"

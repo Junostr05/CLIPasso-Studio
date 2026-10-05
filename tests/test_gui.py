@@ -722,3 +722,259 @@ def test_one_line_in_the_studio(window, tmp_path, monkeypatch):
     job = _fake_job(out, "line_job", str(tmp_path / "line.png"), 30.0)
     studio.show_job_dir(job)
     assert studio.edit_tools.isVisibleTo(studio) and not studio.eraser_btn.isEnabled()  # a single stroke
+
+
+def test_saved_steps_and_simplify_in_the_studio(window, tmp_path, monkeypatch):
+    import json
+    import sys
+
+    from clipasso_studio.engine import importance
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.pages import studio as studio_mod
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "steps_job", str(tmp_path / "steps.png"), 30.0)
+    run = os.path.join(job, "steps_job_run")
+    with open(os.path.join(run, "best_iter.svg")) as f:
+        best = f.read()
+    two = best.replace("</svg>", '<path d="M 100 100 L 200 200" stroke="rgb(0,0,0)" stroke-width="2" fill="none"/>'
+                                  "</svg>")
+    with open(os.path.join(run, "best_iter.svg"), "w") as f:
+        f.write(two)
+    for it, svg in ((0, best), (5, two)):
+        with open(os.path.join(run, "svg_logs", f"svg_iter{it}.svg"), "w") as f:
+            f.write(svg)
+    studio = window.studio
+    studio.show_job_dir(job)
+    seed = studio._editable_seed()
+    assert seed is not None
+    assert studio.open_history() and studio.edit_bar.mode == "history"
+    studio.edit_bar.slider.setValue(0)
+    studio.edit_bar.apply_btn.click()
+    edited = os.path.join(run, "edited.svg")
+    assert open(edited).read() == best and studio.seed_svgs[seed] == best and studio.undo_btn.isEnabled()
+    studio.undo_edit()
+    assert studio.seed_svgs[seed] == two and not os.path.isfile(edited)
+
+    # Simplify: the measuring process (here a stand-in that writes the file) – then the slider works
+    script = ("import json, sys; from clipasso_studio.engine import importance as i, jobs; r = sys.argv[1]; "
+              "s = open(jobs.sketch_file(r)).read(); "
+              "json.dump({'sha1': i.digest(s), 'drops': [1.0, 0.1]}, open(r + '/' + i.FILE, 'w'))")
+    monkeypatch.setattr(studio_mod, "importance_command", lambda r: (sys.executable, ["-c", script, r]))
+    assert studio.open_simplify() and not studio.edit_bar.slider.isEnabled()
+    proc = studio._importance_proc
+    assert proc.waitForFinished(30000)
+    window_app = __import__("PySide6.QtWidgets", fromlist=["QApplication"]).QApplication.instance()
+    for _ in range(50):
+        window_app.processEvents()
+        if studio.edit_bar.slider.isEnabled():
+            break
+    assert studio.edit_bar.slider.isEnabled() and importance.read(run, two) == [1.0, 0.1]
+    studio.edit_bar.slider.setValue(1)
+    studio.edit_bar.apply_btn.click()
+    assert "200 200" not in studio.seed_svgs[seed]  # the second, less important stroke went
+    studio.revert_edits()
+    assert studio.seed_svgs[seed] == two
+    studio.open_simplify()  # measured already: ready at once
+    assert studio.edit_bar.slider.isEnabled()
+    studio.edit_bar.close_bar()
+    assert json.loads(open(os.path.join(run, importance.FILE)).read())["drops"] == [1.0, 0.1]
+
+
+def test_time_budget_in_the_studio(window, monkeypatch):
+    from clipasso_studio.gui import methods_ui
+
+    monkeypatch.setattr(methods_ui, "_cuda", False)
+    studio = window.studio
+    studio.picker.select("clipasso") if hasattr(studio.picker, "select") else None
+    studio.params.fields["device"].set_value("cpu", emit=True)
+    toasts = []
+    studio.toast.connect(lambda text, kind: toasts.append(kind))
+    changes = studio.fit_to_budget(15)
+    s = studio.params.settings()
+    assert all(s[k] == v for k, v in changes.items())
+    assert methods_ui.estimate_seconds(s, False) <= 15 * 60 * 1.05 or toasts[-1] == "info"
+    assert toasts and studio.budget_actions[60].text()
+    studio.params.fields["device"].set_value("auto", emit=True)
+
+
+def test_detail_brush_button_in_the_studio(window, tmp_path, monkeypatch):
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.engine import details
+    from clipasso_studio.gui import detail_edit
+    from clipasso_studio.gui.i18n import tr
+
+    studio = window.studio
+    path = str(tmp_path / "face.png")
+    Image.new("RGB", (64, 48), (200, 180, 160)).save(path)
+    studio.set_image(path)
+    assert studio.detail_btn.isEnabled() and tr("ui.detail.has") not in studio.detail_btn.toolTip()
+
+    def fake_exec(dlg):
+        dlg.view.set_map(np.full_like(dlg.view.map, 255))
+        dlg.apply()
+        return True
+
+    monkeypatch.setattr(detail_edit.DetailEditDialog, "exec", fake_exec)
+    assert studio.edit_details()
+    assert details.detail_map(Image.open(path).convert("RGB")) is not None
+    assert tr("ui.detail.has") in studio.detail_btn.toolTip()
+    studio.params.set_method("swiftsketch")  # does not use the map: the tip says so
+    assert tr("ui.detail.not_used") in studio.detail_btn.toolTip()
+    studio.params.set_method("clipasso")
+    assert tr("ui.detail.not_used") not in studio.detail_btn.toolTip()
+    details.remove_detail_map(Image.open(path).convert("RGB"))
+
+
+def test_thumbs_in_the_studio_and_the_taste_in_the_settings(window, tmp_path, monkeypatch):
+    import sys
+
+    import numpy as np
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.engine import aesthetic, jobs
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.widgets import edit_bar
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "thumbs_job", str(tmp_path / "thumbs.png"), 30.0)
+    run = os.path.join(job, "thumbs_job_run")
+    studio = window.studio
+    studio.show_job_dir(job)
+    assert studio._editable_seed() is not None and not studio.up_btn.isChecked()
+    toasts = []
+    studio.toast.connect(lambda text, kind: toasts.append(text))
+    # a sketch from before 3.4 has no embedding: a process makes it (here a stand-in), then the rating counts
+    script = ("import sys, numpy as np; from clipasso_studio.engine import aesthetic, jobs; r = sys.argv[1]; "
+              "v = np.ones(512, np.float32) / np.sqrt(512); aesthetic.save_embedding(r, jobs.sketch_file(r), v)")
+    monkeypatch.setattr(edit_bar, "tool_command", lambda flag, r: (sys.executable, ["-c", script, r]))
+    studio.up_btn.click()
+    assert studio.up_btn.isChecked() and not studio.down_btn.isChecked()
+    assert jobs.read_meta(job)["ratings"] == {"thumbs_job_run": 1}
+    assert studio._embed_proc.waitForFinished(30000)
+    for _ in range(50):
+        QApplication.instance().processEvents()
+        if aesthetic.counts() != (0, 0):
+            break
+    assert aesthetic.counts() == (1, 0) and toasts and "9" in toasts[-1]
+    studio.down_btn.click()  # changed its mind: the embedding is there now
+    assert studio.down_btn.isChecked() and not studio.up_btn.isChecked() and aesthetic.counts() == (0, 1)
+    studio.down_btn.click()  # taken back
+    assert not studio.down_btn.isChecked() and "ratings" not in jobs.read_meta(job) and aesthetic.counts() == (0, 0)
+    studio.up_btn.click()
+    settings = window.settings
+    assert settings.refresh_taste() == (1, 0) and settings.taste_forget.isEnabled()
+    assert settings.forget_taste(confirm=False) and settings.refresh_taste() == (0, 0)
+    assert np.allclose(np.linalg.norm(aesthetic.read_embedding(run)), 1, atol=1e-5)
+
+
+def test_phone_controls_the_studio(window, tmp_path, monkeypatch):
+    """Every action of the phone page against the real studio (``gui/phone_api.py``; the server is in
+    test_phone)."""
+    import io
+    import json
+
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import details, jobs
+    from clipasso_studio.gui import resources
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    api = window.phone.api
+    call = api.handle
+    assert call("open_folder", {}) == {"ok": False, "error": "unknown action"}  # (only get_/file_/do_ actions)
+    assert call("do_nothing", {}) == {"ok": False, "error": "unknown action"}
+    # parameters of every method, without files on the computer
+    for method in schema.METHODS:
+        sc = call("get_schema", {"method": method})
+        keys = [p["key"] for g in sc["groups"] for p in g["params"]]
+        assert keys and "path_svg" not in keys and sc["presets"]
+        assert all(p["label"] for g in sc["groups"] for p in g["params"])
+        choice = next(p for g in sc["groups"] for p in g["params"] if p["kind"] == "choice")
+        assert all(c["label"] for c in choice["choices"])
+    # method, a setting, a preset, the budget
+    assert call("do_method", {"method": "clipasso"})["ok"] and studio.params.method() == "clipasso"
+    assert call("do_set", {"key": "num_iter", "value": "301"})["ok"] and studio.params.settings()["num_iter"] == 301
+    assert call("do_set", {"key": "mask_object", "value": True})["ok"] and studio.params.settings()["mask_object"]
+    assert call("do_set", {"key": "num_iter", "value": "many"})["ok"] is False
+    assert call("do_set", {"key": "path_svg", "value": "/etc/passwd"})["ok"] is False
+    assert call("do_preset", {"preset": "fast"})["ok"] and studio.params._preset == "fast"
+    assert call("do_budget", {"minutes": 15})["ok"]
+    # a sample picture from the computer, then the studio's state
+    images = call("get_images", {})
+    assert images["samples"] and call("do_image", {"src": "sample", "i": 0})["ok"] and studio.image_path
+    assert call("do_image", {"src": "sample", "i": 99})["ok"] is False
+    assert call("do_image", {"src": "/", "i": 0})["ok"] is False
+    st = call("get_studio", {})
+    assert st["method"] == "clipasso" and st["image"]["name"] and st["settings"]["num_iter"] > 0
+    assert len(st["methods"]) == len(schema.METHODS) and "path_svg" not in st["settings"]
+    assert st["enabled"]["frame_object"] is True and st["estimate"]
+    jpg = call("file_input", {})
+    assert jpg["_type"] == "image/jpeg" and jpg["_bytes"][:2] == b"\xff\xd8"
+    assert call("file_image", {"src": "sample", "i": 0})["_bytes"][:2] == b"\xff\xd8"
+    # the detail brush: painted on the phone at the size of the picture it got
+    shown = Image.open(io.BytesIO(jpg["_bytes"]))
+    grey = np.full((shown.height, shown.width), 128, np.uint8)
+    grey[: shown.height // 2] = 255
+    buf = io.BytesIO()
+    Image.fromarray(grey).convert("RGB").save(buf, "PNG")
+    assert call("set_details", {"png": buf.getvalue()})["ok"]
+    full = details.detail_map(Image.open(studio.image_path).convert("RGB"))
+    assert full is not None and full[:5].min() > 0.9 and abs(full[-5:]).max() < 0.05
+    back = Image.open(io.BytesIO(call("file_details", {})["_bytes"]))
+    assert back.size == shown.size and np.asarray(back)[2, 2] > 250
+    assert call("get_studio", {})["details"]["has"]
+    assert call("do_clear_details", {})["ok"] and not call("get_studio", {})["details"]["has"]
+    # start: memory short -> the phone is asked; then started (or queued)
+    queued = []
+    monkeypatch.setattr(studio.controller, "enqueue", lambda target, settings, start=True: queued.append(
+        (target, settings, start)))
+    monkeypatch.setattr(studio.params, "missing_models", lambda: [])
+    monkeypatch.setattr(resources, "shortage", lambda s: ("RAM 30 GB, free 8 GB", {"num_sketches": 1}))
+    answer = call("do_start", {})
+    assert answer["ok"] is False and answer["ask"]["text"].startswith("RAM") and answer["ask"]["smaller"]
+    assert not queued
+    assert call("do_start", {"memory": "smaller"})["ok"] and queued[-1][1]["num_sketches"] == 1
+    assert call("do_start", {"memory": "anyway", "queue": True})["ok"] and len(queued) == 2
+    monkeypatch.setattr(resources, "shortage", lambda s: None)
+    monkeypatch.setattr(studio.params, "missing_models", lambda: ["clip:RN101"])
+    assert "MB" in call("do_start", {})["error"]
+    # a recent result: opened in the studio, its sketches, a thumb, the look, downloads
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "phone_job", str(tmp_path / "phone.png"), 31.0)
+    results = call("get_results", {})["results"]
+    i = next(r["i"] for r in results if r["dir"] == os.path.basename(job))
+    assert b"<svg" in call("file_result", {"i": i})["_bytes"]
+    from clipasso_studio.engine import aesthetic
+
+    run = os.path.join(job, "phone_job_run")
+    aesthetic.save_embedding(run, os.path.join(run, "best_iter.svg"), np.ones(512, np.float32) / np.sqrt(512))
+    assert call("do_open", {"i": i})["ok"] and os.path.normpath(studio.view_dir) == os.path.normpath(job)
+    st = call("get_studio", {})
+    assert st["seeds"] and st["shown"] is not None and st["can_rate"] and st["view"] == "phone_job"
+    assert call("do_select", {"seed": st["seeds"][0]["seed"]})["ok"]
+    assert call("do_select", {"seed": 123456})["ok"] is False
+    assert call("do_rate", {"value": 1})["ok"] and call("get_studio", {})["rating"] == 1
+    assert call("do_rate", {"value": 5})["ok"] is False
+    assert call("do_style", {"style": "pencil", "paper": "kraft"})["ok"]
+    assert app_settings().get("canvas_style") == "pencil" and app_settings().get("canvas_paper") == "kraft"
+    svg = call("file_sketch", {"full": "1"})
+    assert svg["_type"] == "image/svg+xml" and b"<svg" in svg["_bytes"] and b"data:image/jpeg" in svg["_bytes"]
+    png = call("file_download", {"fmt": "png", "size": "256"})
+    assert png["_bytes"][:4] == b"\x89PNG" and png["_name"].endswith(".png")
+    assert call("file_download", {"fmt": "svg"})["_name"].endswith(".svg")
+    call("do_style", {"style": "plain", "paper": "none"})
+    # the queue
+    q = call("get_queue", {})
+    assert isinstance(q["jobs"], list)
+    assert call("do_remove", {"id": "x"})["ok"] is False
+    assert jobs.read_meta(job)["ratings"]
+    json.dumps(call("get_studio", {}))  # (all of it goes to the phone as JSON)

@@ -23,6 +23,7 @@ from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SketchCanvas, load_pixmap)
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, WrapRow, button, label, tool_button
+from ..widgets.edit_bar import EditBar, importance_command
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel, param_text_key
 
@@ -143,6 +144,8 @@ class StudioPage(QWidget):
         self.samples_btn.setMenu(self.samples_menu)
         self.edit_btn = button("", "crop", "ghost")
         self.edit_btn.clicked.connect(self.edit_image)
+        self.detail_btn = button("", "sparkles", "ghost")  # detail brush (and portrait mode)
+        self.detail_btn.clicked.connect(self.edit_details)
         self.recent_btn = button("", "clock", "ghost")  # the last images (icon only: the row is narrow)
         self.recent_menu = QMenu(self)
         self.recent_menu.aboutToShow.connect(self._build_recent_menu)
@@ -154,6 +157,7 @@ class StudioPage(QWidget):
         row.addWidget(self.recent_btn)
         row.addWidget(self.webcam_btn)
         row.addWidget(self.edit_btn)
+        row.addWidget(self.detail_btn)
         row.addStretch(1)
         self.input_card.body.addLayout(row)
         # quick toggles mirrored from the parameter panel
@@ -168,6 +172,24 @@ class StudioPage(QWidget):
             r.addWidget(sw)
             self.input_card.body.addLayout(r)
             self.quick[key] = (lbl, sw)
+        # time budget: the settings that give the best sketch in that time on this computer
+        r = QHBoxLayout()
+        self.budget_label = label("", None)
+        self.budget_btn = button("", "clock", "ghost", size="sm")
+        self.budget_menu = QMenu(self)
+        self.budget_actions = {}
+        for minutes in methods_ui.BUDGET_MINUTES:
+            action = self.budget_menu.addAction("")
+            action.triggered.connect(lambda _=False, m=minutes: self.fit_to_budget(m))
+            self.budget_actions[minutes] = action
+        self.budget_menu.addSeparator()
+        self.budget_other = self.budget_menu.addAction("")
+        self.budget_other.triggered.connect(lambda: self.fit_to_budget(None))
+        self.budget_btn.setMenu(self.budget_menu)
+        r.addWidget(self.budget_label)
+        r.addStretch(1)
+        r.addWidget(self.budget_btn)
+        self.input_card.body.addLayout(r)
         ll.addWidget(self.input_card, 3)
 
         self.result_card = Card()
@@ -273,8 +295,24 @@ class StudioPage(QWidget):
         self.revert_btn.clicked.connect(self.revert_edits)
         self.continue_btn = tool_button("wand-sparkles", "", 18)  # a new CLIPasso job from this sketch
         self.continue_btn.clicked.connect(self.continue_with_clipasso)
-        for b in (self.eraser_btn, self.pen_btn, self.undo_btn, self.redo_btn, self.revert_btn, self.continue_btn):
+        # a saved step as the result, and "Simplify" (the least important strokes go first): a bar below the canvas
+        self.history_btn = tool_button("clock", "", 18)
+        self.history_btn.clicked.connect(self.open_history)
+        self.simplify_btn = tool_button("sliders-horizontal", "", 18)
+        self.simplify_btn.clicked.connect(self.open_simplify)
+        # thumbs up / down: the user's own taste ("Best sketch: My taste" from 10 ratings on)
+        self.up_btn = tool_button("thumbs-up", "", 18, checkable=True)
+        self.up_btn.clicked.connect(lambda: self.rate_sketch(1))
+        self.down_btn = tool_button("thumbs-down", "", 18, checkable=True)
+        self.down_btn.clicked.connect(lambda: self.rate_sketch(-1))
+        self._embed_proc = None
+        self._closing = False
+        for b in (self.eraser_btn, self.pen_btn, self.undo_btn, self.redo_btn, self.revert_btn, self.history_btn,
+                  self.simplify_btn, self.continue_btn):
             et.addWidget(b)
+        et.addSpacing(6)
+        et.addWidget(self.up_btn)
+        et.addWidget(self.down_btn)
         tools_row.addWidget(self.edit_tools)
         # brush style the sketches are shown in – also while they are computed; the export starts with it
         self.style_btn = tool_button("palette", "", 18)
@@ -329,6 +367,12 @@ class StudioPage(QWidget):
         self.canvas.erase_end.connect(self._erase_end)
         self.canvas.pen_stroke.connect(self._pen_stroke)
         center.body.addWidget(self.canvas, 1)
+        self.edit_bar = EditBar()
+        self.edit_bar.preview.connect(self.canvas.set_svg)
+        self.edit_bar.apply.connect(self._edit_bar_apply)
+        self.edit_bar.closed.connect(self._edit_bar_closed)
+        self._importance_proc = None
+        center.body.addWidget(self.edit_bar)
         self.matrix = MatrixView()  # SceneSketch: all cells of the abstraction matrix
         self.matrix.clicked.connect(self.select_seed)
         self.matrix.activated.connect(self._open_cell)
@@ -489,6 +533,33 @@ class StudioPage(QWidget):
         if dlg.exec() and dlg.result_path:
             self.set_image(dlg.result_path)
 
+    def edit_details(self) -> bool:
+        """Detail brush: paint where the sketch should have more or less detail (CLIPasso, ControlSketch)."""
+        if not self.image_path or not os.path.isfile(self.image_path):
+            return False
+        from ..detail_edit import DetailEditDialog
+
+        dlg = DetailEditDialog(self.image_path, self)
+        if dlg.exec() and dlg.saved:
+            self._update_detail_button()
+            self.toast.emit(tr("ui.detail.saved"), "success")
+            return True
+        return False
+
+    def _update_detail_button(self):
+        from ...engine import details
+
+        has = False
+        if self.image_path and os.path.isfile(self.image_path):
+            try:
+                has = details.detail_path(imaging.load_rgb(self.image_path)).is_file()
+            except OSError:
+                has = False
+        used = self.params.method() in ("clipasso", "controlsketch")
+        self.detail_btn.setEnabled(bool(self.image_path))
+        self.detail_btn.setToolTip(tr("ui.detail.tip") + ("\n" + tr("ui.detail.has") if has else "")
+                                   + ("" if used else "\n" + tr("ui.detail.not_used")))
+
     def images_dropped(self, paths: list[str]):
         """Several images (or a folder) dropped: the first is opened; all of them can go to the queue."""
         if not paths:
@@ -555,6 +626,7 @@ class StudioPage(QWidget):
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
         self._mask = None
         self._update_mask_preview()
+        self._update_detail_button()
         self._update_buttons()
 
     # ------------------------------------------------------------------ object mask
@@ -656,7 +728,14 @@ class StudioPage(QWidget):
         self._update_mask_preview()
 
     def shutdown(self):
+        self._closing = True
         self.mask_preview.shutdown()
+        from PySide6.QtCore import QProcess
+
+        for proc in (self._embed_proc, self._importance_proc):
+            if proc is not None and proc.state() != QProcess.NotRunning:
+                proc.kill()
+                proc.waitForFinished(2000)
 
     @staticmethod
     def _square_input(pm: QPixmap) -> QPixmap:
@@ -704,6 +783,7 @@ class StudioPage(QWidget):
         self._update_banner()
         self._update_estimate()
         self._update_mask_preview()
+        self._update_detail_button()
 
     def _set_view_method(self, method: str):
         """Adapt statistics, chart and canvas views to the method of the displayed run."""
@@ -900,6 +980,8 @@ class StudioPage(QWidget):
             self.select_seed(seeds[0])
 
     def select_seed(self, seed: int):
+        if seed != self.selected_seed:
+            self.edit_bar.close_bar()
         if seed != self.selected_seed and self.controller.is_busy():
             self.chart.reset(self.chart.total)  # the chart shows the selected sketch only
         self.selected_seed = seed
@@ -1153,6 +1235,9 @@ class StudioPage(QWidget):
             self.image_path = src
             self.drop.set_image(src)
             jobs.restore_edited_mask(job_dir, src)
+            from ...engine import details
+
+            details.restore_from_job(job_dir, src)
             self._mask = None
             self._update_mask_preview()
             pm = load_pixmap(src, DISPLAY_MAX)
@@ -1394,6 +1479,34 @@ class StudioPage(QWidget):
         self.params.refresh_hints()
         self.picker.refresh_status(self.params.all_settings())
 
+    def fit_to_budget(self, minutes: int | None) -> dict | None:
+        """Change the settings so the job takes about ``minutes`` (None: ask) with the best expected sketch."""
+        from PySide6.QtWidgets import QInputDialog
+
+        if minutes is None:
+            minutes, ok = QInputDialog.getInt(self, tr("ui.budget.title"), tr("ui.budget.ask"), 30, 1, 24 * 60, 5)
+            if not ok:
+                return None
+        s = self.params.settings()
+        gpu = s["device"] == "cuda" or (s["device"] == "auto" and methods_ui.has_cuda())
+        changes, secs = methods_ui.fit_to_budget(s, minutes * 60, gpu)
+        for key, value in changes.items():
+            if key in self.params.fields:
+                self.params.fields[key].set_value(value, emit=True)
+        self._update_estimate()
+        if secs > minutes * 60 * 1.05:
+            self.toast.emit(tr("ui.budget.too_short", time=imaging.eta_string(secs)), "info")
+        elif changes:
+            parts = []
+            for key, value in changes.items():
+                name = tr(param_text_key(self.params.method(), key, "label"))
+                value = tr("ui.resources.on" if value else "ui.resources.off") if isinstance(value, bool) else value
+                parts.append(f"{name}: {value}")
+            self.toast.emit(tr("ui.budget.done", changes=", ".join(parts), time=imaging.eta_string(secs)), "success")
+        else:
+            self.toast.emit(tr("ui.budget.fits", time=imaging.eta_string(secs)), "success")
+        return changes
+
     def _update_estimate(self):
         s = self.params.settings()
         gpu = s["device"] == "cuda" or (s["device"] == "auto" and (self.device_badge.text().startswith("GPU")
@@ -1537,6 +1650,11 @@ class StudioPage(QWidget):
         self.vignette_action.setText(tr("ui.paper.vignette"))
         self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{self.canvas.style()}")))
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
+        self.history_btn.setToolTip(tr("ui.edit_bar.history_tip"))
+        self.up_btn.setToolTip(tr("ui.rate.up"))
+        self.down_btn.setToolTip(tr("ui.rate.down"))
+        self.simplify_btn.setToolTip(tr("ui.edit_bar.simplify_tip"))
+        self.edit_bar.retranslate()
         self.pen_btn.setToolTip(tr("ui.pen.tip"))
         self.continue_btn.setToolTip(tr("ui.continue.tip"))
         self.undo_btn.setToolTip(tr("ui.eraser.undo"))
@@ -1560,12 +1678,20 @@ class StudioPage(QWidget):
         self.open_btn.setText(tr("ui.open"))
         self.samples_btn.setText(tr("ui.samples"))
         self.edit_btn.setToolTip(tr("ui.edit_image.tip"))  # icon only: the row must fit the narrow column
+        self._update_detail_button()
         self.recent_btn.setToolTip(tr("ui.recent"))
         self.webcam_btn.setToolTip(tr("ui.webcam.tip"))
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(param_text_key(self.params.method(), key, "label")))
             lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
         self.result_title.setText(tr("ui.result"))
+        self.budget_label.setText(tr("ui.budget.label"))
+        self.budget_btn.setText(tr("ui.budget.button"))
+        self.budget_btn.setToolTip(tr("ui.budget.tip"))
+        for minutes, action in self.budget_actions.items():
+            action.setText(tr("ui.budget.minutes", n=minutes) if minutes < 60 else
+                           tr("ui.budget.hours", n=minutes // 60))
+        self.budget_other.setText(tr("ui.budget.other"))
         self.export_btns["svg1"].setText(tr("ui.export_svg1"))
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
         self.export_btns["webp"].setToolTip(tr("ui.export_webp_tip"))
@@ -1632,6 +1758,8 @@ class StudioPage(QWidget):
         seed = self._editable_seed()
         show = self.modes.current() == "sketch" and seed is not None
         self.edit_tools.setVisible(show)
+        if not show:
+            self.edit_bar.close_bar()
         if not show and self.eraser_btn.isChecked():
             self.eraser_btn.setChecked(False)
         if not show and self.pen_btn.isChecked():
@@ -1650,6 +1778,7 @@ class StudioPage(QWidget):
             self.undo_btn.setEnabled(bool(self._edit_undo.get(seed)))
             self.redo_btn.setEnabled(bool(self._edit_redo.get(seed)))
             self.revert_btn.setEnabled(os.path.isfile(os.path.join(self.seed_runs[seed], jobs.EDITED_FILE)))
+            self._update_rating_buttons(seed)
 
     def _toggle_eraser(self, on: bool):
         if on and self.pen_btn.isChecked():
@@ -1791,6 +1920,157 @@ class StudioPage(QWidget):
         self._show_edited(seed, self._edit_redo[seed].pop())
         self._save_edit(seed)
         self._update_edit_tools()
+
+    # ------------------------------------------------------- thumbs up / down
+    def _rating_of(self, seed: int) -> tuple[str, str, int | None]:
+        """(job folder, run name, rating) of a sketch."""
+        run_dir = os.path.normpath(self.seed_runs[seed])
+        job_dir, name = os.path.dirname(run_dir), os.path.basename(run_dir)
+        value = (jobs.read_meta(job_dir).get("ratings") or {}).get(name)
+        return job_dir, name, value if value in (1, -1) else None
+
+    def _update_rating_buttons(self, seed: int):
+        _, _, value = self._rating_of(seed)
+        for btn, v in ((self.up_btn, 1), (self.down_btn, -1)):
+            btn.blockSignals(True)
+            btn.setChecked(value == v)
+            btn.blockSignals(False)
+
+    def rate_sketch(self, value: int) -> bool:
+        """Thumb up (1) or down (-1) for the shown sketch – the same thumb again takes it back. Kept with the job
+        (meta.json) and, with the sketch's CLIP embedding, in the user's taste (``engine/aesthetic.py``)."""
+        from ...engine import aesthetic
+
+        seed = self._editable_seed()
+        if seed is None:
+            return False
+        job_dir, name, current = self._rating_of(seed)
+        new = None if current == value else value
+        ratings = dict(jobs.read_meta(job_dir).get("ratings") or {})
+        if new is None:
+            ratings.pop(name, None)
+        else:
+            ratings[name] = new
+        jobs.write_meta(job_dir, ratings=ratings or None)
+        self._update_rating_buttons(seed)
+        key = f"{os.path.basename(job_dir)}/{name}"
+        run_dir = self.seed_runs[seed]
+        emb = aesthetic.read_embedding(run_dir)
+        if new is not None and emb is None:  # a sketch from before 3.4: its embedding is made first (seconds)
+            self._embed_then_rate(run_dir, key, new)
+            return True
+        self._taste_learnt(aesthetic.set_rating(key, emb, new), new)
+        return True
+
+    def _embed_then_rate(self, run_dir: str, key: str, value: int):
+        from PySide6.QtCore import QProcess
+
+        from ..widgets.edit_bar import tool_command
+
+        proc = QProcess(self)
+        program, args = tool_command("--embed", run_dir)
+
+        def done(*_):
+            from ...engine import aesthetic
+
+            if self._closing:  # (the window closes: the process was ended)
+                return
+            emb = aesthetic.read_embedding(run_dir)
+            if emb is None:
+                self.toast.emit(tr("ui.rate.failed"), "error")
+                return
+            self._taste_learnt(aesthetic.set_rating(key, emb, value), value)
+
+        proc.finished.connect(done)
+        proc.errorOccurred.connect(lambda e: done() if e == QProcess.FailedToStart else None)  # (else: finished)
+        self._embed_proc = proc
+        proc.start(program, args)
+
+    def _taste_learnt(self, data: dict, value: int | None):
+        from ...engine import aesthetic
+
+        up, down = aesthetic.counts(data)
+        if value is None:
+            self.toast.emit(tr("ui.rate.removed"), "info")
+        elif data.get("model"):
+            self.toast.emit(tr("ui.rate.learnt", n=up + down), "success")
+        elif up + down < aesthetic.MIN_RATINGS:
+            self.toast.emit(tr("ui.rate.progress", n=aesthetic.MIN_RATINGS - up - down), "info")
+        else:
+            self.toast.emit(tr("ui.rate.need_both"), "info")
+
+    # ------------------------------------------------------- saved steps and "Simplify"
+    def _start_edit_bar(self) -> int | None:
+        seed = self._editable_seed()
+        if seed is None:
+            return None
+        for b in (self.eraser_btn, self.pen_btn):
+            b.setChecked(False)
+        return seed
+
+    def open_history(self) -> bool:
+        """A slider over the saved steps of the shown sketch; one of them can become the result."""
+        seed = self._start_edit_bar()
+        if seed is None:
+            return False
+        from .. import export
+
+        frames = export.animation_frames(self.seed_runs[seed], upto_best=False)
+        if not self.edit_bar.open_history(frames, self.seed_svgs[seed]):
+            self.toast.emit(tr("ui.edit_bar.no_steps"), "info")
+            return False
+        return True
+
+    def open_simplify(self) -> bool:
+        """A slider that leaves out the least important strokes first (measured with CLIP the first time)."""
+        seed = self._start_edit_bar()
+        if seed is None:
+            return False
+        from ...engine import importance
+
+        run_dir, svg = self.seed_runs[seed], self.seed_svgs[seed]
+        values = importance.read(run_dir, svg)
+        self.edit_bar.open_simplify(svg, values)
+        if values is None:
+            self._measure_importance(run_dir, svg)
+        return True
+
+    def _measure_importance(self, run_dir: str, svg: str):
+        from PySide6.QtCore import QProcess
+
+        if self._importance_proc is not None and self._importance_proc.state() != QProcess.NotRunning:
+            self._importance_proc.kill()
+        proc = QProcess(self)
+        program, args = importance_command(run_dir)
+        proc.finished.connect(lambda code, _status: self._importance_done(run_dir, svg, code))
+        proc.errorOccurred.connect(lambda _e: self._importance_done(run_dir, svg, -1))
+        self._importance_proc = proc
+        proc.start(program, args)
+
+    def _importance_done(self, run_dir: str, svg: str, code: int):
+        from ...engine import importance
+
+        if self.edit_bar.mode != "simplify" or self.edit_bar._svg != svg:
+            return  # (the bar was closed or shows another sketch)
+        values = importance.read(run_dir, svg)
+        self.edit_bar.set_importance(values, "" if values is not None else tr("ui.edit_bar.exit_code", code=code))
+
+    def _edit_bar_apply(self, svg: str):
+        seed = self._editable_seed()
+        if seed is None or svg == self.seed_svgs[seed]:
+            self._edit_bar_closed()
+            return
+        self._edit_undo.setdefault(seed, []).append(self.seed_svgs[seed])
+        self._edit_redo[seed] = []
+        self._show_edited(seed, svg)
+        self._save_edit(seed)
+        self._update_edit_tools()
+        self.toast.emit(tr("ui.edit_bar.taken"), "success")
+
+    def _edit_bar_closed(self):
+        seed = self._editable_seed()
+        if seed is not None:
+            self.canvas.set_svg(self.seed_svgs[seed])
 
     def revert_edits(self):
         """Back to the sketch as it was drawn (can be undone)."""

@@ -1,10 +1,12 @@
-"""Control from a phone in the home network: a small web page (status, live preview, pause / cancel, take a photo
-and sketch it) served by the app itself – standard library only, off by default.
+"""Control from a phone in the home network: a web page served by the app itself with most of the studio – the
+picture (camera, files, recent pictures), method, presets, every parameter, the detail brush, start / queue / pause /
+cancel, the live sketches, thumbs and downloads, the recent results and the queue (``gui/phone_api.py``; the page is
+``resources/phone/``). Standard library only, off by default.
 
 Safety: only addresses of the local network may connect; every request needs the access code of the QR code (on
 the first visit it becomes a cookie); changes (pause, upload) also need it as a header, so other web pages cannot
-send them; uploads are limited in size and must be pictures. The server runs in threads of its own and talks to
-the app through Qt signals (``RemoteBridge``)."""
+send them; uploads are limited in size and must be pictures; nothing on the computer is read by a path the phone
+names. The server runs in threads of its own and talks to the app through Qt signals (``RemoteBridge``)."""
 
 from __future__ import annotations
 
@@ -23,10 +25,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from PySide6.QtCore import QObject, Signal
 
+from .. import paths
+
 from .app_settings import app_settings
 
 DEFAULT_PORT = 8765
 MAX_UPLOAD = 25 * 1024 * 1024
+MAX_JSON = 64 * 1024
+STATIC = {"phone.js": "text/javascript; charset=utf-8", "phone.css": "text/css; charset=utf-8"}
+CALL_TIMEOUT = 20.0
 COOKIE = "cs_access"
 UPLOAD_DIR = "_remote"  # in the output folder (cleared with the other pictures of the app)
 METHODS = ("clipasso", "swiftsketch", "controlsketch", "scenesketch")
@@ -91,128 +98,63 @@ def qr_png(text: str, scale: int = 6) -> bytes:
 
 class RemoteBridge(QObject):
     """Between the server threads and the app: requests come in as signals (handled in the GUI thread); the app
-    keeps ``state`` up to date (a dict replaced as a whole, read by the server threads)."""
+    keeps ``state`` up to date (a dict replaced as a whole, read by the server threads). ``call`` asks the app's
+    ``handler`` (``PhoneApi.handle``) and waits for the answer."""
 
     pause = Signal()
     resume = Signal()
     cancel = Signal()
-    upload = Signal(str, str)  # (saved picture, method)
+    upload = Signal(str, str)  # (saved picture, method) – sketched right away
+    _request = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.state: dict = {"busy": False, "paused": False, "job": None, "queue": 0, "last": None}
         self.preview_svg = ""
         self.texts: dict = {}
+        self.handler = None  # (action, data) -> answer, called in the GUI thread
+        self._request.connect(self._run)
 
     def set_state(self, **changes):
         self.state = {**self.state, **changes}
 
+    def _run(self, box: dict):
+        try:
+            box["result"] = self.handler(box["action"], box["data"])
+        except Exception as exc:  # (an error of one request must not end the server)
+            box["error"] = str(exc) or type(exc).__name__
+        finally:
+            box["done"].set()
+
+    def call(self, action: str, data: dict | None = None, timeout: float | None = None):
+        """Run ``handler(action, data)`` in the GUI thread and return its answer (from a server thread)."""
+        if self.handler is None:
+            raise LookupError("the studio is not connected")
+        box = {"action": action, "data": data or {}, "done": threading.Event()}
+        self._request.emit(box)
+        if not box["done"].wait(CALL_TIMEOUT if timeout is None else timeout):
+            raise TimeoutError("the app does not answer")
+        if "error" in box:
+            raise RuntimeError(box["error"])
+        return box["result"]
+
+
+def _resource(name: str) -> bytes:
+    return paths.resource("phone", name).read_bytes()
+
 
 def page(texts: dict, access: str) -> str:
-    """The phone page (one file; light and dark)."""
-    t = {k: html.escape(str(v)) for k, v in texts.items()}
-    options = "".join(f'<option value="{m}">{html.escape(texts.get("method_" + m, m))}</option>' for m in METHODS)
-    return f"""<!doctype html>
-<html lang="{t.get('lang', 'en')}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CLIPasso Studio</title>
-<style>
-:root {{ --bg: #f4f5f7; --card: #ffffff; --text: #1d2129; --muted: #6b7280; --accent: #6d5efc; --line: #e3e5ea; }}
-@media (prefers-color-scheme: dark) {{
-  :root {{ --bg: #14161b; --card: #1d2027; --text: #e8e9ed; --muted: #9aa0ab; --accent: #8b7fff; --line: #2b2f38; }}
-}}
-* {{ box-sizing: border-box; }}
-body {{ margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, sans-serif; }}
-h1 {{ font-size: 20px; margin: 4px 0 14px; }}
-.card {{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
-         margin-bottom: 12px; }}
-.muted {{ color: var(--muted); font-size: 14px; }}
-.bar {{ height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }}
-.bar > div {{ height: 100%; width: 0; background: var(--accent); transition: width .4s; }}
-.preview {{ background: #fff; border-radius: 10px; aspect-ratio: 1; display: flex; align-items: center;
-           justify-content: center; overflow: hidden; }}
-.preview img {{ width: 100%; height: 100%; object-fit: contain; }}
-.preview img:not([src]) {{ visibility: hidden; }}
-select {{ width: 100%; }}
-.row {{ display: flex; gap: 8px; margin-top: 10px; }}
-button, select {{ font: inherit; border-radius: 10px; border: 1px solid var(--line); padding: 10px 14px;
-                 background: var(--card); color: var(--text); }}
-button.primary {{ background: var(--accent); color: #fff; border-color: var(--accent); flex: 1; }}
-button {{ flex: 1; }}
-input[type=file] {{ width: 100%; margin: 8px 0; }}
-#msg {{ min-height: 1.4em; }}
-</style>
-</head>
-<body>
-<h1>CLIPasso Studio</h1>
-<div class="card">
-  <div id="state" class="muted">…</div>
-  <div class="bar"><div id="progress"></div></div>
-  <div id="eta" class="muted"></div>
-  <div class="row"><button id="pause">{t.get('pause', 'Pause')}</button>
-    <button id="cancel">{t.get('cancel', 'Cancel')}</button></div>
-</div>
-<div class="card"><div class="preview"><img id="preview" alt=""></div></div>
-<div class="card">
-  <b>{t.get('new', 'New sketch')}</b>
-  <input id="file" type="file" accept="image/*" capture="environment">
-  <select id="method">{options}</select>
-  <div class="row"><button class="primary" id="send">{t.get('send', 'Sketch it')}</button></div>
-  <div id="msg" class="muted"></div>
-</div>
-<script>
-const TOKEN = {json.dumps(access)};
-const T = {json.dumps(texts)};
-const $ = (id) => document.getElementById(id);
-let paused = false, shown = "";
-async function post(path, body, headers) {{
-  const all = Object.assign({{"X-Access": TOKEN}}, headers || {{}});
-  const r = await fetch(path, {{method: "POST", body: body || "", headers: all}});
-  return r.json();
-}}
-async function refresh() {{
-  try {{
-    const s = await (await fetch("/api/status")).json();
-    paused = s.paused;
-    $("pause").textContent = paused ? T.resume : T.pause;
-    $("pause").disabled = $("cancel").disabled = !s.busy;
-    if (s.job) {{
-      $("state").textContent = (s.paused ? T.paused : T.running) + " · " + s.job.name + " · " + s.job.method;
-      $("progress").style.width = Math.round(100 * s.job.progress) + "%";
-      $("eta").textContent = s.job.eta ? T.eta + " " + s.job.eta : "";
-    }} else {{
-      $("state").textContent = s.last ? T.done + " · " + s.last.name : T.idle;
-      $("progress").style.width = s.last ? "100%" : "0";
-      $("eta").textContent = s.queue ? T.queued + " " + s.queue : "";
-    }}
-    if (s.preview && s.preview !== shown) {{
-      shown = s.preview;
-      $("preview").src = "/api/preview.svg?v=" + encodeURIComponent(s.preview);
-    }}
-  }} catch (e) {{ $("state").textContent = T.offline; }}
-}}
-$("pause").onclick = () => post(paused ? "/api/resume" : "/api/pause").then(refresh);
-$("cancel").onclick = () => {{ if (confirm(T.cancel_ask)) post("/api/cancel").then(refresh); }};
-$("send").onclick = async () => {{
-  const f = $("file").files[0];
-  if (!f) {{ $("msg").textContent = T.pick; return; }}
-  $("msg").textContent = T.sending;
-  try {{
-    const head = {{"X-Filename": encodeURIComponent(f.name || "photo.jpg"), "X-Method": $("method").value}};
-    const r = await post("/api/upload", f, head);
-    $("msg").textContent = r.ok ? T.queued_ok : (r.error || T.failed);
-    if (r.ok) $("file").value = "";
-  }} catch (e) {{ $("msg").textContent = T.failed; }}
-  refresh();
-}};
-refresh();
-setInterval(refresh, 2000);
-</script>
-</body>
-</html>
-"""
+    """The phone page (``resources/phone/index.html``) with its texts and the access code (as JSON data, read by
+    ``phone.js``; nothing runs inline)."""
+    cfg = json.dumps({"token": access, "texts": texts, "lang": texts.get("lang", "en")})
+    cfg = cfg.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    body = _resource("index.html").decode("utf-8")
+    return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
+
+
+PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; "
+            "connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'")
+SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -255,6 +197,40 @@ class _Handler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _answer(self, action: str, data: dict):
+        """Ask the app (``PhoneApi``) and send its answer: JSON, or a file (``_bytes``)."""
+        if not all(c.isalnum() or c == "_" for c in action):
+            self._json({"ok": False, "error": "not found"}, 404)
+            return
+        try:
+            result = self.bridge.call(action, data)
+        except TimeoutError:
+            self._json({"ok": False, "error": "busy"}, 503)
+            return
+        except Exception as exc:
+            self._json({"ok": False, "error": str(exc)}, 500)
+            return
+        if isinstance(result, dict) and "_bytes" in result:
+            headers = {}
+            if result.get("_type") == "image/svg+xml":
+                headers["Content-Security-Policy"] = SVG_CSP
+            if result.get("_name"):
+                quoted = urllib.parse.quote(result["_name"])
+                headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quoted}"
+            self._send(200, result["_bytes"], result["_type"], headers)
+        else:
+            self._json(result if isinstance(result, dict) else {"ok": True, "result": result},
+                       200 if not (isinstance(result, dict) and result.get("ok") is False) else 400)
+
+    def _body(self, limit: int) -> bytes | None:
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length <= 0 or length > limit:
+            return None
+        return self.rfile.read(length)
+
     # ------------------------------------------------------------------ requests
     def do_GET(self):  # noqa: N802
         if not self._check_client():
@@ -271,19 +247,28 @@ class _Handler(BaseHTTPRequestHandler):
             if not self._authorised():
                 self._send(403, b"No access code: scan the QR code in CLIPasso Studio.", "text/plain")
                 return
-            self._send(200, page(self.bridge.texts, token()).encode("utf-8"), "text/html; charset=utf-8")
+            self._send(200, page(self.bridge.texts, token()).encode("utf-8"), "text/html; charset=utf-8",
+                       {"Content-Security-Policy": PAGE_CSP})
             return
         if not self._authorised():
             self._json({"ok": False, "error": "no access"}, 403)
             return
-        if parsed.path == "/api/status":
+        name = parsed.path.lstrip("/")
+        if name in STATIC:
+            self._send(200, _resource(name), STATIC[name])
+        elif name in ("icon.png", "favicon.ico"):
+            self._send(200, paths.resource("app_icon.png").read_bytes(), "image/png")
+        elif parsed.path.startswith("/api/get/"):
+            self._answer("get_" + parsed.path.rsplit("/", 1)[1], {k: v[0] for k, v in query.items()})
+        elif parsed.path.startswith("/api/file/"):
+            self._answer("file_" + parsed.path.rsplit("/", 1)[1], {k: v[0] for k, v in query.items()})
+        elif parsed.path == "/api/status":
             state = dict(self.bridge.state)
             state["preview"] = str(hash(self.bridge.preview_svg)) if self.bridge.preview_svg else ""
             self._json(state)
         elif parsed.path == "/api/preview.svg":
             svg = self.bridge.preview_svg or '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>'
-            self._send(200, svg.encode("utf-8"), "image/svg+xml",
-                       {"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+            self._send(200, svg.encode("utf-8"), "image/svg+xml", {"Content-Security-Policy": SVG_CSP})
         else:
             self._json({"ok": False, "error": "not found"}, 404)
 
@@ -299,6 +284,22 @@ class _Handler(BaseHTTPRequestHandler):
             self._json({"ok": True})
         elif path == "/api/upload":
             self._upload()
+        elif path == "/api/do":
+            raw = self._body(MAX_JSON)
+            try:
+                data = json.loads(raw or b"")
+            except ValueError:
+                data = None
+            if not isinstance(data, dict) or not isinstance(data.get("action"), str):
+                self._json({"ok": False, "error": "bad request"}, 400)
+                return
+            self._answer("do_" + data["action"], data)
+        elif path == "/api/details":
+            raw = self._body(MAX_UPLOAD)
+            if raw is None or not raw.startswith(b"\x89PNG"):
+                self._json({"ok": False, "error": "not a picture"}, 415)
+                return
+            self._answer("set_details", {"png": raw})
         else:
             self._json({"ok": False, "error": "not found"}, 404)
 
@@ -324,6 +325,9 @@ class _Handler(BaseHTTPRequestHandler):
         if not _is_picture(dest):
             os.remove(dest)
             self._json({"ok": False, "error": "not a picture"}, 415)
+            return
+        if self.headers.get("X-Target") == "studio":  # the picture of the studio (the phone sets it up)
+            self._answer("set_image", {"path": dest})
             return
         self.bridge.upload.emit(dest, method)
         self._json({"ok": True})

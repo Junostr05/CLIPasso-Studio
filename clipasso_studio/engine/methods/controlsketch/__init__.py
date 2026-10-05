@@ -24,7 +24,7 @@ from PIL import Image
 from torchvision import transforms
 
 from .... import settings_schema as schema
-from ... import checkpoint, imaging, masking
+from ... import checkpoint, details, imaging, masking
 from ...jobs import SeedResult
 from ...renderer import render_on_white
 from . import painter as P
@@ -56,14 +56,20 @@ def prepare_input(s: dict, target: str, device):
     size = int(s["render_size"])
     image = load_rgb(target)
     frame = framing.photo_frame(image.size, pad=framing.fix_scale_pad(*image.size) if s["fix_scale"] else None)
+    detail = details.detail_map(image)  # the detail brush, carried along as a picture through the same steps
+    detail_img = details.as_image(detail) if detail is not None else None
     masked = bool(s.get("mask_object", True))
     if masked:
         matte = masking.soft_mask(device, image, s.get("mask_model", "u2net"))
         image = masking.apply_soft_mask(image, matte)
     else:  # the whole picture, background included
         matte = np.ones((image.height, image.width), dtype=np.float32)
+    if detail is not None:  # less detail wanted: the picture is softened there
+        image = details.soften(image, detail)
     if s["fix_scale"]:
         image = imaging.fix_image_scale(image)
+        if detail_img is not None:
+            detail_img = imaging.fix_image_scale(detail_img)
         h, w = matte.shape
         side = max(h, w) + 20
         padded = np.zeros((side, side), dtype=np.float32)
@@ -72,11 +78,16 @@ def prepare_input(s: dict, target: str, device):
         matte = padded
     image = image.resize((size, size), Image.BICUBIC)
     mask = F.interpolate(torch.from_numpy(matte)[None, None], (size, size))[0, 0]
+    if detail_img is not None:
+        detail_img = detail_img.resize((size, size), Image.BILINEAR)
     if not masked:  # no object to shrink: the picture fills the canvas
-        return {"full": image, "full_mask": mask, "canvas": image, "mask": mask, "info": None, "frame": frame}
+        return {"full": image, "full_mask": mask, "canvas": image, "mask": mask, "info": None, "frame": frame,
+                "detail": details.from_image(detail_img) if detail_img is not None else None}
     canvas_img, canvas_mask, info = P.shrink_object(image, mask, float(s["object_size_ratio"]))
+    if detail_img is not None:  # the same shrinking (around the same mask)
+        detail_img = P.shrink_object(detail_img, mask, float(s["object_size_ratio"]))[0]
     return {"full": image, "full_mask": mask, "canvas": canvas_img, "mask": canvas_mask, "info": info,
-            "frame": frame}
+            "frame": frame, "detail": details.from_image(detail_img) if detail_img is not None else None}
 
 
 def _cached(key, fn):
@@ -136,7 +147,8 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
     out_size = int(s["output_svg_size"])
     condition = s["condition"]
     stamp = (os.path.abspath(target), os.path.getmtime(target), str(device), s["fix_scale"], size,
-             s["object_size_ratio"], s["mask_object"], s.get("mask_model", "u2net"), masking.edited_stamp(target))
+             s["object_size_ratio"], s["mask_object"], s.get("mask_model", "u2net"), masking.edited_stamp(target),
+             details.detail_stamp(target))
 
     # --------------------------------------------------------------- input
     reporter.event("stage", seed=seed, name="mask" if s["mask_object"] and s.get("mask_model", "u2net") != "u2net"
@@ -199,6 +211,11 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
                 attn, stopped = torch.ones(size, size), True
         else:
             attn = _cached(("clip-attn",) + stamp, lambda: clip_attention(target_t, size, device))
+        if inp.get("detail") is not None:  # the detail brush: more start strokes where more detail is wanted
+            g = torch.from_numpy(details.gain(inp["detail"]))
+            if tuple(g.shape) != tuple(attn.shape):
+                g = F.interpolate(g[None, None], tuple(attn.shape))[0, 0]
+            attn = attn * g.to(attn.device, attn.dtype)
         points_key = ("points", int(s["num_strokes"]), s["attn_model"], schema.text_value(s["object_name"])) + stamp
         points, _ = init_points(attn, inp["mask"], int(s["num_strokes"])) if stopped else \
             _cached(points_key, lambda: init_points(attn, inp["mask"], int(s["num_strokes"])))

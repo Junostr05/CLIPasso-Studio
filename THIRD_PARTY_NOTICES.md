@@ -9,6 +9,8 @@ CLIPasso Studio bundles or is derived from the following works.
 | **U²-Net** (code in `clipasso_studio/engine/u2net/`, weights `u2net.pth`) | https://github.com/xuebinqin/U-2-Net – Xuebin Qin et al. | Apache-2.0 | background mask |
 | **BiRefNet** (network ported to `clipasso_studio/engine/birefnet.py`, including the Swin Transformer backbone; weights `ZhengPeng7/BiRefNet` and `ZhengPeng7/BiRefNet_lite`, not bundled – downloaded on first use and stored in float16) | https://github.com/ZhengPeng7/BiRefNet – Peng Zheng, Dehong Gao, Deng-Ping Fan, Li Liu, Jorma Laaksonen, Wanli Ouyang, Nicu Sebe; Swin Transformer: https://github.com/microsoft/Swin-Transformer – Microsoft | MIT (both) | object mask (background removal) |
 | **DINO** (code in `clipasso_studio/engine/dino/`, weights ViT-S/8) | https://github.com/facebookresearch/dino – Meta AI | Apache-2.0 | alternative saliency |
+| **BlazeFace** front-camera face detector (network written anew in `clipasso_studio/engine/portrait.py`; weights `blazeface.pth` in the PyTorch conversion by Matthijs Hollemans) | https://github.com/google/mediapipe – Google; conversion: https://github.com/hollance/BlazeFace-PyTorch | Apache-2.0 (both) | portrait mode of the detail brush |
+| **LAION-Aesthetics Predictor V1** (the linear head for CLIP ViT-B/32, `sa_0_4_vit_b_32_linear.pth`, stored as `resources/aesthetic/laion_vit_b_32.npz`) | https://github.com/LAION-AI/aesthetic-predictor – LAION | MIT (see below) | “Best sketch: Similar & beautiful” |
 | **VGG16** feature weights (torchvision) | https://github.com/pytorch/vision | BSD-3-Clause (code); ImageNet-trained weights | LPIPS perceptual loss |
 | **SwiftSketch** and **ControlSketch** (method; `clipasso_studio/engine/methods/swiftsketch/` and `controlsketch/` are independent re-implementations written from the paper and the public code, which has no licence file) | https://github.com/swiftsketch/SwiftSketch – Ellie Arar, Yarden Frenkel, Daniel Cohen-Or, Ariel Shamir, Yael Vinker: *SwiftSketch: A Diffusion Model for Image-to-Vector Sketch Generation*, SIGGRAPH 2025 | method description (paper) | SwiftSketch / ControlSketch sketching |
 | **SwiftSketch model weights** (not bundled – downloaded by the user from the authors' Google Drive on first use) | https://github.com/swiftsketch/SwiftSketch | no explicit licence – research / personal use | SwiftSketch diffusion + refinement networks |
@@ -124,4 +126,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
+```
+
+## LAION-Aesthetics Predictor licence
+
+```
+MIT License
+
+Copyright (c) 2022 LAION AI
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```

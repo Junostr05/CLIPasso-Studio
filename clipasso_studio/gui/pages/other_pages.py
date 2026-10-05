@@ -542,6 +542,7 @@ MODEL_PURPOSE = {
     "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
     "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
     "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
+    "blazeface": "ui.models.purpose.blazeface",
 }
 
 
@@ -849,6 +850,17 @@ class SettingsPage(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         self.multi_gpu_box.setLayout(row)
         self.behaviour.body.addWidget(self.multi_gpu_box)
+        # the taste learnt from the thumbs up / down in the studio ("Best sketch: My taste")
+        self.taste_label = label("", None)
+        self.taste_state = label("", "faint")
+        self.taste_forget = button("", "trash-2", "ghost", size="sm")
+        self.taste_forget.clicked.connect(lambda: self.forget_taste())
+        r = QHBoxLayout()
+        r.addWidget(self.taste_label)
+        r.addStretch(1)
+        r.addWidget(self.taste_state)
+        r.addWidget(self.taste_forget)
+        self.behaviour.body.addLayout(r)
         col.addWidget(self.behaviour)
 
         self._build_watch(col)
@@ -956,9 +968,34 @@ class SettingsPage(QWidget):
         self.refresh_storage()
         return freed
 
+    def refresh_taste(self) -> tuple[int, int]:
+        from ...engine import aesthetic
+
+        data = aesthetic.load_taste()
+        up, down = aesthetic.counts(data)
+        if data.get("model"):
+            state = tr("ui.taste.learnt", up=up, down=down)
+        elif up + down < aesthetic.MIN_RATINGS:
+            state = tr("ui.taste.not_yet", up=up, down=down, n=aesthetic.MIN_RATINGS - up - down)
+        else:
+            state = tr("ui.taste.need_both", up=up, down=down)
+        self.taste_state.setText(state)
+        self.taste_forget.setEnabled(up + down > 0)
+        return up, down
+
+    def forget_taste(self, confirm: bool = True) -> bool:
+        from ...engine import aesthetic
+
+        if confirm and QMessageBox.question(self, tr("ui.taste.label"), tr("ui.taste.forget_q")) != QMessageBox.Yes:
+            return False
+        aesthetic.forget_taste()
+        self.refresh_taste()
+        return True
+
     def showEvent(self, event):  # noqa: N802
         super().showEvent(event)
         self.refresh_storage()
+        self.refresh_taste()
         self.refresh_sdxl_choice()  # (the studio may have remembered an answer)
 
     def _build_watch(self, col):
@@ -1424,6 +1461,10 @@ class SettingsPage(QWidget):
         self.parallel_label.setToolTip(tr("ui.settings.parallel_tip"))
         self.parallel.setToolTip(tr("ui.settings.parallel_tip"))
         self.multi_gpu_label.setText(tr("ui.settings.multi_gpu"))
+        self.taste_label.setText(tr("ui.taste.label"))
+        self.taste_label.setToolTip(tr("ui.taste.tip"))
+        self.taste_forget.setText(tr("ui.taste.forget"))
+        self.refresh_taste()
         self.multi_gpu_label.setToolTip(tr("ui.settings.multi_gpu_tip"))
         self.multi_gpu.setToolTip(tr("ui.settings.multi_gpu_tip"))
         gpus = [g for g in (self._hardware or {}).get("gpus") or [] if g.get("supported", True)]

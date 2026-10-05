@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>CLIPasso Studio</title>
+<link rel="stylesheet" href="/phone.css">
+<link rel="icon" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="theme-color" content="#14161b">
+</head>
+<body>
+<script id="cfg" type="application/json">{{config}}</script>
+
+<header id="top">
+  <div class="toprow">
+    <div class="brand">CLIPasso Studio</div>
+    <div class="topbtns">
+      <button id="pause" class="small" disabled></button>
+      <button id="cancel" class="small" disabled></button>
+    </div>
+  </div>
+  <div id="status" class="muted one-line">…</div>
+  <div class="bar"><div id="progress"></div></div>
+</header>
+
+<main>
+  <!-- ======================================================== studio -->
+  <section id="tab-studio" class="tab">
+    <div class="card">
+      <h2 data-t="picture"></h2>
+      <div class="input-wrap"><img id="input" alt=""><div id="no-input" class="muted center" data-t="no_picture"></div></div>
+      <div id="input-name" class="muted one-line"></div>
+      <div class="row wrap">
+        <label class="btn" for="camera"><span data-t="camera"></span>
+          <input id="camera" type="file" accept="image/*" capture="environment" hidden></label>
+        <label class="btn" for="choose"><span data-t="choose"></span>
+          <input id="choose" type="file" accept="image/*" hidden></label>
+        <button id="from-pc" data-t="from_pc"></button>
+      </div>
+      <div id="upload-msg" class="muted"></div>
+      <div id="pc-images" hidden>
+        <div class="sub" data-t="recent"></div><div id="recent" class="grid"></div>
+        <div class="sub" data-t="samples"></div><div id="samples" class="grid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-t="method"></h2>
+      <div id="methods" class="methods"></div>
+      <div id="missing" class="warn" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2 data-t="preset"></h2>
+      <div id="presets" class="seg"></div>
+      <div class="sub" data-t="budget_title"></div>
+      <div class="row wrap" id="budget">
+        <button data-min="5">5 min</button><button data-min="15">15 min</button><button data-min="60">60 min</button>
+        <input id="budget-min" type="number" min="1" max="1440" inputmode="numeric" class="num" placeholder="min">
+        <button id="budget-go" data-t="budget_apply"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-t="details"></h2>
+      <div id="details-state" class="muted"></div>
+      <div class="row wrap">
+        <button id="paint" data-t="details_paint"></button>
+        <button id="face" data-t="face"></button>
+        <button id="details-clear" data-t="details_clear"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between"><h2 data-t="params"></h2><button id="reset" class="small" data-t="reset"></button></div>
+      <label class="check"><input id="advanced" type="checkbox"><span data-t="advanced"></span></label>
+      <div id="params"></div>
+    </div>
+
+    <div class="startbar">
+      <div id="estimate" class="muted center"></div>
+      <div class="row">
+        <button id="start" class="primary" data-t="start"></button>
+        <button id="queue-add" data-t="add_queue"></button>
+      </div>
+      <div id="start-msg" class="muted center"></div>
+      <div id="memory" class="warn" hidden>
+        <div id="memory-text"></div>
+        <div class="row wrap"><button id="mem-smaller" class="primary"></button>
+          <button id="mem-anyway" data-t="anyway"></button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== sketch -->
+  <section id="tab-sketch" class="tab" hidden>
+    <div class="card">
+      <div id="view-name" class="muted one-line"></div>
+      <div class="preview"><img id="sketch" alt=""><div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="seeds" class="seeds"></div>
+      <div id="stats" class="stats"></div>
+      <button id="continue" class="primary" data-t="continue" hidden></button>
+    </div>
+    <div class="card" id="rate-card">
+      <h2 data-t="rating"></h2>
+      <div class="row"><button id="up" class="thumb">👍</button><button id="down" class="thumb">👎</button></div>
+      <div id="taste" class="muted"></div>
+    </div>
+    <div class="card">
+      <h2 data-t="look"></h2>
+      <div class="field"><label data-t="style"></label><select id="style"></select></div>
+      <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
+      <div class="row wrap">
+        <a id="dl-svg" class="btn" download data-t="download_svg"></a>
+        <a id="dl-png" class="btn" download data-t="download_png"></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== gallery -->
+  <section id="tab-gallery" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="results"></h2>
+      <div id="results" class="results"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================== queue -->
+  <section id="tab-queue" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="tab_queue"></h2>
+      <div id="jobs"></div>
+    </div>
+  </section>
+</main>
+
+<nav id="tabs">
+  <button data-tab="studio" class="on"><span>✎</span><span data-t="tab_studio"></span></button>
+  <button data-tab="sketch"><span>◐</span><span data-t="tab_sketch"></span></button>
+  <button data-tab="gallery"><span>▦</span><span data-t="tab_gallery"></span></button>
+  <button data-tab="queue"><span>☰</span><span data-t="tab_queue"></span></button>
+</nav>
+
+<!-- ========================================================== detail brush -->
+<div id="painter" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="detail_title"></b>
+    <button id="paint-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="detail_hint"></div>
+  <div class="paint-area"><canvas id="paint-canvas"></canvas></div>
+  <div id="tools" class="seg">
+    <button data-tool="255" class="on" data-t="tool_more"></button>
+    <button data-tool="128" data-t="tool_normal"></button>
+    <button data-tool="0" data-t="tool_less"></button>
+  </div>
+  <div class="row"><span class="muted" data-t="brush_size"></span><input id="brush" type="range" min="2" max="40" value="8"></div>
+  <div class="row wrap">
+    <button id="paint-face" data-t="face"></button>
+    <button id="paint-undo" data-t="undo"></button>
+    <button id="paint-clear" data-t="details_clear"></button>
+    <button id="paint-save" class="primary" data-t="save"></button>
+  </div>
+  <div id="paint-msg" class="muted"></div>
+</div>
+
+<div id="toast" hidden></div>
+<script src="/phone.js"></script>
+</body>
+</html>

@@ -299,6 +299,16 @@ class Painter(torch.nn.Module):
                 m = mask.numpy()
                 if m.sum() > 0:
                     attn = attn * m
+        detail = getattr(self.args, "detail_canvas", None)
+        if detail is not None:  # the detail brush: more start strokes where the user wants more detail
+            from . import details
+
+            g = details.gain(detail)
+            shape = attn.shape[-2:]
+            if g.shape != tuple(shape):
+                t = torch.from_numpy(g)[None, None]
+                g = F.interpolate(t, size=tuple(shape), mode="bilinear", align_corners=False)[0, 0].numpy()
+            attn = attn * (torch.from_numpy(g)[None] if torch.is_tensor(attn) else g)
         return attn
 
     def softmax(self, x, tau=0.2):

@@ -434,6 +434,7 @@ class ParamPanel(QWidget):
         self._preset = "standard"
         self._applying = False
         self._sdxl_note = False  # SDXL was turned back to CLIP by the remembered answer: say so once
+        self.no_dialogs = False  # (changes from the phone: no question at the computer)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(12)
@@ -655,7 +656,9 @@ class ParamPanel(QWidget):
         if card is None:
             return True
         choice = app_settings().get(methods_ui.SDXL_SMALL_GPU)
-        if choice not in ("offload", "cpu", "clip"):
+        if choice not in ("offload", "cpu", "clip") and self.no_dialogs:
+            choice = "offload"  # (the recommended answer; the phone shows the hint below the field)
+        elif choice not in ("offload", "cpu", "clip"):
             minutes = {m: methods_ui.sdxl_minutes(self._settings, m) for m in ("offload", "cpu")}
             choice, remember = ask_sdxl_place(self, f"{card.get('memory_gb', 0):.0f}", minutes)
             if remember:

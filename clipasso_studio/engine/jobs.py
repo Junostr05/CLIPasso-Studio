@@ -82,6 +82,9 @@ def save_input(job_dir: str, target: str) -> str | None:
     except OSError:
         return None
     save_edited_mask(job_dir, target)
+    from .details import save_with_job
+
+    save_with_job(job_dir, target)  # the detail brush map, too
     return dest
 
 
@@ -326,7 +329,7 @@ def merge_results(old: dict[int, SeedResult], new: list[SeedResult]) -> list[See
 
 
 META_FILE = "meta.json"  # the user's own data about a job (favourite, name, notes, tags) – kept on continue
-META_KEYS = ("favourite", "title", "notes", "tags", "albums")
+META_KEYS = ("favourite", "title", "notes", "tags", "albums", "ratings")  # ratings: {run name: ±1}
 
 
 def read_meta(job_dir: str) -> dict:
@@ -425,8 +428,11 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     """Pick the best sketch and copy it to ``<run>_best.svg`` like the original.
 
     CLIPasso keeps its own criterion (lowest eval loss). SwiftSketch and ControlSketch have
-    no such loss, so the sketch with the highest CLIP similarity to the input wins.
+    no such loss, so the sketch with the highest CLIP similarity to the input wins. With ``best_by``
+    "beautiful" or "mine" the sketch's look counts as much (``engine/aesthetic.py``).
     """
+    from . import aesthetic
+
     reporter = reporter or _NullReporter()
     results = [r for r in results if r is not None and os.path.isfile(r.best_svg)]
     if not results:
@@ -434,9 +440,14 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
     method = schema.method_of(settings)
     candidates = [r for r in results if not r.pruned] or results  # (turbo) the sketch that was continued
     if method != "clipasso" and all(r.clip_score is not None for r in candidates):
-        best = max(candidates, key=lambda r: r.clip_score)
+        fidelity = [r.clip_score for r in candidates]
     else:
-        best = min(candidates, key=lambda r: r.best_loss)
+        fidelity = [-r.best_loss for r in candidates]
+    embs = {r.run_name: aesthetic.read_embedding(r.run_dir, r.best_svg) for r in results}
+    mode = settings.get("best_by", "faithful")
+    model = (aesthetic.load_taste().get("model") or None) if mode == "mine" else None
+    best = candidates[aesthetic.choose(fidelity, [embs[r.run_name] for r in candidates], mode, model,
+                                       [r.clip_score for r in candidates])]
     best_copy = os.path.join(job_dir, f"{best.run_name}_best.svg")
     for name in os.listdir(job_dir):  # a continued job may have another best sketch than before
         if name.endswith(("_best.svg", "_best.png")) and not name.startswith(f"{best.run_name}_best."):
@@ -458,7 +469,9 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
         "seconds": round(sum(r.seconds for r in results), 1),
         "best_svg": best_copy,
         "best_run": best.run_name,
-        "runs": [r.__dict__ for r in results],
+        "best_by": mode,
+        "runs": [dict(r.__dict__, aesthetic=round(aesthetic.beauty(embs[r.run_name]), 3))
+                 if embs[r.run_name] is not None else r.__dict__ for r in results],
     }
     with open(os.path.join(job_dir, "job.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
@@ -466,5 +479,5 @@ def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResu
         all_done = all(r.status == "done" for r in results) and not remaining_seeds(job_dir)
         set_status(job_dir, "done" if all_done else "cancelled")
     reporter.event("job_done", job_dir=job_dir, best_svg=best_copy, best_run=best.run_name, method=method,
-                   clip_score=best.clip_score, runs=[r.__dict__ for r in results])
+                   clip_score=best.clip_score, runs=summary["runs"])
     return summary

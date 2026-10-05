@@ -197,6 +197,20 @@ MASK_SPECS = (
              ), 89),
 )
 
+# BlazeFace (MediaPipe's face detector, Apache-2.0; PyTorch weights by M. Hollemans, Apache-2.0) for the portrait
+# mode of the detail brush: the eyes, nose and mouth of a face get more detail
+PORTRAIT_SPEC = ModelSpec(
+    key="blazeface",
+    filename="blazeface/blazeface.pt",
+    urls=("https://raw.githubusercontent.com/hollance/BlazeFace-PyTorch/852bfd8e3d44ed6775761105bdcead4ef389a538/"
+          "blazeface.pth",),
+    download_sha256="54ecff653feaaaf1f7d44b6aff28fd2fc50e483a4e847563b6dd261369c43ba4",
+    download_size=420_224,
+    stored_size_mb=1,
+    bundled=True,  # 0.4 MB: the portrait mode works offline from the start
+    kind="blazeface",
+)
+
 SPECS: dict[str, ModelSpec] = {s.key: s for s in (
     _clip_spec("RN101", True, 291_791_292, 290),
     _clip_spec("ViT-B/32", True, 353_976_522, 350),
@@ -273,6 +287,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
 )}
 SPECS.update({s.key: s for s in CONTROLSKETCH_SPECS})
 SPECS.update({s.key: s for s in MASK_SPECS})
+SPECS[PORTRAIT_SPEC.key] = PORTRAIT_SPEC
 
 
 def clip_key(name: str) -> str:
@@ -497,6 +512,8 @@ def convert(spec: ModelSpec, raw: Path, dest: Path) -> None:
         state = _half({k: v for k, v in state.items() if k.startswith("features.")})
     elif spec.kind == "swiftsketch":
         state = _swiftsketch_checkpoint(raw)
+    elif spec.kind == "blazeface":
+        state = torch.load(str(raw), map_location="cpu", weights_only=True)
     elif spec.kind == "lama":
         model = torch.jit.load(str(raw), map_location="cpu")
         state = _half({k[len("generator."):]: v for k, v in model.state_dict().items() if k.startswith("generator.")})
