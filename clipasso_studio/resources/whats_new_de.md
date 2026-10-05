@@ -1,5 +1,6 @@
 ## Neu in 3.4: bessere Skizzen
 
+- **3.4.1 – Handy:** Ist während eines Auftrags ein Ergebnis aus der Galerie offen, führt oben ein Knopf zurück zum laufenden Auftrag. In der Warteschlange räumt *Erledigte entfernen* alles Fertige, Abgebrochene und Fehlgeschlagene weg, und in der Galerie löscht der Mülleimer ein Ergebnis (in den Papierkorb des PCs). Neu: *Auch über Tailscale* (Einstellungen → Handy & Nachrichten) – dann klappt die Steuerung auch unterwegs.
 - **Zwischenstand übernehmen:** Mit dem Uhr-Knopf über der Skizze gehst du durch die gespeicherten Schritte und machst einen davon zum Ergebnis.
 - **Vereinfachen:** Ein Regler lässt die unwichtigsten Striche zuerst weg – CLIP misst einmal pro Skizze, wie viel jeder Strich beiträgt.
 - **Detail-Pinsel:** Male über das Foto, wo die Skizze mehr Details bekommen soll (orange) und wo weniger (blau). Gilt für CLIPasso und ControlSketch.
@@ -7,7 +8,7 @@
 - **Beste Skizze:** *Am ähnlichsten* wie bisher, *Mein Geschmack* – bewerte Skizzen im Studio mit Daumen hoch/runter, ab 10 Bewertungen lernt die App, was dir gefällt – oder *Ähnlich & schön* (experimentell, mit der Ästhetik-Bewertung von LAION).
 - **Handy-Fernsteuerung 2.0:** *Bild wählen* öffnet jetzt auch Galerie und Dateien (nicht nur die Kamera), und fast das ganze Studio geht vom Handy aus: Methode, Voreinstellungen, alle Parameter, Zeitbudget, Detail-Pinsel, Start, Warteschlange, Live-Skizzen, Daumen, Herunterladen und die letzten Ergebnisse.
 - **Zeitbudget:** 5, 15 oder 60 Minuten (oder eigene) – die App stellt alles so ein, dass der Auftrag auf diesem Computer etwa so lange dauert.
-- **Kleinere Updates:** Die Programmdatei (75 MB) kommt nur noch mit, wenn sich ihre Bibliotheken ändern.
+- **Kleinere Updates:** Die Programmdatei (75 MB) kommt nur noch mit, wenn sich ihre Bibliotheken ändern – ab 3.4.1 wirklich (3.4.0 und 3.4.1 brachten sie noch einmal mit).
 
 ---
 

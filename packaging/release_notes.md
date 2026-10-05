@@ -1,3 +1,12 @@
+## CLIPasso Studio 3.4.1 – phone remote: back to the running job, clean up, delete, Tailscale
+
+- **Back to the running job:** when a result of the gallery is open on the phone while a job runs, a button at the top (with the job's name and progress) leads back to it.
+- **Clean up the queue:** *Remove finished* on the phone takes the finished, cancelled and failed jobs out of the queue.
+- **Delete from the gallery:** the bin on a result in the phone's gallery moves it to the PC's recycle bin (after asking; a job the queue still works on stays).
+- **Over Tailscale:** Settings → *Phone & messages* → *Also over Tailscale* lets in the devices of your tailnet (their 100.x addresses were refused as “not the home network”) and shows a QR code with the PC's Tailscale address – the remote then works away from home, too. If the phone still cannot connect, the Windows firewall usually blocks the Tailscale network (Windows counts it as a public network) – the hint in the settings says where to allow it.
+- The progress bars in the phone's queue show again (they stayed empty).
+- **Small updates, now for real:** the 3.4.0 notes said the program file no longer comes with every update – it still did (74 MB): the build wrote a new time stamp into it and put the splash screen's file list in another order each time. Fixed – from 3.4.1 on it stays byte for byte the same; this update carries it one last time.
+
 ## CLIPasso Studio 3.4 – better sketches
 
 **Shape the result**
@@ -16,7 +25,7 @@
 - **Time budget** (input card): 5, 15 or 60 minutes or your own: the app picks iterations, number of sketches, turbo mode and augmentations so the job takes about that long on this computer – from the measured times.
 
 **Small update**
-- An app on 3.3.0 downloads only the files that changed (`…-Patch-from-3.3.0.exe` / `…-Portable-Patch-from-3.3.0.zip`). The program file now keeps its version number until its libraries change, so it no longer comes with every update (75 MB).
+- An app on 3.4.0 downloads only the files that changed (`…-Patch-from-3.4.0.exe` / `…-Portable-Patch-from-3.4.0.zip`).
 
 | File | For whom? |
 |---|---|
