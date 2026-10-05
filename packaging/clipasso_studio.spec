@@ -8,7 +8,6 @@ Environment variables:
 """
 
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -35,7 +34,7 @@ datas = [
     (str(ROOT / "LICENSE"), "."),
     (str(ROOT / "THIRD_PARTY_NOTICES.md"), "."),
 ]
-for sub in ("clip", "u2net", "dino", "vgg"):
+for sub in ("clip", "u2net", "dino", "vgg", "blazeface"):
     datas.append((str(MODELS / sub), f"models/{sub}"))
 
 # every module of the app, listed from the source tree (collect_submodules imports packages in a helper
@@ -91,12 +90,16 @@ pyz = PYZ(a.pure)
 
 icon = str(ROOT / "packaging" / "app.ico") if IS_WIN else None
 version = None
-if IS_WIN:  # the exe's file version, from the one place the version is kept – major.minor only, so the exe is
-    # byte for byte the same in every 3.3.x and a bug-fix patch does not carry it
-    _ver = re.search(r'__version__ = "([^"]+)"', (ROOT / "clipasso_studio" / "__init__.py").read_text()).group(1)
-    _nums = [int(n) for n in re.findall(r"\d+", _ver)[:2]]
+# The exe's file version is the release in which the exe last changed – not the app's version (the app shows that
+# itself): the exe holds the launcher and the bundled libraries, the app's own modules are files next to it. So it
+# stays byte for byte the same from one release to the next and an update leaves it out (75 MB). Set it to the
+# app's version when the libraries change (PyTorch, Qt, …) – then the exe changes anyway.
+EXE_VERSION = "3.3"
+if IS_WIN:
+    _nums = [int(n) for n in EXE_VERSION.split(".")]
     _info = (ROOT / "packaging" / "version_info.in").read_text(encoding="utf-8")
-    _info = _info.replace("{version}", ".".join(map(str, _nums))).replace("{vtuple}", str(tuple(_nums + [0, 0])))
+    _info = _info.replace("{version}", EXE_VERSION)
+    _info = _info.replace("{vtuple}", str(tuple(_nums + [0] * (4 - len(_nums)))))
     version = os.path.join(workpath, "version_info.txt")
     os.makedirs(workpath, exist_ok=True)
     Path(version).write_text(_info, encoding="utf-8")
