@@ -499,12 +499,13 @@ class ExportDialog(QDialog):
         self.mode.addItem(tr("ui.export_mode.process"), "process")
         self.mode.addItem(tr("ui.export_mode.strokes"), "strokes")
         self.mode.setToolTip(tr("ui.export_mode.tip"))
-        wanted = "strokes" if fmt in DRAWN or not self.process_frames else \
+        # (one saved step is no process to show: then stroke by stroke)
+        wanted = "strokes" if fmt in DRAWN or self.process_frames < 2 else \
             app_settings().get("export_anim_mode", "process")
         self.mode.setCurrentIndex(max(self.mode.findData(wanted), 0))
         if fmt in ANIMATIONS:
             form.addRow(tr("ui.export_mode.label"), self.mode)
-            self.mode.setEnabled(bool(self.process_frames))
+            self.mode.setEnabled(self.process_frames > 1)
         self.frames = self._frames()
         self.length = QDoubleSpinBox()
         self.length.setRange(0.5, 300.0)

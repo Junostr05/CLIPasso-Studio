@@ -422,6 +422,7 @@ class ParamPanel(QWidget):
     settings_changed = Signal(dict)
     method_changed = Signal(str)
     model_needed = Signal(str)
+    notify = Signal(str, str)  # (text, kind) – for the studio's toast
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -443,7 +444,20 @@ class ParamPanel(QWidget):
         outer.addWidget(self.header)
         self.presets = SegmentedControl([("fast", ""), ("standard", ""), ("quality", "")])
         self.presets.changed.connect(self.apply_preset)
-        outer.addWidget(self.presets)
+        prow = QHBoxLayout()
+        prow.setSpacing(6)
+        prow.addWidget(self.presets, 1)
+        # the user's own presets: choose, save the current settings, delete
+        from PySide6.QtWidgets import QMenu
+
+        self.user_btn = tool_button("bookmark", "", 18)
+        self.user_btn.setPopupMode(QToolButton.InstantPopup)
+        self.user_menu = QMenu(self)
+        self.user_menu.aboutToShow.connect(self._build_user_menu)
+        self.user_btn.setMenu(self.user_menu)
+        prow.addWidget(self.user_btn)
+        outer.addLayout(prow)
+        self._user_preset = ""
         self.preset_hint = label("", "faint", wrap=True)
         outer.addWidget(self.preset_hint)
 
@@ -558,6 +572,78 @@ class ParamPanel(QWidget):
         self.set_settings(s)
         self.presets.set_current(name)
         self._update_preset_hint()
+
+    # -------------------------------------------------------------- own presets
+    def _build_user_menu(self):
+        from .. import user_presets
+
+        menu = self.user_menu
+        menu.clear()
+        mine = user_presets.all_presets()
+        here = [p for p in mine if p["method"] == self._method]
+        others = [p for p in mine if p["method"] != self._method]
+        for p in here + others:
+            text = p["name"] if p["method"] == self._method else f"{p['name']}  ·  {methods_ui.name(p['method'])}"
+            act = menu.addAction(text)
+            act.setCheckable(True)
+            act.setChecked(p["method"] == self._method and p["name"] == self._user_preset)
+            act.triggered.connect(lambda _=False, n=p["name"], m=p["method"]: self.apply_user_preset(n, m))
+        if not mine:
+            menu.addAction(tr("ui.user_presets.none")).setEnabled(False)
+        menu.addSeparator()
+        menu.addAction(icons.icon("plus", theme.current().text), tr("ui.user_presets.save"),
+                       lambda: self.save_user_preset())
+        if here:
+            delete = menu.addMenu(icons.icon("trash-2", theme.current().danger), tr("ui.user_presets.delete"))
+            for p in here:
+                delete.addAction(p["name"], lambda n=p["name"]: self.delete_user_preset(n))
+
+    def apply_user_preset(self, name: str, method: str | None = None) -> bool:
+        from .. import user_presets
+
+        preset = user_presets.find(name, method or self._method)
+        if preset is None:
+            return False
+        settings = dict(preset["settings"])
+        if preset["method"] == self._method:  # (files on this computer, like a start SVG, are not in a preset)
+            for p in schema.params_for(self._method):
+                if p.kind == "path":
+                    settings[p.key] = self._settings.get(p.key, p.default)
+        self.set_settings(settings)
+        self.notify.emit(tr("ui.user_presets.applied", name=name), "success")
+        return True
+
+    def save_user_preset(self, name: str | None = None) -> str:
+        """Keep the current settings as an own preset (asks for the name unless given)."""
+        from PySide6.QtWidgets import QInputDialog
+
+        from .. import user_presets
+
+        if name is None:
+            name, ok = QInputDialog.getText(self, tr("ui.user_presets.save_title"), tr("ui.user_presets.name"),
+                                            text=self._user_preset)
+            if not ok:
+                return ""
+        try:
+            entry = user_presets.save(name, self.settings())
+        except ValueError:
+            return ""
+        self._detect_preset()
+        self.notify.emit(tr("ui.user_presets.saved", name=entry["name"]), "success")
+        return entry["name"]
+
+    def delete_user_preset(self, name: str) -> bool:
+        from .. import user_presets
+
+        if not user_presets.delete(name, self._method):
+            return False
+        self._detect_preset()
+        self.notify.emit(tr("ui.user_presets.deleted", name=name), "info")
+        return True
+
+    def user_preset(self) -> str:
+        """The own preset the settings are equal to ("" when none)."""
+        return self._user_preset
 
     def reset_all_fields(self):
         self.set_settings(start_settings(self._method))
@@ -676,6 +762,9 @@ class ParamPanel(QWidget):
         self._after_change()
 
     def _detect_preset(self):
+        from .. import user_presets
+
+        self._user_preset = user_presets.matching(self._settings)
         for name, values in schema.METHOD_PRESETS[self._method].items():
             if all(self._settings.get(k) == v for k, v in values.items()):
                 self._preset = name
@@ -687,6 +776,9 @@ class ParamPanel(QWidget):
         self._update_preset_hint()
 
     def _update_preset_hint(self):
+        if self._user_preset and self._preset == "custom":
+            self.preset_hint.setText(tr("ui.user_presets.active", name=self._user_preset))
+            return
         for key in (f"ui.preset_hint.{self._method}.{self._preset}", f"ui.preset_hint.{self._preset}"):
             if i18n.has(key):
                 self.preset_hint.setText(tr(key))
@@ -720,6 +812,7 @@ class ParamPanel(QWidget):
         self._update_header()
         for key in ("fast", "standard", "quality"):
             self.presets.set_text(key, tr(f"ui.preset.{key}"))
+        self.user_btn.setToolTip(tr("ui.user_presets.tip"))
         self.search.setPlaceholderText(tr("ui.search_params"))
         self.reset_all.setText(tr("ui.reset_all"))
         self.import_btn.setToolTip(tr("ui.import_tip"))

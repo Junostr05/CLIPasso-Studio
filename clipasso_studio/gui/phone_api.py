@@ -16,7 +16,7 @@ import numpy as np
 from .. import paths
 from .. import settings_schema as schema
 from ..engine import details, jobs, model_store
-from . import methods_ui
+from . import export_jobs, methods_ui, user_presets
 from .app_settings import app_settings
 from .i18n import i18n, tr
 
@@ -62,6 +62,7 @@ class PhoneApi:
         self._note_id = 0
         self._details_rev = 0
         self._cache = None
+        self._exports: dict[str, dict] = {}  # the phone's exports (id -> state), files in export_root()
         self.gallery = None  # the gallery page (deleting goes its way), set by the main window
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
@@ -128,6 +129,9 @@ class PhoneApi:
             "missing": [dialogs.model_display_name(k) for k in missing],
             "missing_mb": round(methods_ui.download_mb(missing)) if missing else 0,
             "preset": getattr(s.params, "_preset", ""),
+            "user_preset": s.params.user_preset(),
+            "user_presets": [{"name": p["name"], "method": p["method"], "method_name": methods_ui.name(p["method"])}
+                             for p in user_presets.all_presets()],
             "settings": {p.key: settings.get(p.key) for p in params},
             "enabled": {p.key: schema.is_enabled(p, settings) for p in params},
             "estimate": s.estimate.text(),
@@ -347,6 +351,147 @@ class PhoneApi:
                 ctype = "image/svg+xml"
             with open(dest, "rb") as f:
                 return _file(f.read(), ctype, f"{stem}.{fmt}")
+
+    # ------------------------------------------------------------------ export (all the formats of the studio)
+    def _export_source(self, fmt: str) -> tuple[str, str, str]:
+        """(sketch file, run folder – the job folder for the matrix –, name) of the shown sketch."""
+        s = self.studio
+        if fmt == "matrix":
+            if not s._matrix_exportable():
+                raise PhoneError(tr("ui.phone.page.no_sketch"))
+            sel = s._selected_run()
+            return (sel[0] if sel else ""), s.view_dir, os.path.basename(os.path.normpath(s.view_dir))
+        sel = s._selected_run()
+        if not sel:
+            raise PhoneError(tr("ui.phone.page.no_sketch"))
+        svg, run_dir = sel
+        return svg, run_dir, os.path.basename(os.path.normpath(run_dir))
+
+    def get_export_info(self, data: dict) -> dict:
+        """The formats with their options (which apply, the remembered choices) for the shown sketch."""
+        from . import brush
+        from . import paper as paper_mod
+        from ..engine import framing
+
+        svg, run_dir, name = self._export_source("svg")
+        sketch = export_jobs.info(svg, run_dir)
+        formats = [f for f in export_jobs.FORMATS if f != "matrix" or self.studio._matrix_exportable()]
+        return {"ok": True, "name": name, "sketch": sketch,
+                "formats": [{"fmt": f, "title": export_jobs.title(f), "desc": tr(f"ui.export_desc.{f}"),
+                             "ext": export_jobs.extension(f),
+                             "applies": export_jobs.applies(f, sketch["process_frames"]),
+                             "defaults": export_jobs.defaults(f, sketch)} for f in formats],
+                "styles": [{"key": k, "label": tr(f"ui.brush.{k}")} for k in brush.STYLES],
+                "papers": [{"key": k, "label": tr(f"ui.paper.{k}")} for k in paper_mod.KINDS],
+                "frames": [{"key": k, "label": tr(f"ui.frame.{k}"), "ok": k != "photo" or sketch["photo_frame"]}
+                           for k in framing.MODES],
+                "last": app_settings().get("export_last_format", "png")}
+
+    def _clean_exports(self, keep: int = 3):
+        """Older exports go (the files of the last few stay to be downloaded)."""
+        import shutil
+
+        done = sorted((e for e in self._exports.values() if e["status"] != "running"), key=lambda e: e["started"])
+        for e in done[:-keep] if keep else done:
+            shutil.rmtree(e["dir"], ignore_errors=True)
+            self._exports.pop(e["id"], None)
+        root = self.export_root()
+        if os.path.isdir(root):  # (left from an earlier start of the app)
+            for name in os.listdir(root):
+                if name not in self._exports:
+                    shutil.rmtree(os.path.join(root, name), ignore_errors=True)
+
+    def do_export(self, data: dict) -> dict:
+        """Start an export of the shown sketch (in the background); the phone asks for its state and then
+        downloads it."""
+        import secrets
+        import time
+
+        from . import dialogs
+
+        fmt = data.get("fmt")
+        if fmt not in export_jobs.FORMATS:
+            raise PhoneError("unknown format")
+        svg, run_dir, name = self._export_source(fmt)
+        sketch = export_jobs.info(svg, run_dir) if svg else {"process_frames": 0, "draw_length": 2.0,
+                                                              "process_length": 2.0, "photo_frame": False}
+        options = export_jobs.check(fmt, data.get("options"), sketch)
+        export_jobs.remember(fmt, options)
+        self._clean_exports()
+        job_id = secrets.token_hex(6)
+        folder = os.path.join(self.export_root(), job_id)
+        os.makedirs(folder, exist_ok=True)
+        file_name = f"{name}{export_jobs.SUFFIX.get(fmt, '')}.{export_jobs.extension(fmt)}"
+        entry = {"id": job_id, "fmt": fmt, "status": "running", "done": 0, "total": 0, "name": file_name,
+                 "path": os.path.join(folder, file_name), "dir": folder, "error": "", "cancel": False,
+                 "started": time.time()}
+        self._exports[job_id] = entry
+
+        def work(progress=None):
+            return export_jobs.run(fmt, svg, run_dir, entry["path"], options, progress=progress,
+                                   cancel=lambda: entry["cancel"])
+
+        def prog(a, b):
+            entry["done"], entry["total"] = a, b
+
+        def done(_):
+            entry["status"] = "cancelled" if entry["cancel"] else (
+                "done" if os.path.isfile(entry["path"]) else "failed")
+
+        def failed(msg):
+            entry["status"], entry["error"] = ("cancelled" if entry["cancel"] else "failed"), msg
+
+        dialogs.run_in_thread(self.studio, work, on_progress=prog, on_done=done, on_error=failed)
+        return {"ok": True, "id": job_id, "name": file_name}
+
+    def _export(self, data: dict) -> dict:
+        entry = self._exports.get(str(data.get("id", "")))
+        if entry is None:
+            raise PhoneError(tr("ui.phone.page.export_gone"))
+        return entry
+
+    def get_export(self, data: dict) -> dict:
+        e = self._export(data)
+        size = os.path.getsize(e["path"]) if e["status"] == "done" and os.path.isfile(e["path"]) else 0
+        return {"ok": True, "status": e["status"], "done": e["done"], "total": e["total"], "name": e["name"],
+                "size": size, "error": e["error"]}
+
+    def file_export(self, data: dict) -> dict:
+        """The finished file (sent from the disk by the server)."""
+        e = self._export(data)
+        if e["status"] != "done" or not os.path.isfile(e["path"]):
+            raise PhoneError(tr("ui.phone.page.export_gone"))
+        ext = export_jobs.extension(e["fmt"])
+        return {"_path": e["path"], "_type": export_jobs.CONTENT_TYPES.get(ext, "application/octet-stream"),
+                "_name": e["name"]}
+
+    def do_cancel_export(self, data: dict) -> dict:
+        e = self._export(data)
+        e["cancel"] = True
+        return {"ok": True}
+
+    @staticmethod
+    def export_root() -> str:
+        return str(paths.user_data_dir() / "phone_exports")
+
+    # ------------------------------------------------------------------ own presets
+    def do_user_preset(self, data: dict) -> dict:
+        """An own preset (of any method: the studio switches to it)."""
+        if not self.studio.params.apply_user_preset(str(data.get("name", "")), str(data.get("method", ""))):
+            raise PhoneError(tr("ui.phone.page.preset_gone"))
+        return {"ok": True}
+
+    def do_save_preset(self, data: dict) -> dict:
+        name = self.studio.params.save_user_preset(str(data.get("name", "")))
+        if not name:
+            raise PhoneError(tr("ui.phone.page.bad_value"))
+        return {"ok": True, "name": name}
+
+    def do_delete_preset(self, data: dict) -> dict:
+        if not user_presets.delete(str(data.get("name", "")), str(data.get("method", ""))):
+            raise PhoneError(tr("ui.phone.page.preset_gone"))
+        self.studio.params._detect_preset()
+        return {"ok": True}
 
     def file_details(self, data: dict) -> dict:
         """The detail map at the size of ``file_input`` (8-bit grey, 128 normal) – to paint on."""

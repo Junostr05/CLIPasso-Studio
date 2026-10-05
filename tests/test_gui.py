@@ -1042,3 +1042,114 @@ def test_phone_deletes_gallery_results(window, tmp_path, monkeypatch):
     assert not os.path.exists(job) and deleted == [job]
     assert window.studio.view_dir == ""  # the studio no longer shows it
     assert all(x["dir"] != r["dir"] for x in call("get_results", {})["results"])
+
+
+def test_phone_exports_every_format(window, tmp_path):
+    """3.4.2: the exports of the studio's dialog from the phone – the options checked, the export in the background,
+    the file sent from the disk; only the last few stay."""
+    import json
+    import time
+
+    from PIL import Image
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui import export_jobs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    api = window.phone.api
+    call = api.handle
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "export_job", str(tmp_path / "exp.png"), 28.0)
+    window.studio.show_job_dir(job)
+    info = call("get_export_info", {})
+    fmts = {f["fmt"]: f for f in info["formats"]}
+    assert set(fmts) == set(export_jobs.FORMATS) - {"matrix"}  # (the matrix only for SceneSketch)
+    assert fmts["png"]["applies"]["transparent"] and not fmts["gif"]["applies"]["transparent"]
+    assert not fmts["gif"]["applies"]["mode"] and fmts["gif"]["defaults"]["mode"] == "strokes"  # (no saved steps)
+    assert all(f["desc"] and f["title"] for f in fmts.values())
+    assert info["styles"] and info["papers"] and info["frames"] and info["name"] == "export_job_run"
+    json.dumps(info)
+
+    def export(fmt, options):
+        a = call("do_export", {"fmt": fmt, "options": options})
+        assert a["ok"], a
+        end = time.time() + 60
+        while call("get_export", {"id": a["id"]})["status"] == "running" and time.time() < end:
+            QApplication.processEvents()
+            time.sleep(0.02)
+        return a["id"], call("get_export", {"id": a["id"]})
+
+    eid, st = export("png", {"background": "transparent", "size": 128, "stroke": "#ff0000", "width": 2})
+    assert st["status"] == "done" and st["name"] == "export_job_run.png" and st["size"] > 0
+    f = call("file_export", {"id": eid})
+    assert f["_type"] == "image/png" and f["_name"] == "export_job_run.png"
+    im = Image.open(f["_path"])
+    assert im.mode == "RGBA" and im.size == (128, 128) and im.getpixel((0, 0))[3] == 0  # no background
+    assert app_settings().get("export_background") == "transparent"  # (remembered for the dialog, too)
+    assert app_settings().get("export_last_format") == "png"
+    eid, st = export("gif", {"length": 0.5, "hold": 0, "size": 64})
+    assert st["status"] == "done" and Image.open(call("file_export", {"id": eid})["_path"]).format == "GIF"
+    for fmt in ("svg", "svg1", "pdf", "svganim", "lottie", "html"):
+        eid, st = export(fmt, {})
+        assert st["status"] == "done", (fmt, st)
+        assert call("file_export", {"id": eid})["_name"].endswith("." + export_jobs.extension(fmt))
+    # cancelled: no file
+    a = call("do_export", {"fmt": "gif", "options": {"length": 120, "size": 1024}})
+    assert call("do_cancel_export", {"id": a["id"]})["ok"]
+    end = time.time() + 60
+    while call("get_export", {"id": a["id"]})["status"] == "running" and time.time() < end:
+        QApplication.processEvents()
+        time.sleep(0.02)
+    assert call("get_export", {"id": a["id"]})["status"] == "cancelled"
+    assert call("file_export", {"id": a["id"]})["ok"] is False
+    # wrong requests
+    assert call("do_export", {"fmt": "exe"})["ok"] is False
+    assert call("get_export", {"id": "nope"})["ok"] is False and call("file_export", {"id": "nope"})["ok"] is False
+    assert len(os.listdir(api.export_root())) <= 4  # (the last three and the newest)
+
+
+def test_own_presets_in_studio_and_phone(window, monkeypatch, tmp_path):
+    """3.4.2: own presets – saved in the studio (name asked) or from the phone, chosen from either, deleted."""
+    from PySide6.QtWidgets import QInputDialog
+
+    from clipasso_studio.gui import user_presets
+    from clipasso_studio.gui.app_settings import app_settings
+
+    p = window.studio.params
+    call = window.phone.api.handle
+    app_settings().data["user_presets"] = []
+    p.set_method("clipasso")
+    p.fields["num_iter"].set_value(777, emit=True)
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("  Mein   Preset ", True))
+    assert p.save_user_preset() == "Mein Preset" and p.user_preset() == "Mein Preset"
+    assert "Mein Preset" in p.preset_hint.text() or p._preset != "custom"
+    p.fields["num_iter"].set_value(500, emit=True)
+    assert p.user_preset() == ""
+    p._build_user_menu()
+    assert "Mein Preset" in [a.text() for a in p.user_menu.actions()]
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("", False))
+    assert p.save_user_preset() == ""  # (cancelled)
+    # from the phone: listed, chosen (it switches the method back), saved, deleted
+    st = call("get_studio", {})
+    assert st["user_presets"] == [{"name": "Mein Preset", "method": "clipasso", "method_name": "CLIPasso"}]
+    assert call("do_method", {"method": "swiftsketch"})["ok"]
+    assert call("do_user_preset", {"name": "Mein Preset", "method": "clipasso"})["ok"]
+    assert p.method() == "clipasso" and p.settings()["num_iter"] == 777
+    assert call("get_studio", {})["user_preset"] == "Mein Preset"
+    assert call("do_user_preset", {"name": "Gibt es nicht", "method": "clipasso"})["ok"] is False
+    # a start SVG (a file of this computer) stays when a preset of the same method is chosen
+    start = tmp_path / "start.svg"
+    start.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    p.set_settings({**p.settings(), "path_svg": str(start)})
+    assert p.apply_user_preset("Mein Preset") and p.settings()["path_svg"] == str(start)
+    p.set_settings({**p.settings(), "path_svg": "none"})
+    p.fields["num_iter"].set_value(900, emit=True)
+    assert call("do_save_preset", {"name": "Vom Handy"}) == {"ok": True, "name": "Vom Handy"}
+    assert [x["name"] for x in user_presets.all_presets()] == ["Mein Preset", "Vom Handy"]
+    assert call("get_studio", {})["user_preset"] == "Vom Handy"
+    assert call("do_save_preset", {"name": "   "})["ok"] is False
+    assert call("do_delete_preset", {"name": "Vom Handy", "method": "clipasso"})["ok"]
+    assert call("do_delete_preset", {"name": "Vom Handy", "method": "clipasso"})["ok"] is False
+    assert call("get_studio", {})["user_preset"] == ""
+    assert p.delete_user_preset("Mein Preset") and user_presets.all_presets() == []

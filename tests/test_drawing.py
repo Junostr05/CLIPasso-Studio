@@ -98,6 +98,7 @@ def test_export_dialog_stroke_by_stroke(qapp, tmp_path, monkeypatch, own_setting
     run = tmp_path / "run"
     (run / "svg_logs").mkdir(parents=True)
     (run / "svg_logs" / "svg_iter0.svg").write_text(SVG)
+    (run / "svg_logs" / "svg_iter10.svg").write_text(SVG)  # (two saved steps: the process could be shown, too)
     (run / "best_iter.svg").write_text(SVG)
     dest = tmp_path / "out.gif"
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(dest), ""))

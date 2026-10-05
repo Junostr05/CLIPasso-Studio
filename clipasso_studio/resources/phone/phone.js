@@ -26,9 +26,15 @@ function el(tag, attrs, ...children) {
 }
 
 // ------------------------------------------------------------------ talking to the app
+function signedOut(r, data) {
+  // the sign-in is gone (a new access code on the PC): load the page again – it asks for the PIN
+  if (r.status === 403 && data && data.error === "no access") location.replace("/");
+}
+
 async function getJSON(path) {
   const r = await fetch(path, {cache: "no-store"});
   const data = await r.json().catch(() => ({ok: false, error: T.failed}));
+  signedOut(r, data);
   if (r.status === 503) throw new Error(T.busy);
   return data;
 }
@@ -37,6 +43,7 @@ async function act(action, data) {
   const r = await fetch("/api/do", {method: "POST", headers: {"X-Access": TOKEN, "Content-Type": "application/json"},
                                     body: JSON.stringify(Object.assign({action}, data || {}))});
   const answer = await r.json().catch(() => ({ok: false, error: T.failed}));
+  signedOut(r, answer);
   if (r.status === 503) answer.error = T.busy;
   if (answer.ok === false && answer.error && !answer.ask) toast(answer.error);
   schedule(150);
@@ -61,6 +68,7 @@ function showTab(name) {
   for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("on", b.dataset.tab === name);
   for (const s of document.querySelectorAll("section.tab")) s.hidden = s.id !== "tab-" + name;
   if (name === "gallery") loadResults();
+  if (name === "sketch" && S) renderSketch();
   if (name === "queue") loadQueue();
   window.scrollTo(0, 0);
 }
@@ -96,6 +104,7 @@ async function render() {
   renderTop();
   renderPicture();
   renderMethods();
+  renderUserPresets();
   await renderParams();
   renderDetails();
   renderSketch();
@@ -200,6 +209,58 @@ $("budget").addEventListener("click", (e) => {
 $("budget-go").onclick = () => {
   const n = Number($("budget-min").value);
   if (n > 0) act("budget", {minutes: n}).then((a) => { if (a.ok) toast(a.estimate); });
+};
+
+// own presets (the same as in the studio's "My presets" menu): one of another method switches to it
+function renderUserPresets() {
+  const list = S.user_presets || [];
+  const box = $("user-presets");
+  const sig = JSON.stringify(list) + S.method + "|" + S.user_preset;
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  const input = $("preset-name");
+  if (S.user_preset && document.activeElement !== input) input.value = S.user_preset;  // (to update it)
+  box.replaceChildren();
+  const ordered = list.filter((p) => p.method === S.method).concat(list.filter((p) => p.method !== S.method));
+  for (const p of ordered) {
+    const on = p.method === S.method && p.name === S.user_preset;
+    const choose = async () => {
+      const a = await act("user_preset", {name: p.name, method: p.method});
+      if (a.ok) {
+        toast(t("preset_applied", {name: p.name}));
+        $("preset-name").value = p.name;  // (change something, save: the preset is updated)
+      }
+    };
+    const remove = async () => {
+      if (!confirm(t("preset_delete_ask", {name: p.name}))) return;
+      const a = await act("delete_preset", {name: p.name, method: p.method});
+      if (a.ok) toast(T.preset_deleted);
+    };
+    box.append(el("div", {class: "mine-row"},
+      el("button", {class: "mine-name" + (on ? " on" : ""), onclick: choose},
+         el("span", {text: p.name}), p.method !== S.method ? el("small", {text: p.method_name}) : null),
+      el("button", {class: "small", title: T.delete, "aria-label": T.delete, text: "🗑", onclick: remove})));
+  }
+  if (!list.length) box.append(el("div", {class: "muted small-text", text: T.no_presets}));
+}
+// a new own preset: everything set on this page (method, preset, every parameter) under a name – made here or on the
+// PC alike; the name of a preset chosen here is filled in, so saving again updates it
+$("preset-name").placeholder = T.preset_placeholder;
+$("preset-name").setAttribute("aria-label", T.preset_placeholder);
+$("preset-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = $("preset-name");
+  const name = input.value.replace(/\s+/g, " ").trim();
+  if (!name || !S) { input.focus(); return; }
+  const taken = (S.user_presets || []).some((p) => p.name === name && p.method === S.method);
+  if (taken && !confirm(t("preset_replace_ask", {name}))) return;
+  input.blur();
+  const a = await act("save_preset", {name});
+  if (a.ok) toast(t("preset_saved", {name: a.name}));
+});
+$("to-preset").onclick = () => {  // (from the parameters up to the name of the preset)
+  $("preset-form").scrollIntoView({block: "center", behavior: "smooth"});
+  $("preset-name").focus({preventScroll: true});
 };
 
 // ------------------------------------------------------------------ parameters
@@ -535,10 +596,154 @@ function renderSketch() {
   $("dl-svg").classList.toggle("off", !has);
   $("dl-png").classList.toggle("off", !has);
   $("continue").hidden = !S.can_continue;
+  $("export-card").hidden = !has || !X.info;
+  if (has && tab === "sketch") loadExportInfo(false);
 }
 $("continue").onclick = () => act("continue");
 $("up").onclick = () => act("rate", {value: 1});
 $("down").onclick = () => act("rate", {value: -1});
+
+// ------------------------------------------------------------------ export: every format of the studio's dialog
+const X = {info: null, fmt: "", opts: {}, sig: "", job: null, bg: "#FFFFFF"};
+
+async function loadExportInfo(force) {
+  // the formats and the remembered choices – again when another sketch is shown
+  const sig = S.view + ":" + S.shown;
+  if (!force && X.sig === sig) return;
+  X.sig = sig;
+  const info = await getJSON("/api/get/export_info").catch(() => null);
+  if (!info) X.sig = "";  // (no answer: ask again next time)
+  if (!info || info.ok === false) { X.info = null; $("export-card").hidden = true; return; }
+  X.info = info;
+  X.opts = {};
+  const known = (f) => info.formats.some((x) => x.fmt === f);
+  if (!known(X.fmt)) X.fmt = known(info.last) ? info.last : "png";
+  buildExport();
+  $("export-card").hidden = false;
+}
+
+function exportFormat() { return X.info.formats.find((x) => x.fmt === X.fmt); }
+
+function buildExport() {
+  const f = exportFormat();
+  $("formats").replaceChildren(...X.info.formats.map((x) => el("button", {
+    class: x.fmt === X.fmt ? "on" : "", title: x.desc, text: x.title,
+    onclick: () => { X.fmt = x.fmt; buildExport(); }})));
+  $("fmt-desc").textContent = f.desc;
+  $("export-go").textContent = t("export_go", {fmt: f.title});
+  if (!X.opts[X.fmt]) X.opts[X.fmt] = Object.assign({}, f.defaults);
+  const o = X.opts[X.fmt];
+  const a = f.applies;
+  if (o.background !== "transparent") X.bg = o.background;
+  const field = (label, wide, ...ctl) => el("div", {class: "field" + (wide ? " wide" : "")},
+    el("div", {class: "head"}, el("label", {text: label})), el("div", {class: "ctl"}, ...ctl));
+  const number = (key, min, max, step) => el("input", {type: "number", class: "num", min, max, step, value: o[key],
+    inputmode: step < 1 ? "decimal" : "numeric", onchange: (e) => {
+      const v = Number(e.target.value);
+      if (Number.isFinite(v)) o[key] = Math.min(max, Math.max(min, v));
+      e.target.value = o[key];
+    }});
+  const select = (key, items) => el("select", {onchange: (e) => { o[key] = e.target.value; }},
+    ...items.map((i) => el("option", {value: i.key, text: i.label, selected: i.key === o[key], disabled: i.ok === false})));
+  const out = [];
+  if (a.mode) {
+    out.push(field(T.x_mode, true, el("div", {class: "seg"}, ...["process", "strokes"].map((m) => el("button", {
+      class: o.mode === m ? "on" : "", text: T["x_mode_" + m], onclick: () => {
+        o.mode = m;  // (the length follows, as in the dialog)
+        o.length = m === "strokes" ? X.info.sketch.draw_length : X.info.sketch.process_length;
+        buildExport();
+      }})))));
+  }
+  const colour = el("input", {type: "color", value: o.stroke, onchange: (e) => { o.stroke = e.target.value; }});
+  out.push(field(T.x_stroke, false, colour));
+  out.push(field(T.x_width, false, number("width", 0.1, 10, 0.1)));
+  if (a.style) out.push(field(T.x_style, true, select("style", X.info.styles)));
+  if (a.background) {
+    const bg = el("input", {type: "color", value: o.background === "transparent" ? X.bg : o.background,
+      disabled: o.background === "transparent", onchange: (e) => { o.background = X.bg = e.target.value; }});
+    out.push(field(T.x_background, false, bg));
+    if (a.transparent) {
+      out.push(el("label", {class: "check wide"}, el("input", {type: "checkbox", checked: o.background === "transparent",
+        onchange: (e) => {
+          o.background = e.target.checked ? "transparent" : X.bg;
+          bg.disabled = e.target.checked;
+        }}), el("span", {text: T.no_background})));
+    }
+  }
+  if (a.paper) {
+    out.push(field(T.x_paper, false, select("paper", X.info.papers)));
+    out.push(field(T.x_vignette + " (%)", false, number("vignette", 0, 100, 5)));
+  }
+  if (a.frame) {
+    out.push(field(T.x_frame, false, select("frame", X.info.frames)));
+    out.push(field(T.x_margin + " (%)", false, number("margin", 0, 50, 1)));
+  }
+  if (a.size) out.push(field(T.x_size + " (px)", true, number("size", 64, 4096, 64)));
+  if (a.width_cm) out.push(field(T.x_width_cm + " (cm)", true, number("width_cm", 2, 200, 0.5)));
+  if (a.length) {
+    out.push(field(T.x_length + " (s)", false, number("length", 0.5, 300, 0.5)));
+    out.push(field(T.x_hold + " (s)", false, number("hold", 0, 10, 0.5)));
+  }
+  $("export-opts").replaceChildren(...out);
+}
+
+function exportShow(text, part) {
+  $("export-state").hidden = false;
+  $("export-msg").textContent = text;
+  $("export-progress").style.width = Math.round(100 * part) + "%";  // (the CSSOM: no inline styles)
+}
+
+function exportEnd(text, part) {
+  X.job = null;
+  $("export-go").disabled = false;
+  $("export-cancel").hidden = true;
+  exportShow(text, part);
+}
+
+function sizeText(n) {
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+}
+
+$("export-go").onclick = async () => {
+  if (X.job || !X.info) return;
+  $("export-dl").hidden = true;
+  $("export-go").disabled = true;
+  const a = await act("export", {fmt: X.fmt, options: X.opts[X.fmt]});
+  if (!a.ok) { $("export-go").disabled = false; return; }
+  X.job = a.id;
+  $("export-cancel").hidden = false;
+  exportShow(t("export_running", {pct: 0}), 0);
+  pollExport(a.id, 0);
+};
+$("export-cancel").onclick = () => { if (X.job) act("cancel_export", {id: X.job}); };
+
+async function pollExport(id, misses) {
+  if (X.job !== id) return;
+  const e = await getJSON("/api/get/export?id=" + encodeURIComponent(id)).catch(() => null);
+  if (X.job !== id) return;
+  if (!e) {  // (no answer: the app is busy or the phone was away – ask again)
+    if (misses < 40) setTimeout(() => pollExport(id, misses + 1), 1500);
+    else exportEnd(T.offline, 0);
+    return;
+  }
+  if (e.ok === false) { exportEnd(e.error || T.failed, 0); return; }
+  if (e.status === "running") {
+    const part = e.total ? e.done / e.total : 0;
+    exportShow(t("export_running", {pct: Math.round(100 * part)}), part);
+    setTimeout(() => pollExport(id, 0), 700);
+    return;
+  }
+  if (e.status === "done") {
+    exportEnd(t("export_ready", {name: e.name, size: sizeText(e.size)}), 1);
+    const dl = $("export-dl");
+    dl.href = "/api/file/export?id=" + encodeURIComponent(id);
+    dl.setAttribute("download", e.name);
+    dl.textContent = "⬇ " + T.export_download;
+    dl.hidden = false;
+  } else {
+    exportEnd(e.status === "cancelled" ? T.export_cancelled : t("export_failed", {error: e.error || "?"}), 0);
+  }
+}
 
 // ------------------------------------------------------------------ gallery and queue
 async function loadResults() {

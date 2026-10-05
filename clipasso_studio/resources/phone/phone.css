@@ -13,7 +13,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
 body { font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: 76px;
   -webkit-text-size-adjust: 100%; }
 h2 { font-size: 17px; margin: 0 0 10px; }
-.muted { color: var(--muted); font-size: 14px; }
+.muted { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }  /* (long file names wrap) */
 .small-text { font-size: 13px; }
 .center { text-align: center; }
 .one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -145,3 +145,34 @@ button.live { width: 100%; margin-top: 6px; min-height: 36px; padding: 6px 10px;
 .result .del { position: absolute; top: 10px; right: 10px; min-height: 0; width: 36px; height: 36px; padding: 0;
   border-radius: 18px; flex: 0 0 auto; background: rgba(20, 22, 27, .72); border-color: transparent; color: #fff;
   font-size: 16px; }
+/* own presets */
+.mine { display: flex; flex-direction: column; gap: 6px; }
+.mine-row { display: flex; gap: 6px; }
+.mine-name { justify-content: space-between; text-align: left; gap: 8px; min-width: 0; }
+.mine-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mine-name small { font-size: 12px; opacity: .8; flex: 0 0 auto; }
+button.wide, .btn.wide { width: 100%; margin-top: 10px; }
+#preset-form input { flex: 1 1 auto; min-width: 0; }
+#preset-form button { min-height: 42px; }
+#preset-form + .muted { margin-top: 6px; }
+/* export */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chips button { flex: 0 0 auto; min-height: 36px; padding: 6px 12px; font-size: 14px; border-radius: 18px; }
+.xopts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; margin-top: 8px; }
+.xopts .field { margin: 6px 0 8px; min-width: 0; }
+.xopts .wide { grid-column: 1 / -1; }
+.xopts .ctl > * { flex: 1 1 auto; min-width: 0; }
+.xopts input.num { width: 100%; }
+input[type=color] { width: 100%; height: 42px; padding: 2px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--field); }
+input[type=color]:disabled { opacity: .35; }
+#export-state { margin-top: 8px; }
+/* sign in with the PIN */
+body.login { padding-bottom: 0; }
+.login main { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-card { width: 100%; max-width: 360px; text-align: center; padding: 26px 20px; }
+.login-icon { width: 64px; height: 64px; border-radius: 14px; }
+.login-card h2 { margin: 12px 0 6px; font-size: 20px; }
+.login-card form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+input.pin { font: inherit; font-size: 28px; letter-spacing: 10px; text-align: center; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--field); color: var(--text); width: 100%; }

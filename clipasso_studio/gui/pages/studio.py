@@ -440,6 +440,7 @@ class StudioPage(QWidget):
         self.params.settings_changed.connect(self._settings_changed)
         self.params.method_changed.connect(self._method_changed)
         self.picker.changed.connect(self.params.set_method)
+        self.params.notify.connect(self.toast.emit)
         self.params.import_btn.clicked.connect(self.import_preset)
         self.params.export_btn.clicked.connect(self.export_preset)
         self.params.cli_btn.clicked.connect(self.copy_cli)

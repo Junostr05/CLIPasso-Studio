@@ -75,6 +75,31 @@ class PhoneCard(Card):
         tb.addWidget(self.net, 0, Qt.AlignLeft)
         self.ts_hint = label("", "faint", wrap=True)
         tb.addWidget(self.ts_hint)
+        # the fixed address (bookmark / home screen) and the PIN for when the phone no longer knows the QR code
+        self.fixed = label("", None, wrap=True)
+        self.fixed.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        self.fixed.setOpenExternalLinks(True)
+        self.pin_label = label("", None)
+        self.pin_edit = QLineEdit()
+        self.pin_edit.setMaxLength(remote.PIN_DIGITS)
+        self.pin_edit.setFixedWidth(110)
+        self.pin_edit.setAlignment(Qt.AlignCenter)
+        from PySide6.QtCore import QRegularExpression
+        from PySide6.QtGui import QRegularExpressionValidator
+
+        self.pin_edit.setValidator(QRegularExpressionValidator(QRegularExpression(r"\d{0,6}")))
+        self.pin_edit.editingFinished.connect(self._pin_changed)
+        self.new_pin_btn = button("", "refresh-cw", "ghost", size="sm")
+        self.new_pin_btn.clicked.connect(self.new_pin)
+        pin_row = QHBoxLayout()
+        pin_row.addWidget(self.pin_label)
+        pin_row.addStretch(1)
+        pin_row.addWidget(self.pin_edit)
+        pin_row.addWidget(self.new_pin_btn)
+        self.pin_hint = label("", "faint", wrap=True)
+        il.addWidget(self.fixed)
+        il.addLayout(pin_row)
+        il.addWidget(self.pin_hint)
         il.addWidget(self.url)
         il.addWidget(self.ts_box)
         il.addLayout(_row(self.port_label, self.port))
@@ -140,6 +165,19 @@ class PhoneCard(Card):
         app_settings().set("remote_tailscale", bool(on))
         self.net.set_current("tailscale" if on else "lan")
         self.refresh()
+
+    def _pin_changed(self):
+        text = self.pin_edit.text().strip()
+        if remote.valid_pin(text):
+            app_settings().set("remote_pin", text)
+        else:
+            self.pin_edit.setText(remote.pin())  # (not six digits: the PIN stays)
+
+    def new_pin(self) -> str:
+        p = remote.new_pin()
+        app_settings().set("remote_pin", p)
+        self.pin_edit.setText(p)
+        return p
 
     def _port_changed(self):
         if self.port.value() != int(app_settings().get("remote_port", remote.DEFAULT_PORT) or 0):
@@ -232,7 +270,12 @@ class PhoneCard(Card):
             self.ts_hint.setText(tr("ui.phone.tailscale_hint") if ts_ip else tr("ui.phone.tailscale_missing"))
             use_ts = ts_on and bool(ts_ip) and self.net.current() == "tailscale"
             address = remote.url(self.link.server.port, ts_ip if use_ts else None)
-            self.url.setText(f"<a href='{address}'>{address}</a>")
+            fixed = address.split("?", 1)[0]  # the same address without the access code: then the PIN
+            self.fixed.setText(tr("ui.phone.fixed", url=f"<a href='{fixed}'>{fixed}</a>"))
+            if not self.pin_edit.hasFocus():
+                self.pin_edit.setText(remote.pin())
+            self.url.setText(f"<span style='font-size:small'>{tr('ui.phone.qr_link')} "
+                             f"<a href='{address}'>{address}</a></span>")
             try:
                 pm = QPixmap()
                 pm.loadFromData(remote.qr_png(address))
@@ -255,6 +298,10 @@ class PhoneCard(Card):
         self.port_label.setText(tr("ui.phone.port"))
         self.new_code.setText(tr("ui.phone.new_code"))
         self.new_code.setToolTip(tr("ui.phone.new_code_tip"))
+        self.pin_label.setText(tr("ui.phone.pin"))
+        self.pin_edit.setToolTip(tr("ui.phone.pin_tip"))
+        self.new_pin_btn.setText(tr("ui.phone.new_pin"))
+        self.pin_hint.setText(tr("ui.phone.pin_hint"))
         self.ts_label.setText(tr("ui.phone.tailscale"))
         self.ts_label.setToolTip(tr("ui.phone.tailscale_tip"))
         self.net.set_text("lan", tr("ui.phone.net_lan"))

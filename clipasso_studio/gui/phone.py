@@ -65,6 +65,7 @@ class PhoneLink(QObject):
         self.error = ""
         if want and self.server is None:
             remote.token()  # (made here, in the GUI thread)
+            remote.pin()
             try:
                 self.server = remote.RemoteServer(self.bridge, port).start()
             except OSError as exc:
@@ -83,6 +84,14 @@ class PhoneLink(QObject):
                      tool_more=tr("ui.detail.tool_more"), tool_normal=tr("ui.detail.tool_normal"),
                      tool_less=tr("ui.detail.tool_less"), face=tr("ui.detail.face"), rate_up=tr("ui.rate.up"),
                      rate_down=tr("ui.rate.down"), estimate_none="")
+        # the options of the export (the same words as in the export dialog of the studio)
+        texts.update(x_stroke=tr("ui.stroke_color"), x_width=tr("ui.stroke_width_scale"), x_style=tr("ui.brush.label"),
+                     x_background=tr("ui.background"), x_paper=tr("ui.paper.label"),
+                     x_vignette=tr("ui.paper.vignette"), x_frame=tr("ui.frame.label"), x_margin=tr("ui.frame.margin"),
+                     x_size=tr("ui.size_longest"), x_width_cm=tr("ui.export_pdf_width"),
+                     x_mode=tr("ui.export_mode.label"), x_mode_process=tr("ui.export_mode.process"),
+                     x_mode_strokes=tr("ui.export_mode.strokes"), x_length=tr("ui.export_length"),
+                     x_hold=tr("ui.export_hold"), preset_applied=tr("ui.user_presets.applied"))
         texts.update({f"method_{m}": methods_ui.name(m) for m in remote.METHODS})
         texts["lang"] = i18n.lang
         self.bridge.texts = texts

@@ -95,8 +95,9 @@ def test_remote_page_needs_the_code(server):
 
     _srv, bridge, base, _up = server
     code = remote.token()
-    assert _get(base + "/")[0] == 403
-    assert _get(base + "/?t=wrong")[0] == 403
+    for url in ("/", "/?t=wrong"):  # no sign-in: the PIN page (3.4.2), without the code
+        status, headers, body = _get(base + url)
+        assert status == 200 and b"login.js" in body and code.encode() not in body and "Set-Cookie" not in headers
     assert _get(base + "/api/status")[0] == 403
     status, headers, _ = _get(base + f"/?t={code}")
     assert status == 303 and headers["Location"] == "/"
@@ -267,6 +268,8 @@ def test_phone_link(qapp, user_data, tmp_path, monkeypatch):
     c = Controller()
     link = PhoneLink(c, lambda: {"method": "clipasso", "num_strokes": 12})
     assert not link.running()  # off by default
+    texts = link.bridge.texts  # the page's texts: its own and some of the app's (the export options …)
+    assert texts["x_mode_process"] and texts["x_size"] and texts["preset_applied"] and texts["login_hint"]
     job = SimpleNamespace(name="a.png", status="running", settings={"method": "clipasso"}, progress=0.25,
                           eta=75.0, job_dir="", best_svg="", started=0, finished=0, message="")
     c.current = job
@@ -357,7 +360,8 @@ def test_page_and_its_files(server):
     assert b'id="choose" type="file" accept="image/*" hidden' in body  # a file, not only the camera
     assert b'capture="environment"' in body  # (the camera has a button of its own)
     for name, kind in (("phone.js", "javascript"), ("phone.css", "css"), ("icon.png", "png")):
-        assert _get(base + "/" + name)[0] == 403
+        if name == "phone.js":  # (the style and the icon are for the PIN page, too)
+            assert _get(base + "/" + name)[0] == 403
         status, headers, data = _get(base + "/" + name, cookie)
         assert status == 200 and kind in headers["Content-Type"] and data
 
@@ -369,11 +373,13 @@ def test_page_texts_exist():
     from clipasso_studio import paths
     from clipasso_studio.gui.i18n import i18n
 
-    html = paths.resource("phone", "index.html").read_text(encoding="utf-8")
-    js = paths.resource("phone", "phone.js").read_text(encoding="utf-8")
+    html = "".join(paths.resource("phone", n).read_text(encoding="utf-8") for n in ("index.html", "login.html"))
+    js = "".join(paths.resource("phone", n).read_text(encoding="utf-8") for n in ("phone.js", "login.js"))
     used = set(re.findall(r'data-t="([a-z_]+)"', html)) | set(re.findall(r"\bT\.([a-z_]+)", js)) \
         | set(re.findall(r'\bt\("([a-z_]+)"', js))
-    extra = {"detail_title", "detail_hint", "tool_more", "tool_normal", "tool_less", "face", "rate_up", "rate_down"}
+    extra = {"detail_title", "detail_hint", "tool_more", "tool_normal", "tool_less", "face", "rate_up", "rate_down",
+             "preset_applied", "x_stroke", "x_width", "x_style", "x_background", "x_paper", "x_vignette", "x_frame",
+             "x_margin", "x_size", "x_width_cm", "x_mode", "x_length", "x_hold"}  # (the app's other texts, phone.py)
     page = {k[len("ui.phone.page."):] for k in i18n.keys("ui.phone.page.")}
     assert used - page - extra == set()
     for k in page:

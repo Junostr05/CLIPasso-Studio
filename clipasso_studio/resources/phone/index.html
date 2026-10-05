@@ -7,6 +7,7 @@
 <title>CLIPasso Studio</title>
 <link rel="stylesheet" href="/phone.css">
 <link rel="icon" href="/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon.png">
 <meta name="theme-color" content="#14161b">
 </head>
@@ -56,6 +57,13 @@
     <div class="card">
       <h2 data-t="preset"></h2>
       <div id="presets" class="seg"></div>
+      <div class="sub" data-t="my_presets"></div>
+      <div id="user-presets" class="mine"></div>
+      <form id="preset-form" class="row" autocomplete="off">
+        <input id="preset-name" type="text" maxlength="40" enterkeyhint="done">
+        <button id="preset-save" class="primary small" type="submit" data-t="preset_save"></button>
+      </form>
+      <div class="muted small-text" data-t="preset_save_hint"></div>
       <div class="sub" data-t="budget_title"></div>
       <div class="row wrap" id="budget">
         <button data-min="5">5 min</button><button data-min="15">15 min</button><button data-min="60">60 min</button>
@@ -78,6 +86,7 @@
       <div class="row between"><h2 data-t="params"></h2><button id="reset" class="small" data-t="reset"></button></div>
       <label class="check"><input id="advanced" type="checkbox"><span data-t="advanced"></span></label>
       <div id="params"></div>
+      <button id="to-preset" class="wide" data-t="save_preset"></button>
     </div>
 
     <div class="startbar">
@@ -117,6 +126,21 @@
         <a id="dl-svg" class="btn" download data-t="download_svg"></a>
         <a id="dl-png" class="btn" download data-t="download_png"></a>
       </div>
+    </div>
+    <div class="card" id="export-card" hidden>
+      <h2 data-t="export"></h2>
+      <div id="formats" class="chips"></div>
+      <div id="fmt-desc" class="muted small-text"></div>
+      <div id="export-opts" class="xopts"></div>
+      <div class="row">
+        <button id="export-go" class="primary"></button>
+        <button id="export-cancel" data-t="cancel" hidden></button>
+      </div>
+      <div id="export-state" hidden>
+        <div class="bar"><div id="export-progress"></div></div>
+        <div id="export-msg" class="muted"></div>
+      </div>
+      <a id="export-dl" class="btn primary wide" hidden></a>
     </div>
   </section>
 

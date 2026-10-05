@@ -33,7 +33,7 @@ from .app_settings import app_settings
 DEFAULT_PORT = 8765
 MAX_UPLOAD = 25 * 1024 * 1024
 MAX_JSON = 64 * 1024
-STATIC = {"phone.js": "text/javascript; charset=utf-8", "phone.css": "text/css; charset=utf-8"}
+STATIC = {"phone.js": "text/javascript; charset=utf-8"}
 CALL_TIMEOUT = 20.0
 COOKIE = "cs_access"
 UPLOAD_DIR = "_remote"  # in the output folder (cleared with the other pictures of the app)
@@ -52,6 +52,74 @@ def token() -> str:
         t = new_token()
         st.set("remote_token", t)
     return t
+
+
+PIN_DIGITS = 6
+PIN_TRIES = 5  # wrong PINs from one address before it has to wait
+PIN_WAIT = 30  # s, doubled with every further round of wrong PINs (at most PIN_WAIT_MAX)
+PIN_WAIT_MAX = 3600
+PIN_GLOBAL = 20  # wrong PINs from all addresses within PIN_WINDOW: nobody may try for PIN_WINDOW
+PIN_WINDOW = 600
+
+
+def new_pin() -> str:
+    return f"{secrets.randbelow(10 ** PIN_DIGITS):0{PIN_DIGITS}d}"
+
+
+def valid_pin(text) -> bool:
+    return isinstance(text, str) and len(text) == PIN_DIGITS and text.isdigit()
+
+
+def pin() -> str:
+    """The six-digit PIN for signing in without the QR code (made on first use)."""
+    st = app_settings()
+    p = str(st.get("remote_pin") or "")
+    if not valid_pin(p):
+        p = new_pin()
+        st.set("remote_pin", p)
+    return p
+
+
+class _PinGuard:
+    """Brakes on guessing the PIN: per address, and for everybody when many wrong PINs come in at once."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.per_ip: dict[str, list] = {}  # ip -> [wrong PINs, rounds, locked until]
+        self.recent: list[float] = []  # times of wrong PINs (all addresses)
+        self.all_locked_until = 0.0
+
+    def wait(self, ip: str, now: float | None = None) -> int:
+        now = time.time() if now is None else now
+        with self.lock:
+            entry = self.per_ip.get(ip)
+            until = max(self.all_locked_until, entry[2] if entry else 0.0)
+        return max(0, int(until - now + 0.999))
+
+    def check(self, ip: str, given: str, now: float | None = None) -> tuple[bool, int]:
+        """(right PIN, seconds to wait before the next try)."""
+        now = time.time() if now is None else now
+        wait = self.wait(ip, now)
+        if wait:
+            return False, wait
+        if valid_pin(given) and hmac.compare_digest(given, pin()):
+            with self.lock:
+                self.per_ip.pop(ip, None)
+            return True, 0
+        with self.lock:
+            entry = self.per_ip.setdefault(ip, [0, 0, 0.0])
+            entry[0] += 1
+            if entry[0] >= PIN_TRIES:
+                entry[0], entry[1] = 0, entry[1] + 1
+                entry[2] = now + min(PIN_WAIT_MAX, PIN_WAIT * 2 ** (entry[1] - 1))
+            self.recent = [t for t in self.recent if now - t < PIN_WINDOW] + [now]
+            if len(self.recent) >= PIN_GLOBAL:
+                self.all_locked_until = now + PIN_WINDOW
+                self.recent = []
+        return False, self.wait(ip, now)
+
+
+pin_guard = _PinGuard()
 
 
 def local_address() -> str:
@@ -184,6 +252,29 @@ def page(texts: dict, access: str) -> str:
     return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
 
 
+def login_page(texts: dict) -> str:
+    """The page for the PIN (no access code in it)."""
+    cfg = json.dumps({"texts": texts, "lang": texts.get("lang", "en")})
+    cfg = cfg.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    body = _resource("login.html").decode("utf-8")
+    return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
+
+
+def manifest() -> bytes:
+    """So the page can be put on the home screen like an app (it opens at the fixed address)."""
+    return json.dumps({"name": "CLIPasso Studio", "short_name": "CLIPasso", "start_url": "/", "scope": "/",
+                       "display": "standalone", "background_color": "#14161b", "theme_color": "#14161b",
+                       "icons": [{"src": "/icon.png", "sizes": "256x256", "type": "image/png"}]}).encode("utf-8")
+
+
+PUBLIC = {"phone.css": "text/css; charset=utf-8", "login.js": "text/javascript; charset=utf-8"}
+COOKIE_AGE = 400 * 24 * 3600  # (the longest browsers keep a cookie); renewed on every visit
+
+
+def access_cookie() -> str:
+    return f"{COOKIE}={token()}; Path=/; HttpOnly; SameSite=Strict; Max-Age={COOKIE_AGE}"
+
+
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; "
             "connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'")
 SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
@@ -242,7 +333,9 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._json({"ok": False, "error": str(exc)}, 500)
             return
-        if isinstance(result, dict) and "_bytes" in result:
+        if isinstance(result, dict) and "_path" in result:  # a big file (an export): sent in pieces from the disk
+            self._send_file(result["_path"], result["_type"], result.get("_name", ""))
+        elif isinstance(result, dict) and "_bytes" in result:
             headers = {}
             if result.get("_type") == "image/svg+xml":
                 headers["Content-Security-Policy"] = SVG_CSP
@@ -253,6 +346,30 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._json(result if isinstance(result, dict) else {"ok": True, "result": result},
                        200 if not (isinstance(result, dict) and result.get("ok") is False) else 400)
+
+    def _send_file(self, path: str, ctype: str, name: str):
+        try:
+            size = os.path.getsize(path)
+            f = open(path, "rb")
+        except OSError:
+            self._json({"ok": False, "error": "gone"}, 404)
+            return
+        with f:
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(size))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Content-Security-Policy", SVG_CSP)
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{urllib.parse.quote(name)}")
+            self.end_headers()
+            if self.command == "HEAD":
+                return
+            while True:
+                chunk = f.read(256 * 1024)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
 
     def _body(self, limit: int) -> bytes | None:
         try:
@@ -272,24 +389,30 @@ class _Handler(BaseHTTPRequestHandler):
         if parsed.path == "/":
             given = (query.get("t") or [""])[0]
             if given and hmac.compare_digest(given, token()):  # first visit from the QR code: remember it
-                self._send(303, b"", "text/plain", {
-                    "Location": "/", "Set-Cookie": f"{COOKIE}={token()}; Path=/; HttpOnly; SameSite=Strict; "
-                                                   "Max-Age=31536000"})
+                self._send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": access_cookie()})
                 return
-            if not self._authorised():
-                self._send(403, b"No access code: scan the QR code in CLIPasso Studio.", "text/plain")
+            if not self._authorised():  # no (more) cookie: the PIN instead of the QR code
+                self._send(200, login_page(self.bridge.texts).encode("utf-8"), "text/html; charset=utf-8",
+                           {"Content-Security-Policy": PAGE_CSP})
                 return
             self._send(200, page(self.bridge.texts, token()).encode("utf-8"), "text/html; charset=utf-8",
-                       {"Content-Security-Policy": PAGE_CSP})
+                       {"Content-Security-Policy": PAGE_CSP, "Set-Cookie": access_cookie()})
+            return
+        name = parsed.path.lstrip("/")
+        if name in PUBLIC:  # (what the sign-in page needs: nothing secret)
+            self._send(200, _resource(name), PUBLIC[name])
+            return
+        if name in ("icon.png", "favicon.ico"):
+            self._send(200, paths.resource("app_icon.png").read_bytes(), "image/png")
+            return
+        if name == "manifest.webmanifest":
+            self._send(200, manifest(), "application/manifest+json")
             return
         if not self._authorised():
             self._json({"ok": False, "error": "no access"}, 403)
             return
-        name = parsed.path.lstrip("/")
         if name in STATIC:
             self._send(200, _resource(name), STATIC[name])
-        elif name in ("icon.png", "favicon.ico"):
-            self._send(200, paths.resource("app_icon.png").read_bytes(), "image/png")
         elif parsed.path.startswith("/api/get/"):
             self._answer("get_" + parsed.path.rsplit("/", 1)[1], {k: v[0] for k, v in query.items()})
         elif parsed.path.startswith("/api/file/"):
@@ -306,6 +429,9 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         if not self._check_client():
+            return
+        if urllib.parse.urlparse(self.path).path == "/login":
+            self._login()
             return
         if not self._authorised(header=True):
             self._json({"ok": False, "error": "no access"}, 403)
@@ -334,6 +460,19 @@ class _Handler(BaseHTTPRequestHandler):
             self._answer("set_details", {"png": raw})
         else:
             self._json({"ok": False, "error": "not found"}, 404)
+
+    def _login(self):
+        """The PIN: right -> the cookie (as from the QR code); wrong -> try again, with brakes."""
+        raw = self._body(1024)
+        try:
+            given = str((json.loads(raw or b"{}") or {}).get("pin", ""))
+        except (ValueError, AttributeError):
+            given = ""
+        ok, wait = pin_guard.check(self.client_address[0], given)
+        if ok:
+            self._send(200, b'{"ok": true}', "application/json; charset=utf-8", {"Set-Cookie": access_cookie()})
+        else:
+            self._json({"ok": False, "wait": wait}, 429 if wait else 403)
 
     def _upload(self):
         try:

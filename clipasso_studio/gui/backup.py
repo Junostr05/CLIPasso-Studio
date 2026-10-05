@@ -30,7 +30,8 @@ PARTS = ("settings", "queue", "gallery", "models")
 LOCAL_KEYS = {"output_dir", "models_dir", "geometry", "gpu_runtime", "gpu_runtime_dismissed", "settings_version",
               "last_version", "skipped_version", "queue", "ui_scale", "watch_folder", "watch_export_dir", "export_dir",
               "batch_export_dir"}
-SECRET_KEYS = {"telegram_token", "telegram_chat", "telegram_bot", "remote_token"}  # never in a backup file
+# never in a backup file
+SECRET_KEYS = {"telegram_token", "telegram_chat", "telegram_bot", "remote_token", "remote_pin"}
 STORED = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".pt", ".pth", ".safetensors", ".bin", ".onnx", ".zip",
           ".heic", ".avif"}  # already compressed: stored as they are (faster)
 

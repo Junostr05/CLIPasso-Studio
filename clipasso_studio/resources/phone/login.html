@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>CLIPasso Studio</title>
+<link rel="stylesheet" href="/phone.css">
+<link rel="icon" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#14161b">
+</head>
+<body class="login">
+<script id="cfg" type="application/json">{{config}}</script>
+<main>
+  <div class="card login-card">
+    <img src="/icon.png" alt="" class="login-icon">
+    <h2>CLIPasso Studio</h2>
+    <p class="muted" data-t="login_hint"></p>
+    <form id="form" autocomplete="off">
+      <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
+             class="pin" aria-label="PIN">
+      <button id="go" class="primary" type="submit" data-t="login_button"></button>
+    </form>
+    <div id="msg" class="muted center"></div>
+  </div>
+</main>
+<script src="/login.js"></script>
+</body>
+</html>
