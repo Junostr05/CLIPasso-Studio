@@ -23,6 +23,9 @@ DEFAULTS: dict[str, Any] = {
     "check_updates": True,
     "ui_scale": 1.0,  # interface size (applied at the start via QT_SCALE_FACTOR)
     "canvas_style": "plain",  # brush style the sketches are shown in (brush.STYLES)
+    "canvas_paper": "none",  # paper of the preview (paper.KINDS); the export starts with it
+    "canvas_paper_color": "",  # its colour ("": the paper's own colour)
+    "canvas_vignette": False,
     "recent_images": [],  # the last opened images (studio menu "recent")
     "webcam_mirror": True,
     "watch_enabled": False,  # watched folder (gui/watch.py)
@@ -39,6 +42,16 @@ DEFAULTS: dict[str, Any] = {
     "sdxl_small_gpu": "",  # SDXL chosen on a card with less than 8 GB: "" ask, "cpu" on the CPU, "clip" use CLIP
     "multi_gpu": True,  # with two or more graphics cards: one sketch worker per card (runner.spreads_over_gpus)
     "resource_check": True,  # ask before a job that may not fit into the memory (gui/resources.py)
+    "telegram_on": False,  # a Telegram message when a job is done / failed (gui/telegram.py)
+    "telegram_token": "",  # the user's bot (only on this computer; never in diagnostics)
+    "telegram_chat": "",
+    "telegram_bot": "",
+    "telegram_done": True,
+    "telegram_failed": True,
+    "telegram_photo": True,
+    "remote_on": False,  # control from a phone in the home network (gui/remote.py)
+    "remote_port": 8765,
+    "remote_token": "",
     "skipped_version": "",
     "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,

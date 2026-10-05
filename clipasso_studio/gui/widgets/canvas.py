@@ -24,14 +24,16 @@ def svg_renderer(svg: str | bytes | None) -> QSvgRenderer | None:
     return r if r.isValid() else None
 
 
-def styled(svg: str | None, style: str) -> str | None:
-    """The sketch as it is shown in the brush ``style`` (the raw SVG if it cannot be styled)."""
-    if not svg or style == "plain":
+def styled(svg: str | None, style: str, light: bool = False) -> str | None:
+    """The sketch as it is shown in the brush ``style`` (the raw SVG if it cannot be styled); ``light``: black
+    strokes light (on a dark paper)."""
+    if not svg or (style == "plain" and not light):
         return svg
-    from ..brush import stylize_svg
+    from ..brush import recolour_black, stylize_svg
+    from ..paper import LIGHT_STROKE
 
     try:
-        return stylize_svg(svg, style)
+        return stylize_svg(recolour_black(svg, LIGHT_STROKE) if light else svg, style)
     except Exception:  # (an SVG the brush cannot parse is shown as it is)
         return svg
 
@@ -95,6 +97,9 @@ class SketchCanvas(QWidget):
         self.mode = "sketch"
         self._svg = None
         self._style = "plain"
+        self._paper: dict | None = None  # paper.normalize(...) of the preview, None: the theme's paper colour
+        self._paper_color: str | None = None
+        self._paper_pixmap = None  # (key, QPixmap)
         self._renderer = None
         self._eraser = False
         self._erasing = False
@@ -119,9 +124,23 @@ class SketchCanvas(QWidget):
 
     def set_svg(self, svg: str | None):
         self._svg = svg
-        self._renderer = svg_renderer(styled(svg, self._style))
+        self._renderer = svg_renderer(self._shown(svg))
         self._index = None
         self._set_hover(None)
+        self.update()
+
+    def _light(self) -> bool:
+        from ..paper import color_of, is_dark
+
+        return self._paper is not None and is_dark(color_of(self._paper, self._paper_color))
+
+    def _shown(self, svg: str | None) -> str | None:
+        return styled(svg, self._style, self._light())
+
+    def _restyle(self):
+        self._renderer = svg_renderer(self._shown(self._svg))
+        hover, self._hover = self._hover, None
+        self._set_hover(hover)
         self.update()
 
     def set_style(self, style: str):
@@ -129,13 +148,37 @@ class SketchCanvas(QWidget):
         if style == self._style:
             return
         self._style = style
-        self._renderer = svg_renderer(styled(self._svg, style))
-        hover, self._hover = self._hover, None
-        self._set_hover(hover)
-        self.update()
+        self._restyle()
 
     def style(self) -> str:
         return self._style
+
+    def set_paper(self, paper: dict | None, color: str | None = None):
+        """The paper the sketch is shown on (``paper.normalize``; None: the theme's paper colour) in ``color``
+        (None: the paper's own colour). On a dark paper black strokes are shown light."""
+        from ..paper import normalize
+
+        paper = normalize(paper)
+        if (paper, color or None) == (self._paper, self._paper_color):
+            return
+        self._paper, self._paper_color = paper, color or None
+        self._paper_pixmap = None
+        self._restyle()
+
+    def paper(self) -> dict | None:
+        return self._paper
+
+    def _fill_paper(self, p: QPainter, rect: QRectF, fallback: str):
+        if self._paper is None:
+            p.fillRect(rect, QColor(fallback))
+            return
+        from ..paper import qimage
+
+        key = (self._paper["kind"], self._paper["vignette"], self._paper_color, int(rect.width()), int(rect.height()))
+        if self._paper_pixmap is None or self._paper_pixmap[0] != key:
+            self._paper_pixmap = (key, QPixmap.fromImage(qimage(self._paper, max(1, key[3]), max(1, key[4]),
+                                                                self._paper_color)))
+        p.drawPixmap(rect.topLeft(), self._paper_pixmap[1])
 
     # ----------------------------------------------------------------- eraser
     def set_eraser(self, on: bool):
@@ -179,7 +222,7 @@ class SketchCanvas(QWidget):
         if index is not None and self._svg:
             from ..strokes import highlight
 
-            self._hover_renderer = svg_renderer(styled(highlight(self._svg, index), self._style))
+            self._hover_renderer = svg_renderer(self._shown(highlight(self._svg, index)))
         self.update()
 
     def to_sketch(self, pos) -> tuple[float, float]:
@@ -251,7 +294,7 @@ class SketchCanvas(QWidget):
         clip = QPainterPath()
         clip.addRoundedRect(rect, 12, 12)
         p.setClipPath(clip)
-        p.fillRect(rect, QColor(pal.paper))
+        self._fill_paper(p, rect, pal.paper)
 
         if self.mode == "attention" and self._attention:
             p.drawPixmap(rect.toRect(), self._attention)
@@ -266,7 +309,7 @@ class SketchCanvas(QWidget):
             right = QRectF(x, rect.top(), rect.right() - x, rect.height())
             p.save()
             p.setClipRect(right, Qt.IntersectClip)
-            p.fillRect(rect, QColor(pal.paper))
+            self._fill_paper(p, rect, pal.paper)
             if self._renderer:
                 self._renderer.render(p, rect)
             p.restore()

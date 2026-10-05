@@ -16,7 +16,8 @@ from PySide6.QtSvg import QSvgRenderer
 
 from ..engine import framing, jobs
 from ..engine.errors import UserError
-from .brush import stylize_svg
+from . import paper as paper_mod
+from .brush import RECOLOURING, stylize_svg
 
 ET.register_namespace("", "http://www.w3.org/2000/svg")
 
@@ -56,13 +57,28 @@ def svg_dims(svg: str, size: int) -> tuple[int, int]:
     return _dims(QSvgRenderer(QByteArray(svg.encode("utf-8"))), size)
 
 
-def svg_to_qimage(svg: str, size: int, background: QColor | None, canvas: tuple[int, int] | None = None) -> QImage:
-    """The sketch with its longer side ``size`` px; ``canvas``: a larger image it is centred on."""
+def _colour_name(background) -> str | None:
+    """A background (QColor, colour name or None) as "#rrggbb"; None when it is transparent or not given."""
+    if background is None:
+        return None
+    c = background if isinstance(background, QColor) else QColor(background)
+    return c.name() if c.isValid() and c.alpha() > 0 else None
+
+
+def svg_to_qimage(svg: str, size: int, background: QColor | None, canvas: tuple[int, int] | None = None,
+                  paper: dict | None = None, base: QImage | None = None) -> QImage:
+    """The sketch with its longer side ``size`` px; ``canvas``: a larger image it is centred on. ``paper``: drawn
+    on that paper (in the ``background`` colour); ``base``: on a copy of this picture of the final size."""
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
     w, h = _dims(renderer, size)
     cw, ch = canvas or (w, h)
-    img = QImage(cw, ch, QImage.Format_ARGB32)
-    img.fill(background if background is not None else QColor(0, 0, 0, 0))
+    if base is None and paper_mod.normalize(paper) is not None:
+        base = paper_mod.qimage(paper, cw, ch, _colour_name(background))
+    if base is not None and (base.width(), base.height()) == (cw, ch):
+        img = base.convertToFormat(QImage.Format_ARGB32)  # (a copy)
+    else:
+        img = QImage(cw, ch, QImage.Format_ARGB32)
+        img.fill(background if background is not None else QColor(0, 0, 0, 0))
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     renderer.render(p, QRectF((cw - w) / 2, (ch - h) / 2, w, h))
@@ -108,12 +124,13 @@ def qimage_to_pil(img: QImage) -> Image.Image:
 
 def export_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_scale: float = 1.0,
                background: str | None = None, style: str = "plain", frame: str = "square",
-               margin: float = framing.DEFAULT_MARGIN) -> None:
+               margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
     with open(src_svg, encoding="utf-8") as f:
         svg = f.read()
     fr = framing_for(src_svg, frame, margin, svg)
+    out = stylize_svg(_framed(restyle_svg(svg, stroke_color, width_scale, background), fr), style)
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(stylize_svg(_framed(restyle_svg(svg, stroke_color, width_scale, background), fr), style))
+        f.write(paper_mod.svg_with_paper(out, paper, background))
 
 
 def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: float = 1.0) -> str:
@@ -159,22 +176,26 @@ def export_single_layer_svg(src_svg: str, dest: str, stroke_color: str | None = 
 
 def export_png(src_svg: str, dest: str, size: int = 1024, stroke_color: str | None = None,
                width_scale: float = 1.0, background: str | None = "#FFFFFF", style: str = "plain",
-               frame: str = "square", margin: float = framing.DEFAULT_MARGIN) -> None:
+               frame: str = "square", margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
     """PNG with its longer side ``size`` px (square unless ``frame`` gives it another shape)."""
     with open(src_svg, encoding="utf-8") as f:
         raw = f.read()
     svg = stylize_svg(_framed(restyle_svg(raw, stroke_color, width_scale), framing_for(src_svg, frame, margin, raw)),
                       style)
     bg = QColor(background) if background else None
-    svg_to_qimage(svg, size, bg).save(dest)
+    svg_to_qimage(svg, size, bg, paper=paper).save(dest)
 
 
 PDF_WIDTH_CM = 15.0
 
 
+PDF_PAPER_DPI = 200  # the paper texture under the vector strokes of a PDF
+PDF_PAPER_MAX = 3000
+
+
 def export_pdf(src_svg: str, dest: str, width_cm: float = PDF_WIDTH_CM, stroke_color: str | None = None,
                width_scale: float = 1.0, background: str | None = None, style: str = "plain",
-               frame: str = "square", margin: float = framing.DEFAULT_MARGIN) -> None:
+               frame: str = "square", margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
     """Vector PDF of the sketch (one page in the sketch's aspect ratio, ``width_cm`` wide) – for printing."""
     from PySide6.QtCore import QMarginsF, QSizeF
     from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
@@ -196,7 +217,11 @@ def export_pdf(src_svg: str, dest: str, width_cm: float = PDF_WIDTH_CM, stroke_c
     writer.setTitle(os.path.splitext(os.path.basename(dest))[0])
     p = QPainter(writer)
     rect = QRectF(0, 0, writer.width(), writer.height())
-    if background:
+    if paper_mod.normalize(paper) is not None:
+        scale = min(PDF_PAPER_DPI / 25.4, PDF_PAPER_MAX / max(w_mm, w_mm * aspect))
+        p.drawImage(rect, paper_mod.qimage(paper, max(1, round(w_mm * scale)), max(1, round(w_mm * aspect * scale)),
+                                           background))
+    elif background:
         p.fillRect(rect, QColor(background))
     renderer.render(p, rect)
     p.end()
@@ -207,7 +232,7 @@ CLIPBOARD_MARK = "application/x-clipasso-studio"  # recognises our own clipboard
 
 def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None, width_scale: float = 1.0,
                 background: str | None = "#FFFFFF", style: str = "plain", frame: str = "square",
-                margin: float = framing.DEFAULT_MARGIN):
+                margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None):
     """Clipboard content of a sketch: a PNG image and the SVG (``image/svg+xml``). No plain text –
     word processors would paste the SVG code instead of the picture."""
     from PySide6.QtCore import QMimeData
@@ -217,8 +242,9 @@ def sketch_mime(svg_path: str, size: int = 1024, stroke_color: str | None = None
     svg = stylize_svg(_framed(restyle_svg(raw, stroke_color, width_scale), framing_for(svg_path, frame, margin, raw)),
                       style)
     data = QMimeData()
-    data.setImageData(svg_to_qimage(svg, size, QColor(background) if background else None))
+    data.setImageData(svg_to_qimage(svg, size, QColor(background) if background else None, paper=paper))
     with_bg = stylize_svg(restyle_svg(svg, None, 1.0, background), "plain") if background else svg
+    with_bg = paper_mod.svg_with_paper(with_bg, paper, background)
     data.setData("image/svg+xml", QByteArray(with_bg.encode("utf-8")))
     data.setData(CLIPBOARD_MARK, QByteArray(b"1"))
     return data
@@ -318,7 +344,7 @@ def _ink_palette(stroke: QColor, background: QColor | None) -> tuple[list[int], 
 def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, stroke_color: str | None = None,
                      width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
                      length: float | None = None, hold: float = 1.0, style: str = "plain", frame: str = "square",
-                     margin: float = framing.DEFAULT_MARGIN) -> int:
+                     margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> int:
     """GIF / WebP / MP4 of the drawing process (format from the file extension); returns the number
     of frames. The drawing takes ``length`` seconds (default: one drawn frame per 1/``fps`` s) plus
     ``hold`` seconds on the final sketch. ``progress(i, n)`` per drawn frame, ``progress(0, 0)`` while
@@ -335,11 +361,12 @@ def export_animation(run_dir: str, dest: str, size: int = 512, fps: float = 20, 
             return _framed(f.read(), fr)
 
     return _encode(read, len(frames), dest, size, fps, stroke_color, width_scale, background, progress, cancel,
-                   length, hold, style)
+                   length, hold, style, paper)
 
 
 def _encode(read, n: int, dest: str, size: int, fps: float, stroke_color: str | None, width_scale: float,
-            background: str | None, progress, cancel, length: float | None, hold: float, style: str) -> int:
+            background: str | None, progress, cancel, length: float | None, hold: float, style: str,
+            paper: dict | None = None) -> int:
     """Render the drawn frames ``read(0 .. n-1)`` (SVG text) and encode them (see export_animation)."""
     import numpy as np
 
@@ -349,7 +376,9 @@ def _encode(read, n: int, dest: str, size: int, fps: float, stroke_color: str | 
 
     fmt = os.path.splitext(dest)[1].lower().lstrip(".")
     idx, durations = animation_plan(n, length, fps, hold, fmt, size)
-    ink = stroke_color is not None or _one_colour(read(n - 1))
+    paper = paper_mod.normalize(paper)
+    # one stroke colour on a plain background: palette steps instead of full colour frames
+    ink = (stroke_color is not None or _one_colour(read(n - 1))) and style not in RECOLOURING and paper is None
     bg = QColor(background) if background else None
     if bg is not None and bg.alpha() == 0:
         bg = None
@@ -359,12 +388,15 @@ def _encode(read, n: int, dest: str, size: int, fps: float, stroke_color: str | 
     lut = np.array(pal, dtype=np.uint8).reshape(-1, 3)
     w, h = svg_dims(read(n - 1), size)
     canvas = (w + (-w) % 16, h + (-h) % 16) if fmt == "mp4" else None  # the video codec wants multiples of 16
+    # (the paper's colour: the background asked for – not the white that stands in for transparency in GIF / MP4)
+    base = paper_mod.qimage(paper, *(canvas or (w, h)), _colour_name(background)) if paper is not None else None
 
     def render(i):
         svg = read(i)
         if ink:
             return _ink(svg, size, width_scale, style, canvas)
-        img = svg_to_qimage(stylize_svg(restyle_svg(svg, stroke_color, width_scale), style), size, bg, canvas)
+        img = svg_to_qimage(stylize_svg(restyle_svg(svg, stroke_color, width_scale), style), size, bg, canvas,
+                            base=base)
         return qimage_to_pil(img).convert("RGBA" if bg is None else "RGB")
 
     try:
@@ -560,7 +592,7 @@ def export_drawing(svg_path: str, dest: str, size: int = 512, stroke_color: str 
                    width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None, cancel=None,
                    length: float | None = None, hold: float = 1.0, style: str = "plain",
                    keep_order: bool | None = None, frame: str = "square",
-                   margin: float = framing.DEFAULT_MARGIN) -> int:
+                   margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> int:
     """GIF / WebP / MP4 in which the finished sketch (with eraser edits) is drawn stroke by stroke.
     ``keep_order``: draw in the order of the SVG (ControlSketch sorts its strokes outline first) –
     by default for ControlSketch runs, otherwise along a short route."""
@@ -575,12 +607,12 @@ def export_drawing(svg_path: str, dest: str, size: int = 512, stroke_color: str 
     length = default_drawing_length(len(drawing.strokes), drawing.line) if length is None else length
     n = max(2, round(length * DRAW_STEPS_PER_SECOND))
     return _encode(lambda i: drawing.frame((i + 1) / n), n, dest, size, n / length, stroke_color, width_scale,
-                   background, progress, cancel, length, hold, style)
+                   background, progress, cancel, length, hold, style, paper)
 
 
 def animated_svg(svg: str, length: float | None = None, hold: float = 1.0, stroke_color: str | None = None,
                  width_scale: float = 1.0, background: str | None = None, style: str = "plain",
-                 keep_order: bool = False) -> str:
+                 keep_order: bool = False, paper: dict | None = None) -> str:
     """An SVG that draws itself in the browser (CSS animation, repeating): every stroke – in any
     brush style – is uncovered by a mask whose centre line grows along the stroke."""
     drawing = Drawing(svg, keep_order)
@@ -611,27 +643,230 @@ def animated_svg(svg: str, length: float | None = None, hold: float = 1.0, strok
     bg = f'<rect width="100%" height="100%" fill="{background}"/>' if background else ""
     out = (drawing.head + "<style>" + "".join(css) + "</style><defs>" + "".join(defs) + "</defs>" + bg
            + "".join(body) + "</svg>")
-    return re.sub(r' xmlns(:ns\d+)?="http://www.w3.org/2000/svg"', "", out).replace(
+    out = re.sub(r' xmlns(:ns\d+)?="http://www.w3.org/2000/svg"', "", out).replace(
         "<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ', 1)
+    return paper_mod.svg_with_paper(out, paper, background)
 
 
 def export_animated_svg(svg_path: str, dest: str, length: float | None = None, hold: float = 1.0,
                         stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
                         style: str = "plain", keep_order: bool | None = None, frame: str = "square",
-                        margin: float = framing.DEFAULT_MARGIN) -> None:
+                        margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
     with open(svg_path, encoding="utf-8") as f:
         svg = f.read()
     svg = _framed(svg, framing_for(svg_path, frame, margin, svg))
     if keep_order is None:
         keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(animated_svg(svg, length, hold, stroke_color, width_scale, background, style, keep_order))
+        f.write(animated_svg(svg, length, hold, stroke_color, width_scale, background, style, keep_order, paper))
 
 
-def _render_svg(svg: str, width: int, height: int, background: QColor | None) -> QImage:
+# --------------------------------------------------------------- Lottie and a web page
+LOTTIE_FPS = 30
+LOTTIE_SIZE = 512  # px: the longer side of the Lottie composition
+
+
+def _lottie_rgb(color: str) -> list[float]:
+    c = QColor(color)
+    if not c.isValid():
+        c = QColor("#000000")
+    return [round(c.redF(), 4), round(c.greenF(), 4), round(c.blueF(), 4), 1]
+
+
+def _lottie_static(value) -> dict:
+    return {"a": 0, "k": value}
+
+
+def _lottie_transform(shape_group: bool = False) -> dict:
+    if shape_group:
+        return {"ty": "tr", "p": _lottie_static([0, 0]), "a": _lottie_static([0, 0]), "s": _lottie_static([100, 100]),
+                "r": _lottie_static(0), "o": _lottie_static(100), "sk": _lottie_static(0), "sa": _lottie_static(0)}
+    return {"o": _lottie_static(100), "r": _lottie_static(0), "p": _lottie_static([0, 0, 0]),
+            "a": _lottie_static([0, 0, 0]), "s": _lottie_static([100, 100, 100])}
+
+
+def lottie_paths(d: str, x0: float = 0.0, y0: float = 0.0, scale: float = 1.0) -> list[dict]:
+    """The sub-paths of SVG path data as Lottie shapes: vertices (moved by -x0, -y0 and scaled) with their in and
+    out tangents relative to them; quadratic curves become cubic ones."""
+    from ..engine.svg_path import parse_path_d
+
+    def pt(p):
+        return [(float(p[0]) - x0) * scale, (float(p[1]) - y0) * scale]
+
+    out = []
+    for segs, closed in parse_path_d(d):
+        v, ins, outs = [], [], []
+        for seg in segs:
+            pts = [pt(p) for p in seg]
+            p0, p3 = pts[0], pts[-1]
+            if len(pts) == 2:  # line
+                c1, c2 = p0, p3
+            elif len(pts) == 3:  # quadratic
+                q = pts[1]
+                c1 = [p0[0] + 2 / 3 * (q[0] - p0[0]), p0[1] + 2 / 3 * (q[1] - p0[1])]
+                c2 = [p3[0] + 2 / 3 * (q[0] - p3[0]), p3[1] + 2 / 3 * (q[1] - p3[1])]
+            else:
+                c1, c2 = pts[1], pts[2]
+            if not v:
+                v.append(p0)
+                ins.append([0, 0])
+                outs.append([0, 0])
+            outs[-1] = [c1[0] - p0[0], c1[1] - p0[1]]
+            v.append(p3)
+            ins.append([c2[0] - p3[0], c2[1] - p3[1]])
+            outs.append([0, 0])
+        if closed and len(v) > 2 and abs(v[0][0] - v[-1][0]) < 1e-6 and abs(v[0][1] - v[-1][1]) < 1e-6:
+            ins[0] = ins.pop()
+            v.pop()
+            outs.pop()
+        if len(v) >= 2:
+            rnd = [[[round(c, 3) for c in p] for p in arr] for arr in (ins, outs, v)]
+            out.append({"ty": "sh", "ks": _lottie_static({"i": rnd[0], "o": rnd[1], "v": rnd[2], "c": bool(closed)})})
+    return out
+
+
+def _reversed_shape(shape: dict) -> dict:
+    """The same Lottie path drawn from its other end."""
+    k = shape["ks"]["k"]
+    return {"ty": "sh", "ks": _lottie_static({"i": k["o"][::-1], "o": k["i"][::-1], "v": k["v"][::-1], "c": k["c"]})}
+
+
+def lottie(svg: str, length: float | None = None, hold: float = 1.0, stroke_color: str | None = None,
+           width_scale: float = 1.0, background: str | None = None, keep_order: bool = False,
+           paper: dict | None = None, name: str = "sketch", size: int = LOTTIE_SIZE) -> dict:
+    """A Lottie animation (bodymovin JSON) that draws the sketch stroke by stroke like :func:`animated_svg`:
+    one shape layer per stroke whose trim path grows along it. Plain strokes (Lottie has no brush styles);
+    the background colour or the paper (an embedded picture) below them."""
+    from .strokes import view_box
+
+    drawing = Drawing(svg, keep_order)
+    n = len(drawing.strokes)
+    length = default_drawing_length(n, drawing.line) if length is None else max(float(length), 0.1)
+    total = length + max(float(hold), 0.0)
+    op = max(1, round(total * LOTTIE_FPS))
+    x0, y0, vw, vh = view_box(svg)
+    scale = size / max(vw, vh, 1e-9)
+    w, h = max(1, round(vw * scale)), max(1, round(vh * scale))
+    layers, assets = [], []
+    for i, (st, (a, b)) in enumerate(zip(drawing.strokes, drawing.spans)):
+        attrs = st["attrs"]
+        m = re.search(r'\sd="([^"]*)"', st["xml"])
+        shapes = lottie_paths(m.group(1) if m else drawing.centreline(i), x0, y0, scale)
+        if not shapes:
+            continue
+        first = shapes[0]["ks"]["k"]["v"][0]
+        start = [(st["subs"][0][0][0] - x0) * scale, (st["subs"][0][0][1] - y0) * scale]
+        last = shapes[-1]["ks"]["k"]["v"][-1]
+        if math.dist(start, last) < math.dist(start, first) - 1e-6:  # the route draws this stroke backwards
+            shapes = [_reversed_shape(sh) for sh in reversed(shapes)]
+        try:
+            width = float(attrs.get("stroke-width", "1")) * width_scale * scale
+            opacity = float(attrs.get("stroke-opacity", "1")) * 100
+        except ValueError:
+            width, opacity = width_scale * scale, 100.0
+        f0 = round(a / drawing.total * length * LOTTIE_FPS, 2)
+        f1 = max(round(b / drawing.total * length * LOTTIE_FPS, 2), f0 + 0.5)
+        trim_end = {"a": 1, "k": [{"t": f0, "s": [0], "i": {"x": [1], "y": [1]}, "o": {"x": [0], "y": [0]}},
+                                  {"t": f1, "s": [100]}]}
+        stroke = {"ty": "st", "c": _lottie_static(_lottie_rgb(stroke_color or attrs.get("stroke", "#000000"))),
+                  "o": _lottie_static(round(opacity, 2)), "w": _lottie_static(round(width, 3)), "lc": 2, "lj": 2,
+                  "ml": 4, "nm": "stroke"}
+        trim = {"ty": "tm", "s": _lottie_static(0), "e": trim_end, "o": _lottie_static(0), "m": 2, "nm": "draw"}
+        layers.append({"ddd": 0, "ind": i + 1, "ty": 4, "nm": f"stroke {i + 1}", "sr": 1, "ks": _lottie_transform(),
+                       "ao": 0, "shapes": [{"ty": "gr", "nm": f"stroke {i + 1}",
+                                            "it": shapes + [stroke, trim, _lottie_transform(True)]}],
+                       "ip": 0, "op": op, "st": 0, "bm": 0})
+    layers.reverse()  # the first layer is drawn on top: the later strokes over the earlier ones
+    ind = len(drawing.strokes) + 1
+    if paper_mod.normalize(paper) is not None:
+        import base64
+        import io
+
+        buf = io.BytesIO()
+        paper_mod.image(paper, w, h, background).save(buf, "JPEG", quality=88)
+        assets.append({"id": "paper", "w": w, "h": h, "u": "", "e": 1,
+                       "p": "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")})
+        layers.append({"ddd": 0, "ind": ind, "ty": 2, "nm": "paper", "refId": "paper", "sr": 1,
+                       "ks": _lottie_transform(), "ao": 0, "ip": 0, "op": op, "st": 0, "bm": 0})
+    elif background:
+        layers.append({"ddd": 0, "ind": ind, "ty": 1, "nm": "background", "sc": QColor(background).name(),
+                       "sw": w, "sh": h, "sr": 1, "ks": _lottie_transform(), "ao": 0, "ip": 0, "op": op, "st": 0,
+                       "bm": 0})
+    return {"v": "5.7.4", "fr": LOTTIE_FPS, "ip": 0, "op": op, "w": w, "h": h, "nm": name, "ddd": 0,
+            "assets": assets, "layers": layers, "markers": []}
+
+
+def export_lottie(svg_path: str, dest: str, length: float | None = None, hold: float = 1.0,
+                  stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
+                  keep_order: bool | None = None, frame: str = "square", margin: float = framing.DEFAULT_MARGIN,
+                  paper: dict | None = None, size: int = LOTTIE_SIZE) -> None:
+    """Lottie JSON (for web pages and apps: lottie-web, LottieFiles, After Effects / Bodymovin)."""
+    with open(svg_path, encoding="utf-8") as f:
+        svg = f.read()
+    svg = _framed(svg, framing_for(svg_path, frame, margin, svg))
+    if keep_order is None:
+        keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
+    data = lottie(svg, length, hold, stroke_color, width_scale, background, keep_order, paper,
+                  os.path.splitext(os.path.basename(dest))[0], size)
+    with open(dest, "w", encoding="utf-8") as f:
+        json.dump(data, f, separators=(",", ":"))
+
+
+def web_page(animated: str, title: str = "Sketch", background: str | None = None) -> str:
+    """A web page of its own (no other files) that shows an SVG drawing itself, with a button to draw it again."""
+    from html import escape
+
+    bg = QColor(background).name() if background and QColor(background).isValid() else "#ffffff"
+    dark = paper_mod.is_dark(bg)
+    fg, btn = ("#e8e8e8", "rgba(255,255,255,.12)") if dark else ("#333333", "rgba(0,0,0,.06)")
+    body = re.sub(r"<\?xml[^>]*\?>", "", animated).strip()
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{escape(title)}</title>
+<style>
+html, body {{ margin: 0; height: 100%; background: {bg}; color: {fg}; font-family: system-ui, sans-serif; }}
+body {{ display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }}
+main {{ width: min(92vw, 86vh); }}
+main svg {{ display: block; width: 100%; height: auto; }}
+button {{ border: 0; border-radius: 999px; padding: 8px 18px; background: {btn}; color: inherit; font: inherit;
+         cursor: pointer; }}
+</style>
+</head>
+<body>
+<main>{body}</main>
+<button type="button" onclick="const s = document.querySelector('main svg'); s.replaceWith(s.cloneNode(true));"
+ title="Draw again">&#8635;</button>
+</body>
+</html>
+"""
+
+
+def export_web_page(svg_path: str, dest: str, length: float | None = None, hold: float = 1.0,
+                    stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
+                    style: str = "plain", keep_order: bool | None = None, frame: str = "square",
+                    margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
+    """An HTML page with the sketch drawing itself (the animated SVG in any brush style)."""
+    with open(svg_path, encoding="utf-8") as f:
+        svg = f.read()
+    svg = _framed(svg, framing_for(svg_path, frame, margin, svg))
+    if keep_order is None:
+        keep_order = run_method(os.path.dirname(svg_path)) == "controlsketch"
+    animated = animated_svg(svg, length, hold, stroke_color, width_scale, background, style, keep_order, paper)
+    page_bg = paper_mod.color_of(paper, background) if paper_mod.normalize(paper) is not None else background
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(web_page(animated, os.path.splitext(os.path.basename(dest))[0], page_bg))
+
+
+def _render_svg(svg: str, width: int, height: int, background: QColor | None, paper: dict | None = None) -> QImage:
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
-    img = QImage(width, height, QImage.Format_ARGB32)
-    img.fill(background if background is not None else QColor(0, 0, 0, 0))
+    if paper_mod.normalize(paper) is not None:
+        img = paper_mod.qimage(paper, width, height, _colour_name(background))
+    else:
+        img = QImage(width, height, QImage.Format_ARGB32)
+        img.fill(background if background is not None else QColor(0, 0, 0, 0))
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     renderer.render(p, QRectF(0, 0, width, height))
@@ -694,7 +929,7 @@ def matrix_sheet_svg(cells: dict[int, str], cell: int = 224, gap: int = 16, text
 
 def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: str | None = None,
                       width_scale: float = 1.0, background: str | None = "#FFFFFF", progress=None,
-                      cancel=None, style: str = "plain") -> int:
+                      cancel=None, style: str = "plain", paper: dict | None = None) -> int:
     """SceneSketch: every sketch of the matrix as SVG and PNG plus the overview sheet (matrix.svg /
     matrix.png) in one ZIP file. Returns the number of sketches."""
     import json
@@ -717,17 +952,18 @@ def export_matrix_zip(job_dir: str, dest: str, size: int = 1024, stroke_color: s
                 if cancel and cancel():
                     raise InterruptedError("export cancelled")
                 name = f"L{c // 100}_level{c % 100}"
-                z.writestr(f"{name}.svg", restyle_svg(svg, None, 1.0, background))
-                z.writestr(f"{name}.png", _png_bytes(svg_to_qimage(svg, size, bg)))
+                z.writestr(f"{name}.svg", paper_mod.svg_with_paper(restyle_svg(svg, None, 1.0, background), paper,
+                                                                   background))
+                z.writestr(f"{name}.png", _png_bytes(svg_to_qimage(svg, size, bg, paper=paper)))
                 if progress:
                     progress(n + 1, len(cells))
             if progress:
                 progress(0, 0)
             sheet = matrix_sheet_svg(cells, background=background)
-            z.writestr("matrix.svg", sheet)
+            z.writestr("matrix.svg", paper_mod.svg_with_paper(sheet, paper, background))
             w, h = (int(v) for v in re.search(r'width="(\d+)" height="(\d+)"', sheet).groups())
             scale = max(1.0, min(4.0, size / 224))  # cells of the sheet about as large as the PNGs
-            z.writestr("matrix.png", _png_bytes(_render_svg(sheet, int(w * scale), int(h * scale), bg)))
+            z.writestr("matrix.png", _png_bytes(_render_svg(sheet, int(w * scale), int(h * scale), bg, paper)))
     except BaseException:
         try:
             os.remove(dest)
@@ -752,7 +988,7 @@ def _unique(path: str) -> str:
 def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", size: int = 1024,
                  stroke_color: str | None = None, width_scale: float = 1.0, background: str | None = None,
                  style: str = "plain", progress=None, cancel=None, frame: str = "square",
-                 margin: float = framing.DEFAULT_MARGIN) -> int:
+                 margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> int:
     """Export the best sketch (touched up, if it was) of several jobs into ``folder`` as
     ``<image>_<method>.<ext>``; returns the number of files written. ``frame``: see :func:`framing_for`
     (a sketch whose photo shape is not known stays square)."""
@@ -770,14 +1006,14 @@ def export_batch(items: list[tuple[str, dict]], folder: str, fmt: str = "svg", s
         ext = fmt if fmt in ("png", "pdf") else "svg"
         dest = _unique(os.path.join(folder, f"{stem}_{method}{suffix}.{ext}"))
         shape = {"frame": frame, "margin": margin}
-        if fmt == "png":
-            export_png(src, dest, size, stroke_color, width_scale, background, style, **shape)  # None: transparent
+        if fmt == "png":  # (background None: transparent)
+            export_png(src, dest, size, stroke_color, width_scale, background, style, **shape, paper=paper)
         elif fmt == "pdf":
-            export_pdf(src, dest, PDF_WIDTH_CM, stroke_color, width_scale, background, style, **shape)
+            export_pdf(src, dest, PDF_WIDTH_CM, stroke_color, width_scale, background, style, **shape, paper=paper)
         elif fmt == "svg1":
             export_single_layer_svg(src, dest, stroke_color, width_scale, **shape)
         else:
-            export_svg(src, dest, stroke_color, width_scale, background, style, **shape)
+            export_svg(src, dest, stroke_color, width_scale, background, style, **shape, paper=paper)
         written += 1
         if progress:
             progress(n + 1, len(items))

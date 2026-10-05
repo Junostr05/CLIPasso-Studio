@@ -11,6 +11,8 @@ ftfy>=6.1
 regex>=2023.0
 imageio>=2.34
 imageio-ffmpeg>=0.5
+# QR code of the phone remote (pure Python, BSD-3-Clause)
+segno==1.6.6
 # ControlSketch (Stable Diffusion 1.5 + ControlNet, condition detectors, captioning)
 diffusers==0.40.0
 transformers==5.17.0

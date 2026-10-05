@@ -30,6 +30,7 @@ CLIPasso Studio bundles or is derived from the following works.
 | **Qt Multimedia** (from PySide6-Addons; only this module is bundled) with its **FFmpeg** libraries | https://www.qt.io/qt-for-python, https://ffmpeg.org | LGPL-3.0 (Qt), LGPL-2.1+ (FFmpeg) | webcam photos |
 | **pi-heif** with **libheif** and **libde265** (decoders only) | https://github.com/bigcat88/pillow_heif, https://github.com/strukturag/libheif, https://github.com/strukturag/libde265 | BSD-3-Clause (pi-heif), LGPL-3.0 (libheif, libde265) | opening HEIC / HEIF photos |
 | **NumPy**, **Pillow**, **ftfy**, **regex**, **imageio**, **imageio-ffmpeg** (FFmpeg binary: LGPL/GPL) | PyPI | BSD / HPND / Apache-2.0 / MIT | utilities, video export |
+| **segno** | https://github.com/heuer/segno | BSD-3-Clause | the QR code of the phone remote |
 | **Inter** font | https://rsms.me/inter/ | SIL Open Font License 1.1 (`resources/fonts/LICENSE-Inter-OFL.txt`) | UI font |
 | **Lucide** icons | https://lucide.dev | ISC (`resources/icons/LICENSE-lucide.txt`) | UI icons |
 

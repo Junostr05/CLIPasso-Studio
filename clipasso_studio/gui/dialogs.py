@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QDou
                                QWidget)
 
 from ..engine import framing, model_store
-from . import brush, export, theme
+from . import brush, export, paper, theme
 from .app_settings import app_settings
 from .i18n import i18n, tr
 from .widgets.common import button, label
@@ -56,6 +56,54 @@ class ColorButton(QPushButton):
         fg = "#000000" if self._color == "transparent" or QColor(self._color).lightness() > 140 else "#FFFFFF"
         self.setStyleSheet(f"QPushButton {{ background: {bg}; color: {fg}; border: 1px solid {p.border};"
                            f" border-radius: 8px; padding: 6px 12px; font-weight: 600; }}")
+
+
+class PaperChoice(QWidget):
+    """The paper of an export (``paper.KINDS``) and its vignette (0 – 100 %)."""
+
+    kind_changed = Signal(str)
+
+    def __init__(self, kind: str = "none", vignette: int = 0, parent=None):
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.combo = QComboBox()
+        for key in paper.KINDS:
+            self.combo.addItem(tr(f"ui.paper.{key}"), key)
+        self.combo.setToolTip(tr("ui.paper.tip"))
+        self.combo.setCurrentIndex(max(self.combo.findData(kind), 0))
+        self.vignette = QSpinBox()
+        self.vignette.setRange(0, 100)
+        self.vignette.setSingleStep(5)
+        self.vignette.setSuffix(" %")
+        try:
+            self.vignette.setValue(int(vignette or 0))
+        except (TypeError, ValueError):
+            self.vignette.setValue(0)
+        self.vignette.setToolTip(tr("ui.paper.vignette_tip"))
+        row.addWidget(self.combo, 1)
+        row.addWidget(label(tr("ui.paper.vignette"), "faint"))
+        row.addWidget(self.vignette)
+        self.combo.currentIndexChanged.connect(lambda _=0: self.kind_changed.emit(self.kind()))
+
+    def kind(self) -> str:
+        return self.combo.currentData()
+
+    def paper(self) -> dict | None:
+        return paper.normalize({"kind": self.kind(), "vignette": self.vignette.value() / 100})
+
+
+def paper_colours(kind: str | None, background: "ColorButton", stroke: "ColorButton") -> None:
+    """Another paper brings its own colour (``kind`` None: only the background colour changed); on a dark
+    background black strokes become light – and back to black on a light one."""
+    if kind and kind != "none":
+        background.set_color(paper.COLORS[kind])
+    color = background.color()
+    dark = color != "transparent" and paper.is_dark(color)
+    if dark and stroke.color().lower() == "#000000":
+        stroke.set_color(paper.LIGHT_STROKE)
+    elif not dark and stroke.color().lower() == paper.LIGHT_STROKE.lower():
+        stroke.set_color("#000000")
 
 
 def error_text(exc: BaseException) -> str:
@@ -185,10 +233,12 @@ def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=No
 
 
 ANIMATIONS = ("gif", "mp4", "webp")
-TIMED = ANIMATIONS + ("svganim",)  # formats with a drawing length
-EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg"}
+DRAWN = ("svganim", "lottie", "html")  # the finished strokes drawn one by one, in the browser or an app
+TIMED = ANIMATIONS + DRAWN  # formats with a drawing length
+EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg", "lottie": "json", "html": "html"}
 FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
-           "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)"}
+           "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)", "json": "Lottie (*.json)",
+           "html": "HTML (*.html)"}
 
 
 class BusyDialog(QDialog):
@@ -319,10 +369,15 @@ def copy_sketch(svg_path: str) -> None:
         margin = int(st.get("export_margin", 5)) / 100
     except (TypeError, ValueError):
         margin = framing.DEFAULT_MARGIN
+    try:
+        vignette = int(st.get("export_vignette", 0) or 0) / 100
+    except (TypeError, ValueError):
+        vignette = 0.0
     data = export.sketch_mime(svg_path, 1024, None if str(stroke).lower() == "#000000" else stroke,
                               float(st.get("export_width", 1.0)),
                               "#FFFFFF" if background in (None, "", "transparent") else background,
-                              st.get("export_style", "plain"), st.get("export_frame", "square"), margin)
+                              st.get("export_style", "plain"), st.get("export_frame", "square"), margin,
+                              paper={"kind": st.get("export_paper", "none"), "vignette": vignette})
     QGuiApplication.clipboard().setMimeData(data)
 
 
@@ -366,7 +421,8 @@ class ExportDialog(QDialog):
         # "svg1": all strokes as one path in one layer (for plotters / cutting machines)
         self.ext = EXTENSIONS.get(fmt, fmt)
         title = {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix"),
-                 "svganim": tr("ui.export_svganim")}.get(fmt, fmt.upper())
+                 "svganim": tr("ui.export_svganim"), "lottie": "Lottie",
+                 "html": tr("ui.export_html")}.get(fmt, fmt.upper())
         heading = tr("ui.export_matrix_title") if fmt == "matrix" else tr("ui.export_title", fmt=title)
         self.setWindowTitle(heading)
         self.setMinimumWidth(420)
@@ -397,15 +453,20 @@ class ExportDialog(QDialog):
         self.style.setToolTip(tr("ui.brush.tip"))
         last = app_settings().get("export_style", "plain")
         self.style.setCurrentIndex(max(self.style.findData(last), 0))
-        if fmt != "svg1":  # the plotter SVG stays plain lines
+        if fmt not in ("svg1", "lottie"):  # the plotter SVG and Lottie stay plain lines
             form.addRow(tr("ui.brush.label"), self.style)
-        allow_transparent = fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf")
-        bg = remembered.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svganim") else "transparent")
+        allow_transparent = fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf", "lottie")
+        bg = remembered.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svganim", "lottie")
+                                                     else "transparent")
         if bg == "transparent" and not allow_transparent:
             bg = "#FFFFFF"
         self.background = ColorButton(bg, allow_transparent=allow_transparent)
+        self.paper = PaperChoice(remembered.get("export_paper", "none"), remembered.get("export_vignette", 0))
         if fmt != "svg1":
             form.addRow(tr("ui.background"), self.background)
+            form.addRow(tr("ui.paper.label"), self.paper)
+            self.paper.kind_changed.connect(lambda k: paper_colours(k, self.background, self.stroke))
+            self.background.changed.connect(lambda _c: paper_colours(None, self.background, self.stroke))
         # the shape of the picture: the square canvas, like the photo, or cropped to the strokes
         self.frame = frame_combo(svg_path if fmt != "matrix" else None)
         self.margin = margin_spin()
@@ -420,7 +481,7 @@ class ExportDialog(QDialog):
         self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
         self.size.setToolTip(tr("ui.size_longest"))
-        if fmt not in ("svg", "svg1", "svganim", "pdf"):
+        if fmt not in ("svg", "svg1", "svganim", "pdf", "lottie", "html"):
             form.addRow(tr("ui.size"), self.size)
         self.width_cm = QDoubleSpinBox()  # PDF: the printed width
         self.width_cm.setRange(2.0, 200.0)
@@ -438,7 +499,7 @@ class ExportDialog(QDialog):
         self.mode.addItem(tr("ui.export_mode.process"), "process")
         self.mode.addItem(tr("ui.export_mode.strokes"), "strokes")
         self.mode.setToolTip(tr("ui.export_mode.tip"))
-        wanted = "strokes" if fmt == "svganim" or not self.process_frames else \
+        wanted = "strokes" if fmt in DRAWN or not self.process_frames else \
             app_settings().get("export_anim_mode", "process")
         self.mode.setCurrentIndex(max(self.mode.findData(wanted), 0))
         if fmt in ANIMATIONS:
@@ -505,7 +566,7 @@ class ExportDialog(QDialog):
         return {"frame": self.frame.currentData(), "margin": self.margin.value() / 100}
 
     def _drawing(self) -> bool:
-        return self.fmt == "svganim" or self.mode.currentData() == "strokes"
+        return self.fmt in DRAWN or self.mode.currentData() == "strokes"
 
     def _frames(self) -> int:
         if self._drawing():
@@ -531,7 +592,7 @@ class ExportDialog(QDialog):
     def _update_timing(self):
         self.frames = self._frames()
         self.every_step.setVisible(self.fmt in ANIMATIONS and not self._drawing() and self.process_frames > 1)
-        if self.fmt == "svganim":
+        if self.fmt in DRAWN:
             self.timing.setText(tr("ui.export_timing_svg", strokes=self.strokes,
                                    total=f"{self.length.value() + self.hold.value():.1f}"))
             return
@@ -567,8 +628,11 @@ class ExportDialog(QDialog):
         # remembered for "Copy" (Ctrl+C), which has no dialog
         app_settings().set("export_stroke", self.stroke.color())
         app_settings().set("export_width", self.width_scale.value())
+        pp = self.paper.paper() if self.fmt != "svg1" else None
         if self.fmt != "svg1":
             app_settings().set("export_background", self.background.color())
+            app_settings().data["export_vignette"] = self.paper.vignette.value()
+            app_settings().set("export_paper", self.paper.kind())
         if self.fmt in ANIMATIONS and self.mode.isEnabled():
             app_settings().set("export_anim_mode", self.mode.currentData())
         shape = self._shape() if self.fmt != "matrix" else {}
@@ -577,7 +641,8 @@ class ExportDialog(QDialog):
             app_settings().set("export_frame", shape["frame"])
         try:
             if self.fmt == "svg":
-                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style, **shape)
+                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style, **shape,
+                                  paper=pp)
             elif self.fmt == "svg1":
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value(), **shape)
             elif self.fmt in ("png", "pdf"):  # big images take a while: in the background
@@ -588,7 +653,7 @@ class ExportDialog(QDialog):
                 write = export.export_png if self.fmt == "png" else export.export_pdf
 
                 def job(progress=None):
-                    write(*args, **shape)
+                    write(*args, **shape, paper=pp)
                     return dest
 
                 self.ok.setEnabled(False)
@@ -597,9 +662,15 @@ class ExportDialog(QDialog):
                 self.busy, self._cancel = True, False
                 run_in_thread(self, job, on_done=lambda _: self._finished(dest), on_error=self._failed)
                 return
+            elif self.fmt == "lottie":
+                export.export_lottie(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
+                                     self.width_scale.value(), bg, **shape, paper=pp)
+            elif self.fmt == "html":
+                export.export_web_page(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
+                                       self.width_scale.value(), bg, style, **shape, paper=pp)
             elif self.fmt == "svganim":
                 export.export_animated_svg(self.svg_path, dest, self.length.value(), self.hold.value(), stroke,
-                                           self.width_scale.value(), bg, style, **shape)
+                                           self.width_scale.value(), bg, style, **shape, paper=pp)
             else:  # animations and the matrix run in the background
                 self.ok.setEnabled(False)
                 self.progress.setRange(0, 1)
@@ -621,7 +692,8 @@ class ExportDialog(QDialog):
                         self.progress.setValue(a)
 
                 common = {"size": self.size.value(), "stroke_color": stroke, "width_scale": self.width_scale.value(),
-                          "background": bg, "style": style, "cancel": lambda: self._cancel, "on_progress": prog,
+                          "background": bg, "style": style, "paper": pp, "cancel": lambda: self._cancel,
+                          "on_progress": prog,
                           "on_done": lambda _: self._finished(dest), "on_error": self._failed}
                 if self.fmt == "matrix":
                     run_in_thread(self, export.export_matrix_zip, self.run_dir, dest, **common)
@@ -762,6 +834,15 @@ class BatchExportDialog(QDialog):
         self.background = ColorButton("transparent", allow_transparent=True)
         self.bg_label = label(tr("ui.background"), None)
         form.addRow(self.bg_label, self.background)
+        remembered = app_settings()
+        self.paper = PaperChoice(remembered.get("export_paper", "none"), remembered.get("export_vignette", 0))
+        if self.paper.kind() != "none":
+            self.background.set_color(paper.color_of({"kind": self.paper.kind()},
+                                                     remembered.get("export_background")))
+        self.paper_label = label(tr("ui.paper.label"), None)
+        form.addRow(self.paper_label, self.paper)
+        self.paper.kind_changed.connect(lambda k: paper_colours(k, self.background, self.stroke))
+        self.background.changed.connect(lambda _c: paper_colours(None, self.background, self.stroke))
         self.size = QSpinBox()
         self.size.setRange(64, 8192)
         self.size.setSingleStep(128)
@@ -801,7 +882,7 @@ class BatchExportDialog(QDialog):
         fmt = self.format.currentData()
         for w in (self.size, self.size_label):
             w.setVisible(fmt == "png")
-        for w in (self.background, self.bg_label, self.style, self.style_label):
+        for w in (self.background, self.bg_label, self.style, self.style_label, self.paper, self.paper_label):
             w.setVisible(fmt != "svg1")
         for w in (self.margin, self.margin_label):
             w.setVisible(self.frame.currentData() == "content")
@@ -851,6 +932,7 @@ class BatchExportDialog(QDialog):
                       stroke_color=stroke, width_scale=self.width_scale.value(), background=bg,
                       style=self.style.currentData() if fmt != "svg1" else "plain", cancel=lambda: self._cancel,
                       frame=self.frame.currentData(), margin=self.margin.value() / 100,
+                      paper=self.paper.paper() if fmt != "svg1" else None,
                       on_progress=prog, on_done=done, on_error=failed)
 
     def reject(self):

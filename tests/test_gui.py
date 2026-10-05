@@ -608,6 +608,20 @@ def test_brush_style_in_the_canvas(window):
     assert isinstance(studio.thumbs[2000], SeedThumb) and "Marker" in studio.style_btn.toolTip()
     studio.set_canvas_style("plain")
     assert studio.style_actions["plain"].isChecked()
+    # the paper of the preview; the export starts with it
+    from clipasso_studio.gui.i18n import tr
+
+    studio.paper_actions["kraft"].trigger()
+    assert studio.canvas.paper() == {"kind": "kraft", "vignette": 0.0}
+    assert app_settings().get("export_paper") == "kraft" and app_settings().get("export_background") == "#C9A97C"
+    studio.vignette_action.trigger()
+    assert studio.canvas.paper()["vignette"] > 0 and app_settings().get("export_vignette") == 35
+    studio.set_canvas_paper(color="#e0d0b0")
+    assert app_settings().get("export_background") == "#e0d0b0"
+    studio.paper_actions["none"].trigger()
+    studio.vignette_action.trigger()
+    assert studio.canvas.paper() is None and studio.paper_actions["none"].isChecked()
+    assert studio.paper_menu.title() == tr("ui.paper.label")
 
 
 def test_pen_draws_strokes_and_continue_with_clipasso(window, tmp_path, monkeypatch):

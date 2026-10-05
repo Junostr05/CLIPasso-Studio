@@ -1,4 +1,4 @@
-"""Brush styles of the export: ink, pencil, marker."""
+"""Brush styles of the export: ink, pencil, charcoal, chalk, ballpoint, marker, watercolour, neon, calligraphy."""
 
 import xml.etree.ElementTree as ET
 
@@ -70,7 +70,53 @@ def test_background_is_kept():
     assert 'fill="#fafafa"' in out and out.count("data-bg") == 1
 
 
-@pytest.mark.parametrize("style", ["ink", "pencil", "marker"])
+def test_the_new_styles():
+    from clipasso_studio.gui import brush
+
+    for style in ("charcoal", "chalk", "ballpoint", "watercolor", "neon", "calligraphy"):
+        out = brush.stylize_svg(SVG, style, seed=2)
+        assert out == brush.stylize_svg(SVG, style, seed=2)  # the same every time
+        assert len(_paths(out)) >= 2 and "<path" in out
+    charcoal = _paths(brush.stylize_svg(SVG, "charcoal"))
+    assert all(p.get("stroke-dasharray") for p in charcoal if p.get("stroke") not in (None, "none"))  # grain
+    assert {p.get("stroke") for p in _paths(brush.stylize_svg(SVG, "ballpoint"))} == {brush.BALLPOINT_BLUE,
+                                                                                       "#ff0000"}
+    neon = _paths(brush.stylize_svg(SVG, "neon"))
+    assert len(neon) == 10 and neon[0].get("stroke") == brush.NEON_BLACK  # five layers per stroke: halo to core
+    assert float(neon[0].get("stroke-width")) > float(neon[4].get("stroke-width"))
+    assert neon[4].get("stroke") == brush.lighter(brush.NEON_BLACK, 0.8)
+    assert brush.lighter("#000000", 1.0) == "#ffffff" and brush.lighter("rgb(255, 0, 0)", 0.5) == "#ff8080"
+    assert brush.lighter("red", 0.5) == "red"
+    water = _paths(brush.stylize_svg(SVG, "watercolor"))
+    assert all(float(p.get("fill-opacity") or p.get("stroke-opacity")) < 0.3 for p in water)
+
+
+def test_calligraphy_is_thick_across_the_nib_and_thin_along_it():
+    import math
+
+    from clipasso_studio.gui import brush
+
+    a = brush.NIB_ANGLE
+
+    def thickness(dx, dy):  # largest distance of the outline from the straight stroke in direction (dx, dy)
+        d = brush.calligraphy_outline(brush.sample(f"M 0 0 L {100 * dx:.3f} {100 * dy:.3f}")[0], 2.0)
+        pts = [tuple(map(float, v.split())) for v in d[2:-2].split(" L ")]
+        return max(abs(x * dy - y * dx) for x, y in pts)
+
+    along = thickness(math.cos(a), -math.sin(a))  # the nib's own direction: a hairline
+    across = thickness(math.sin(a), math.cos(a))
+    assert across > 2.5 and along < 0.05 * across
+
+
+def test_black_strokes_become_light_on_a_dark_paper():
+    from clipasso_studio.gui import brush
+
+    out = brush.recolour_black(SVG, "#f2f2ec")
+    assert {p.get("stroke") for p in _paths(out)} == {"#f2f2ec", "#ff0000"}
+
+
+@pytest.mark.parametrize("style", ["ink", "pencil", "charcoal", "chalk", "ballpoint", "marker", "watercolor", "neon",
+                                   "calligraphy"])
 def test_styles_in_every_export(qapp, tmp_path, style):
     import json
 

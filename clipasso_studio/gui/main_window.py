@@ -249,6 +249,13 @@ class MainWindow(QMainWindow):
         self._last_version = s.get("last_version") or ("2.4.0" if s.get("tour_done") else "")
         self.settings.waiting_files = self.controller.waiting_files
         self.settings.output_dir_changed.connect(self._output_dir_changed)
+        self.settings.backup_restored.connect(self._backup_restored)
+        # the phone: the remote page in the home network and Telegram messages
+        from .phone import PhoneLink
+
+        self.phone = PhoneLink(self.controller, lambda: self.studio.params.settings(), self)
+        self.phone.toast.connect(self.toast.show_message)
+        self.settings.phone_card.set_link(self.phone)
         self.about.show_tour.connect(self.show_tour)
         self.about.show_whats_new.connect(self.show_whats_new)
         self.settings.check_updates_now.connect(self.check_updates_now)
@@ -485,6 +492,22 @@ class MainWindow(QMainWindow):
         self.gallery.refresh()
         write_uninstall_info()
 
+    def _backup_restored(self, report: dict):
+        """A backup was put back: its queue entries join the queue (not started), the gallery shows its jobs."""
+        added = 0
+        for item in report.get("queue") or []:
+            try:
+                if not os.path.isfile(item["target"]):
+                    continue
+                resume = item.get("resume_dir", "") or ""
+                self.controller.enqueue(item["target"], item["settings"], start=False,
+                                        resume_dir=resume if os.path.isdir(resume) else "")
+                added += 1
+            except (KeyError, TypeError, ValueError):
+                continue
+        self.gallery.refresh()
+        self.toast.show_message(tr("ui.backup.done_toast", jobs=report.get("jobs", 0), queue=added), "success")
+
     def _models_dir_changed(self):
         from .storage import write_uninstall_info
 
@@ -687,6 +710,7 @@ class MainWindow(QMainWindow):
             self._refresh_nav_icons()
             self.toast.show_message(tr("ui.theme_after_run"), "info")
             return
+        self.phone.shutdown()  # (the new window's phone page takes the port)
         new = MainWindow()
         new.restoreGeometry(geo)
         new.show()
@@ -763,6 +787,7 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         app_settings().set("geometry", bytes(self.saveGeometry().toBase64()).decode())
+        self.phone.shutdown()
         self.studio.shutdown()
         self.controller.shutdown()
         dialogs.wait_for_threads()

@@ -326,7 +326,7 @@ def merge_results(old: dict[int, SeedResult], new: list[SeedResult]) -> list[See
 
 
 META_FILE = "meta.json"  # the user's own data about a job (favourite, name, notes, tags) – kept on continue
-META_KEYS = ("favourite", "title", "notes", "tags")
+META_KEYS = ("favourite", "title", "notes", "tags", "albums")
 
 
 def read_meta(job_dir: str) -> dict:

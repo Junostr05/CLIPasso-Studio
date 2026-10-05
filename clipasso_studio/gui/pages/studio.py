@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxL
 from ... import paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, masking, model_store
-from .. import brush, dialogs, icons, image_io, mask_view, methods_ui, shortcuts, theme
+from .. import brush, dialogs, icons, image_io, mask_view, methods_ui, paper, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
@@ -202,15 +202,28 @@ class StudioPage(QWidget):
         b.clicked.connect(lambda _=False: self.export("pdf"))
         grid.addWidget(b, 3, 1)
         self.export_btns["pdf"] = b
-        b = button("", "copy", "ghost")  # the sketch on the clipboard (PNG + SVG)
-        b.clicked.connect(lambda _=False: self.copy_sketch())
-        grid.addWidget(b, 5, 0, 1, 2)
-        self.export_btns["copy"] = b
+        # for web pages and apps: Lottie (lottie-web, LottieFiles) and a page of its own
+        b = button("Lottie", "sparkles", "ghost")
+        b.clicked.connect(lambda _=False: self.export("lottie"))
+        grid.addWidget(b, 4, 0)
+        self.export_btns["lottie"] = b
+        b = button("", "globe", "ghost")
+        b.clicked.connect(lambda _=False: self.export("html"))
+        grid.addWidget(b, 4, 1)
+        self.export_btns["html"] = b
         # SceneSketch: every sketch of the matrix at once
         b = button("", "layers", "ghost")
         b.clicked.connect(lambda _=False: self.export("matrix"))
-        grid.addWidget(b, 4, 0, 1, 2)
+        grid.addWidget(b, 5, 0, 1, 2)
         self.export_btns["matrix"] = b
+        b = button("", "copy", "ghost")  # the sketch on the clipboard (PNG + SVG)
+        b.clicked.connect(lambda _=False: self.copy_sketch())
+        grid.addWidget(b, 6, 0, 1, 2)
+        self.export_btns["copy"] = b
+        b = button("", "printer", "ghost")  # print layout: page, margins, title, signature – PDF or printer
+        b.clicked.connect(lambda _=False: self.print_sketch())
+        grid.addWidget(b, 7, 0, 1, 2)
+        self.export_btns["print"] = b
         self.result_card.body.addLayout(grid)
         self.folder_btn = button("", "folder-open", "ghost")
         self.folder_btn.clicked.connect(self.open_folder)
@@ -275,6 +288,23 @@ class StudioPage(QWidget):
             action.triggered.connect(lambda _=False, k=key: self.set_canvas_style(k))
             self.style_group.addAction(action)
             self.style_actions[key] = action
+        # the paper the sketches are shown on – the export starts with it, too
+        self.style_menu.addSeparator()
+        self.paper_menu = self.style_menu.addMenu("")
+        self.paper_group = QActionGroup(self)
+        self.paper_actions = {}
+        for key in paper.KINDS:
+            action = self.paper_menu.addAction("")
+            action.setCheckable(True)
+            action.triggered.connect(lambda _=False, k=key: self.set_canvas_paper(kind=k))
+            self.paper_group.addAction(action)
+            self.paper_actions[key] = action
+        self.paper_menu.addSeparator()
+        self.paper_color_action = self.paper_menu.addAction("")
+        self.paper_color_action.triggered.connect(self._pick_paper_color)
+        self.vignette_action = self.paper_menu.addAction("")
+        self.vignette_action.setCheckable(True)
+        self.vignette_action.triggered.connect(lambda on: self.set_canvas_paper(vignette=on))
         self.style_btn.setMenu(self.style_menu)
         tools_row.addWidget(self.style_btn)
         self._edit_undo: dict[int, list[str]] = {}
@@ -398,6 +428,7 @@ class StudioPage(QWidget):
         else:
             self.set_image(str(paths.resource("samples", "camel.png")))
         self._apply_canvas_style(app_settings().get("canvas_style", "plain"))
+        self._apply_canvas_paper()
         self.retranslate()
         self._update_buttons()
 
@@ -1254,6 +1285,18 @@ class StudioPage(QWidget):
         if dlg.exec():
             self.toast.emit(tr("ui.exported", path=getattr(dlg, "saved_path", "")), "success")
 
+    def print_sketch(self) -> str:
+        """The print layout dialog for the shown sketch."""
+        from ..print_dialog import open_print
+
+        sel = self._selected_run()
+        if not sel:
+            return ""
+        saved = open_print(self, [(sel[0], os.path.basename(sel[1]))])
+        if saved:
+            self.toast.emit(tr("ui.exported", path=saved), "success")
+        return saved
+
     def copy_sketch(self) -> bool:
         """Ctrl+C: the shown sketch as image + SVG on the clipboard, with the last export choices."""
         sel = self._selected_run()
@@ -1446,9 +1489,52 @@ class StudioPage(QWidget):
         self.style_actions[style].setChecked(True)
         self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{style}")))
 
+    def set_canvas_paper(self, kind: str | None = None, color: str | None = None, vignette: bool | None = None):
+        """Show the sketches on another paper (remembered; the export dialog starts with it). Another paper
+        brings its own colour."""
+        st = app_settings()
+        if kind is not None:
+            st.data["canvas_paper"] = kind
+            st.data["canvas_paper_color"] = ""
+        if color is not None:
+            st.data["canvas_paper_color"] = color
+        if vignette is not None:
+            st.data["canvas_vignette"] = bool(vignette)
+        kind = st.get("canvas_paper", "none")
+        st.data["export_paper"] = kind
+        st.data["export_vignette"] = round(paper.VIGNETTE * 100) if st.get("canvas_vignette") else 0
+        if kind != "none" or st.get("canvas_paper_color"):
+            st.data["export_background"] = paper.color_of({"kind": kind}, st.get("canvas_paper_color") or None)
+        st.save()
+        self._apply_canvas_paper()
+
+    def _pick_paper_color(self):
+        from PySide6.QtWidgets import QColorDialog
+
+        st = app_settings()
+        current = paper.color_of({"kind": st.get("canvas_paper", "none")}, st.get("canvas_paper_color") or None)
+        c = QColorDialog.getColor(QColor(current), self, tr("ui.paper.color"))
+        if c.isValid():
+            self.set_canvas_paper(color=c.name())
+
+    def _apply_canvas_paper(self):
+        st = app_settings()
+        kind = st.get("canvas_paper", "none")
+        kind = kind if kind in paper.KINDS else "none"
+        color = st.get("canvas_paper_color") or None
+        vignette = paper.VIGNETTE if st.get("canvas_vignette") else 0.0
+        self.canvas.set_paper({"kind": kind, "vignette": vignette}, color)
+        self.paper_actions[kind].setChecked(True)
+        self.vignette_action.setChecked(vignette > 0)
+
     def retranslate(self):
         for key, action in self.style_actions.items():
             action.setText(tr(f"ui.brush.{key}"))
+        self.paper_menu.setTitle(tr("ui.paper.label"))
+        for key, action in self.paper_actions.items():
+            action.setText(tr(f"ui.paper.{key}"))
+        self.paper_color_action.setText(tr("ui.paper.color") + " …")
+        self.vignette_action.setText(tr("ui.paper.vignette"))
         self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{self.canvas.style()}")))
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
         self.pen_btn.setToolTip(tr("ui.pen.tip"))
@@ -1487,7 +1573,12 @@ class StudioPage(QWidget):
         self.export_btns["pdf"].setToolTip(tr("ui.export_pdf_tip"))
         self.export_btns["copy"].setText(shortcuts.with_key(tr("ui.copy"), "Ctrl+C"))
         self.export_btns["copy"].setToolTip(tr("ui.copy_tip"))
+        self.export_btns["print"].setText(tr("ui.print.button"))
+        self.export_btns["print"].setToolTip(tr("ui.print.tip"))
         self.export_btns["svganim"].setToolTip(tr("ui.export_svganim_tip"))
+        self.export_btns["lottie"].setToolTip(tr("ui.export_lottie_tip"))
+        self.export_btns["html"].setText(tr("ui.export_html"))
+        self.export_btns["html"].setToolTip(tr("ui.export_html_tip"))
         self.export_btns["matrix"].setText(tr("ui.export_matrix"))
         self.export_btns["matrix"].setToolTip(tr("ui.export_matrix_tip"))
         self.folder_btn.setText(tr("ui.open_folder"))

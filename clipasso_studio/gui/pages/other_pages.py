@@ -717,6 +717,7 @@ class SettingsPage(QWidget):
     watch_changed = Signal()  # the watched folder was set up differently
     output_dir_changed = Signal(str, str, bool)  # (old, new, the results were moved along)
     check_updates_now = Signal()
+    backup_restored = Signal(dict)  # the report of backup.restore (its queue entries are still to be queued)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -851,6 +852,10 @@ class SettingsPage(QWidget):
         col.addWidget(self.behaviour)
 
         self._build_watch(col)
+        from ..phone_ui import PhoneCard
+
+        self.phone_card = PhoneCard()  # the phone page and Telegram (connected by the main window)
+        col.addWidget(self.phone_card)
         self._build_storage(col)
 
         self.system = Card()
@@ -878,6 +883,16 @@ class SettingsPage(QWidget):
         self.report_btn.clicked.connect(self.report_problem)
         row = QHBoxLayout()
         for b in (self.selftest_btn, self.report_btn):
+            row.addWidget(b)
+        row.addStretch(1)
+        self.system.body.addLayout(row)
+        # backup & move to another computer: settings, queue, gallery (and the models, if wanted) in one file
+        self.backup_btn = button("", "download", "ghost")
+        self.backup_btn.clicked.connect(self.make_backup)
+        self.restore_btn = button("", "refresh-cw", "ghost")
+        self.restore_btn.clicked.connect(lambda: self.restore_backup())
+        row = QHBoxLayout()
+        for b in (self.backup_btn, self.restore_btn):
             row.addWidget(b)
         row.addStretch(1)
         self.system.body.addLayout(row)
@@ -1197,6 +1212,23 @@ class SettingsPage(QWidget):
 
         return selftest_ui.run(self)
 
+    def make_backup(self) -> str:
+        from .. import backup_ui
+
+        return backup_ui.make_backup(self)
+
+    def restore_backup(self, path: str | None = None) -> dict | None:
+        from .. import backup_ui
+
+        if self.busy_check():
+            QMessageBox.information(self, tr("ui.backup.restore_title"), tr("ui.backup.busy"))
+            return None
+        report = backup_ui.restore_backup(self, path)
+        if report is not None:
+            self.retranslate()
+            self.backup_restored.emit(report)
+        return report
+
     def report_problem(self) -> None:
         from .. import report
 
@@ -1397,6 +1429,7 @@ class SettingsPage(QWidget):
         gpus = [g for g in (self._hardware or {}).get("gpus") or [] if g.get("supported", True)]
         self.multi_gpu_box.setVisible(len(gpus) >= 2)
         self.watch_title.setText(tr("ui.watch.title"))
+        self.phone_card.retranslate()
         self.watch_desc.setText(tr("ui.watch.desc"))
         self.watch_on_label.setText(tr("ui.watch.enabled"))
         self.watch_folder_label.setText(tr("ui.watch.folder"))
@@ -1424,6 +1457,10 @@ class SettingsPage(QWidget):
         self.diag_save_btn.setToolTip(tr("ui.diag.tip"))
         self.selftest_btn.setText(tr("ui.selftest.button"))
         self.selftest_btn.setToolTip(tr("ui.selftest.desc"))
+        self.backup_btn.setText(tr("ui.backup.button"))
+        self.backup_btn.setToolTip(tr("ui.backup.tip"))
+        self.restore_btn.setText(tr("ui.backup.restore_button"))
+        self.restore_btn.setToolTip(tr("ui.backup.restore_tip"))
         self.report_btn.setText(tr("ui.report.button"))
         self.report_btn.setToolTip(tr("ui.report.tip"))
         self.system_title.setText(tr("ui.settings.system"))

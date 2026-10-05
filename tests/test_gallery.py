@@ -179,3 +179,42 @@ def test_a_thousand_results(gallery):
     search = time.perf_counter() - start
     assert len(page.items()) == 100
     assert first < 10 and again < 2 and search < 0.5, (first, again, search)
+
+
+def test_albums(gallery, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui import albums
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.pages.gallery import JOBS_MIME, AlbumChip
+
+    page, out = gallery
+    a = _job(out, "a", "2026-09-01 10:00:00")
+    b = _job(out, "b", "2026-09-02 10:00:00")
+    c = _job(out, "c", "2026-09-03 10:00:00")
+    page.refresh()
+    assert list(page.album_chips) == [""]  # only "All"
+    assert page.new_album(name="  Animals  ") == "Animals" and app_settings().get("albums") == ["Animals"]
+    assert list(page.album_chips) == ["", "Animals"]
+    assert page.add_to_album([a, b], "Animals") == 2 and page.add_to_album([a], "Animals") == 0
+    assert jobs.read_meta(a)["albums"] == ["Animals"]  # kept in the result's own meta.json
+    page.new_album([c], name="Best")
+    page.show_album("Animals")
+    assert {it.job_dir for it in page.items()} == {a, b} and page.album_chips["Animals"].isChecked()
+    assert page.album_chips["Animals"].text().endswith("2")
+    # dragging results onto an album: the gallery's drag data and the chip that takes it
+    mime = page.model.mimeData([page.model.index(0), page.model.index(1)])
+    assert sorted(AlbumChip.job_dirs(mime)) == sorted([a, b]) and mime.hasFormat(JOBS_MIME)
+    page.album_chips["Best"].dropped.emit("Best", [a])
+    assert sorted(jobs.read_meta(a)["albums"]) == ["Animals", "Best"]
+    assert page.remove_from_album([b], "Animals") == 1 and "albums" not in jobs.read_meta(b)
+    assert {it.job_dir for it in page.items()} == {a}
+    assert page.rename_album("Animals", "Camels") == "Camels" and page.album == "Camels"
+    assert jobs.read_meta(a)["albums"] == ["Camels", "Best"] and app_settings().get("albums") == ["Camels", "Best"]
+    assert [it.job_dir for it in page.album_items("Best")] == [c, a] or len(page.album_items("Best")) == 2
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    assert page.delete_album("Camels") and page.album == "" and len(page.items()) == 3
+    assert jobs.read_meta(a)["albums"] == ["Best"] and "Camels" not in albums.names()
+    page.refresh()  # read again from the disk
+    assert [n for n in page.album_chips] == ["", "Best"]
