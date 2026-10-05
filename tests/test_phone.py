@@ -378,6 +378,8 @@ def test_page_texts_exist():
     assert used - page - extra == set()
     for k in page:
         assert i18n._data["de"].get("ui.phone.page." + k) and i18n._data["en"].get("ui.phone.page." + k), k
+    # the page's CSP allows no inline styles: widths and the like go through element.style
+    assert not re.search(r"\bstyle:\s*[`'\"]", js) and "style=" not in html
 
 
 def test_requests_go_to_the_app(server, qapp, monkeypatch):
@@ -423,3 +425,40 @@ def test_requests_go_to_the_app(server, qapp, monkeypatch):
     monkeypatch.setattr(remote, "CALL_TIMEOUT", 0.3)
     status, _, body = _get(base + "/api/get/studio", cookie)  # (no events processed: no answer)
     assert status == 503 and json.loads(body)["error"] == "busy"
+
+
+def test_tailscale(qapp, user_data, monkeypatch):
+    """Phones of the user's tailnet (100.64.0.0/10) only when switched on; the QR code can show the tailnet address."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui import app_settings as settings_module
+    from clipasso_studio.gui import remote
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.phone_ui import PhoneCard
+
+    for ip in ("100.101.102.103", "100.64.0.1", "100.127.255.254", "::ffff:100.100.1.1"):
+        assert not remote.allowed_client(ip) and remote.allowed_client(ip, tailscale=True), ip
+    for ip in ("100.128.0.1", "100.63.255.255", "8.8.8.8"):
+        assert not remote.allowed_client(ip, tailscale=True), ip
+    assert remote.allowed_client("fd7a:115c:a1e0::1")  # (the tailnet's IPv6 range counts as private anyway)
+    # this computer's tailnet address (here from the host name: the container has no Tailscale interface)
+    monkeypatch.setattr(remote.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("100.88.1.2", 0)),
+                                                                     (2, 1, 6, "", ("192.168.1.5", 0))])
+    assert remote.tailscale_address() == "100.88.1.2"
+    # the card: the switch where Tailscale runs, then a QR code of the tailnet address
+    settings_module._instance = None
+    app_settings().data.update(remote_on=True)
+    card = PhoneCard()
+    card.set_link(SimpleNamespace(running=lambda: True, server=SimpleNamespace(port=8765), error="",
+                                  apply_settings=lambda: ""))
+    assert card.ts_box.isVisibleTo(card) and not card.net.isVisibleTo(card) and "100.88" not in card.url.text()
+    card.ts_on.setChecked(True)
+    assert app_settings().get("remote_tailscale") and card.net.isVisibleTo(card)
+    assert "http://100.88.1.2:8765/?t=" in card.url.text() and card.ts_hint.isVisibleTo(card)
+    card.net.set_current("lan")
+    card.refresh()
+    assert "100.88.1.2" not in card.url.text()
+    monkeypatch.setattr(remote, "tailscale_address", lambda: "")  # Tailscale stopped: a hint, the home address
+    card.refresh()
+    assert not card.net.isVisibleTo(card) and card.ts_hint.text() and "100.88" not in card.url.text()
+    settings_module._instance = None

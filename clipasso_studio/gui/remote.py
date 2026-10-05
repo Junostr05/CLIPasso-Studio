@@ -3,10 +3,11 @@ picture (camera, files, recent pictures), method, presets, every parameter, the 
 cancel, the live sketches, thumbs and downloads, the recent results and the queue (``gui/phone_api.py``; the page is
 ``resources/phone/``). Standard library only, off by default.
 
-Safety: only addresses of the local network may connect; every request needs the access code of the QR code (on
-the first visit it becomes a cookie); changes (pause, upload) also need it as a header, so other web pages cannot
-send them; uploads are limited in size and must be pictures; nothing on the computer is read by a path the phone
-names. The server runs in threads of its own and talks to the app through Qt signals (``RemoteBridge``)."""
+Safety: only addresses of the local network may connect (and, if switched on, the devices of the user's tailnet);
+every request needs the access code of the QR code (on the first visit it becomes a cookie); changes (pause, upload)
+also need it as a header, so other web pages cannot send them; uploads are limited in size and must be pictures;
+nothing on the computer is read by a path the phone names. The server runs in threads of its own and talks to the
+app through Qt signals (``RemoteBridge``)."""
 
 from __future__ import annotations
 
@@ -74,15 +75,46 @@ def url(port: int | None = None, address: str | None = None) -> str:
     return f"http://{address or local_address()}:{port}/?t={token()}"
 
 
-def allowed_client(ip: str) -> bool:
-    """Only the home network (private, link-local and loopback addresses)."""
+# Tailscale gives the devices of a tailnet addresses from the shared range 100.64.0.0/10 (IPv6: fd7a:115c:a1e0::/48,
+# which counts as private anyway) – not private addresses, so they are let in only when the user switches it on
+TAILNET_V4 = ipaddress.ip_network("100.64.0.0/10")
+
+
+def allowed_client(ip: str, tailscale: bool = False) -> bool:
+    """Only the home network (private, link-local and loopback addresses) – and the tailnet when ``tailscale``."""
     try:
         addr = ipaddress.ip_address(ip.split("%")[0])
     except ValueError:
         return False
     if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
         addr = addr.ipv4_mapped
-    return addr.is_private or addr.is_loopback or addr.is_link_local
+    if addr.is_private or addr.is_loopback or addr.is_link_local:
+        return True
+    return bool(tailscale) and isinstance(addr, ipaddress.IPv4Address) and addr in TAILNET_V4
+
+
+def tailscale_address() -> str:
+    """This computer's address in a tailnet (100.x.y.z), or "" when Tailscale is not running here."""
+    try:
+        from PySide6.QtNetwork import QAbstractSocket, QNetworkInterface
+
+        for iface in QNetworkInterface.allInterfaces():
+            flags = iface.flags()
+            if not (flags & QNetworkInterface.IsUp and flags & QNetworkInterface.IsRunning):
+                continue
+            for entry in iface.addressEntries():
+                ip = entry.ip()
+                if ip.protocol() == QAbstractSocket.IPv4Protocol and ipaddress.ip_address(ip.toString()) in TAILNET_V4:
+                    return ip.toString()
+    except Exception:  # (no QtNetwork: the address of the host name below)
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            if ipaddress.ip_address(info[4][0]) in TAILNET_V4:
+                return info[4][0]
+    except (OSError, ValueError):
+        pass
+    return ""
 
 
 def qr_png(text: str, scale: int = 6) -> bytes:
@@ -192,7 +224,7 @@ class _Handler(BaseHTTPRequestHandler):
         return bool(given) and hmac.compare_digest(given, expected)
 
     def _check_client(self) -> bool:
-        if not allowed_client(self.client_address[0]):
+        if not allowed_client(self.client_address[0], bool(app_settings().get("remote_tailscale"))):
             self._send(403, b"only from the home network", "text/plain")
             return False
         return True

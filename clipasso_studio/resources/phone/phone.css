@@ -109,7 +109,7 @@ button.thumb { font-size: 26px; }
 
 /* gallery and queue */
 .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-.result { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex;
+.result { position: relative; cursor: pointer; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex;
   flex-direction: column; gap: 4px; min-height: 0; align-items: stretch; text-align: left; }
 .result img { width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; object-fit: contain; }
 .result b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -139,3 +139,9 @@ button.thumb { font-size: 26px; }
 #toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 20; background: #222;
   color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px; max-width: 90vw; text-align: center; }
 a.btn.off { pointer-events: none; opacity: .45; }
+button.live { width: 100%; margin-top: 6px; min-height: 36px; padding: 6px 10px; font-size: 14px;
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent); justify-content: flex-start;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result .del { position: absolute; top: 10px; right: 10px; min-height: 0; width: 36px; height: 36px; padding: 0;
+  border-radius: 18px; flex: 0 0 auto; background: rgba(20, 22, 27, .72); border-color: transparent; color: #fff;
+  font-size: 16px; }

@@ -15,6 +15,7 @@ function el(tag, attrs, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v === undefined || v === null || v === false) continue;
+    if (k === "style") throw new Error("inline styles are blocked by the page's CSP – set e.style instead");
     if (k === "class") e.className = v;
     else if (k === "text") e.textContent = v;
     else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
@@ -106,13 +107,22 @@ async function render() {
 }
 
 function renderTop() {
+  // a result of the gallery is shown while a job runs: the bar follows the running job, a button leads back to it
+  const away = S.busy && !S.running_here && S.running;
   $("status").textContent = S.status || (S.busy ? T.running : T.idle);
-  $("progress").style.width = Math.round(100 * (S.progress || 0)) + "%";
+  $("progress").style.width = Math.round(100 * ((away ? S.running.progress : S.progress) || 0)) + "%";
+  $("to-live").hidden = !away;
+  if (away) $("to-live").textContent = "▶ " + t("to_live", {name: S.running.name, pct: Math.round(100 * S.running.progress)});
   $("pause").textContent = S.paused ? T.resume : T.pause;
   $("pause").disabled = $("cancel").disabled = !S.busy;
   $("cancel").textContent = T.cancel;
   $("estimate").textContent = S.estimate || "";
 }
+
+$("to-live").onclick = async () => {
+  const a = await act("live");
+  if (a.ok) showTab("sketch");
+};
 
 $("pause").onclick = () => fetch(S && S.paused ? "/api/resume" : "/api/pause",
                                  {method: "POST", headers: {"X-Access": TOKEN}}).then(() => schedule(100));
@@ -536,10 +546,20 @@ async function loadResults() {
   const list = await getJSON("/api/get/results").catch(() => ({results: []}));
   box.replaceChildren();
   for (const r of list.results || []) {
-    box.append(el("button", {class: "result", onclick: async () => {
-      const a = await act("open", {i: r.i});
+    const open = async () => {
+      const a = await act("open", {i: r.i, dir: r.dir});
       if (a.ok) showTab("sketch");
-    }}, el("img", {src: `/api/file/result?i=${r.i}&d=${encodeURIComponent(r.dir)}`, alt: "", loading: "lazy"}),
+    };
+    const remove = async (e) => {
+      e.stopPropagation();
+      if (!confirm(t("delete_ask", {name: r.name}))) return;
+      const a = await act("delete", {i: r.i, dir: r.dir});
+      if (a.ok) toast(T.deleted);
+      loadResults();
+    };
+    box.append(el("div", {class: "result", onclick: open},
+       el("button", {class: "del", title: T.delete, "aria-label": T.delete, onclick: remove, text: "🗑"}),
+       el("img", {src: `/api/file/result?i=${r.i}&d=${encodeURIComponent(r.dir)}`, alt: "", loading: "lazy"}),
        el("b", {text: (r.fav ? "★ " : "") + r.name}),
        el("span", {text: r.method + (r.score !== null ? " · " + r.score : "") + " · " + (r.created || "").slice(0, 16)})));
   }
@@ -551,13 +571,20 @@ async function loadQueue() {
   const list = await getJSON("/api/get/queue").catch(() => ({jobs: []}));
   box.replaceChildren();
   for (const j of list.jobs || []) {
-    const bar = el("div", {class: "bar"}, el("div", {style: `width:${Math.round(100 * j.progress)}%`}));
+    const fill = el("div");
+    fill.style.width = Math.round(100 * j.progress) + "%";  // (through the CSSOM: the page allows no inline styles)
+    const bar = el("div", {class: "bar"}, fill);
     box.append(el("div", {class: "job"},
       el("div", {class: "info"}, el("b", {text: j.name}),
          el("span", {class: "muted", text: j.method + " · " + (T["status_" + j.status] || j.status)}), bar),
       j.status === "queued" ? el("button", {class: "small", text: T.remove, onclick: () => act("remove", {id: j.id}).then(loadQueue)}) : null));
   }
   if (!box.children.length) box.append(el("div", {class: "muted", text: T.queue_empty}));
+  $("clear-queue").hidden = !(list.jobs || []).some((j) => ["done", "failed", "cancelled"].includes(j.status));
 }
+$("clear-queue").onclick = async () => {
+  const a = await act("clear_queue");
+  if (a.ok) { toast(t("cleared", {n: a.removed})); loadQueue(); }
+};
 
 refresh();

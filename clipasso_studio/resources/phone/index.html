@@ -22,6 +22,7 @@
     </div>
   </div>
   <div id="status" class="muted one-line">…</div>
+  <button id="to-live" class="live" hidden></button>
   <div class="bar"><div id="progress"></div></div>
 </header>
 
@@ -130,7 +131,8 @@
   <!-- ======================================================== queue -->
   <section id="tab-queue" class="tab" hidden>
     <div class="card">
-      <h2 data-t="tab_queue"></h2>
+      <div class="row between"><h2 data-t="tab_queue"></h2>
+        <button id="clear-queue" class="small" data-t="clear_done" hidden></button></div>
       <div id="jobs"></div>
     </div>
   </section>

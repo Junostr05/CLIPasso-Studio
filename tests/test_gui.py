@@ -978,3 +978,67 @@ def test_phone_controls_the_studio(window, tmp_path, monkeypatch):
     assert call("do_remove", {"id": "x"})["ok"] is False
     assert jobs.read_meta(job)["ratings"]
     json.dumps(call("get_studio", {}))  # (all of it goes to the phone as JSON)
+
+
+def test_phone_back_to_the_running_job_and_clean_queue(window, tmp_path, monkeypatch):
+    """3.4.1: from a result of the gallery back to the running job; finished jobs leave the queue."""
+    from PIL import Image
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.controller import QueuedJob
+
+    studio, c = window.studio, window.controller
+    call = window.phone.api.handle
+    assert call("do_live", {})["ok"] is False  # nothing runs
+    image = str(tmp_path / "running.png")
+    Image.new("RGB", (32, 32), "white").save(image)
+    job = QueuedJob(image, schema.default_settings("clipasso"), status="running")
+    job.seed_progress = {s: 0.5 for s in job.seeds}
+    saved_jobs, saved_current = list(c.jobs), c.current
+    monkeypatch.setattr(c, "is_busy", lambda: True)
+    c.current = job
+    try:
+        out = app_settings().get("output_dir")
+        os.makedirs(out, exist_ok=True)
+        other = _fake_job(out, "gallery_job", str(tmp_path / "other.png"), 30.0)
+        studio.show_job_dir(other)  # a result of the gallery is shown during the run
+        st = call("get_studio", {})
+        assert st["busy"] and not st["running_here"] and st["running"]["name"] == "running.png"
+        assert st["running"]["progress"] == 0.5
+        assert call("do_live", {})["ok"] and studio.view_job is job
+        assert call("get_studio", {})["running_here"]
+        # the queue: the finished, cancelled and failed ones go, the waiting ones stay
+        c.jobs = [job] + [QueuedJob(image, schema.default_settings("clipasso"), status=s)
+                          for s in ("done", "cancelled", "failed", "queued")]
+        assert call("do_clear_queue", {}) == {"ok": True, "removed": 3}
+        assert [j.status for j in c.jobs] == ["running", "queued"]
+        assert [j["status"] for j in call("get_queue", {})["jobs"]] == ["running", "queued"]
+    finally:
+        c.current, c.jobs = saved_current, saved_jobs
+
+
+def test_phone_deletes_gallery_results(window, tmp_path, monkeypatch):
+    """3.4.1: a result of the gallery deleted from the phone (to the recycle bin, the gallery's way)."""
+    from clipasso_studio.gui.app_settings import app_settings
+
+    call = window.phone.api.handle
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = _fake_job(out, "to_delete_job", str(tmp_path / "del.png"), 29.0)
+    results = call("get_results", {})["results"]
+    r = next(x for x in results if x["dir"] == os.path.basename(job))
+    other = next(x for x in results if x["dir"] != r["dir"]) if len(results) > 1 else None
+    if other is not None:  # the list changed meanwhile: never another result
+        assert call("do_delete", {"i": r["i"], "dir": other["dir"]})["ok"] is False and os.path.isdir(job)
+    window.studio.show_job_dir(job)
+    monkeypatch.setattr(window.controller, "active_dirs", lambda: {os.path.normcase(os.path.abspath(job))})
+    answer = call("do_delete", {"i": r["i"], "dir": r["dir"]})
+    assert answer["ok"] is False and "to_delete_job" in answer["error"] and os.path.isdir(job)  # the queue needs it
+    monkeypatch.setattr(window.controller, "active_dirs", lambda: set())
+    deleted = []
+    window.gallery.job_deleted.connect(deleted.append)
+    assert call("do_delete", {"i": r["i"], "dir": r["dir"]}) == {"ok": True}
+    assert not os.path.exists(job) and deleted == [job]
+    assert window.studio.view_dir == ""  # the studio no longer shows it
+    assert all(x["dir"] != r["dir"] for x in call("get_results", {})["results"])

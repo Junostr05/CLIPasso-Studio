@@ -254,6 +254,7 @@ class MainWindow(QMainWindow):
         from .phone import PhoneLink
 
         self.phone = PhoneLink(self.controller, lambda: self.studio.params.settings(), self, studio=self.studio)
+        self.phone.api.gallery = self.gallery
         self.phone.toast.connect(self.toast.show_message)
         self.settings.phone_card.set_link(self.phone)
         self.about.show_tour.connect(self.show_tour)
@@ -635,6 +636,9 @@ class MainWindow(QMainWindow):
     def _probe_hardware(self):
         from . import hardware
 
+        if getattr(self, "_closed", False):  # (closed before the timer fired: no thread nobody waits for)
+            return
+
         def done(text):
             info = hardware.store(text)
             self.settings.set_hardware(info)
@@ -787,6 +791,7 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         app_settings().set("geometry", bytes(self.saveGeometry().toBase64()).decode())
+        self._closed = True
         self.phone.shutdown()
         self.studio.shutdown()
         self.controller.shutdown()

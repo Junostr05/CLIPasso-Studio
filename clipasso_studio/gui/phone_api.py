@@ -62,6 +62,7 @@ class PhoneApi:
         self._note_id = 0
         self._details_rev = 0
         self._cache = None
+        self.gallery = None  # the gallery page (deleting goes its way), set by the main window
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
 
@@ -75,7 +76,7 @@ class PhoneApi:
             fn = getattr(self, action, None) if action.split("_")[0] in ("get", "file", "do") else None
         if fn is None:
             return {"ok": False, "error": "unknown action"}
-        if self.studio is None and action not in ("get_queue", "do_remove"):
+        if self.studio is None and action not in ("get_queue", "do_remove", "do_clear_queue"):
             return {"ok": False, "error": tr("ui.phone.page.no_studio")}
         try:
             return fn(data or {})
@@ -135,6 +136,8 @@ class PhoneApi:
             "busy": job is not None,
             "paused": bool(job and job.status == "paused"),
             "running_here": bool(job and job is s.view_job),
+            "running": {"name": job.name, "progress": round(job.progress, 4),
+                        "method": methods_ui.name(job.settings.get("method", "clipasso"))} if job else None,
             "queue": sum(1 for j in c.jobs if j.status == "queued"),
             "status": s.status.text(),
             "progress": round(s.progress.value() / max(s.progress.maximum(), 1), 4),
@@ -476,15 +479,58 @@ class PhoneApi:
             raise PhoneError(tr("ui.phone.page.no_sketch"))
         return {"ok": True}
 
-    def do_open(self, data: dict) -> dict:
-        """A recent result is shown in the studio (its sketches, picture and settings)."""
+    def _result(self, data: dict):
+        """A recent result by its place in the list – and its folder name, so a list that changed meanwhile never
+        hits another one."""
         items = self._results()
         try:
             it = items[int(data.get("i", -1))]
         except (ValueError, IndexError):
             raise PhoneError(tr("ui.phone.page.no_sketch")) from None
-        self.studio.show_job_dir(it.job_dir)
+        if data.get("dir") and data["dir"] != os.path.basename(os.path.normpath(it.job_dir)):
+            raise PhoneError(tr("ui.phone.page.list_changed"))
+        return it
+
+    def do_open(self, data: dict) -> dict:
+        """A recent result is shown in the studio (its sketches, picture and settings)."""
+        self.studio.show_job_dir(self._result(data).job_dir)
         return {"ok": True}
+
+    def do_delete(self, data: dict) -> dict:
+        """A result goes to the recycle bin (the gallery's own way; never a job the queue works on)."""
+        import shutil
+
+        it = self._result(data)
+        name = os.path.basename(os.path.normpath(it.job_dir))
+        if os.path.normcase(os.path.abspath(it.job_dir)) in self.controller.active_dirs():
+            raise PhoneError(tr("ui.gallery.delete_active", name=name))
+        if self.gallery is not None:
+            ok = self.gallery.delete_job(it.job_dir, confirm=False)
+        else:
+            from .pages.other_pages import move_to_trash
+
+            ok = move_to_trash(it.job_dir)
+            if not ok:
+                shutil.rmtree(it.job_dir, ignore_errors=True)
+                ok = not os.path.exists(it.job_dir)
+            if ok:
+                self.studio.forget_job_dir(it.job_dir)
+        if not ok:
+            raise PhoneError(tr("ui.phone.page.not_deleted", name=name))
+        return {"ok": True}
+
+    def do_live(self, data: dict) -> dict:
+        """Back to the running job (after a result of the gallery was opened during the run)."""
+        if not self.controller.is_busy():
+            raise PhoneError(tr("ui.phone.page.no_live"))
+        self.studio.show_running_job()
+        return {"ok": True}
+
+    def do_clear_queue(self, data: dict) -> dict:
+        """The finished, cancelled and failed jobs leave the queue (the waiting and running ones stay)."""
+        before = len(self.controller.jobs)
+        self.controller.clear_finished()
+        return {"ok": True, "removed": before - len(self.controller.jobs)}
 
     def do_remove(self, data: dict) -> dict:
         """A waiting job leaves the queue."""

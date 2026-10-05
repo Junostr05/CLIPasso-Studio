@@ -52,6 +52,7 @@ DEFAULTS: dict[str, Any] = {
     "remote_on": False,  # control from a phone in the home network (gui/remote.py)
     "remote_port": 8765,
     "remote_token": "",
+    "remote_tailscale": False,  # also phones in the user's tailnet (Tailscale, 100.64.0.0/10)
     "skipped_version": "",
     "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,

@@ -10,7 +10,7 @@ from . import remote, telegram
 from .app_settings import app_settings
 from .dialogs import run_in_thread
 from .i18n import tr
-from .widgets.common import Card, ToggleSwitch, button, label
+from .widgets.common import Card, SegmentedControl, ToggleSwitch, button, label
 
 
 def _row(lbl, widget):
@@ -45,7 +45,7 @@ class PhoneCard(Card):
         self.qr = QLabel()
         self.qr.setFixedSize(150, 150)
         self.qr.setScaledContents(True)
-        rb.addWidget(self.qr)
+        rb.addWidget(self.qr, 0, Qt.AlignTop)
         info = QWidget()
         il = QVBoxLayout(info)
         il.setContentsMargins(0, 0, 0, 0)
@@ -59,7 +59,24 @@ class PhoneCard(Card):
         self.port.editingFinished.connect(self._port_changed)
         self.new_code = button("", "refresh-cw", "ghost", size="sm")
         self.new_code.clicked.connect(self.new_access_code)
+        # Tailscale: phones of the user's tailnet (also away from home), with a QR code of the tailnet address
+        self.ts_box = QWidget()
+        tb = QVBoxLayout(self.ts_box)
+        tb.setContentsMargins(0, 0, 0, 0)
+        tb.setSpacing(6)
+        self.ts_label = label("", None)
+        self.ts_on = ToggleSwitch()
+        self.ts_on.setChecked(bool(st.get("remote_tailscale")))
+        self.ts_on.toggled.connect(self._tailscale_toggled)
+        tb.addLayout(_row(self.ts_label, self.ts_on))
+        self.net = SegmentedControl([("lan", ""), ("tailscale", "")])
+        self.net.set_current("lan")
+        self.net.changed.connect(lambda _k: self.refresh())
+        tb.addWidget(self.net, 0, Qt.AlignLeft)
+        self.ts_hint = label("", "faint", wrap=True)
+        tb.addWidget(self.ts_hint)
         il.addWidget(self.url)
+        il.addWidget(self.ts_box)
         il.addLayout(_row(self.port_label, self.port))
         il.addWidget(self.new_code, 0, Qt.AlignLeft)
         il.addWidget(self.remote_hint)
@@ -117,6 +134,11 @@ class PhoneCard(Card):
         app_settings().set("remote_on", bool(on))
         if self.link is not None:
             self.link.apply_settings()
+        self.refresh()
+
+    def _tailscale_toggled(self, on: bool):
+        app_settings().set("remote_tailscale", bool(on))
+        self.net.set_current("tailscale" if on else "lan")
         self.refresh()
 
     def _port_changed(self):
@@ -202,7 +224,14 @@ class PhoneCard(Card):
         self.remote_error.setText(error)
         self.remote_error.setVisible(on and bool(error))
         if on and running:
-            address = remote.url(self.link.server.port)
+            ts_ip = remote.tailscale_address()
+            ts_on = bool(st.get("remote_tailscale"))
+            self.ts_box.setVisible(bool(ts_ip) or ts_on)  # (only where Tailscale runs, or was switched on)
+            self.net.setVisible(ts_on and bool(ts_ip))
+            self.ts_hint.setVisible(ts_on)
+            self.ts_hint.setText(tr("ui.phone.tailscale_hint") if ts_ip else tr("ui.phone.tailscale_missing"))
+            use_ts = ts_on and bool(ts_ip) and self.net.current() == "tailscale"
+            address = remote.url(self.link.server.port, ts_ip if use_ts else None)
             self.url.setText(f"<a href='{address}'>{address}</a>")
             try:
                 pm = QPixmap()
@@ -226,6 +255,10 @@ class PhoneCard(Card):
         self.port_label.setText(tr("ui.phone.port"))
         self.new_code.setText(tr("ui.phone.new_code"))
         self.new_code.setToolTip(tr("ui.phone.new_code_tip"))
+        self.ts_label.setText(tr("ui.phone.tailscale"))
+        self.ts_label.setToolTip(tr("ui.phone.tailscale_tip"))
+        self.net.set_text("lan", tr("ui.phone.net_lan"))
+        self.net.set_text("tailscale", "Tailscale")
         self.tg_label.setText(tr("ui.telegram.label"))
         self.tg_help.setText(tr("ui.telegram.help"))
         self.token.setPlaceholderText(tr("ui.telegram.token"))
