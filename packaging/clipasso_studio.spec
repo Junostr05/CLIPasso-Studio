@@ -83,16 +83,20 @@ a = Analysis(
     excludes=excludes,
     noarchive=False,
     optimize=0,
+    # the app's own modules as single .pyc files next to the exe, not in the archive inside it: a bug-fix update
+    # then changes only those files (small patches), and the exe stays the same (see the version below)
+    module_collection_mode={"clipasso_studio": "pyc"},
 )
 pyz = PYZ(a.pure)
 
 icon = str(ROOT / "packaging" / "app.ico") if IS_WIN else None
 version = None
-if IS_WIN:  # the exe's file version, from the one place the version is kept
+if IS_WIN:  # the exe's file version, from the one place the version is kept – major.minor only, so the exe is
+    # byte for byte the same in every 3.3.x and a bug-fix patch does not carry it
     _ver = re.search(r'__version__ = "([^"]+)"', (ROOT / "clipasso_studio" / "__init__.py").read_text()).group(1)
-    _nums = [int(n) for n in re.findall(r"\d+", _ver)[:3]]
+    _nums = [int(n) for n in re.findall(r"\d+", _ver)[:2]]
     _info = (ROOT / "packaging" / "version_info.in").read_text(encoding="utf-8")
-    _info = _info.replace("{version}", _ver).replace("{vtuple}", str(tuple(_nums + [0] * (4 - len(_nums)))))
+    _info = _info.replace("{version}", ".".join(map(str, _nums))).replace("{vtuple}", str(tuple(_nums + [0, 0])))
     version = os.path.join(workpath, "version_info.txt")
     os.makedirs(workpath, exist_ok=True)
     Path(version).write_text(_info, encoding="utf-8")

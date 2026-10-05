@@ -25,6 +25,8 @@ def test_version_info_template_is_filled_like_the_spec():
     assert "filevers=(3, 1, 4, 0)" in filled and "'ProductVersion', '3.1.4'" in filled
     spec = (ROOT / "packaging" / "clipasso_studio.spec").read_text(encoding="utf-8")
     assert "version_info.in" in spec
+    # small bug-fix patches: the exe carries major.minor only, the app's modules are files next to it
+    assert 're.findall(r"\\d+", _ver)[:2]' in spec and 'module_collection_mode={"clipasso_studio": "pyc"}' in spec
 
 
 def _pins(path: Path) -> dict[str, str]:
