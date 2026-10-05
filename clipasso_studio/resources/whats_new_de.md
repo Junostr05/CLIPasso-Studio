@@ -1,4 +1,17 @@
-## Neu in 3.2: stabiler, schneller, kleinere Updates
+## Neu in 3.3: Aussehen, Teilen, Ordnung
+
+- **Sechs neue Pinselstile:** Kohle, Kreide, Kugelschreiber, Aquarell, Neon und Kalligrafie – in der Live-Vorschau (Paletten-Knopf im Studio) und in jedem Export.
+- **Papier & Hintergrund:** Zeichenpapier, Aquarellpapier, Packpapier, Leinen und Tafel, in jeder Farbe und mit Vignette – in der Vorschau und in jedem Export. Auf dunklem Papier werden schwarze Striche hell.
+- **Drucken & Druck-Layout:** A5 bis Poster, Ränder, eine Skizze pro Seite oder ein Kontaktbogen, Titel, Signatur und Namen – als PDF oder direkt auf den Drucker.
+- **Lottie & Webseite:** die Skizze zeichnet sich selbst – als Lottie-Datei für Webseiten und Apps oder als eigene kleine Webseite.
+- **Handy-Fernsteuerung (WLAN):** QR-Code scannen, Fortschritt und Vorschau sehen, anhalten, Fotos schicken (Einstellungen → *Handy & Nachrichten*).
+- **Telegram-Nachricht:** dein eigener Bot schickt dir die fertige Skizze aufs Handy.
+- **Alben** in der Galerie: Skizzen auf ein Album ziehen, Alben zeigen, exportieren und drucken.
+- **Backup & Umzug:** alles in einer Datei sichern und auf einem neuen Computer zurückspielen (Einstellungen → System).
+
+---
+
+**Neu in 3.2: stabiler, schneller, kleinere Updates**
 
 - **3.2.1 – SceneSketch auf der Grafikkarte:** Szenen mit Objekt brachen auf der Grafikkarte am Ende der ersten Zelle ab („Expected all tensors to be on the same device“). Behoben – gefunden mit dem neuen Selbsttest. Dieses Update ist das erste kleine: Es lädt nur die geänderten Dateien.
 - **Kleine Updates:** Ab dem nächsten Update lädt die App nur noch die Dateien, die sich geändert haben – meist Megabytes statt 1 GB (CPU) bzw. 3,5 GB (GPU). Ändert sich PyTorch, kommt wie bisher das ganze Paket.

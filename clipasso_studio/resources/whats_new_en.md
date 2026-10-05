@@ -1,4 +1,17 @@
-## New in 3.2: steadier, faster, smaller updates
+## New in 3.3: looks, sharing, order
+
+- **Six new brush styles:** charcoal, chalk, ballpoint pen, watercolour, neon and calligraphy – in the live preview (palette button of the studio) and in every export.
+- **Paper & background:** drawing paper, watercolour paper, kraft paper, linen and a blackboard, in any colour and with a vignette – in the preview and in every export. On a dark paper black strokes become light.
+- **Print & print layout:** A5 up to a poster, margins, one sketch per page or a contact sheet, a title, a signature and names – as a PDF or straight to the printer.
+- **Lottie & web page:** the sketch draws itself – as a Lottie file for websites and apps or as a little web page of its own.
+- **Phone remote (Wi-Fi):** scan the QR code, see the progress and the preview, pause, send photos (Settings → *Phone & messages*).
+- **Telegram message:** your own bot sends you the finished sketch on your phone.
+- **Albums** in the gallery: drag sketches onto an album, show, export and print albums.
+- **Backup & move:** save everything in one file and put it back on a new computer (Settings → System).
+
+---
+
+**New in 3.2: steadier, faster, smaller updates**
 
 - **3.2.1 – SceneSketch on the graphics card:** scenes with an object stopped on the graphics card at the end of the first cell (“Expected all tensors to be on the same device”). Fixed – found with the new self-test. This is the first small update: it downloads only the files that changed.
 - **Small updates:** from the next update on, the app downloads only the files that changed – usually megabytes instead of 1 GB (CPU) or 3.5 GB (GPU). When PyTorch changes, the whole package comes as before.

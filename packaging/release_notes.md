@@ -1,25 +1,22 @@
-## CLIPasso Studio 3.2.1 – SceneSketch on the graphics card
+## CLIPasso Studio 3.3 – looks, sharing and order
 
-**Fixed in 3.2.1**
-- SceneSketch on an NVIDIA card: a scene with an object stopped at the end of its first cell with “Expected all tensors to be on the same device” – the background strokes cut at the object were made on the processor while the others stayed on the graphics card. Found with the new self-test; the renderer now also brings strokes from different devices together.
-- The first small update: an app on 3.2.0 downloads only the files that changed (`…-Patch-from-3.2.0.exe` / `…-Portable-Patch-from-3.2.0.zip`).
+**Looks**
+- **Six new brush styles:** charcoal, chalk, ballpoint pen, watercolour, neon and calligraphy (a broad nib) – next to plain, ink, pencil and marker. In the live preview (palette button of the studio) and in every export. Plain SVG geometry, so browsers, PDF readers and the app show the same picture.
+- **Paper & background:** drawing paper, watercolour paper, kraft paper, linen and a blackboard – textures the app makes itself – in any colour, with a vignette. In the preview and in PNG, PDF, GIF, MP4, WebP and SVG; on a dark paper black strokes become light.
 
-**New in 3.2**
+**Sharing**
+- **Print layout** (studio, gallery selection, albums): A5, A4, A3, US Letter or a 50 × 70 cm poster, portrait or landscape, margins, one sketch per page or a contact sheet of up to 20, a title, a signature and names under the sketches – as a multi-page PDF or straight to the printer, with a preview.
+- **Lottie** (`.json`): the sketch drawing itself stroke by stroke for websites, apps and After Effects (lottie-web, LottieFiles); one layer per stroke, the background or paper below.
+- **Web page** (`.html`): one file in which the sketch draws itself, in its brush style and on its paper, with a button to draw it again – to send or upload.
+- **Phone remote (Wi-Fi):** Settings → *Phone & messages*: scan the QR code and see the status and a live preview on the phone, pause or cancel, or take a photo that is sketched right away. Only from the home network and only with the access code; off by default.
+- **Telegram message:** your own bot sends the finished sketch with its name, method and duration (or the error) to your phone. Only the Telegram Bot API; the token stays on this computer.
 
-**Small updates**
-- Every release now carries the file list of each edition. From the next update on, the app downloads only the files that changed: a small patch for the installed app (`…-Patch-from-<version>.exe`, the same silent one-click install) and for the portable ZIP. A release with a new PyTorch has no patch – then the full files come as before. The single portable exe is always replaced as a whole.
-- The CI installs every CPU build, applies a test patch to it (it must delete a removed file and refuse another version), runs the self-test of the patched app and uninstalls it again.
+**Order**
+- **Albums** in the gallery: create them, drag sketches onto them or use the right-click menu, show one album, rename it, export or print it. A sketch knows its albums (in its own folder), so they move with it.
+- **Backup & move** (Settings → System): the settings, the queue with its pictures, the gallery – and the models, if wanted – in one `.clipbackup` file, and back on this or a new computer: the folders of the new computer stay, results already there are skipped, nothing is overwritten. Tokens and access codes are never in a backup.
 
-**Steadier**
-- **Self-test** (Settings → System): short runs of every method, continuing a job, the background removal, the warm worker – with a result per part and its log.
-- **Report a problem …** (error dialogs, crash notice, Settings → System): a prepared GitHub issue with the error, its traceback and the diagnostics – paths with the user name shortened to `~`, shown and editable before anything is sent; a text too long for the address goes to the clipboard in full.
-- **Memory guard:** before a job starts or is queued, the app compares what it needs (measured per method) with the free RAM and the graphics memory, and offers smaller settings (or the processor) instead of failing after minutes.
-- **Quality benchmark in the CI:** fixed short runs of CLIPasso, SwiftSketch and SceneSketch on every release; a CLIP score that drops by more than 5 points fails the release; a drop of more than 2 points, slower runs or more memory are reported (times are scaled by a calibration of the CI machine; processors round a little differently, so small score changes only warn).
-
-**Faster**
-- **SDXL piece by piece on small graphics cards:** on cards below 8 GB, ControlSketch's optional SDXL attention now runs piece by piece on the card (the weights wait in the RAM, about 9 GB, the card needs about 2 GB) instead of only on the processor. The question when SDXL is chosen offers *Graphics card, piece by piece (recommended)*, *Processor* or *CLIP*; a full card falls back by itself: whole card → piece by piece → processor. The measured time per step goes into the estimates.
-- **Several graphics cards:** the sketches of a CLIPasso, SwiftSketch or ControlSketch job are spread over all usable cards, one worker per card (Settings → *Use several graphics cards*, on by default).
-- Measured and left out: int8 networks for ControlSketch on the processor were only about 10 % faster – not worth a change in the pictures.
+**Small update**
+- An app on 3.2.1 downloads only the files that changed (`…-Patch-from-3.2.1.exe` / `…-Portable-Patch-from-3.2.1.zip`).
 
 | File | For whom? |
 |---|---|
