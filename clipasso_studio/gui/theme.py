@@ -33,23 +33,36 @@ class Palette:
     danger: str
     paper: str
     ink: str
+    accent_text: str = ""  # the accent as text or icon on the surfaces (accent_hover is a button background)
+    on_status: str = "#111111"  # text on the success / warning colours (badges)
 
 
 DARK = Palette(
     name="dark", bg="#0E1015", sidebar="#0B0D11", surface="#161920", surface2="#1D212A", surface3="#262B36",
-    border="#2A303C", text="#E8EAF0", muted="#9AA3B4", faint="#6B7385", accent="#6366F1",
-    accent_hover="#7C7FF8", accent_soft="#262A55", on_accent="#FFFFFF", success="#22C55E", warning="#F59E0B",
-    danger="#EF4444", paper="#FFFFFF", ink="#111111",
+    border="#2A303C", text="#E8EAF0", muted="#9AA3B4", faint="#808899", accent="#6164F1",
+    accent_hover="#5457E8", accent_soft="#262A55", on_accent="#FFFFFF", success="#22C55E", warning="#F59E0B",
+    danger="#F04D4D", paper="#FFFFFF", ink="#111111", accent_text="#888BF9", on_status="#111111",
 )
 
 LIGHT = Palette(
     name="light", bg="#F4F5F9", sidebar="#ECEEF4", surface="#FFFFFF", surface2="#F3F4F8", surface3="#E8EBF2",
-    border="#DCE0E9", text="#141821", muted="#5A6375", faint="#8A93A5", accent="#4F46E5",
-    accent_hover="#6366F1", accent_soft="#E4E4FC", on_accent="#FFFFFF", success="#16A34A", warning="#D97706",
-    danger="#DC2626", paper="#FFFFFF", ink="#111111",
+    border="#DCE0E9", text="#141821", muted="#5A6375", faint="#626C80", accent="#4F46E5",
+    accent_hover="#4338CA", accent_soft="#E4E4FC", on_accent="#FFFFFF", success="#11813B", warning="#A75C05",
+    danger="#D32222", paper="#FFFFFF", ink="#111111", accent_text="#4F46E5", on_status="#FFFFFF",
 )
 
 _current = DARK
+
+# spacing tokens (px): the same distances on every page
+SPACE_XS, SPACE_S, SPACE_M, SPACE_L, SPACE_XL = 4, 8, 12, 16, 24
+PAGE_MARGINS = (SPACE_XL, 20, SPACE_XL, 20)  # left, top, right, bottom of a page
+PAGE_SPACING = SPACE_L  # between a page's parts (header, cards, lists)
+
+
+def page_layout(layout) -> None:
+    """A page's outer layout with the page margins and spacing."""
+    layout.setContentsMargins(*PAGE_MARGINS)
+    layout.setSpacing(PAGE_SPACING)
 FONT_FAMILY = "Inter"
 
 
@@ -102,7 +115,7 @@ def apply(app: QApplication, mode: str = "dark") -> Palette:
     pal.setColor(QPalette.ToolTipBase, QColor(p.surface3))
     pal.setColor(QPalette.ToolTipText, QColor(p.text))
     pal.setColor(QPalette.PlaceholderText, QColor(p.faint))
-    pal.setColor(QPalette.Link, QColor(p.accent_hover))
+    pal.setColor(QPalette.Link, QColor(p.accent_text))
     app.setPalette(pal)
     app.setStyleSheet(stylesheet(p))
     return p
@@ -129,14 +142,16 @@ QLabel[role="faint"] {{ color: {p.faint}; font-size: 12px; }}
 QLabel[role="stat"] {{ font-size: 20px; font-weight: 700; }}
 QLabel[role="mono"] {{ font-family: "Consolas", "DejaVu Sans Mono", monospace; color: {p.muted}; }}
 QLabel[role="badge"] {{
-    background: {p.accent_soft}; color: {p.accent_hover}; border-radius: 9px; padding: 2px 8px;
+    background: {p.accent_soft}; color: {p.accent_text}; border-radius: 9px; padding: 2px 8px;
     font-size: 11px; font-weight: 600;
 }}
 QLabel[role="badge-success"] {{
-    background: {p.success}; color: white; border-radius: 9px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+    background: {p.success}; color: {p.on_status}; border-radius: 9px; padding: 2px 8px; font-size: 11px;
+    font-weight: 600;
 }}
 QLabel[role="badge-warning"] {{
-    background: {p.warning}; color: #111; border-radius: 9px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+    background: {p.warning}; color: {p.on_status}; border-radius: 9px; padding: 2px 8px; font-size: 11px;
+    font-weight: 600;
 }}
 
 QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 14px; }}

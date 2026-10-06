@@ -85,8 +85,7 @@ def test_scenesketch_in_the_studio(window):
     assert studio.params.method() == "scenesketch"
     assert studio.params.settings()["layers"] == "8"  # starts with the standard preset, not the 3 x 9 matrix
     assert not studio.modes._buttons["matrix"].isHidden()
-    assert studio.modes._buttons["condition"].text() == "Background" or studio.modes._buttons[
-        "condition"].text() == "Hintergrund"
+    assert studio.modes._labels["condition"] in ("Background", "Hintergrund")  # (shown as text or as tooltip)
     assert studio.series_btn.isHidden()
     studio.modes.set_current("matrix")
     studio._mode_changed("matrix")
@@ -292,6 +291,107 @@ def test_gallery_favourites_sorting_and_delete(window, tmp_path):
     window.show_page("studio")
 
 
+def test_gallery_large_view_slideshow_and_compare(window, tmp_path):
+    import shutil
+
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import tr
+
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    for d in os.listdir(out):  # other tests' jobs
+        shutil.rmtree(os.path.join(out, d), ignore_errors=True)
+    a = _fake_job(out, "rose_swiftsketch_1", str(tmp_path / "rose.png"), 70.0, created="2026-09-29 12:00:00")
+    b = _fake_job(out, "crab_swiftsketch_2", str(tmp_path / "crab.png"), 85.0, created="2026-09-29 13:00:00")
+    c = _fake_job(out, "lamp_swiftsketch_3", str(tmp_path / "lamp.png"), 60.0, created="2026-09-29 14:00:00")
+    gallery = window.gallery
+    window.show_page("gallery")
+    gallery.refresh()
+    assert [it.job_dir for it in gallery.items()] == [c, b, a] and gallery.slideshow_btn.isEnabled()
+
+    # Space on a result: the large view at that result
+    gallery.view.setCurrentIndex(gallery.model.index(1))
+    QTest.keyClick(gallery.view, Qt.Key_Space)
+    viewer = gallery.viewer
+    assert viewer is not None and viewer.isVisible()
+    assert viewer.current().job_dir == b and viewer.position_label.text() == "2 / 3"
+    assert viewer.name_label.text() == "crab" and "CLIP 85.0" in viewer.info_label.text()
+    assert viewer.view.has_sketch() and not viewer.compare_btn.isVisible()
+    viewer.next()
+    assert viewer.current().job_dir == a
+    viewer.next()  # (the last one: stays)
+    assert viewer.current().job_dir == a
+    viewer.previous()
+    viewer.previous()
+    assert viewer.current().job_dir == c
+
+    # zoom around the cursor: the point under it stays where it is; dragging moves, double click fits
+    view = viewer.view
+    view.resize(600, 400)
+    pos = QPointF(400, 150)
+    before = view.sketch_rect()
+    u = ((pos.x() - before.left()) / before.width(), (pos.y() - before.top()) / before.height())
+    view.zoom_at(2.0, pos)
+    after = view.sketch_rect()
+    assert view.zoom == 2.0 and abs(after.width() - 2 * before.width()) < 1e-6
+    assert abs(after.left() + u[0] * after.width() - pos.x()) < 1e-6
+    assert abs(after.top() + u[1] * after.height() - pos.y()) < 1e-6
+    assert viewer.zoom_label.text() == "200 %"
+    view.zoom_at(100.0)
+    assert view.zoom == 16.0  # (at most 16x)
+    QTest.mousePress(view, Qt.LeftButton, pos=QPoint(300, 200))
+    QTest.mouseMove(view, QPoint(5000, 200))
+    QTest.mouseRelease(view, Qt.LeftButton, pos=QPoint(5000, 200))
+    assert view.offset.x() == view.sketch_rect().width() / 2  # (the sketch's edge at most to the middle)
+    viewer.shortcuts["0"].activated.emit()
+    assert view.zoom == 1.0 and view.offset == QPointF(0, 0) and viewer.zoom_label.text() == tr("ui.viewer.fitted")
+
+    # slideshow: goes on by itself and starts again at the first; a step by hand restarts the interval
+    viewer.set_slideshow(True)
+    assert viewer.slideshow_running() and viewer.play_btn.isChecked()
+    for want in (b, a, c):
+        viewer._timer.timeout.emit()
+        assert viewer.current().job_dir == want
+    viewer.shortcuts["Space"].activated.emit()
+    assert not viewer.slideshow_running() and not viewer.play_btn.isChecked()
+    viewer.shortcuts["Right"].activated.emit()
+    assert viewer.current().job_dir == b
+    viewer.close()
+    assert not viewer.slideshow_running()
+
+    # two marked results: compared on top of each other, the divider follows the mouse
+    gallery.select([a, c])
+    QApplication.processEvents()
+    assert gallery.sel_compare_btn.isVisibleTo(gallery)
+    viewer = gallery.show_large(compare=True)
+    assert viewer.comparing and viewer.split.isVisible() and not viewer.view.isVisible()
+    assert viewer.split.has_sketch() and not viewer.next_btn.isEnabled() and not viewer.open_btn.isEnabled()
+    assert set(viewer.split.captions) == {"rose", "lamp"}
+    split = viewer.split
+    split.resize(600, 400)
+    r = split.sketch_rect()
+    QTest.mousePress(split, Qt.LeftButton, pos=QPoint(int(r.left() + 0.25 * r.width()), 200))
+    QTest.mouseRelease(split, Qt.LeftButton, pos=QPoint(int(r.left() + 0.25 * r.width()), 200))
+    assert abs(split.split - 0.25) < 0.01
+    viewer.set_slideshow(True)  # (not while comparing)
+    assert not viewer.slideshow_running()
+    viewer.compare_btn.setChecked(False)  # back to one result at a time
+    assert not viewer.comparing and viewer.view.isVisible() and viewer.next_btn.isEnabled()
+
+    # "open in the studio" hands the result on and closes the large view
+    opened = []
+    viewer.open_job.disconnect()
+    viewer.open_job.connect(opened.append)
+    viewer.open_btn.click()
+    assert opened == [viewer.items[viewer.index].job_dir] and not viewer.isVisible()
+    gallery.view.clearSelection()
+    window.show_page("studio")
+
+
 def test_shortcuts_and_paste(window, tmp_path):
 
     from PySide6.QtGui import QColor, QGuiApplication, QImage
@@ -317,7 +417,7 @@ def test_shortcuts_and_paste(window, tmp_path):
     assert not studio.paste_image() and studio.image_path == str(other)
     assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
     keys = [lbl.text() for lbl in window.about.key_labels]
-    assert len(keys) == 9 and all(keys) and "Ctrl+C" in window.shortcuts
+    assert len(keys) == 10 and all(keys) and "Ctrl+C" in window.shortcuts and "F11" in window.shortcuts
     # undo / redo of sketch edits only act on the studio page
     calls = []
     studio.undo_edit, studio.redo_edit = (lambda: calls.append("undo")), (lambda: calls.append("redo"))
@@ -1293,3 +1393,447 @@ def test_phone_gallery_queue_compare_download_crop(window, tmp_path, monkeypatch
     assert call("get_studio", {})["mask"]["ready"]
     jpg = call("file_mask", {})
     assert jpg["_type"] == "image/jpeg" and Image.open(io.BytesIO(jpg["_bytes"])).size == (20, 80)
+
+
+def test_focus_mode(window):
+    """3.6: the canvas alone, full screen – by the button or F11; Esc, the button or another page end it."""
+    studio = window.studio
+    window.show_page("gallery")
+    studio.focus_btn.click()
+    assert studio.focused and window.stack.currentWidget() is studio
+    assert not window.sidebar.isVisible() and not studio.left_scroll.isVisible() and not studio.right_pane.isVisible()
+    assert window.isFullScreen() and window.shortcuts["Esc"].isEnabled()
+    window.shortcuts["Esc"].activated.emit()
+    assert not studio.focused and window.sidebar.isVisible() and studio.left_scroll.isVisible()
+    assert not window.isFullScreen() and not window.shortcuts["Esc"].isEnabled()
+    window.shortcuts["F11"].activated.emit()
+    assert studio.focused
+    window.show_page("queue")  # another page: back to normal
+    assert not studio.focused and window.sidebar.isVisible()
+    window.show_page("studio")
+
+
+def test_timelapse(window, tmp_path):
+    """3.6: the saved steps of a sketch played on the canvas – pause, speed, the end shows the result again."""
+    import time
+
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = fake_job(out, "lapse_job", str(tmp_path / "lapse.png"), 27.0, method="clipasso")
+    logs = os.path.join(job, "lapse_job_run", "svg_logs")
+    for i in range(4):
+        with open(os.path.join(logs, f"svg_iter{i * 10}.svg"), "w") as f:
+            f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224"><path d="M 10 10 L {50 + i} 50" '
+                    'stroke="black" fill="none"/></svg>')
+    studio.show_job_dir(job)
+    studio.modes.set_current("sketch")
+    shown = []
+    orig = studio.canvas.set_svg
+    studio.canvas.set_svg = lambda svg: (shown.append(svg), orig(svg))
+    try:
+        studio.set_timelapse_speed(4.0)
+        assert studio.toggle_timelapse() and studio._lapse_timer.isActive()
+        assert studio._lapse_timer.interval() == max(20, int(1000 * studio.LAPSE_SECONDS / 4 / 4.0))
+        end = time.time() + 10
+        while studio._lapse_timer.isActive() and time.time() < end:
+            QApplication.processEvents()
+            time.sleep(0.01)
+        steps = [s for s in shown if "L 5" in s]
+        assert len(steps) == 4 and "L 53 50" in steps[-1]
+        assert shown[-1] == studio.seed_svgs[studio.best_seed]  # (the result again at the end)
+        assert studio.toggle_timelapse() and not studio.toggle_timelapse()  # play, then pause
+        assert not studio._lapse_timer.isActive()
+        studio.stop_timelapse()
+    finally:
+        studio.canvas.set_svg = orig
+        studio.set_timelapse_speed(1.0)
+
+
+def test_contact_sheet_and_choosing_the_best(window, tmp_path):
+    """3.6: every sketch of a job side by side; one chosen as the best becomes the job's result."""
+    import json
+    import shutil
+
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = fake_job(out, "sheet_job", str(tmp_path / "sheet.png"), 24.0, method="clipasso")
+    # a second sketch of the job
+    run2 = os.path.join(job, "sheet_job_run2")
+    shutil.copytree(os.path.join(job, "sheet_job_run"), run2)
+    with open(os.path.join(run2, "best_iter.svg"), "w") as f:
+        f.write('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224"><path d="M 5 5 L 200 100" '
+                'stroke="black" fill="none"/></svg>')
+    with open(os.path.join(job, "job.json")) as f:
+        summary = json.load(f)
+    summary["runs"].append({**summary["runs"][0], "seed": 1000, "run_name": "sheet_job_run2", "run_dir": run2,
+                            "best_svg": os.path.join(run2, "best_iter.svg"), "clip_score": 22.0})
+    with open(os.path.join(job, "job.json"), "w") as f:
+        json.dump(summary, f)
+    studio.show_job_dir(job)
+    assert studio.modes._buttons["sheet"].isVisibleTo(studio)
+    studio.modes.set_current("sheet")
+    studio._mode_changed("sheet")
+    assert studio.sheet.isVisibleTo(studio) and not studio.canvas.isVisibleTo(studio)
+    assert studio.sheet.items == [0, 1000] and studio.sheet.best == 0
+    studio.sheet.resize(600, 400)
+    assert studio.sheet._grid()[0] == 2 and not studio.sheet.grab().isNull()  # (two side by side in a wide view)
+    menu = studio._sheet_menu_for(1000)
+    texts = [a.text() for a in menu.actions()]
+    assert len([t for t in texts if t]) == 4 and all(a.isEnabled() for a in menu.actions() if a.text())
+    assert studio.choose_best(1000) and studio.best_seed == 1000 and studio.sheet.best == 1000
+    summary = jobs.job_summary(job)
+    assert summary["best_run"] == "sheet_job_run2" and summary["best_by"] == "chosen"
+    assert os.path.isfile(os.path.join(job, "sheet_job_run2_best.svg"))
+    assert not os.path.exists(os.path.join(job, "sheet_job_run_best.svg"))
+    assert studio.thumbs[1000].caption.text().startswith("★") and not studio.thumbs[0].caption.text().startswith("★")
+    studio.show_job_dir(job)  # opened again: the chosen one is the best
+    assert studio.best_seed == 1000
+    assert not jobs.set_best_run(job, "no_such_run")
+    studio.modes.set_current("sketch")
+    studio._mode_changed("sketch")
+
+
+def test_earlier_jobs_of_the_picture(window, tmp_path):
+    """3.6: a strip of every earlier job of the studio's picture – also one that has only its saved copy."""
+    import shutil
+
+    from PIL import Image
+
+    from clipasso_studio.gui.app_settings import app_settings
+
+    studio = window.studio
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    photo = tmp_path / "hist_photo.png"
+    Image.new("RGB", (40, 30), "white").save(photo)
+    a = fake_job(out, "hist_a", str(photo), 20.0, method="clipasso", created="2026-10-02 10:00:00")
+    b = fake_job(out, "hist_b", str(photo), 21.0, created="2026-10-03 10:00:00")
+    fake_job(out, "hist_other", str(tmp_path / "hist_other.png"), 22.0)
+    # a job of a picture that was moved since: its copy has the same name and size
+    moved = tmp_path / "gone" / "hist_photo.png"
+    moved.parent.mkdir()
+    shutil.copyfile(photo, moved)
+    c = fake_job(out, "hist_c", str(moved), 23.0, created="2026-10-01 10:00:00")
+    os.remove(moved)
+    studio.set_image(str(photo))
+    studio.refresh_history()
+    assert studio.history_jobs == [b, a, c] and studio.history_scroll.isVisibleTo(studio)
+    assert "(3)" in studio.history_title.text()
+    first = studio.history_layout.itemAt(0).widget()
+    first.click()
+    assert os.path.normpath(studio.view_dir) == os.path.normpath(b)
+    studio.refresh_history()
+    assert studio.history_layout.itemAt(0).widget().isChecked()  # (the shown job is marked)
+    studio.set_image(str(tmp_path / "hist_other.png"))
+    studio.refresh_history()
+    assert [os.path.basename(d) for d in studio.history_jobs] == ["hist_other"]
+
+
+def test_quality_hints_about_the_photo(window, tmp_path, monkeypatch):
+    """3.6: hints under the photo (measured in the background), with what helps and "don't show again"."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    from PySide6.QtWidgets import QApplication, QWidget
+
+    from clipasso_studio.gui import image_hints
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import tr
+    from tests.helpers import wait_until
+
+    app = QApplication.instance()
+    studio = window.studio
+    app_settings().set("hints_off", [])
+    small = tmp_path / "tiny_dark.png"
+    Image.new("RGB", (120, 90), (20, 20, 24)).save(small)
+    studio.set_image(str(small))
+    assert studio.hint_box.keys() == []  # (measured in the background: nothing yet)
+    wait_until(app, lambda: studio.hint_box.keys() == ["small", "dark"])
+    assert studio.hint_box.isVisibleTo(studio)
+    assert studio.hint_box.findChild(QWidget, "hint-small").text().startswith(tr("ui.hint.small", w=120, h=90,
+                                                                                    min=224)[:20])
+    # a good photo: the hints go
+    good = tmp_path / "good.png"
+    im = Image.new("RGB", (400, 300), (230, 230, 230))
+    for x in range(20, 380, 30):
+        im.paste((20, 20, 20), (x, 40, x + 6, 260))
+    im.save(good)
+    studio.set_image(str(good))
+    assert studio.hint_box.keys() == [] and not studio.hint_box.isVisibleTo(studio)
+    wait_until(app, lambda: studio._photo_hints == [] and not studio.hint_box.isVisibleTo(studio), 5)
+    # a blurred one; the mask finds a tiny object: the most helpful hint first, with its button
+    blurred = tmp_path / "blurred.png"
+    im.filter(ImageFilter.GaussianBlur(5)).save(blurred)
+    studio.set_image(str(blurred))
+    wait_until(app, lambda: studio.hint_box.keys() == ["blurry"])
+    prob = np.zeros((300, 400), np.float32)
+    prob[140:160, 190:210] = 1.0
+    studio._mask_hints = image_hints.mask_hints(prob)
+    studio.show_hints()
+    assert studio.hint_box.keys() == ["small_object", "blurry"]
+    crops = []
+    monkeypatch.setattr(studio, "edit_image", lambda: crops.append(1))
+    studio.hint_box.action.emit("crop")
+    assert crops == [1]
+    # "don't show again": gone, remembered; the settings show them all again
+    studio.hint_box.dismissed.emit("blurry")
+    assert studio.hint_box.keys() == ["small_object"] and app_settings().get("hints_off") == ["blurry"]
+    window.settings._update_hints_state()
+    assert window.settings.hints_reset.isEnabled() and window.settings.hints_state.text() == tr("ui.hint.off_n", n=1)
+    window.settings.hints_reset.click()
+    assert app_settings().get("hints_off") == [] and studio.hint_box.keys() == ["small_object", "blurry"]
+    assert not window.settings.hints_reset.isEnabled()
+    # no photo: no hints
+    studio._mask_hints = []
+    studio.forget_job_dir(str(tmp_path))  # (the photo was inside it)
+    assert studio.hint_box.keys() == [] and not studio.hint_box.isVisibleTo(studio)
+
+
+def test_moving_the_results_does_not_block(window, tmp_path, monkeypatch):
+    """3.6: moving the results runs in the background with a strip in the window; a job waits for it, the gallery
+    is locked meanwhile, quitting waits."""
+    import threading
+
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from clipasso_studio.gui import background, storage
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import tr
+    from clipasso_studio.gui.phone_api import PhoneError
+    from tests.helpers import wait_until
+
+    app = QApplication.instance()
+    old = app_settings().get("output_dir")
+    os.makedirs(old, exist_ok=True)
+    job = _fake_job(old, "moving_job", str(tmp_path / "moving.png"), 50.0)
+    go_on, real_move = threading.Event(), storage.move_results
+
+    def slow_move(src, dst, progress=None):
+        progress(1, 4)
+        go_on.wait(20)
+        return real_move(src, dst, progress=progress)
+
+    monkeypatch.setattr(storage, "move_results", slow_move)
+    told = []
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: told.append(a[2])))
+    window.controller._timer.stop()
+    new = str(tmp_path / "moved_out")
+    try:
+        assert window.settings._choose_out(new, move=True)  # returns at once: the move runs in the background
+        work = background.work()
+        wait_until(app, lambda: work.fraction("output") == 0.25)
+        assert window.work_wrap.isVisibleTo(window) and window.work_strip.percent.text() == "25 %"
+        assert window.work_strip.text.text() == tr("ui.settings.output_moving")
+        # the gallery waits, the phone too
+        gallery = window.gallery
+        assert gallery.locked() and not gallery.view.isEnabled() and gallery.lock_banner.isVisibleTo(gallery)
+        assert not gallery.delete_job(job, confirm=False) and os.path.isdir(job)
+        with pytest.raises(PhoneError):
+            window.phone.api.do_fav({"dir": job, "value": True})
+        # a job to start waits in the queue
+        held = []
+        window.controller.held.connect(lambda: held.append(1))
+        photo = tmp_path / "wait.png"
+        from PIL import Image
+
+        Image.new("RGB", (64, 64), "white").save(photo)
+        queued = window.controller.enqueue(str(photo), window.studio.params.settings(), start=True)
+        assert queued.status == "queued" and held == [1] and window.controller.current is None
+        # quitting waits for the move
+        assert not window.close() and told == [tr("ui.work.quit_wait")]
+        started = []
+        monkeypatch.setattr(window.controller, "start_next", lambda: started.append(1))
+        go_on.set()
+        assert work.wait(20)
+        assert app_settings().get("output_dir") == new and os.path.isdir(os.path.join(new, "moving_job"))
+        assert not window.work_wrap.isVisibleTo(window) and not gallery.locked() and gallery.view.isEnabled()
+        assert started == [1]  # the job that waited starts now
+        assert any(it.job_dir == os.path.join(new, "moving_job") for it in gallery.items())
+        window.controller.remove(queued.id)
+    finally:
+        go_on.set()
+        background.work().wait(20)
+        app_settings().set("output_dir", old)
+
+
+def test_taskbar_follows_the_job(window, monkeypatch):
+    """3.6: the job's progress on the taskbar button – running, paused, failed (until looked at), done."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui import taskbar
+
+    seen = []
+
+    class FakeTaskbar:
+        def __init__(self, hwnd):
+            self.hwnd = hwnd
+
+        def set(self, state, fraction=None):
+            seen.append((state, fraction))
+
+    monkeypatch.setattr(taskbar, "Taskbar", FakeTaskbar)
+    monkeypatch.setattr(window, "isActiveWindow", lambda: False)  # (minimised: the failure shows red)
+    window.taskbar, window._taskbar_failed = None, False
+    ctl = window.controller
+    try:
+        window.update_taskbar()  # nothing runs: no taskbar object needed yet
+        assert window.taskbar is None and seen == []
+        ctl.current = SimpleNamespace(status="running", progress=0.4)
+        window.update_taskbar()
+        ctl.current.status = "paused"
+        window.update_taskbar()
+        ctl.current = None
+        window._on_job_finished(SimpleNamespace(status="failed", oom=False, name="x.png", message="boom"))
+        window.update_taskbar()  # (still red: the window was not looked at)
+        window._taskbar_failed = False
+        window.update_taskbar()
+        assert seen == [(taskbar.NORMAL, 0.4), (taskbar.PAUSED, 0.4), (taskbar.ERROR, 1.0), (taskbar.ERROR, 1.0),
+                        (taskbar.NOPROGRESS, None)]
+    finally:
+        ctl.current, window.taskbar, window._taskbar_failed = None, None, False
+
+
+
+
+
+def test_every_button_has_a_name(window):
+    """3.6: every visible button on every page (and for every method in the studio) has a name for screen
+    readers – its text, a name, a tooltip or the label of its row."""
+    from PySide6.QtWidgets import QAbstractButton, QLabel
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui import a11y
+
+    def unnamed(where):
+        return [f"{where}: {type(b).__name__} in {type(b.parentWidget()).__name__}"
+                for b in window.findChildren(QAbstractButton) if b.isVisibleTo(window) and a11y.needs_name(b)]
+
+    missing = []
+    for page in window.pages:
+        window.show_page(page)
+        missing += unnamed(page)
+    window.show_page("studio")
+    method = window.studio.params.method()
+    for m in schema.METHODS:
+        window.studio.params.set_method(m)
+        missing += unnamed(f"studio/{m}")
+    window.studio.params.set_method(method)
+    assert missing == []
+    # the name follows the label (a buddy): also after the language changes
+    sw = window.studio.quick["turbo"][1]
+    lbl = next(lb for lb in window.studio.findChildren(QLabel) if lb.buddy() is sw)
+    assert lbl is window.studio.quick["turbo"][0]
+
+
+def test_studio_tab_order(window):
+    """3.6: Tab goes through the studio from left to right: the input, the canvas, the parameters."""
+    from PySide6.QtCore import Qt
+
+    window.show_page("studio")
+    st = window.studio
+    areas, w = [], st.open_btn
+    for _ in range(600):
+        w = w.nextInFocusChain()
+        if w is st.open_btn:
+            break
+        if not (w.focusPolicy() & Qt.TabFocus) or not w.isVisibleTo(window) or not w.isEnabled():
+            continue
+        a = w
+        while a is not None and a not in (st.left_scroll, st.center_card, st.right_pane):
+            a = a.parentWidget()
+        if a is not None:
+            area = {st.left_scroll: 0, st.center_card: 1, st.right_pane: 2}[a]
+            if not areas or areas[-1] != area:
+                areas.append(area)
+    assert areas == [0, 1, 2]
+
+
+def test_pages_use_the_spacing_tokens(window):
+    """3.6: every page has the same margins and spacing (theme tokens)."""
+    from clipasso_studio.gui import theme
+
+    for key, page in window.pages.items():
+        m = page.layout().contentsMargins()
+        assert (m.left(), m.top(), m.right(), m.bottom()) == theme.PAGE_MARGINS, key
+        assert page.layout().spacing() == theme.PAGE_SPACING, key
+
+
+def test_empty_pages_say_what_to_do(window, monkeypatch):
+    """3.6: the empty gallery, queue and compare page explain the next step – and their button does it."""
+    import shutil
+
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import tr
+
+    out = app_settings().get("output_dir")
+    shutil.rmtree(out, ignore_errors=True)
+    os.makedirs(out, exist_ok=True)
+    gallery = window.gallery
+    window.show_page("gallery")
+    gallery.refresh()
+    assert gallery.empty.isVisibleTo(gallery) and not gallery.view.isVisibleTo(gallery)
+    assert gallery.empty.title.text() == tr("ui.gallery.empty_title")
+    gallery.empty.button.click()
+    assert window.stack.currentWidget() is window.studio
+    # results there, but none fits: "show all" resets the filters
+    _fake_job(out, "empty_test_job", os.path.join(out, "e.png"), 40.0)
+    window.show_page("gallery")
+    gallery.refresh()
+    gallery.search.setText("nothing like this")
+    gallery._apply()
+    assert gallery.empty.title.text() == tr("ui.gallery.empty_match_title")
+    gallery.empty.button.click()
+    assert gallery.search.text() == "" and len(gallery.items()) == 1 and not gallery.empty.isVisibleTo(gallery)
+    # the queue
+    queue = window.queue
+    window.controller.jobs.clear()
+    queue.rebuild()
+    assert queue.empty.isVisibleTo(queue) and queue.empty.button.text() == tr("ui.queue.add")
+    added = []
+    monkeypatch.setattr(queue, "_add_images", lambda: added.append(1))
+    queue.empty.action.disconnect()
+    queue.empty.action.connect(queue._add_images)
+    queue.empty.button.click()
+    assert added == [1]
+    # the compare page without a photo
+    window.studio.image_path = ""
+    window.compare.refresh()
+    assert window.compare.empty.isVisibleTo(window.compare) and not window.compare.cards_scroll.isVisibleTo(
+        window.compare)
+    window.compare.empty.button.click()
+    assert window.stack.currentWidget() is window.studio
+
+
+def test_studio_columns_fit_a_small_window(window):
+    """3.6: at the smallest window width the studio's columns sit side by side (they used to overlap below
+    about 1300 px); rows of buttons that do not fit go to a second line."""
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.main_window import MIN_WIDTH
+
+    window.show_page("studio")
+    size = window.size()
+    try:
+        window.resize(MIN_WIDTH, 760)
+        for _ in range(5):
+            QApplication.processEvents()
+        st = window.studio
+
+        def span(w):
+            left = w.mapTo(window, w.rect().topLeft()).x()
+            return left, left + w.width()
+
+        left, center, right = span(st.left_scroll), span(st.center_card), span(st.right_pane)
+        assert left[1] <= center[0] and center[1] <= right[0], (left, center, right)
+        assert right[1] <= window.width()
+        assert st.input_buttons.is_wrapped()
+    finally:
+        window.resize(size)

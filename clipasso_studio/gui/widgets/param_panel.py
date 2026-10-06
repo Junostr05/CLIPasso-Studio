@@ -332,7 +332,7 @@ class ParamField(QWidget):
     def _sync_reset(self):
         changed = self._value != self.start
         self.reset_btn.setVisible(changed)
-        self.title.setStyleSheet(f"color: {theme.current().accent_hover};" if changed else "")
+        self.title.setStyleSheet(f"color: {theme.current().accent_text};" if changed else "")
 
     def set_enabled_state(self, enabled: bool):
         for w in self.findChildren(QWidget):

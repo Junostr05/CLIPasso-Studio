@@ -102,6 +102,7 @@ class JobController(QObject):
     job_event = Signal(object, str, dict)
     job_finished = Signal(object)
     queue_idle = Signal(object)  # the queue ran out on its own (the last job, not cancelled by the user)
+    held = Signal()  # a job waits: the results or the models are being moved (background.Work)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -109,6 +110,7 @@ class JobController(QObject):
         self.jobs: list[QueuedJob] = []
         self.current: QueuedJob | None = None
         self.auto_start = True
+        self._held = False  # a job was to start while files were moving (background.Work)
         self._timer = QTimer(self)
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._poll)
@@ -117,6 +119,9 @@ class JobController(QObject):
         self._idle.setInterval(30_000)
         self._idle.timeout.connect(self._release_idle)
         self._idle.start()
+        from .background import work
+
+        work().ended.connect(self._work_ended)  # (a method: disconnected when the controller is gone)
         self._restore_queue()
 
     # ------------------------------------------------------------------ queue
@@ -252,12 +257,25 @@ class JobController(QObject):
     def is_busy(self) -> bool:
         return self.current is not None and self.current.status in ("running", "paused")
 
+    def _work_ended(self, kind: str, _ok: bool):
+        from .background import HOLD_JOBS
+
+        if kind in HOLD_JOBS and self._held:
+            self._held = False
+            self.start_next()  # the job that was to start during the move
+
     def start_next(self) -> QueuedJob | None:
+        from .background import work
+
         if self.is_busy():
             return None
         nxt = next((j for j in self.jobs if j.status == "queued"), None)
         if nxt is None:
             _keep_awake(False)
+            return None
+        if work().holds_jobs():  # the results / models are moving: it starts when that is done
+            self._held = True
+            self.held.emit()
             return None
         out = app_settings().get("output_dir")
         try:

@@ -1116,6 +1116,11 @@ class ModelDownloadDialog(QDialog):
         super().reject()
 
     def _start(self):
+        from .background import work
+
+        if work().busy("models"):  # the models are moving to another folder: after that
+            self.status.setText(tr("ui.work.models_locked"))
+            return
         self.start_btn.setEnabled(False)
         self._next()
 

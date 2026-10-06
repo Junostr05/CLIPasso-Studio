@@ -73,7 +73,10 @@ def test_settings_page_moves_and_switches(data_home, monkeypatch):
     monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: told.append("warning")))
     assert not page.choose_models_dir(str(data_home / "new"), move=True)  # not while a job runs
     page.busy_check = lambda: False
-    assert page.choose_models_dir(str(data_home / "new"), move=True)
+    from clipasso_studio.gui.background import work
+
+    assert page.choose_models_dir(str(data_home / "new"), move=True)  # (in the background)
+    assert work().wait()
     assert (data_home / "new" / "scenesketch" / "big-lama_fp16.pt").is_file() and changed == [1]
     assert model_store.find("lama") == data_home / "new" / "scenesketch" / "big-lama_fp16.pt"
     assert app_settings().get("models_dir") == str((data_home / "new").resolve())

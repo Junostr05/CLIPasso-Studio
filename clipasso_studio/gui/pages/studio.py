@@ -8,22 +8,23 @@ import shutil
 import sys
 import time
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QImage, QPixmap
+from PySide6.QtCore import QRectF, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox,
                                QProgressBar, QScrollArea, QSplitter, QToolButton, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, masking, model_store
-from .. import brush, dialogs, icons, image_io, mask_view, methods_ui, paper, shortcuts, theme
+from .. import brush, dialogs, icons, image_hints, image_io, mask_view, methods_ui, paper, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
-                              SketchCanvas, load_pixmap)
+                              SheetView, SketchCanvas, load_pixmap)
 from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, WrapRow, button, label, tool_button
 from ..widgets.edit_bar import EditBar, importance_command
+from ..widgets.hint_box import HintBox
 from ..widgets.method_picker import MethodPicker
 from ..widgets.param_panel import ParamPanel, param_text_key
 
@@ -67,6 +68,7 @@ def _scene_attention(job_dir: str, cell_dir: str) -> str:
 class StudioPage(QWidget):
     toast = Signal(str, str)
     open_queue = Signal()
+    focus_requested = Signal()  # the focus button: the main window shows only the canvas (full screen)
 
     def __init__(self, controller: JobController, parent=None):
         super().__init__(parent)
@@ -91,8 +93,7 @@ class StudioPage(QWidget):
         self._status_key = ("ui.status.idle", {})
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
 
         # ---------------------------------------------------------------- header
         head = QHBoxLayout()
@@ -131,6 +132,35 @@ class StudioPage(QWidget):
         self.file_label = label("", "faint")
         self.file_label.setWordWrap(True)
         self.input_card.body.addWidget(self.file_label)
+        # quality hints about the photo (too small / dark / blurred, a tiny object, an unsure mask)
+        self.hint_box = HintBox()
+        self.hint_box.action.connect(self._hint_action)
+        self.hint_box.dismissed.connect(self.dismiss_hint)
+        self.input_card.body.addWidget(self.hint_box)
+        self._photo_hints: list = []
+        self._mask_hints: list = []
+        # every earlier job of this picture (any method): a strip to open one again
+        self.history_title = label("", "faint")
+        self.history_strip = QWidget()
+        self.history_layout = QHBoxLayout(self.history_strip)
+        self.history_layout.setContentsMargins(0, 0, 0, 0)
+        self.history_layout.setSpacing(6)
+        self.history_layout.addStretch(1)
+        self.history_scroll = QScrollArea()
+        self.history_scroll.setWidget(self.history_strip)
+        self.history_scroll.setWidgetResizable(True)
+        self.history_scroll.setFrameShape(QFrame.NoFrame)
+        self.history_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.history_scroll.setFixedHeight(96)
+        for w in (self.history_title, self.history_scroll):
+            w.hide()
+            self.input_card.body.addWidget(w)
+        self.history_jobs: list[str] = []
+        self._history_cache = None
+        self._history_timer = QTimer(self)
+        self._history_timer.setSingleShot(True)
+        self._history_timer.setInterval(120)
+        self._history_timer.timeout.connect(self.refresh_history)
         # the object mask, computed in the background as soon as an image is chosen
         self.mask_row = QWidget()
         mrow = QHBoxLayout(self.mask_row)
@@ -175,13 +205,18 @@ class StudioPage(QWidget):
         self.recent_btn.setMenu(self.recent_menu)
         self.webcam_btn = button("", "camera", "ghost")
         self.webcam_btn.clicked.connect(self.take_webcam_photo)
-        row.addWidget(self.open_btn)
-        row.addWidget(self.samples_btn)
-        row.addWidget(self.recent_btn)
-        row.addWidget(self.webcam_btn)
-        row.addWidget(self.edit_btn)
-        row.addWidget(self.detail_btn)
-        row.addStretch(1)
+        # (two groups: the tools go to a second line when the column is narrow – a small window)
+        files, tools = QWidget(), QWidget()
+        for box, buttons in ((files, (self.open_btn, self.samples_btn)),
+                             (tools, (self.recent_btn, self.webcam_btn, self.edit_btn, self.detail_btn))):
+            lay = QHBoxLayout(box)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(6)
+            for b in buttons:
+                lay.addWidget(b)
+            lay.addStretch(1)
+        self.input_buttons = WrapRow(files, tools)
+        row.addWidget(self.input_buttons, 1)
         self.input_card.body.addLayout(row)
         # quick toggles mirrored from the parameter panel
         self.quick = {}
@@ -296,10 +331,12 @@ class StudioPage(QWidget):
 
         # ----------------------------------------------------------- center pane
         center = Card(margins=18, spacing=12)
-        center.setMinimumWidth(420)
+        self.center_card = center
+        center.setMinimumWidth(380)
         self.modes = SegmentedControl([(m, "") for m in SketchCanvas.MODES])
         self.modes.set_icons({"sketch": "pen-tool", "compare": "flip-horizontal-2", "attention": "eye",
-                              "mask": "scan", "condition": "mountain", "matrix": "layers"})
+                              "mask": "scan", "condition": "mountain", "matrix": "layers",
+                              "sheet": "images"})
         self.modes.changed.connect(self._mode_changed)
         tools = QWidget()  # the edit tools and the brush style; below the view tabs when they do not fit
         tools_row = QHBoxLayout(tools)
@@ -325,6 +362,24 @@ class StudioPage(QWidget):
         # a saved step as the result, and "Simplify" (the least important strokes go first): a bar below the canvas
         self.history_btn = tool_button("clock", "", 18)
         self.history_btn.clicked.connect(self.open_history)
+        # time-lapse: the saved steps played on the canvas (click: play / pause; the arrow: the speed)
+        self.play_btn = tool_button("play", "", 18)
+        self.play_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        self.play_btn.clicked.connect(self.toggle_timelapse)
+        self.speed_menu = QMenu(self)
+        self.speed_group = QActionGroup(self)
+        self.speed_actions = {}
+        for speed in (0.5, 1.0, 2.0, 4.0):
+            action = self.speed_menu.addAction(f"{speed:g}×")
+            action.setCheckable(True)
+            action.setChecked(speed == 1.0)
+            action.triggered.connect(lambda _=False, v=speed: self.set_timelapse_speed(v))
+            self.speed_group.addAction(action)
+            self.speed_actions[speed] = action
+        self.play_btn.setMenu(self.speed_menu)
+        self._lapse = {"frames": [], "index": 0, "seed": None, "speed": 1.0}
+        self._lapse_timer = QTimer(self)
+        self._lapse_timer.timeout.connect(self._timelapse_step)
         self.simplify_btn = tool_button("sliders-horizontal", "", 18)
         self.simplify_btn.clicked.connect(self.open_simplify)
         # thumbs up / down: the user's own taste ("Best sketch: My taste" from 10 ratings on)
@@ -335,6 +390,7 @@ class StudioPage(QWidget):
         self._embed_proc = None
         self._closing = False
         for b in (self.eraser_btn, self.pen_btn, self.undo_btn, self.redo_btn, self.revert_btn, self.history_btn,
+                  self.play_btn,
                   self.simplify_btn, self.continue_btn):
             et.addWidget(b)
         et.addSpacing(6)
@@ -388,6 +444,11 @@ class StudioPage(QWidget):
         self.vignette_action.triggered.connect(lambda on: self.set_canvas_paper(vignette=on))
         self.style_btn.setMenu(self.style_menu)
         tools_row.addWidget(self.style_btn)
+        # focus mode: only the canvas, full screen (also F11; Esc ends it)
+        self.focus_btn = tool_button("maximize-2", "", 18)
+        self.focus_btn.clicked.connect(self.focus_requested.emit)
+        tools_row.addWidget(self.focus_btn)
+        self.focused = False
         self._edit_undo: dict[int, list[str]] = {}
         self._edit_redo: dict[int, list[str]] = {}
         self._edit_changed = False
@@ -421,6 +482,12 @@ class StudioPage(QWidget):
         self.matrix.activated.connect(self._open_cell)
         self.matrix.setVisible(False)
         center.body.addWidget(self.matrix, 1)
+        self.sheet = SheetView()  # every sketch of the job side by side (contact sheet)
+        self.sheet.clicked.connect(self.select_seed)
+        self.sheet.activated.connect(self._open_cell)
+        self.sheet.menu_requested.connect(self._sheet_menu)
+        self.sheet.setVisible(False)
+        center.body.addWidget(self.sheet, 1)
 
         self.status = label("", "h3")
         status_row = QHBoxLayout()
@@ -467,11 +534,18 @@ class StudioPage(QWidget):
         self.queue_btn = button("", "list-plus", "ghost", "lg")
         self.queue_btn.clicked.connect(self.add_to_queue)
         self.queue_btn.setToolTip("")
-        actions.addWidget(self.start_btn)
-        actions.addWidget(self.pause_btn)
-        actions.addWidget(self.cancel_btn)
-        actions.addStretch(1)
-        actions.addWidget(self.queue_btn)
+        run, more = QWidget(), QWidget()  # (the queue button to a second line when the canvas is narrow)
+        rl = QHBoxLayout(run)
+        rl.setContentsMargins(0, 0, 0, 0)
+        for b in (self.start_btn, self.pause_btn, self.cancel_btn):
+            rl.addWidget(b)
+        rl.addStretch(1)
+        ml = QHBoxLayout(more)
+        ml.setContentsMargins(0, 0, 0, 0)
+        ml.addStretch(1)
+        ml.addWidget(self.queue_btn)
+        self.action_row = WrapRow(run, more)
+        actions.addWidget(self.action_row, 1)
         center.body.addLayout(actions)
         splitter.addWidget(center)
 
@@ -489,6 +563,7 @@ class StudioPage(QWidget):
         self.params.cli_btn.clicked.connect(self.copy_cli)
         right.body.addWidget(self.params)
         splitter.addWidget(right)
+        self.right_pane = right
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 0)
@@ -669,9 +744,137 @@ class StudioPage(QWidget):
         if full.width() != full.height() and not self.params.settings()["fix_scale"]:
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
         self._mask = None
+        self._photo_hints, self._mask_hints = [], []
+        self.show_hints()
+        self._check_photo(path)
         self._update_mask_preview()
         self._update_detail_button()
         self._update_buttons()
+        self._history_timer.start()
+
+    # ------------------------------------------------------------------ quality hints
+    def _check_photo(self, path: str):
+        """The hints about the photo itself, measured in the background (decoding a big photo takes a moment)."""
+        found = {}  # (run_in_thread hands a result on as text)
+
+        def measure(path, progress=None):
+            found["hints"] = image_hints.photo_hints(path)
+
+        def done(_, path=path):
+            if path == self.image_path:
+                self._photo_hints = found.get("hints", [])
+                self.show_hints()
+
+        dialogs.run_in_thread(self, measure, path, on_done=done, on_error=lambda _: None)
+
+    def hints(self) -> list:
+        """The hints shown (the kinds not switched off, the most helpful first)."""
+        return image_hints.shown(self._photo_hints + self._mask_hints, app_settings().get("hints_off") or [])
+
+    def show_hints(self):
+        self.hint_box.set_hints(self.hints() if self.image_path else [])
+
+    def _hint_action(self, action: str):
+        if action == "crop":
+            self.edit_image()
+        elif action == "mask":
+            if self._mask is not None:
+                self.edit_mask()
+            else:
+                self.mask_eye.setChecked(True)
+
+    def dismiss_hint(self, key: str):
+        """Do not show this kind of hint again (the settings can show them all again)."""
+        off = list(app_settings().get("hints_off") or [])
+        if key not in off:
+            app_settings().set("hints_off", off + [key])
+        self.show_hints()
+        self.toast.emit(tr("ui.hint.dismissed"), "info")
+
+    # ------------------------------------------------------------------ earlier jobs of the picture
+    def _same_picture(self, summary: dict, job_dir: str) -> bool:
+        """The job was made from the studio's picture: the same file, or (the job keeps a copy of its picture)
+        a file of the same name and size."""
+        image = self.image_path
+        target = summary.get("target") or ""
+        if not image or not target:
+            return False
+        if os.path.normcase(os.path.abspath(target)) == os.path.normcase(os.path.abspath(image)):
+            return True
+        copy = os.path.join(job_dir, jobs.INPUT_DIR, os.path.basename(target))
+        if os.path.normcase(os.path.abspath(copy)) == os.path.normcase(os.path.abspath(image)):
+            return True
+        try:
+            return os.path.basename(target) == os.path.basename(image) and \
+                os.path.getsize(copy) == os.path.getsize(image)
+        except OSError:
+            return False
+
+    def refresh_history(self):
+        """The strip of earlier jobs of the studio's picture, the newest first (the shown one marked)."""
+        from ..pages.gallery import ScanCache
+
+        if self._history_cache is None:
+            self._history_cache = ScanCache()
+        found = []
+        if self.image_path:
+            for job_dir, summary in self._history_cache.scan(app_settings().get("output_dir")):
+                if os.path.isfile(os.path.join(job_dir, "job.json")) and self._same_picture(summary, job_dir):
+                    found.append((job_dir, summary))
+        found.sort(key=lambda t: str(t[1].get("created", "")), reverse=True)
+        while self.history_layout.count() > 1:
+            item = self.history_layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
+        self.history_jobs = [d for d, _ in found]
+        shown = os.path.normcase(os.path.abspath(self.view_dir)) if self.view_dir else ""
+        for job_dir, summary in found:
+            self.history_layout.insertWidget(self.history_layout.count() - 1,
+                                             self._history_button(job_dir, summary, shown))
+        self.history_title.setText(tr("ui.history.title", n=len(found)))
+        for w in (self.history_title, self.history_scroll):
+            w.setVisible(bool(found))
+
+    def _history_button(self, job_dir: str, summary: dict, shown: str) -> QToolButton:
+        from ...engine import imaging
+        from ..widgets.canvas import svg_renderer
+
+        method = summary.get("method") or schema.method_of(summary.get("settings"))
+        b = QToolButton()
+        b.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        b.setCheckable(True)
+        b.setChecked(os.path.normcase(os.path.abspath(job_dir)) == shown)
+        b.setFixedSize(84, 90)
+        b.setIconSize(QSize(64, 56))
+        b.setCursor(Qt.PointingHandCursor)
+        sketch = jobs.best_sketch(summary)
+        pm = QPixmap(64, 56)
+        pm.fill(QColor("white"))
+        renderer = None
+        try:
+            with open(sketch, encoding="utf-8") as f:
+                renderer = svg_renderer(f.read())
+        except OSError:
+            pass
+        if renderer:
+            from PySide6.QtGui import QPainter
+
+            p = QPainter(pm)
+            renderer.render(p, QRectF(4, 0, 56, 56))
+            p.end()
+        b.setIcon(QIcon(pm))
+        b.setText(f"{methods_ui.name(method)[:11]}\n{str(summary.get('created', ''))[5:10]}")
+        score = summary.get("clip_score")
+        secs = summary.get("seconds") or 0
+        b.setToolTip(tr("ui.history.tip", method=methods_ui.name(method), date=str(summary.get("created", ""))[:16],
+                        score=f"{score:.1f}" if isinstance(score, (int, float)) else "–",
+                        time=imaging.eta_string(secs) if secs else "–"))
+        b.clicked.connect(lambda _=False, d=job_dir: self._open_history_job(d))
+        return b
+
+    def _open_history_job(self, job_dir: str):
+        self.show_job_dir(job_dir)
+        self._history_timer.start()
 
     # ------------------------------------------------------------------ object mask
     def _mask_settings(self) -> tuple[bool, str, dict]:
@@ -686,6 +889,9 @@ class StudioPage(QWidget):
             self.mask_row.hide()
             self.drop.set_overlay(None)
             self._mask = None
+            if self._mask_hints:
+                self._mask_hints = []
+                self.show_hints()
             return
         self.mask_row.show()
         if self._mask is not None and self._mask["key"] == (self.image_path, model):
@@ -712,6 +918,8 @@ class StudioPage(QWidget):
             self._mask_failed(path, model, tr("ui.mask.not_cached"))
             return
         self._mask = {"key": (path, model), "prob": prob, "edited": edited is not None}
+        self._mask_hints = image_hints.mask_hints(prob, edited)
+        self.show_hints()
         mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
         pal = theme.current()
         veil = QColor(pal.surface2)
@@ -844,9 +1052,11 @@ class StudioPage(QWidget):
         self.modes.set_visible("condition", method in ("controlsketch", "scenesketch"))
         self.modes.set_text("condition", tr("ui.mode.background") if scene else tr("ui.mode.condition"))
         self.modes.set_visible("matrix", scene)
+        self.modes.set_visible("sheet", not scene)  # (SceneSketch has its matrix)
         current = self.modes.current()
         allowed = {"sketch", "compare", "mask"} | ({"attention"} if method != "swiftsketch" else set()) | (
-            {"condition"} if method in ("controlsketch", "scenesketch") else set()) | ({"matrix"} if scene else set())
+            {"condition"} if method in ("controlsketch", "scenesketch") else set()) | (
+            {"matrix"} if scene else {"sheet"})
         if current not in allowed:
             self.modes.set_current("sketch")
             self._mode_changed("sketch")
@@ -935,11 +1145,14 @@ class StudioPage(QWidget):
 
     # ================================================================ events
     def _reset_view(self):
+        if self._lapse["seed"] is not None:
+            self.stop_timelapse()
         self.resume_banner.hide()
         self._edit_undo.clear()
         self._edit_redo.clear()
         self.canvas.clear()
         self.matrix.clear()
+        self.sheet.clear()
         self.chart.reset(1)
         for t in self.thumbs.values():
             t.setParent(None)
@@ -996,6 +1209,7 @@ class StudioPage(QWidget):
 
     def forget_job_dir(self, job_dir: str):
         """A job folder was deleted in the gallery: stop showing its results and its saved input."""
+        self._history_timer.start()
         root = os.path.normcase(os.path.abspath(job_dir))
 
         def inside(path: str) -> bool:
@@ -1009,6 +1223,8 @@ class StudioPage(QWidget):
             self.file_label.setText("")
             self.file_label.setToolTip("")
             self.canvas.set_input(None)
+            self._photo_hints, self._mask_hints = [], []
+            self.show_hints()
             self._update_buttons()
 
     def _ensure_thumbs(self, seeds: list[int]):
@@ -1030,10 +1246,13 @@ class StudioPage(QWidget):
     def select_seed(self, seed: int):
         if seed != self.selected_seed:
             self.edit_bar.close_bar()
+            if self._lapse["seed"] is not None:
+                self.stop_timelapse()
         if seed != self.selected_seed and self.controller.is_busy():
             self.chart.reset(self.chart.total)  # the chart shows the selected sketch only
         self.selected_seed = seed
         self.matrix.set_selected(seed)
+        self.sheet.set_selected(seed)
         for s, t in self.thumbs.items():
             t.set_selected(s == seed)
         self.canvas.set_svg(self._shown_svg(seed))
@@ -1137,8 +1356,7 @@ class StudioPage(QWidget):
             self.seed_svgs[seed] = data["svg"]
             if seed in self.thumbs:
                 self.thumbs[seed].set_svg(data["svg"])
-            if self.view_method == "scenesketch":
-                self.matrix.set_cell(seed, data["svg"])
+            self._cell(seed, data["svg"])
             if seed == self.selected_seed:
                 self.canvas.set_svg(data["svg"])
         elif kind == "seed_done":
@@ -1150,8 +1368,7 @@ class StudioPage(QWidget):
                 self.thumbs[seed].set_svg(data["svg"])
                 self.thumbs[seed].set_caption(self._seed_caption(data.get("best_loss"), data.get("clip_score"), seed,
                                                                  data.get("pruned", False)))
-            if self.view_method == "scenesketch":
-                self.matrix.set_cell(seed, data["svg"])
+            self._cell(seed, data["svg"])
             if seed == self.selected_seed:
                 self.canvas.set_svg(self._shown_svg(seed))
                 self._update_layer_btn()
@@ -1170,6 +1387,7 @@ class StudioPage(QWidget):
                 if s == self.best_seed:
                     t.set_caption(f"★ {t.caption.text()}")
             self.matrix.set_best(self.best_seed)
+            self.sheet.set_best(self.best_seed)
             if self.best_seed is not None:
                 self.select_seed(self.best_seed)
         elif kind == "warning":
@@ -1230,6 +1448,7 @@ class StudioPage(QWidget):
             self._set_status(f"ui.status.scene_{part}" if part else "ui.status.optimizing", n=n, total=len(job.seeds))
 
     def _job_finished(self, job: QueuedJob):
+        self._history_timer.start()  # (a new job of the picture)
         if job is not self.view_job:
             self._update_running_banner()
             return
@@ -1313,8 +1532,7 @@ class StudioPage(QWidget):
             self.thumbs[seed].set_svg(self.seed_svgs[seed])
             self.thumbs[seed].set_caption(self._seed_caption(r.get("best_loss"), r.get("clip_score"), seed,
                                                              r.get("pruned", False)))
-            if self.view_method == "scenesketch":
-                self.matrix.set_cell(seed, self.seed_svgs[seed])
+            self._cell(seed, self.seed_svgs[seed])
             if r.get("clip_score") is not None:
                 self.seed_scores[seed] = r["clip_score"]
             cond = next((os.path.join(r["run_dir"], f) for f in os.listdir(r["run_dir"])
@@ -1346,10 +1564,12 @@ class StudioPage(QWidget):
             if s == self.best_seed:
                 t.set_caption(f"★ {t.caption.text()}")
         self.matrix.set_best(self.best_seed)
+        self.sheet.set_best(self.best_seed)
         if self.best_seed is not None:
             self.select_seed(self.best_seed)
         if isinstance(summary.get("settings"), dict):
             self.params.set_settings(summary["settings"])
+        self._history_timer.start()
         done, total = summary.get("progress") or (1, 1)
         self.progress.setValue(int(1000 * done / max(total, 1)))
         self._fill_stats_from_summary(summary)
@@ -1581,6 +1801,63 @@ class StudioPage(QWidget):
     def _cell_label(cell: int) -> str:
         return tr("ui.cell_caption", layer=cell // 100, level=cell % 100)
 
+    def set_focus(self, on: bool):
+        """Focus mode: the panes beside the canvas go (the main window hides its own parts and goes full screen)."""
+        self.focused = bool(on)
+        self.left_scroll.setVisible(not self.focused)
+        self.right_pane.setVisible(not self.focused)
+        self.focus_btn.setIcon(icons.icon("minimize-2" if self.focused else "maximize-2", theme.current().muted,
+                                          active_color=theme.current().text))
+        self.focus_btn.setToolTip(tr("ui.focus.leave" if self.focused else "ui.focus.enter"))
+
+    def _cell(self, seed: int, svg: str):
+        """A sketch of the shown job changed: its cell in the matrix (SceneSketch) and on the contact sheet."""
+        if self.view_method == "scenesketch":
+            self.matrix.set_cell(seed, svg)
+        thumb = self.thumbs.get(seed)
+        self.sheet.set_cell(seed, svg, thumb.caption.text() if thumb and thumb.caption.text() else str(seed))
+
+    def _sheet_menu(self, seed: int, pos):
+        self._sheet_menu_for(seed).exec(pos)
+
+    def _sheet_menu_for(self, seed: int) -> QMenu:
+        """The contact sheet's menu: the sketch as the job's result, a thumb up or down, the sketch large."""
+        menu = QMenu(self)
+        menu.addAction(tr("ui.sheet.open"), lambda: self._open_cell(seed))
+        best = menu.addAction(tr("ui.sheet.make_best"), lambda: self.choose_best(seed))
+        best.setEnabled(seed != self.best_seed and self._can_choose_best(seed))
+        menu.addSeparator()
+        for value, key in ((1, "ui.rate.up"), (-1, "ui.rate.down")):
+            act = menu.addAction(tr(key), lambda v=value: (self.select_seed(seed), self.rate_sketch(v)))
+            act.setEnabled(self._can_choose_best(seed))
+        return menu
+
+    def _can_choose_best(self, seed: int) -> bool:
+        """A finished sketch of a job that is not running (shown from its folder)."""
+        job = self.controller.current
+        running = job is not None and self.controller.is_busy() and job is self.view_job
+        return bool(self.view_dir) and not running and bool(self.seed_runs.get(seed))
+
+    def choose_best(self, seed: int) -> bool:
+        """Make ``seed`` the job's result (chosen by hand; the gallery, exports and the phone take it)."""
+        if not self._can_choose_best(seed):
+            return False
+        name = os.path.basename(os.path.normpath(self.seed_runs[seed]))
+        if not jobs.set_best_run(self.view_dir, name):
+            return False
+        old = self.best_seed
+        self.best_seed = seed
+        for s, t in self.thumbs.items():
+            t.set_best(s == seed)
+            text = t.caption.text().removeprefix("★ ")
+            t.set_caption(f"★ {text}" if s == seed else text)
+            self.sheet.set_caption(s, t.caption.text())
+        self.matrix.set_best(seed)
+        self.sheet.set_best(seed)
+        if old != seed:
+            self.toast.emit(tr("ui.sheet.best_set"), "success")
+        return True
+
     def _setup_matrix(self, settings: dict):
         if schema.method_of(settings) == "scenesketch":
             self.scene_layout = (schema.scene_layers(settings), int(settings.get("simplicity_levels", 0)))
@@ -1696,6 +1973,7 @@ class StudioPage(QWidget):
             style = "plain"
         self.canvas.set_style(style)
         self.matrix.set_style(style)
+        self.sheet.set_style(style)
         for t in self.thumbs.values():
             t.set_style(style)
         self.style_actions[style].setChecked(True)
@@ -1740,6 +2018,7 @@ class StudioPage(QWidget):
         self.vignette_action.setChecked(vignette > 0)
 
     def retranslate(self):
+        self.hint_box.retranslate()
         for key, action in self.style_actions.items():
             action.setText(tr(f"ui.brush.{key}"))
         self.paper_menu.setTitle(tr("ui.paper.label"))
@@ -1748,11 +2027,13 @@ class StudioPage(QWidget):
         self.paper_color_action.setText(tr("ui.paper.color") + " …")
         self.vignette_action.setText(tr("ui.paper.vignette"))
         self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{self.canvas.style()}")))
+        self.focus_btn.setToolTip(tr("ui.focus.leave" if self.focused else "ui.focus.enter"))
         for key, action in self.layer_actions.items():
             action.setText(tr(f"ui.layer.{key}"))
         self._update_layer_btn()
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
         self.history_btn.setToolTip(tr("ui.edit_bar.history_tip"))
+        self._update_play_btn()
         self.up_btn.setToolTip(tr("ui.rate.up"))
         self.down_btn.setToolTip(tr("ui.rate.down"))
         self.simplify_btn.setToolTip(tr("ui.edit_bar.simplify_tip"))
@@ -1841,8 +2122,9 @@ class StudioPage(QWidget):
 
     def _mode_changed(self, mode: str):
         self.canvas.set_mode(mode)
-        self.canvas.setVisible(mode != "matrix")
+        self.canvas.setVisible(mode not in ("matrix", "sheet"))
         self.matrix.setVisible(mode == "matrix")
+        self.sheet.setVisible(mode == "sheet")
         self._update_edit_tools()
         self._update_layer_btn()
 
@@ -1995,8 +2277,7 @@ class StudioPage(QWidget):
         self.seed_svgs[seed] = svg
         if seed in self.thumbs:
             self.thumbs[seed].set_svg(svg)
-        if self.view_method == "scenesketch":
-            self.matrix.set_cell(seed, svg)
+        self._cell(seed, svg)
         if seed == (self.selected_seed if self.selected_seed is not None else self.best_seed):
             self.canvas.set_svg(svg)
 
@@ -2116,6 +2397,73 @@ class StudioPage(QWidget):
         for b in (self.eraser_btn, self.pen_btn):
             b.setChecked(False)
         return seed
+
+    # ------------------------------------------------------------------ time-lapse
+    LAPSE_SECONDS = 6.0  # all saved steps at 1×
+
+    def toggle_timelapse(self) -> bool:
+        """Play the saved steps of the shown sketch on the canvas (again: pause / go on); it ends on the result."""
+        if self._lapse_timer.isActive():
+            self._lapse_timer.stop()
+            self._update_play_btn()
+            return False
+        seed = self._editable_seed()
+        if seed is None:
+            return False
+        from .. import export
+
+        if self._lapse["seed"] != seed or not self._lapse["frames"] or \
+                self._lapse["index"] >= len(self._lapse["frames"]):
+            frames = export.animation_frames(self.seed_runs[seed])
+            if len(frames) < 2:
+                self.toast.emit(tr("ui.edit_bar.no_steps"), "info")
+                return False
+            self._lapse.update(frames=frames, index=0, seed=seed)
+        self._lapse_timer.start(self._lapse_interval())
+        self._update_play_btn()
+        return True
+
+    def _lapse_interval(self) -> int:
+        n = max(len(self._lapse["frames"]), 1)
+        return max(20, int(1000 * self.LAPSE_SECONDS / n / self._lapse["speed"]))
+
+    def set_timelapse_speed(self, speed: float):
+        self._lapse["speed"] = float(speed)
+        self.speed_actions.get(float(speed), self.speed_actions[1.0]).setChecked(True)
+        if self._lapse_timer.isActive():
+            self._lapse_timer.setInterval(self._lapse_interval())
+
+    def _timelapse_step(self):
+        lapse = self._lapse
+        if lapse["seed"] != (self.selected_seed if self.selected_seed is not None else self.best_seed):
+            self.stop_timelapse()  # (another sketch was chosen meanwhile)
+            return
+        if lapse["index"] >= len(lapse["frames"]):
+            self.stop_timelapse()
+            return
+        try:
+            with open(lapse["frames"][lapse["index"]], encoding="utf-8") as f:
+                self.canvas.set_svg(f.read())
+        except OSError:
+            pass
+        lapse["index"] += 1
+
+    def stop_timelapse(self):
+        """End the time-lapse: the canvas shows the sketch again."""
+        was = self._lapse_timer.isActive() or self._lapse["index"] > 0
+        self._lapse_timer.stop()
+        self._lapse.update(frames=[], index=0, seed=None)
+        if was:
+            seed = self.selected_seed if self.selected_seed is not None else self.best_seed
+            if seed is not None and seed in self.seed_svgs:
+                self.canvas.set_svg(self._shown_svg(seed))
+        self._update_play_btn()
+
+    def _update_play_btn(self):
+        playing = self._lapse_timer.isActive()
+        self.play_btn.setIcon(icons.icon("pause" if playing else "play", theme.current().muted,
+                                         active_color=theme.current().text))
+        self.play_btn.setToolTip(tr("ui.timelapse.pause" if playing else "ui.timelapse.play"))
 
     def open_history(self) -> bool:
         """A slider over the saved steps of the shown sketch; one of them can become the result."""

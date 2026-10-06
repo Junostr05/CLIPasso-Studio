@@ -52,7 +52,7 @@ class MethodCard(QFrame):
 
     def _paint_icon(self):
         p = theme.current()
-        color = p.accent_hover if self.property("selected") else p.muted
+        color = p.accent_text if self.property("selected") else p.muted
         self.icon.setPixmap(icons.pixmap(methods_ui.ICONS[self.method], color, 26))
 
     def refresh_status(self, settings: dict | None = None) -> None:

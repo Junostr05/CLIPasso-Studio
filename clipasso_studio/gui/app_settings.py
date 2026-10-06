@@ -55,6 +55,7 @@ DEFAULTS: dict[str, Any] = {
     "remote_tailscale": False,  # also phones in the user's tailnet (Tailscale, 100.64.0.0/10)
     "remote_pin": "",  # six digits: signing in on the phone without the QR code (made when first needed)
     "user_presets": [],  # the user's own presets (gui/user_presets.py)
+    "hints_off": [],  # the kinds of quality hints about the photo not to show any more (gui/image_hints.py)
     "skipped_version": "",
     "last_version": "",  # the version of the last start ("what's new" after an update)
     "last_params": None,

@@ -21,10 +21,10 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFormLayou
 
 from ... import settings_schema as schema
 from ...engine import jobs
-from .. import albums, dialogs, icons, methods_ui, theme, thumbs
+from .. import albums, background, dialogs, icons, methods_ui, theme, thumbs
 from ..app_settings import app_settings
 from ..i18n import i18n, tr
-from ..widgets.common import SegmentedControl, button, label
+from ..widgets.common import Banner, EmptyState, SegmentedControl, button, label
 from .other_pages import _page_header, job_method, move_to_trash
 
 SORTS = ("newest", "oldest", "score", "duration", "strokes", "name")
@@ -286,7 +286,7 @@ class GalleryDelegate(QStyledItemDelegate):
         elif it.can_continue:
             done, total = it.summary.get("progress") or (0, 0)
             badges.append((tr(f"ui.gallery.state_{it.summary.get('state')}", done=done, total=total), pal.warning,
-                           "#111111"))
+                           pal.on_status))
         for tag in it.tags[:2]:
             badges.append((f"#{tag}", pal.surface3, pal.muted))
         fm = painter.fontMetrics()
@@ -329,6 +329,7 @@ class GalleryDelegate(QStyledItemDelegate):
 
 class GalleryView(QListView):
     open_requested = Signal(int)
+    view_requested = Signal(int)  # Space: the large view
     delete_requested = Signal()
     favourite_requested = Signal()
 
@@ -356,6 +357,8 @@ class GalleryView(QListView):
     def keyPressEvent(self, e):  # noqa: N802
         if e.key() in (Qt.Key_Return, Qt.Key_Enter) and self.currentIndex().isValid():
             self.open_requested.emit(self.currentIndex().row())
+        elif e.key() == Qt.Key_Space and not e.modifiers() and self.currentIndex().isValid():
+            self.view_requested.emit(self.currentIndex().row())
         elif e.key() == Qt.Key_Delete:
             self.delete_requested.emit()
         elif e.key() == Qt.Key_F and not e.modifiers():
@@ -447,6 +450,7 @@ class GalleryPage(QWidget):
     job_deleted = Signal(str)
     continue_job = Signal(str)
     toast = Signal(str, str)
+    go_studio = Signal()  # the empty gallery's button
 
     SORTS = SORTS
 
@@ -460,8 +464,7 @@ class GalleryPage(QWidget):
             controller.job_started.connect(lambda _: self._refresh_if_shown())
             controller.job_finished.connect(lambda _: self._refresh_if_shown())
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(14)
+        theme.page_layout(root)
         head = QHBoxLayout()
         lay, self.title, self.subtitle = _page_header("ui.gallery.title", "ui.gallery.subtitle")
         head.addLayout(lay, 1)
@@ -471,7 +474,9 @@ class GalleryPage(QWidget):
         self.export_btn.clicked.connect(self.export_items)
         self.refresh_btn = button("", "refresh-cw")
         self.refresh_btn.clicked.connect(self.refresh)
-        for b in (self.export_btn, self.folder_btn, self.refresh_btn):
+        self.slideshow_btn = button("", "play", "ghost")
+        self.slideshow_btn.clicked.connect(lambda: self.show_large(slideshow=True))
+        for b in (self.slideshow_btn, self.export_btn, self.folder_btn, self.refresh_btn):
             head.addWidget(b, 0, Qt.AlignBottom)
         root.addLayout(head)
 
@@ -523,6 +528,10 @@ class GalleryPage(QWidget):
         sb.setContentsMargins(0, 0, 0, 0)
         sb.setSpacing(8)
         self.selection_label = label("", "muted")
+        self.sel_view_btn = button("", "maximize-2", "ghost", size="sm")
+        self.sel_view_btn.clicked.connect(lambda: self.show_large(items=self.selected_items()))
+        self.sel_compare_btn = button("", "git-compare", "ghost", size="sm")
+        self.sel_compare_btn.clicked.connect(lambda: self.show_large(compare=True))
         self.sel_fav_btn = button("", "star", "ghost", size="sm")
         self.sel_fav_btn.clicked.connect(self.toggle_favourite_selected)
         self.sel_export_btn = button("", "file-down", "ghost", size="sm")
@@ -531,7 +540,8 @@ class GalleryPage(QWidget):
         self.sel_delete_btn.clicked.connect(self.delete_selected)
         sb.addWidget(self.selection_label)
         sb.addStretch(1)
-        for b in (self.sel_fav_btn, self.sel_export_btn, self.sel_delete_btn):
+        for b in (self.sel_view_btn, self.sel_compare_btn, self.sel_fav_btn, self.sel_export_btn,
+                  self.sel_delete_btn):
             sb.addWidget(b)
         self.selection_bar.setVisible(False)
         root.addWidget(self.selection_bar)
@@ -544,15 +554,25 @@ class GalleryPage(QWidget):
         self.delegate.star_clicked.connect(self._star_clicked)
         self.delegate.continue_clicked.connect(lambda row: self.continue_job.emit(self.model.item(row).job_dir))
         self.view.open_requested.connect(lambda row: self.open_job.emit(self.model.item(row).job_dir))
+        self.view.view_requested.connect(lambda row: self.show_large(self.model.item(row).job_dir))
+        self.viewer = None  # the large view (gallery_viewer.GalleryViewer), while it is open
         self.view.delete_requested.connect(self.delete_selected)
         self.view.favourite_requested.connect(self.toggle_favourite_selected)
         self.view.selectionModel().selectionChanged.connect(lambda *_: self._selection_changed())
         self.view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.view.customContextMenuRequested.connect(self._context_menu)
         root.addWidget(self.view, 1)
-        self.empty = label("", "muted")
-        self.empty.setAlignment(Qt.AlignCenter)
-        root.addWidget(self.empty)
+        self.empty = EmptyState("images")  # no results yet / none fits the search
+        self.empty.action.connect(self._empty_action)
+        self.empty.hide()
+        root.addWidget(self.empty, 1)
+        # while the results move to another folder (in the background) the gallery waits
+        self.lock_banner = Banner()
+        root.insertWidget(1, self.lock_banner)
+        self._lockable = [self.view, self.selection_bar, self.album_bar, self.export_btn, self.refresh_btn,
+                          self.slideshow_btn, self.folder_btn, self.filter, self.fav_btn, self.tag_filter, self.sort,
+                          self.search]
+        background.work().changed.connect(self._update_lock)
         i18n.language_changed.connect(lambda _: self.retranslate())
         self.retranslate()
 
@@ -741,8 +761,39 @@ class GalleryPage(QWidget):
             if it.job_dir in selected:
                 self.view.selectionModel().select(self.model.index(row), QItemSelectionModel.Select)
         self.export_btn.setEnabled(bool(self.shown_items()))
+        self.slideshow_btn.setEnabled(len(self.shown_items()) > 1)
         self.empty.setVisible(not items)
+        self.view.setVisible(bool(items))
+        self._update_empty()
         self._selection_changed()
+
+    def _update_empty(self):
+        if self._all:
+            self.empty.set_texts(tr("ui.gallery.empty_match_title"), tr("ui.gallery.empty_match"),
+                                 tr("ui.gallery.empty_reset"), "rotate-ccw")
+        else:
+            self.empty.set_texts(tr("ui.gallery.empty_title"), tr("ui.gallery.empty_how"),
+                                 tr("ui.empty.to_studio"), "brush")
+
+    def _empty_action(self):
+        if self._all:
+            self.reset_filters()
+        else:
+            self.go_studio.emit()
+
+    def reset_filters(self):
+        """Every result again: no search, method, favourites, tag or album filter."""
+        for w in (self.search, self.filter, self.fav_btn, self.tag_filter):
+            w.blockSignals(True)
+        self.search.setText("")
+        self.filter.set_current("all")
+        self.fav_btn.setChecked(False)
+        self.tag_filter.setCurrentIndex(0)
+        for w in (self.search, self.filter, self.fav_btn, self.tag_filter):
+            w.blockSignals(False)
+        self.album = ""
+        self._update_albums()
+        self._apply()
 
     def items(self) -> list[GalleryItem]:
         """The results shown right now, in their order."""
@@ -771,6 +822,55 @@ class GalleryPage(QWidget):
         n = len(self.view.selectionModel().selectedIndexes())
         self.selection_bar.setVisible(n > 1)
         self.selection_label.setText(tr("ui.gallery.selected", n=n))
+        self.sel_compare_btn.setVisible(n == 2)
+
+    def locked(self) -> bool:
+        """The results are moving to another folder (``background``): nothing is changed meanwhile."""
+        return background.work().busy("output")
+
+    def _update_lock(self):
+        locked = self.locked()
+        if locked == getattr(self, "_was_locked", False):
+            return  # (progress of the move: nothing changes here)
+        self._was_locked = locked
+        for w in self._lockable:
+            w.setEnabled(not locked)
+        if locked:
+            self.lock_banner.show_message(tr("ui.work.gallery_locked"), icon_name="hourglass")
+            if self.viewer is not None:
+                self.viewer.close()
+        else:
+            self.lock_banner.hide()
+            self._apply()  # (the buttons' own enabled state again)
+
+    # ------------------------------------------------------------------ large view
+    def show_large(self, job_dir: str | None = None, items: list[GalleryItem] | None = None,
+                   slideshow: bool = False, compare: bool = False):
+        """The large view over the shown results (or ``items``), at ``job_dir``; with two results selected they can
+        be compared in it (``compare``: at once). ``slideshow``: it goes on by itself."""
+        from ..gallery_viewer import GalleryViewer
+
+        chosen = self.selected_items()
+        pair = chosen if len(chosen) == 2 else None
+        shown = [it for it in (items if items is not None and len(items) > 1 else self.items())
+                 if it.sketch and os.path.isfile(it.sketch)]
+        if job_dir is None and items is not None and len(items) == 1:
+            job_dir = items[0].job_dir
+        if job_dir is None and chosen:
+            job_dir = chosen[0].job_dir
+        index = next((i for i, it in enumerate(shown) if it.job_dir == job_dir), 0)
+        if self.viewer is not None:
+            self.viewer.close()
+            self.viewer.deleteLater()
+        self.viewer = GalleryViewer(shown, index, pair, self)
+        self.viewer.setWindowModality(Qt.WindowModal)
+        self.viewer.open_job.connect(self.open_job)
+        self.viewer.show()
+        if compare and pair:
+            self.viewer.set_compare(True)
+        elif slideshow:
+            self.viewer.set_slideshow(True)
+        return self.viewer
 
     # ------------------------------------------------------------------ actions
     def _star_clicked(self, row: int):
@@ -779,6 +879,8 @@ class GalleryPage(QWidget):
             self.set_favourite([it.job_dir], not it.favourite)
 
     def set_favourite(self, job_dirs: list[str], value: bool) -> None:
+        if self.locked():
+            return
         for d in job_dirs:
             try:
                 set_favourite(d, value)
@@ -846,7 +948,11 @@ class GalleryPage(QWidget):
         chosen = self.selected_items()
         it = self.model.item(index.row())
         menu = QMenu(self)
+        if len(chosen) == 2:
+            menu.addAction(icons.icon("git-compare"), tr("ui.viewer.compare"), lambda: self.show_large(compare=True))
+            menu.addSeparator()
         if len(chosen) == 1:
+            menu.addAction(icons.icon("maximize-2"), tr("ui.viewer.show"), lambda: self.show_large(it.job_dir))
             menu.addAction(icons.icon("brush"), tr("ui.gallery.open"), lambda: self.open_job.emit(it.job_dir))
             if it.can_continue:
                 menu.addAction(icons.icon("play"), tr("ui.continue"), lambda: self.continue_job.emit(it.job_dir))
@@ -903,6 +1009,8 @@ class GalleryPage(QWidget):
 
     def delete_job(self, job_dir: str, confirm: bool = True, permanent_ok: bool = False,
                    refresh: bool = True) -> bool:
+        if self.locked():
+            return False
         name = os.path.basename(os.path.normpath(job_dir))
         if os.path.normcase(os.path.abspath(job_dir)) in self._active():
             QMessageBox.information(self, tr("ui.gallery.delete"), tr("ui.gallery.delete_active", name=name))
@@ -948,6 +1056,11 @@ class GalleryPage(QWidget):
         self.export_btn.setText(tr("ui.batch.export_shown"))
         self.export_btn.setToolTip(tr("ui.batch.export_shown_tip"))
         self.refresh_btn.setText(tr("ui.refresh"))
+        self.slideshow_btn.setText(tr("ui.viewer.slideshow"))
+        self.slideshow_btn.setToolTip(tr("ui.viewer.slideshow_gallery_tip"))
+        self.sel_view_btn.setText(tr("ui.viewer.show"))
+        self.sel_compare_btn.setText(tr("ui.viewer.compare"))
+        self.sel_compare_btn.setToolTip(tr("ui.viewer.compare_tip"))
         self.sel_fav_btn.setText(tr("ui.gallery.favourite"))
         self.sel_export_btn.setText(tr("ui.gallery.export_short"))
         self.sel_delete_btn.setText(tr("ui.gallery.delete"))
@@ -957,6 +1070,6 @@ class GalleryPage(QWidget):
         self.new_album_btn.setToolTip(tr("ui.albums.new_tip"))
         if "" in self.album_chips:
             self._update_albums()
-        self.empty.setText(tr("ui.gallery.empty"))
+        self._update_empty()
         self._selection_changed()
         self.view.viewport().update()

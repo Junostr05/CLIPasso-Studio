@@ -6,13 +6,13 @@ import json
 import os
 import sys
 
-from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QByteArray, QEvent, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import dialogs, icons, methods_ui, power, shortcuts, theme, updates
+from . import a11y, background, dialogs, icons, methods_ui, power, shortcuts, theme, updates
 from .app_settings import app_settings
 from .drop import dropped_images, has_images
 from .controller import JobController
@@ -94,7 +94,7 @@ class UpdateBar(QFrame):
 
     def retranslate(self):
         p = theme.current()
-        self.icon.setPixmap(icons.pixmap("sparkles", p.accent_hover, 18))
+        self.icon.setPixmap(icons.pixmap("sparkles", p.accent_text, 18))
         version = self.release.get("tag", "").lstrip("v")
         self.text.setText(tr("ui.update.available", version=version, current=__version__))
         can = bool(self.release) and updates.can_install(self.release)
@@ -126,19 +126,22 @@ def _dark_title_bar(window: QWidget, dark: bool) -> None:
         pass
 
 
+MIN_WIDTH = 1200  # px: the studio's input, canvas and parameters fit side by side
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
-        self.setMinimumSize(1080, 660)
+        self.setMinimumSize(MIN_WIDTH, 660)  # (the studio's three columns side by side)
         self.resize(1440, 900)
-        if float(app_settings().get("ui_scale", 1.0)) > 1.0:  # larger interface: still fit the screen
-            screen = QApplication.primaryScreen()
-            if screen is not None:
-                avail = screen.availableGeometry()
-                self.setMinimumSize(min(1080, int(avail.width() * 0.9)), min(660, int(avail.height() * 0.85)))
-                self.resize(min(1440, int(avail.width() * 0.95)), min(900, int(avail.height() * 0.9)))
+        screen = QApplication.primaryScreen()
+        if screen is not None:  # a small screen or a larger interface: still fit the screen
+            avail = screen.availableGeometry()
+            self.setMinimumSize(min(MIN_WIDTH, int(avail.width() * 0.9)), min(660, int(avail.height() * 0.85)))
+        if float(app_settings().get("ui_scale", 1.0)) > 1.0 and screen is not None:
+            self.resize(min(1440, int(avail.width() * 0.95)), min(900, int(avail.height() * 0.9)))
         self.controller = JobController(self)
 
         root = QWidget()
@@ -201,6 +204,7 @@ class MainWindow(QMainWindow):
                 sv.addWidget(self.run_indicator)
             sv.addWidget(b, 0, Qt.AlignHCenter)
         h.addWidget(side)
+        self.sidebar = side
 
         # --------------------------------------------------------------- pages
         self.stack = QStackedWidget()
@@ -228,6 +232,17 @@ class MainWindow(QMainWindow):
         uw.addWidget(self.update_bar)
         self.update_wrap.hide()
         cv.addWidget(self.update_wrap)
+        from .widgets.work_strip import WorkStrip
+
+        self.work_wrap = QWidget()  # moving folders, unpacking an update: in the background, shown here
+        ww = QVBoxLayout(self.work_wrap)
+        ww.setContentsMargins(24, 10, 24, 0)
+        self.work_strip = WorkStrip(self.work_wrap)
+        ww.addWidget(self.work_strip)
+        self.work_wrap.hide()
+        background.work().changed.connect(self._work_changed)
+        background.work().ended.connect(self._work_ended)
+        cv.addWidget(self.work_wrap)
         cv.addWidget(self.stack, 1)
         h.addWidget(content, 1)
         self.setCentralWidget(root)
@@ -236,19 +251,24 @@ class MainWindow(QMainWindow):
         self.studio.toast.connect(self.toast.show_message)
         self.studio.open_queue.connect(lambda: self.show_page("queue"))
         self.gallery.open_job.connect(self._open_job)
+        self.gallery.go_studio.connect(lambda: self.show_page("studio"))
+        self.compare.go_studio.connect(lambda: self.show_page("studio"))
         self.gallery.job_deleted.connect(self.studio.forget_job_dir)
         self.gallery.continue_job.connect(self.continue_job)
         self.compare.open_job.connect(self._open_job)
         self.compare.toast.connect(self.toast.show_message)
+        self.studio.focus_requested.connect(self.toggle_focus)
         self.gallery.toast.connect(self.toast.show_message)
         self.queue.toast.connect(self.toast.show_message)
         self.queue.load_in_studio.connect(self.load_in_studio)
         self.controller.queue_idle.connect(self._queue_done)
+        self.controller.held.connect(lambda: self.toast.show_message(tr("ui.work.job_waits"), "info"))
         self.settings.busy_check = self.controller.is_busy
         s = app_settings()  # the version of the last start (settings from before 3.0 have none)
         self._last_version = s.get("last_version") or ("2.4.0" if s.get("tour_done") else "")
         self.settings.waiting_files = self.controller.waiting_files
         self.settings.output_dir_changed.connect(self._output_dir_changed)
+        self.settings.hints_changed.connect(self.studio.show_hints)
         self.settings.backup_restored.connect(self._backup_restored)
         # the phone: the remote page in the home network and Telegram messages
         from .phone import PhoneLink
@@ -279,6 +299,11 @@ class MainWindow(QMainWindow):
         self.settings.theme_changed.connect(self.apply_theme)
         self.controller.job_event.connect(self._on_job_event)
         self.controller.job_finished.connect(self._on_job_finished)
+        # the job's progress on the taskbar button (Windows), also with the window minimised
+        self.taskbar = None
+        self._taskbar_failed = False  # red until the window is looked at again
+        self.controller.queue_changed.connect(self.update_taskbar)
+        background.work().changed.connect(self.update_taskbar)
         self.controller.queue_changed.connect(self._update_nav_badges)
         i18n.language_changed.connect(lambda _: self.retranslate())
 
@@ -289,6 +314,7 @@ class MainWindow(QMainWindow):
         self._install_shortcuts()
         self.retranslate()
         self.show_page("studio")
+        a11y.link_labels(self)  # every page: switches and icon buttons named after their row's label
         geo = app_settings().get("geometry")
         if geo:
             try:
@@ -315,8 +341,6 @@ class MainWindow(QMainWindow):
 
     def install_update(self, release: dict) -> bool:
         """Download the update, then close and run the installer (or start the new portable exe)."""
-        from PySide6.QtCore import QProcess
-
         edition, mode = updates.build_info()
         dlg = dialogs.UpdateDownloadDialog(release, self)
         if dlg.exec() != dialogs.QDialog.Accepted or not dlg.path:
@@ -334,21 +358,41 @@ class MainWindow(QMainWindow):
             return False
         path = dlg.path
         if mode in ("portable", "portable-zip"):  # about a gigabyte: in the background, the window stays usable
-            busy = dialogs.BusyDialog(tr("ui.update.placing" if mode == "portable" else "ui.update.unpacking"), self)
-            placed = []
-
-            def work(progress=None):
+            def place(progress=None):
                 if mode == "portable":
-                    return updates.place_portable(dlg.path, version)
-                return updates.place_portable_zip(dlg.path, version, progress=progress)
+                    return updates.place_portable(path, version)
+                return updates.place_portable_zip(path, version, progress=progress)
 
-            dialogs.run_in_thread(busy, work, on_progress=busy.progress,
-                                  on_done=lambda p: (placed.append(p), busy.accept()), on_error=busy.fail)
-            if not busy.exec() or not placed:
-                QMessageBox.warning(self, APP_NAME, busy.error or tr("ui.error"))
-                return False
-            path = placed[0]
+            return background.work().start(
+                "update", tr("ui.update.placing" if mode == "portable" else "ui.update.unpacking"), place,
+                on_done=lambda placed: self._update_placed(placed, mode),
+                on_error=lambda m: QMessageBox.warning(self, APP_NAME, m or tr("ui.error")))
+        return self.run_installer(path, mode)
+
+    def _update_placed(self, placed: str, mode: str) -> None:
+        """The new portable version is in place (unpacked in the background): restart now, or when the app closes."""
+        if not placed or placed == "None":
+            QMessageBox.warning(self, APP_NAME, tr("ui.error"))
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(APP_NAME)
+        box.setText(tr("ui.update.placed_q"))
+        now = box.addButton(tr("ui.update.restart_now"), QMessageBox.AcceptRole)
+        box.addButton(tr("ui.later"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is now:
+            self.run_installer(placed, mode)
+        else:
+            self._placed_update = (placed, mode)
+            self.toast.show_message(tr("ui.update.on_close"), "info")
+
+    def run_installer(self, path: str, mode: str) -> bool:
+        """Close the app and start the installer / the new portable version."""
+        from PySide6.QtCore import QProcess
+
         program, args = updates.install_command(path, mode)
+        self._placed_update = None  # (started here, not again when the window closes)
         if not self.close():  # a running job: the user decided to keep it
             return False
         from .. import gpu_runtime
@@ -449,6 +493,33 @@ class MainWindow(QMainWindow):
             add(seq, self._shortcut_redo)
         for i, (key, _) in enumerate(NAV):
             add(f"Ctrl+{i + 1}", lambda k=key: self.show_page(k))
+        add("F11", self.toggle_focus)
+        add("Esc", lambda: self.set_focus(False))
+        self.shortcuts["Esc"].setEnabled(False)  # (only in focus mode: dialogs and editors keep their own Esc)
+
+    # -------------------------------------------------------------- focus mode
+    def toggle_focus(self):
+        self.set_focus(not self.studio.focused)
+
+    def set_focus(self, on: bool):
+        """Focus mode: the studio's canvas alone, full screen – the navigation, the update bar and the panes beside
+        the canvas go; the window comes back as it was."""
+        on = bool(on)
+        if on == self.studio.focused:
+            return
+        if on:
+            self.show_page("studio")
+            self._before_focus = self.windowState()
+            self._update_shown = self.update_wrap.isVisible()
+        self.sidebar.setVisible(not on)
+        self.update_wrap.setVisible(not on and getattr(self, "_update_shown", False))
+        self.studio.set_focus(on)
+        self.shortcuts["Esc"].setEnabled(on)
+        if on:
+            self.showFullScreen()
+        else:
+            self.setWindowState(getattr(self, "_before_focus", Qt.WindowNoState))
+            self.show()
 
     def _shortcut_open(self):
         self.show_page("studio")
@@ -664,9 +735,12 @@ class MainWindow(QMainWindow):
         self.studio.show_running_job()
 
     def show_page(self, key: str):
+        if key != "studio" and self.studio.focused:  # (another page: the focus mode ends)
+            self.set_focus(False)
         self.stack.setCurrentWidget(self.pages[key])
         self.nav_buttons[key].setChecked(True)
         self._refresh_nav_icons()
+        a11y.link_labels(self.pages[key])  # (names for screen readers, also for buttons made since)
 
     def _open_job(self, job_dir: str):
         self.studio.show_job_dir(job_dir)
@@ -741,9 +815,40 @@ class MainWindow(QMainWindow):
             self.run_indicator.setVisible(True)
             self.run_bar.setValue(int(job.progress * 1000))
             self.run_label.setText(f"{int(job.progress * 100)} %")
+            self.update_taskbar()
+
+    def update_taskbar(self):
+        """The taskbar button shows the running job (green, yellow when paused), a failed one (red, until the
+        window is active again) or other work in the background."""
+        from . import taskbar
+
+        cur = self.controller.current
+        if cur is not None and cur.status in ("running", "paused"):
+            self._taskbar_failed = False
+            state = taskbar.state_for(cur.status, cur.progress)
+        elif self._taskbar_failed:
+            state = taskbar.state_for("failed", None)
+        elif background.work().busy():
+            kind = next(iter(background.work().jobs))
+            state = taskbar.state_for("busy", background.work().fraction(kind))
+        else:
+            state = taskbar.state_for(None, None)
+        if self.taskbar is None:
+            if state[0] == taskbar.NOPROGRESS:
+                return
+            self.taskbar = taskbar.Taskbar(int(self.winId()))
+        self.taskbar.set(*state)
+
+    def changeEvent(self, e):  # noqa: N802
+        super().changeEvent(e)
+        if e.type() == QEvent.ActivationChange and self.isActiveWindow() and self._taskbar_failed:
+            self._taskbar_failed = False  # (seen)
+            self.update_taskbar()
 
     def _on_job_finished(self, job):
         self.run_indicator.setVisible(self.controller.is_busy())
+        self._taskbar_failed = job.status == "failed" and not self.isActiveWindow()
+        self.update_taskbar()
         if job.status == "failed" and getattr(job, "oom", False):
             QTimer.singleShot(0, lambda: self.offer_out_of_memory_retry(job))
         if app_settings().get("notify") and not self.isActiveWindow():
@@ -787,6 +892,10 @@ class MainWindow(QMainWindow):
         if getattr(self, "_closing_for_theme", False):
             event.accept()
             return
+        if background.work().busy():  # (a half-moved folder must not stay behind)
+            QMessageBox.information(self, APP_NAME, tr("ui.work.quit_wait"))
+            event.ignore()
+            return
         if self.controller.is_busy():
             res = QMessageBox.question(self, APP_NAME, tr("ui.quit_running"))
             if res != QMessageBox.Yes:
@@ -799,6 +908,23 @@ class MainWindow(QMainWindow):
         self.controller.shutdown()
         dialogs.wait_for_threads()
         event.accept()
+        placed = getattr(self, "_placed_update", None)
+        if placed:  # an unpacked update the user wanted when the app closes
+            from PySide6.QtCore import QProcess
+
+            from .. import gpu_runtime
+
+            program, args = updates.install_command(*placed)
+            gpu_runtime.forget_for_children()
+            QProcess.startDetached(program, args)
+
+    def _work_changed(self):
+        self.work_wrap.setVisible(background.work().busy())
+
+    def _work_ended(self, kind: str, ok: bool):
+        texts = {"output": "ui.work.output_done", "models": "ui.work.models_done"}
+        if ok and kind in texts:
+            self.toast.show_message(tr(texts[kind]), "success")
 
     def resizeEvent(self, e):  # noqa: N802
         super().resizeEvent(e)

@@ -338,9 +338,18 @@ class PhoneApi:
                 "albums": albums.names([it.summary for it in items]),
                 "methods": [{"key": m, "name": methods_ui.name(m)} for m in schema.METHODS]}
 
+    @staticmethod
+    def _not_moving(kind: str) -> None:
+        """PhoneError while the results ("output") or the models ("models") move to another folder."""
+        from .background import work
+
+        if work().busy(kind):
+            raise PhoneError(tr("ui.work.gallery_locked" if kind == "output" else "ui.work.models_locked"))
+
     def do_fav(self, data: dict) -> dict:
         from .pages.gallery import set_favourite
 
+        self._not_moving("output")
         it = self._result({"dir": data.get("dir")})
         set_favourite(it.job_dir, bool(data.get("value")))
         if self.gallery is not None:
@@ -437,6 +446,7 @@ class PhoneApi:
 
         if self._download and self._download["status"] == "running":
             raise PhoneError(tr("ui.phone.page.download_running"))
+        self._not_moving("models")
         keys = [k for k in (data.get("keys") or self.studio.params.missing_models()) if k in store.SPECS]
         keys = [k for k in keys if not store.is_available(k)]
         if not keys:
@@ -965,6 +975,7 @@ class PhoneApi:
         """A result goes to the recycle bin (the gallery's own way; never a job the queue works on)."""
         import shutil
 
+        self._not_moving("output")
         it = self._result(data)
         name = os.path.basename(os.path.normpath(it.job_dir))
         if os.path.normcase(os.path.abspath(it.job_dir)) in self.controller.active_dirs():

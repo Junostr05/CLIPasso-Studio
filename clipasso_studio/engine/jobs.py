@@ -423,6 +423,43 @@ def best_sketch(summary: dict) -> str:
     return summary.get("best_svg", "")
 
 
+def set_best_run(job_dir: str, run_name: str) -> bool:
+    """Make another sketch of a finished job its result (chosen by hand in the studio): ``job.json`` and the
+    ``<run>_best.svg/.png`` copies, as :func:`finish_job` writes them."""
+    path = os.path.join(job_dir, "job.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            summary = json.load(f)
+    except (OSError, ValueError):
+        return False
+    run = next((r for r in summary.get("runs", []) if r.get("run_name") == run_name), None)
+    if run is None:
+        return False
+    run_dir = run.get("run_dir") or ""
+    if not os.path.isdir(run_dir):  # (the job folder moved since)
+        run_dir = os.path.join(job_dir, run_name)
+    src = run.get("best_svg") or ""
+    if not os.path.isfile(src):
+        src = os.path.join(run_dir, "best_iter.svg")
+    if not os.path.isfile(src):
+        return False
+    for name in os.listdir(job_dir):
+        if name.endswith(("_best.svg", "_best.png")):
+            try:
+                os.remove(os.path.join(job_dir, name))
+            except OSError:
+                pass
+    best_copy = os.path.join(job_dir, f"{run_name}_best.svg")
+    shutil.copyfile(src, best_copy)
+    png = os.path.join(run_dir, "best_iter.png")
+    if os.path.isfile(png):
+        shutil.copyfile(png, os.path.join(job_dir, f"{run_name}_best.png"))
+    summary.update(best_run=run_name, best_svg=best_copy, clip_score=run.get("clip_score"), best_by="chosen")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    return True
+
+
 def finish_job(job_dir: str, target: str, settings: dict, results: list[SeedResult],
                reporter=None) -> dict:
     """Pick the best sketch and copy it to ``<run>_best.svg`` like the original.

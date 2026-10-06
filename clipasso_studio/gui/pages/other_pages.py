@@ -15,13 +15,13 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, model_store
-from .. import crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs
+from .. import background, crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
 from ..widgets.canvas import IMAGE_FILTER
-from ..widgets.common import Card, SegmentedControl, ToggleSwitch, button, label, tool_button
+from ..widgets.common import Card, EmptyState, SegmentedControl, ToggleSwitch, button, label, tool_button
 
 try:
     from .. import _build_info  # generated at build time
@@ -294,8 +294,7 @@ class QueuePage(QWidget):
         self.controller = controller
         self.settings_provider = settings_provider
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
         head = QHBoxLayout()
         lay, self.title, self.subtitle = _page_header("ui.queue.title", "ui.queue.subtitle")
         head.addLayout(lay, 1)
@@ -348,7 +347,8 @@ class QueuePage(QWidget):
         self.list_lay.addStretch(1)
         body = QHBoxLayout()
         body.setSpacing(14)
-        body.addWidget(_scroll(host), 1)
+        self.list_scroll = _scroll(host)
+        body.addWidget(self.list_scroll, 1)
         self.detail = QueueDetails()
         self.detail.load.connect(self._load_in_studio)
         self.detail.replace.connect(self._replace_settings)
@@ -359,9 +359,10 @@ class QueuePage(QWidget):
         self._eta_timer = QTimer(self, interval=2000)  # the remaining time of the whole queue
         self._eta_timer.timeout.connect(self._update_total)
         self._eta_timer.start()
-        self.empty = label("", "muted")
-        self.empty.setAlignment(Qt.AlignCenter)
-        root.addWidget(self.empty)
+        self.empty = EmptyState("list-todo")
+        self.empty.action.connect(self._add_images)
+        self.empty.hide()
+        root.addWidget(self.empty, 1)
         self.rows: dict[int, QueueRow] = {}
         controller.queue_changed.connect(self.rebuild)
         controller.job_event.connect(self._on_event)
@@ -471,6 +472,7 @@ class QueuePage(QWidget):
         self.select_job(self.selected_id)
         self._update_total()
         self.empty.setVisible(not self.controller.jobs)
+        self.list_scroll.setVisible(bool(self.controller.jobs))
         self.run_btn.setEnabled(bool(self.controller.pending()) and not self.controller.is_busy())
         self.export_btn.setEnabled(any(j.status in ("done", "cancelled") and j.job_dir for j in self.controller.jobs))
 
@@ -518,7 +520,7 @@ class QueuePage(QWidget):
         for i, key in enumerate(power.ACTIONS):
             self.done_combo.setItemText(i, tr(f"ui.queue.done_{key}"))
         self.done_combo.setToolTip(tr("ui.queue.when_done_tip"))
-        self.empty.setText(tr("ui.queue.empty"))
+        self.empty.set_texts(tr("ui.queue.empty_title"), tr("ui.queue.empty"), tr("ui.queue.add"), "plus")
         self.rebuild()
 
 
@@ -578,7 +580,7 @@ class ModelRow(Card):
         row = QHBoxLayout()
         row.setSpacing(12)
         ic = QLabel()
-        ic.setPixmap(icons.pixmap("box", theme.current().accent_hover, 22))
+        ic.setPixmap(icons.pixmap("box", theme.current().accent_text, 22))
         row.addWidget(ic)
         col = QVBoxLayout()
         col.setSpacing(2)
@@ -666,8 +668,7 @@ class ModelsPage(QWidget):
         self.setObjectName("Page")
         self.release_worker = lambda: None  # the main window: end the warm worker (it keeps model files open)
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
         lay, self.title, self.subtitle = _page_header("ui.models.title", "ui.models.subtitle")
         root.addLayout(lay)
         host = QWidget()
@@ -717,19 +718,20 @@ class SettingsPage(QWidget):
     keep_models_changed = Signal(bool)
     watch_changed = Signal()  # the watched folder was set up differently
     output_dir_changed = Signal(str, str, bool)  # (old, new, the results were moved along)
+    hints_changed = Signal()  # the quality hints switched off are shown again
     check_updates_now = Signal()
     backup_restored = Signal(dict)  # the report of backup.restore (its queue entries are still to be queued)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.busy_check = lambda: False  # the main window: is a job running?
+        background.work().changed.connect(self._update_moving)
         self.waiting_files = lambda: []  # the main window: files the waiting jobs need (not cleared)
         self.release_worker = lambda: None  # the main window: end the warm worker
         self.setObjectName("Page")
         s = app_settings()
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
         lay, self.title, self.subtitle = _page_header("ui.settings.title", "ui.settings.subtitle")
         root.addLayout(lay)
         host = QWidget()
@@ -861,6 +863,17 @@ class SettingsPage(QWidget):
         r.addWidget(self.taste_state)
         r.addWidget(self.taste_forget)
         self.behaviour.body.addLayout(r)
+        # the quality hints about the photo switched off with "don't show again"
+        self.hints_label = label("", None)
+        self.hints_state = label("", "faint")
+        self.hints_reset = button("", "rotate-ccw", "ghost", size="sm")
+        self.hints_reset.clicked.connect(self.show_hints_again)
+        r = QHBoxLayout()
+        r.addWidget(self.hints_label)
+        r.addStretch(1)
+        r.addWidget(self.hints_state)
+        r.addWidget(self.hints_reset)
+        self.behaviour.body.addLayout(r)
         col.addWidget(self.behaviour)
 
         self._build_watch(col)
@@ -983,6 +996,17 @@ class SettingsPage(QWidget):
         self.taste_forget.setEnabled(up + down > 0)
         return up, down
 
+    def _update_hints_state(self) -> None:
+        n = len(app_settings().get("hints_off") or [])
+        self.hints_state.setText(tr("ui.hint.off_n", n=n) if n else tr("ui.hint.all_on"))
+        self.hints_reset.setEnabled(bool(n))
+
+    def show_hints_again(self) -> None:
+        """Every kind of quality hint is shown again."""
+        app_settings().set("hints_off", [])
+        self._update_hints_state()
+        self.hints_changed.emit()
+
     def forget_taste(self, confirm: bool = True) -> bool:
         from ...engine import aesthetic
 
@@ -997,6 +1021,7 @@ class SettingsPage(QWidget):
         self.refresh_storage()
         self.refresh_taste()
         self.refresh_sdxl_choice()  # (the studio may have remembered an answer)
+        self._update_hints_state()  # (switched off in the studio meanwhile)
 
     def _build_watch(self, col):
         """Watched folder: new images there are sketched by themselves and exported."""
@@ -1152,17 +1177,25 @@ class SettingsPage(QWidget):
                     QMessageBox.warning(self, tr("ui.settings.output"),
                                         tr("ui.settings.models_no_space", size=_bytes_text(size)))
                     return False
-                dlg = dialogs.BusyDialog(tr("ui.settings.output_moving"), self)
-                dialogs.run_in_thread(dlg, storage.move_results, old, str(new), on_progress=dlg.progress,
-                                      on_done=lambda _: dlg.accept(), on_error=dlg.fail)
-                if not dlg.exec():
-                    QMessageBox.warning(self, tr("ui.settings.output"), dlg.error or tr("ui.error"))
-                    return False
+                # in the background (the app stays usable; new jobs wait, the gallery is locked meanwhile)
+                return background.work().start(
+                    "output", tr("ui.settings.output_moving"), storage.move_results, old, str(new),
+                    on_done=lambda _: self._output_set(old, new, True),
+                    on_error=lambda m: QMessageBox.warning(self, tr("ui.settings.output"), m or tr("ui.error")))
+        self._output_set(old, new, bool(names and move))
+        return True
+
+    def _update_moving(self) -> None:
+        """While the results / models move, their folder cannot be changed again."""
+        w = background.work()
+        self.out_btn.setEnabled(not w.busy("output"))
+        self.models_btn.setEnabled(not w.busy("models"))
+
+    def _output_set(self, old: str, new: Path, moved: bool) -> None:
         self.out_edit.setText(str(new))
         app_settings().set("output_dir", str(new))
-        self.output_dir_changed.emit(old, str(new), bool(names and move))
+        self.output_dir_changed.emit(old, str(new), moved)
         self.refresh_storage()
-        return True
 
     def choose_models_dir(self, folder: str | None = None, move: bool | None = None) -> bool:
         """Change the folder of the downloaded models, moving them there if wanted (``folder`` /
@@ -1201,17 +1234,19 @@ class SettingsPage(QWidget):
                 QMessageBox.warning(self, tr("ui.settings.models_dir"), tr("ui.settings.models_no_space",
                                                                          size=_size_text(size / 1e6)))
                 return False
-            dlg = dialogs.BusyDialog(tr("ui.settings.models_moving"), self)
-            dialogs.run_in_thread(dlg, model_store.move_models, cur, new, on_progress=dlg.progress,
-                                  on_done=lambda _: dlg.accept(), on_error=dlg.fail)
-            if not dlg.exec():
-                QMessageBox.warning(self, tr("ui.settings.models_dir"), dlg.error or tr("ui.error"))
-                return False
+            # in the background (the app stays usable; jobs and model downloads wait meanwhile)
+            return background.work().start(
+                "models", tr("ui.settings.models_moving"), model_store.move_models, cur, new,
+                on_done=lambda _: self._models_dir_set(new),
+                on_error=lambda m: QMessageBox.warning(self, tr("ui.settings.models_dir"), m or tr("ui.error")))
+        self._models_dir_set(new)
+        return True
+
+    def _models_dir_set(self, new: Path) -> None:
         default = paths.default_models_dir().resolve()
         app_settings().set("models_dir", "" if new == default else str(new))
         self._show_models_dir()
         self.models_dir_changed.emit()
-        return True
 
     def _show_models_dir(self):
         folder = paths.downloaded_models_dir()
@@ -1462,6 +1497,9 @@ class SettingsPage(QWidget):
         self.parallel.setToolTip(tr("ui.settings.parallel_tip"))
         self.multi_gpu_label.setText(tr("ui.settings.multi_gpu"))
         self.taste_label.setText(tr("ui.taste.label"))
+        self.hints_label.setText(tr("ui.hint.settings_label"))
+        self.hints_reset.setText(tr("ui.hint.show_again"))
+        self._update_hints_state()
         self.taste_label.setToolTip(tr("ui.taste.tip"))
         self.taste_forget.setText(tr("ui.taste.forget"))
         self.refresh_taste()
@@ -1527,8 +1565,7 @@ class AboutPage(QWidget):
         super().__init__(parent)
         self.setObjectName("Page")
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
         host = QWidget()
         col = QVBoxLayout(host)
         col.setContentsMargins(0, 0, 8, 0)

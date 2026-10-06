@@ -347,7 +347,7 @@ class CollapsibleSection(QWidget):
         self.header.setStyleSheet(
             f"QPushButton#SectionHeader {{ text-align: left; background: transparent; border: none;"
             f" padding: 10px 4px; font-weight: 600; font-size: 13px; }}"
-            f"QPushButton#SectionHeader:hover {{ color: {p.accent_hover}; }}")
+            f"QPushButton#SectionHeader:hover {{ color: {p.accent_text}; }}")
         self._icon_name = icon_name
         self.set_title(title)
         outer.addWidget(self.header)
@@ -405,7 +405,7 @@ class Toast(QFrame):
     def show_message(self, text: str, kind: str = "info", msec: int = 4000) -> None:
         p = theme.current()
         name, color = {"success": ("circle-check", p.success), "error": ("circle-x", p.danger),
-                       "warning": ("triangle-alert", p.warning)}.get(kind, ("info", p.accent_hover))
+                       "warning": ("triangle-alert", p.warning)}.get(kind, ("info", p.accent_text))
         self.icon.setPixmap(icons.pixmap(name, color, 18))
         self.text.setText(text)
         self.adjustSize()
@@ -432,6 +432,58 @@ class Toast(QFrame):
         except (RuntimeError, TypeError):
             pass
         self.hide()
+
+
+class EmptyState(QWidget):
+    """What an empty page shows: an icon, a title, what to do – and a button that does it."""
+
+    action = Signal()
+
+    def __init__(self, icon_name: str, parent=None):
+        super().__init__(parent)
+        self.icon_name = icon_name
+        outer = QHBoxLayout(self)  # a centred column (a wrapped label keeps its height only without alignment)
+        outer.setContentsMargins(24, 32, 24, 32)
+        column = QWidget()
+        column.setMaximumWidth(480)
+        lay = QVBoxLayout(column)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(10)
+        lay.addStretch(1)
+        self.icon = QLabel()
+        self.icon.setAlignment(Qt.AlignCenter)
+        self.title = label("", "h2")
+        self.title.setAlignment(Qt.AlignCenter)
+        self.text = label("", "muted", wrap=True)
+        self.text.setAlignment(Qt.AlignCenter)
+        self.button = QPushButton()
+        self.button.setProperty("variant", "primary")
+        self.button.setCursor(Qt.PointingHandCursor)
+        self.button.clicked.connect(self.action.emit)
+        self.button.hide()
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(self.button)
+        row.addStretch(1)
+        lay.addWidget(self.icon)
+        lay.addWidget(self.title)
+        lay.addWidget(self.text)
+        lay.addSpacing(4)
+        lay.addLayout(row)
+        lay.addStretch(2)
+        outer.addStretch(1)
+        outer.addWidget(column, 4)
+        outer.addStretch(1)
+
+    def set_texts(self, title: str, text: str, button_text: str = "", button_icon: str | None = None) -> None:
+        p = theme.current()
+        self.icon.setPixmap(icons.pixmap(self.icon_name, p.faint, 44))
+        self.title.setText(title)
+        self.text.setText(text)
+        self.button.setVisible(bool(button_text))
+        self.button.setText(button_text)
+        if button_icon:
+            self.button.setIcon(icons.icon(button_icon, p.on_accent))
 
 
 class Banner(QFrame):
@@ -464,7 +516,7 @@ class Banner(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
         name = icon_name or ("triangle-alert" if warn else "info")
-        self.icon.setPixmap(icons.pixmap(name, p.warning if warn else p.accent_hover, 18))
+        self.icon.setPixmap(icons.pixmap(name, p.warning if warn else p.accent_text, 18))
         self.text.setText(text)
         self.button.setVisible(bool(button_text))
         if button_text:

@@ -82,7 +82,7 @@ class SketchCanvas(QWidget):
     the eraser edits and hits.
     """
 
-    MODES = ("sketch", "compare", "attention", "mask", "condition", "matrix")
+    MODES = ("sketch", "compare", "attention", "mask", "condition", "matrix", "sheet")
     ERASER_REACH_PX = 6  # how close (screen pixels) the cursor has to be to a stroke
 
     erase_begin = Signal()  # eraser: mouse pressed (one undo step per press)
@@ -392,6 +392,142 @@ class SketchCanvas(QWidget):
         self.update()
 
 
+class SheetView(QWidget):
+    """A contact sheet: every sketch of a job side by side, as large as the view allows, with its caption. A click
+    selects one, a double click opens it on the canvas, the context menu offers more (``menu_requested``)."""
+
+    clicked = Signal(int)
+    activated = Signal(int)
+    menu_requested = Signal(int, object)  # (sketch, global position)
+    _GAP, _CAPTION = 10, 20
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(200, 200)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.items: list[int] = []
+        self._svgs: dict[int, str] = {}
+        self._renderers: dict[int, QSvgRenderer] = {}
+        self._captions: dict[int, str] = {}
+        self._style = "plain"
+        self.selected: int | None = None
+        self.best: int | None = None
+        self.setCursor(Qt.PointingHandCursor)
+
+    def clear(self):
+        self.items, self.selected, self.best = [], None, None
+        self._svgs.clear()
+        self._renderers.clear()
+        self._captions.clear()
+        self.update()
+
+    def set_cell(self, item: int, svg: str | None, caption: str | None = None):
+        if item not in self.items:
+            self.items = sorted(self.items + [item])
+        r = svg_renderer(styled(svg, self._style))
+        if r:
+            self._renderers[item], self._svgs[item] = r, svg
+        if caption is not None:
+            self._captions[item] = caption
+        self.update()
+
+    def set_caption(self, item: int, caption: str):
+        self._captions[item] = caption
+        self.update()
+
+    def set_style(self, style: str):
+        if style == self._style:
+            return
+        self._style = style
+        for item, svg in self._svgs.items():
+            r = svg_renderer(styled(svg, style))
+            if r:
+                self._renderers[item] = r
+        self.update()
+
+    def set_selected(self, item: int | None):
+        self.selected = item
+        self.update()
+
+    def set_best(self, item: int | None):
+        self.best = item
+        self.update()
+
+    def _grid(self) -> tuple[int, float]:
+        """(columns, cell size): the number of columns that gives the largest cells."""
+        n = max(len(self.items), 1)
+        best = (1, 0.0)
+        for cols in range(1, n + 1):
+            rows = -(-n // cols)
+            size = min((self.width() - self._GAP * (cols + 1)) / cols,
+                       (self.height() - self._GAP * (rows + 1) - self._CAPTION * rows) / rows)
+            if size > best[1]:
+                best = (cols, size)
+        return best[0], max(best[1], 24.0)
+
+    def cell_rect(self, index: int) -> QRectF:
+        cols, size = self._grid()
+        rows = -(-max(len(self.items), 1) // cols)
+        total_w = cols * size + (cols + 1) * self._GAP
+        total_h = rows * (size + self._CAPTION) + (rows + 1) * self._GAP
+        x0, y0 = (self.width() - total_w) / 2, (self.height() - total_h) / 2
+        col, row = index % cols, index // cols
+        return QRectF(x0 + self._GAP + col * (size + self._GAP),
+                      y0 + self._GAP + row * (size + self._CAPTION + self._GAP), size, size)
+
+    def paintEvent(self, event):  # noqa: N802
+        pal = theme.current()
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        if not self.items:
+            p.setPen(QColor(pal.faint))
+            p.drawText(self.rect(), Qt.AlignCenter | Qt.TextWordWrap, tr("ui.sheet.empty"))
+            p.end()
+            return
+        for i, item in enumerate(self.items):
+            r = self.cell_rect(i)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(pal.paper))
+            p.drawRoundedRect(r, 8, 8)
+            renderer = self._renderers.get(item)
+            if renderer:
+                p.save()
+                p.setClipRect(r)
+                renderer.render(p, r.adjusted(4, 4, -4, -4))
+                p.restore()
+            if item in (self.selected, self.best):
+                color = pal.success if item == self.best and item != self.selected else pal.accent
+                p.setPen(QPen(QColor(color), 2.5))
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 8, 8)
+            p.setPen(QColor(pal.text if item == self.selected else pal.muted))
+            caption = self._captions.get(item, str(item))
+            p.drawText(QRectF(r.left(), r.bottom() + 2, r.width(), self._CAPTION - 2), Qt.AlignCenter,
+                       ("★ " if item == self.best and not caption.startswith("★") else "") + caption)
+        p.end()
+
+    def item_at(self, pos) -> int | None:
+        for i, item in enumerate(self.items):
+            if self.cell_rect(i).contains(pos):
+                return item
+        return None
+
+    def mouseReleaseEvent(self, e):  # noqa: N802
+        item = self.item_at(e.position())
+        if item is not None and e.button() == Qt.LeftButton and item in self._renderers:
+            self.clicked.emit(item)
+
+    def mouseDoubleClickEvent(self, e):  # noqa: N802
+        item = self.item_at(e.position())
+        if item is not None and item in self._renderers:
+            self.activated.emit(item)
+
+    def contextMenuEvent(self, e):  # noqa: N802
+        item = self.item_at(e.pos())
+        if item is not None and item in self._renderers:
+            self.menu_requested.emit(item, e.globalPos())
+
+
 class MatrixView(QWidget):
     """SceneSketch's abstraction matrix: one column per fidelity layer, one row per simplicity level.
     Cells are identified like the job items (``layer * 100 + level``); a click selects one."""
@@ -602,7 +738,7 @@ class LossChart(QWidget):
             path.lineTo(pt(it, v)) if i else path.moveTo(pt(it, v))
         p.drawPath(path)
         if len(self.evals) > 1:
-            p.setPen(QPen(QColor(pal.accent_hover), 2.2))
+            p.setPen(QPen(QColor(pal.accent_text), 2.2))
             path = QPainterPath()
             for i, (it, v) in enumerate(self.evals):
                 path.lineTo(pt(it, v)) if i else path.moveTo(pt(it, v))
@@ -690,7 +826,7 @@ class ImageDropZone(QFrame):
             if self._overlay is not None and self.show_overlay:
                 p.drawImage(QRectF(int(x), int(y), scaled.width(), scaled.height()), self._overlay)
         else:
-            ic = icons.pixmap("image-plus", pal.accent_hover, 34)
+            ic = icons.pixmap("image-plus", pal.accent_text, 34)
             p.drawPixmap(int(r.center().x() - 17), int(r.center().y() - 44), ic)
             p.setPen(QColor(pal.text))
             f = p.font()

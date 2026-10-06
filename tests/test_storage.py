@@ -268,7 +268,11 @@ def test_settings_move_the_results_along(qapp, fresh, monkeypatch):
     assert not page._choose_out(new, move=True)  # not while a job writes into the old folder
     assert len(shown) == 1 and not changed
     page.busy_check = lambda: False
-    assert page._choose_out(new, move=True)
+    from clipasso_studio.gui.background import work
+
+    assert page._choose_out(new, move=True)  # (in the background: the app stays usable)
+    assert work().busy("output") and not page.out_btn.isEnabled()
+    assert work().wait() and page.out_btn.isEnabled()
     assert app_settings().get("output_dir") == new and changed == [(old, new, True)]
     assert sorted(os.listdir(old)) == ["holiday.jpg"]
     moved = os.path.join(new, os.path.basename(job_dir))

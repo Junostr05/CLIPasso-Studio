@@ -14,7 +14,7 @@ from .. import dialogs, icons, methods_ui, theme, thumbs
 from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import SketchCanvas
-from ..widgets.common import Card, ToggleSwitch, button, label
+from ..widgets.common import Card, EmptyState, ToggleSwitch, button, label
 from .other_pages import _page_header, _scroll, job_method, scan_jobs
 
 
@@ -142,7 +142,7 @@ class CompareCard(Card):
 
     def retranslate(self):
         p = theme.current()
-        self.icon.setPixmap(icons.pixmap(methods_ui.ICONS[self.method], p.accent_hover, 22))
+        self.icon.setPixmap(icons.pixmap(methods_ui.ICONS[self.method], p.accent_text, 22))
         self.tagline.setText(tr(f"method.{self.method}.tagline"))
         self.best_badge.setText("★ " + tr("ui.compare.best"))
         self.stat_values["score"][1].setText(tr("ui.stat.score"))
@@ -156,6 +156,7 @@ class CompareCard(Card):
 
 class ComparePage(QWidget):
     open_job = Signal(str)
+    go_studio = Signal()  # the empty page's button
     toast = Signal(str, str)
 
     def __init__(self, controller: JobController, studio, parent=None):
@@ -164,8 +165,7 @@ class ComparePage(QWidget):
         self.controller = controller
         self.studio = studio
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 20)
-        root.setSpacing(16)
+        theme.page_layout(root)
         head = QHBoxLayout()
         lay, self.title, self.subtitle = _page_header("ui.compare.title", "ui.compare.subtitle")
         head.addLayout(lay, 1)
@@ -223,9 +223,14 @@ class ComparePage(QWidget):
             c.open_job.connect(self.open_job.emit)
             grid.addWidget(c, 1)
             self.cards[m] = c
-        root.addWidget(_scroll(host), 1)
+        self.cards_scroll = _scroll(host)
+        root.addWidget(self.cards_scroll, 1)
         self.verdict = label("", "muted", wrap=True)
         root.addWidget(self.verdict)
+        self.empty = EmptyState("git-compare")  # no photo in the studio yet
+        self.empty.action.connect(self.go_studio.emit)
+        self.empty.hide()
+        root.addWidget(self.empty, 1)
 
         controller.queue_changed.connect(self._schedule_refresh)
         controller.job_finished.connect(lambda _: self._schedule_refresh())
@@ -344,6 +349,9 @@ class ComparePage(QWidget):
         else:
             self.verdict.setText(tr("ui.compare.verdict_none"))
         self.start_btn.setEnabled(bool(image))
+        for w in (self.cards_scroll, self.verdict):
+            w.setVisible(bool(image))
+        self.empty.setVisible(not image)
 
     def _on_event(self, job, kind, data):
         if kind != "iteration" or not self.isVisible():
@@ -369,3 +377,4 @@ class ComparePage(QWidget):
             lbl.setToolTip(tr(f"method.{m}.tagline"))
         for c in self.cards.values():
             c.retranslate()
+        self.empty.set_texts(tr("ui.compare.empty_title"), tr("ui.compare.empty"), tr("ui.empty.to_studio"), "brush")

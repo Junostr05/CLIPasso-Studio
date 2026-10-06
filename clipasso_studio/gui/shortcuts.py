@@ -15,6 +15,7 @@ SHORTCUTS = (
     ("Ctrl+Z", "ui.shortcut.undo"),
     ("Ctrl+Y", "ui.shortcut.redo"),
     ("Ctrl+1", "ui.shortcut.pages"),
+    ("F11", "ui.shortcut.focus"),
 )
 
 
