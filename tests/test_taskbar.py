@@ -21,6 +21,7 @@ def test_states_for_a_job():
 
 def test_calls_only_when_the_bar_moves(monkeypatch):
     calls = []
+    monkeypatch.setattr(taskbar, "_create", lambda: object())  # (on Windows: no real COM object here)
     monkeypatch.setattr(taskbar, "_call", lambda obj, index, kinds, *args: calls.append((index, args)))
     bar = taskbar.Taskbar(1234)
     bar._list = object()  # (as on Windows)
