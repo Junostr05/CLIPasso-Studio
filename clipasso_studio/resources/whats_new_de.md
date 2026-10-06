@@ -1,4 +1,15 @@
-## Neu in 3.4: bessere Skizzen
+## Neu in 3.5: das Handy als zweites Studio
+
+- **Sofort aktuell:** Das Handy sieht Änderungen am PC sofort, statt alle paar Sekunden nachzufragen – flüssigere Vorschau, weniger Akku.
+- **SceneSketch auf dem Handy:** *Skizze*, *Hintergrund* (das aufgefüllte Hintergrundbild) und die ganze *Matrix* zum Antippen; eine fertige Zelle zeigt sich ganz, nur mit Hintergrund oder nur mit Objekt – am PC über den Ebenen-Knopf ebenso. Neu im Export: *SVG · Ebenen getrennt* (Hintergrund und Objekt als eigene Ebenen für Inkscape und Illustrator).
+- **Galerie am Handy:** alle Ergebnisse statt nur der letzten 40, Suche (Name, Notiz, Schlagwort), Filter nach Methode, Album und Favorit, Stern setzen und eine Großansicht zum Durchwischen und Zoomen.
+- **Warteschlange am Handy:** wartende Aufträge per Griff verschieben, den laufenden anhalten oder abbrechen, Abgebrochenes *Nochmal* starten – und mehrere Fotos auf einmal hineinlegen.
+- **Methoden vergleichen** direkt vom Handy, fehlende **Modelle laden**, das Foto **zuschneiden und drehen** und die **Maske ansehen**.
+- **Gesten:** zwischen Skizzen wischen, mit zwei Fingern zoomen, zum Aktualisieren nach unten ziehen.
+
+---
+
+**Neu in 3.4: bessere Skizzen**
 
 - **3.4.2 – Handy und eigene Presets:** Auf dem Handy exportierst du jetzt in jedem Format der App (PNG, SVG, PDF, GIF, MP4, WebP, Lottie, Webseite …) mit allen Einstellungen – Farbe, Stil, Papier, Größe, Länge oder *Kein Hintergrund*. *Meine Presets* speichern deine Einstellungen unter einem Namen – am PC mit dem Lesezeichen-Knopf neben den Voreinstellungen, auf dem Handy mit Name und *Speichern* in der Karte „Voreinstellung“; beide sehen dieselben Presets. Die Handy-Seite hat eine feste Adresse für Lesezeichen und Startbildschirm; hat das Handy die Anmeldung vergessen, genügt eine 6-stellige PIN (Einstellungen → Handy & Nachrichten).
 - **3.4.1 – Handy:** Ist während eines Auftrags ein Ergebnis aus der Galerie offen, führt oben ein Knopf zurück zum laufenden Auftrag. In der Warteschlange räumt *Erledigte entfernen* alles Fertige, Abgebrochene und Fehlgeschlagene weg, und in der Galerie löscht der Mülleimer ein Ergebnis (in den Papierkorb des PCs). Neu: *Auch über Tailscale* (Einstellungen → Handy & Nachrichten) – dann klappt die Steuerung auch unterwegs.

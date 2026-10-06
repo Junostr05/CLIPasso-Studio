@@ -1,3 +1,29 @@
+## CLIPasso Studio 3.5 – the phone as a second studio
+
+**Live**
+- **Up to date at once:** the phone page hears of every change on the PC as it happens (server-sent events) instead of asking every few seconds – the live sketch follows more smoothly and the phone's battery lasts longer. Where the connection blocks this, the page falls back to asking by itself.
+
+**SceneSketch on the phone – and its layers**
+- The *Sketch* tab has three views for a SceneSketch job: *Sketch*, *Background* – the background SceneSketch filled in behind the object (LaMa), there from the start of the job – and the whole *Matrix* (fidelity layers × simplicity levels, the best cell framed green; tap a cell to see it large). A line tells what is being drawn: the background or the object.
+- A finished cell shows **whole, background only or object only** – on the phone below the sketch, on the PC with the new layers button above the canvas.
+- New export **“SVG · separate layers”**: the cell with its background and its object as two layers that Inkscape and Illustrator open as layers (e.g. to recolour or hide only the background) – in the export dialog, as a button for SceneSketch in the studio, and on the phone.
+- On the PC the matrix names its axes (fidelity, simplicity), and a reopened SceneSketch job shows its attention map again.
+
+**Gallery, queue and compare on the phone**
+- **Gallery:** every result instead of only the last 40 (*Load more*), search by name, note and tag, filters by method, album and favourite, set the star, and a large view to swipe through, zoom with two fingers and open in the studio.
+- **Queue:** drag waiting jobs by their handle, pause or cancel the running job, start a failed or cancelled one *Again*, and put **several photos at once** into the queue (with the studio's settings).
+- **Compare methods** (card in the studio tab): the studio's picture with several methods, standard preset or the studio's settings – the results side by side with score, time and strokes, the most similar starred; the questions the PC asks (a GPU missing) are asked on the phone.
+- **Download models** that are missing, with progress (the method card, or when comparing).
+- **Crop and turn** the photo (drag the corners, turn, mirror – saved as a new picture, as on the PC) and **look at the mask** the job will use.
+- **Gestures:** swipe between the sketches of a job, zoom with two fingers, double tap to go back, pull down to refresh.
+
+**Behind the scenes**
+- The phone page is tested in a real browser (Chromium, phone size) with every build: signing in, exports, presets, the SceneSketch views, gallery, queue, compare and crop.
+- The queue on the phone no longer rebuilds its rows while a job runs (only the bars move) – a tap on a button could get lost before.
+
+**Small update**
+- An app on 3.4.2 downloads only the files that changed (`…-Patch-from-3.4.2.exe` / `…-Portable-Patch-from-3.4.2.zip`).
+
 ## CLIPasso Studio 3.4.2 – export from the phone, own presets, a fixed address with a PIN
 
 - **Every export on the phone:** the *Sketch* tab has an *Export* card with all formats of the app's export dialog – PNG, SVG, SVG · 1 layer, PDF, GIF, MP4, WebP, animated SVG, Lottie, web page (and the matrix ZIP for SceneSketch) – each with its settings: stroke colour and width, brush style, background colour or **No background (transparent)** where the format allows it, paper and vignette, frame and margin, size, PDF width, drawing process or stroke by stroke, length and pause. The phone shows the progress (and can cancel); then *Download* saves the file on the phone. The choices are the same as in the dialog on the PC – both remember them.
