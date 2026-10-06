@@ -80,6 +80,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements/torch-cpu.txt
           pip install -r requirements/dev.txt
+      - name: Browser for the phone page tests (tests/e2e)
+        run: python -m playwright install --with-deps chromium
       - name: Cache models
         uses: actions/cache@v4
         with:
@@ -88,7 +90,7 @@ jobs:
           restore-keys: models-v2-
       - name: Download models
         run: python tools/fetch_models.py
-      - name: Unit tests
+      - name: Unit tests (with the phone page in Chromium)
         run: python -m pytest -q -m "not slow" --durations=20
       - name: Self-test of all methods (from source)
         run: python -m clipasso_studio --selftest selftest_src

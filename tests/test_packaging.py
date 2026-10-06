@@ -73,3 +73,12 @@ def test_installer_matches_the_app():
     assert storage.MODELS_LOCATION in iss and storage.OUTPUT_LOCATION in iss
     assert 'Type: filesandordirs; Name: "{app}\\_internal"' in iss
     assert '#define ShortcutName "CLIPasso Studio GPU"' in iss and 'Name: "{autodesktop}\\{#ShortcutName}"' in iss
+
+
+def test_ci_runs_the_phone_page_in_a_browser():
+    """The browser tests of the phone page (tests/e2e) run on Linux – they skip themselves without a browser."""
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    dev = (ROOT / "requirements" / "dev.txt").read_text(encoding="utf-8")
+    assert "playwright install --with-deps chromium" in workflow
+    assert any(line.startswith("playwright==") for line in dev.splitlines())
+    assert (ROOT / "tests" / "e2e" / "app_harness.py").is_file()

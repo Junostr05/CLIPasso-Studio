@@ -11,7 +11,8 @@ version = { attr = "clipasso_studio.__version__" }  # the one place the version 
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: long end-to-end runs of every option (need the models)"]
+markers = ["slow: long end-to-end runs of every option (need the models)",
+           "e2e: the phone page in a real browser (Playwright + Chromium; skipped without them)"]
 timeout = 600  # s per test (pytest-timeout); slow tests get more, see tests/conftest.py
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 
