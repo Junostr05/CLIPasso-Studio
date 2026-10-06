@@ -1,4 +1,18 @@
-## New in 3.5: the phone as a second studio
+## New in 3.6: the studio on the PC
+
+- **Full screen for the sketch:** the new button above the canvas (or F11) hides everything but the canvas and its tools; Esc or the button ends it.
+- **Time lapse:** ▶ next to the step slider plays how the sketch came to be – at half to four times the speed, ending on the result.
+- **Every sketch at a glance:** the *All* view shows each sketch of a job large side by side, with its score; right click → *Choose as the best*.
+- **History per photo:** below the input picture are all earlier jobs of the same photo, with any method – a click opens one.
+- **Large view in the gallery:** Space or a double click → view large, browse with ←/→, zoom with the mouse wheel, as a *slideshow*; two marked results can be **compared** with a divider.
+- **Hints about the photo:** when a photo is very small, dark, flat or blurred, the object tiny or the mask unsure, the app says so before the start – with *Crop* or *Check mask*. Every hint can be switched off.
+- **Nothing blocks any more:** moving the results or models folder and unpacking an update run in the background, with a bar at the top of the window – you keep working, a new job starts afterwards.
+- **Progress on the taskbar** (Windows): green while computing, yellow when paused, red on an error – also with the window minimised.
+- **Polish:** easier-to-read colours in both themes, names for screen readers on every button, empty pages explain the next step, and the studio now fits smaller windows, too.
+
+---
+
+**New in 3.5: the phone as a second studio**
 
 - **Up to date at once:** the phone sees changes on the PC right away instead of asking every few seconds – a smoother preview and less battery.
 - **SceneSketch on the phone:** *Sketch*, *Background* (the filled-in background picture) and the whole *Matrix* to tap; a finished cell shows whole, background only or object only – on the PC with the layers button, too. New in the export: *SVG · separate layers* (background and object as layers of their own for Inkscape and Illustrator).

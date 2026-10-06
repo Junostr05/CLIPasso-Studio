@@ -1,4 +1,18 @@
-## Neu in 3.5: das Handy als zweites Studio
+## Neu in 3.6: das Studio am PC
+
+- **Vollbild für die Skizze:** der neue Knopf über der Leinwand (oder F11) blendet alles außer Leinwand und Werkzeugen aus; Esc oder der Knopf beenden es.
+- **Zeitraffer:** ▶ neben dem Zwischenstand-Regler spielt ab, wie die Skizze entstanden ist – in halber bis vierfacher Geschwindigkeit, am Ende steht das Ergebnis.
+- **Alle Skizzen auf einen Blick:** die Ansicht *Alle* zeigt jede Skizze eines Auftrags groß nebeneinander, mit Score; Rechtsklick → *Als beste wählen*.
+- **Verlauf pro Foto:** unter dem Eingabebild stehen alle früheren Aufträge desselben Fotos, mit jeder Methode – ein Klick öffnet einen.
+- **Großansicht in der Galerie:** Leertaste oder Doppelklick → groß ansehen, mit ←/→ blättern, mit dem Mausrad zoomen, als *Diashow*; zwei markierte Ergebnisse lassen sich mit einem Trennschieber **vergleichen**.
+- **Hinweise zum Foto:** ist ein Foto sehr klein, dunkel, kontrastarm oder unscharf, das Objekt winzig oder die Maske unsicher, sagt die App es vor dem Start – mit *Zuschneiden* oder *Maske prüfen*. Jeder Hinweis lässt sich abschalten.
+- **Nichts blockiert mehr:** Ergebnis- oder Modellordner verschieben und ein Update auspacken laufen im Hintergrund, mit einem Balken oben im Fenster – du arbeitest weiter, ein neuer Auftrag startet danach.
+- **Fortschritt in der Taskleiste** (Windows): grün beim Rechnen, gelb in der Pause, rot bei einem Fehler – auch mit verkleinertem Fenster.
+- **Feinschliff:** besser lesbare Farben in beiden Designs, Namen für Screenreader an allen Knöpfen, leere Seiten erklären den nächsten Schritt, und das Studio passt jetzt auch in kleinere Fenster.
+
+---
+
+**Neu in 3.5: das Handy als zweites Studio**
 
 - **Sofort aktuell:** Das Handy sieht Änderungen am PC sofort, statt alle paar Sekunden nachzufragen – flüssigere Vorschau, weniger Akku.
 - **SceneSketch auf dem Handy:** *Skizze*, *Hintergrund* (das aufgefüllte Hintergrundbild) und die ganze *Matrix* zum Antippen; eine fertige Zelle zeigt sich ganz, nur mit Hintergrund oder nur mit Objekt – am PC über den Ebenen-Knopf ebenso. Neu im Export: *SVG · Ebenen getrennt* (Hintergrund und Objekt als eigene Ebenen für Inkscape und Illustrator).

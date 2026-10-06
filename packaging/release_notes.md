@@ -1,3 +1,33 @@
+## CLIPasso Studio 3.6 – the studio on the PC
+
+**Seeing the sketch**
+- **Full screen / focus mode:** a new button above the canvas (or F11) hides the navigation, the input and the parameters – the canvas and its tools stay. Esc or the button end it.
+- **Time lapse:** ▶ next to the step slider plays the saved steps of the sketch on the canvas as an animation (0.5×, 1×, 2× or 4× – in the button's menu), ending on the result.
+- **Contact sheet:** the new canvas view *All* shows every sketch of a job (every seed) as large as the canvas allows, with its score; a click selects one, a double click opens it, right click → *Choose as the best* (the gallery, exports and the phone then use it).
+- **History per photo:** a strip below the input picture with every earlier job of the same photo – any method, also jobs whose photo was moved (they keep a copy) – a click opens one.
+
+**Gallery**
+- **Large view:** Space, the context menu or *View large* opens a result as large as the window: ←/→ (or Page up/down) to browse, the mouse wheel zooms around the cursor, drag to move, double click or 0 to fit; *Open in the studio*.
+- **Slideshow** (2–10 s per result) – also with the new *Slideshow* button in the gallery's header.
+- **Compare two results:** mark two and click *Compare* – both on top of each other with a divider to drag (Shift+←/→ moves it step by step), zoom included.
+
+**Before the run**
+- **Hints about the photo:** measured in the background as soon as a photo is chosen – too small (below 224 px), too dark, too little contrast, blurred; and with the object mask: a very small object (*Crop*), no object found or an unsure mask (*Check mask*). The limits were set on the sample pictures and real photos so good photos get no hint. Each kind can be switched off (*don't show again*) and switched on again in Settings → Behaviour.
+
+**Working on**
+- **Nothing blocks any more:** moving the output folder or the model folder and unpacking an update (portable editions) run in the background with a progress strip at the top of the window instead of a window that blocks the app. Only what needs those files waits: a job started meanwhile waits in the queue and starts when the move is done; the gallery (and the phone's gallery) waits while the results move, model downloads while the models move. Closing the app waits for the move; an unpacked update asks *Restart now?* – or starts when the app closes.
+- **Progress on the taskbar button** (Windows): green while a job runs, yellow when paused, red when it failed (until you look at the window again), and the background work above.
+
+**Polish & accessibility**
+- **Contrast:** every text colour of both themes now meets WCAG AA (4.5:1) on every surface it is shown on – captions, badges, links, warnings; checked by a test.
+- **Screen readers:** every button without text (switches, icon buttons) has a name – the label of its row, which follows the language; checked by a test for every page and method.
+- **Empty pages** (gallery, queue, compare) say what to do next and have a button for it; a search that finds nothing offers *Show all*.
+- **Smaller windows:** the studio's three columns no longer overlap below about 1300 px – rows of buttons go to a second line; the smallest window is 1200 px wide (less on small screens).
+- The same spacing on every page (theme tokens); Tab goes through the studio from left to right.
+
+**Small update**
+- An app on 3.5.0 downloads only the files that changed (`…-Patch-from-3.5.0.exe` / `…-Portable-Patch-from-3.5.0.zip`).
+
 ## CLIPasso Studio 3.5 – the phone as a second studio
 
 **Live**
