@@ -199,6 +199,17 @@ def get_target(args, u2net=None):
     return target_, mask_t, mask_img
 
 
+def face_box(img: Image.Image, device="cpu") -> tuple[float, float, float, float] | None:
+    """The largest trustworthy face in the canvas picture (BlazeFace, bundled): (x0, y0, x1, y1) in its pixels."""
+    from . import model_store, portrait
+
+    path = model_store.find("blazeface")
+    if path is None:
+        return None
+    faces = [f for f in portrait.find_faces(img, portrait.load(str(path), device)) if portrait.plausible(f)]
+    return tuple(float(v) for v in faces[0]["box"]) if faces else None
+
+
 def _png_bytes(img: Image.Image) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -268,10 +279,21 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
     input_img.save(os.path.join(run_dir, "input.png"))
     mask_img.save(os.path.join(run_dir, "mask.png"))
     reporter.event("input", seed=seed, png=_png_bytes(input_img), mask_png=_png_bytes(mask_img))
+    if getattr(args, "face_crops", False):  # portraits: some augmentations around the face
+        box = face_box(input_img, args.device)
+        loss_func.set_face_box(box)
+        reporter.event("log", message="face crops: " + (f"face at {[round(v) for v in box]}" if box else
+                                                         "no face found – the usual augmentations"),
+                       code="face_crops" if box else "face_crops_none")
 
     reporter.event("stage", seed=seed, name="init")
+    guide = None
+    if getattr(args, "sketch_guide", False) and not getattr(args, "one_line", False):
+        from .sketch_guide import Guide  # experimental: strokes along edges, hatching in the dark
+
+        guide = Guide(inputs)
     renderer = Painter(num_strokes=args.num_paths, args=args, num_segments=args.num_segments,
-                       imsize=args.image_scale, device=args.device, target_im=inputs, mask=mask)
+                       imsize=args.image_scale, device=args.device, target_im=inputs, mask=mask, guide=guide)
     renderer = renderer.to(args.device)
 
     optimizer = PainterOptimizer(args, renderer)
@@ -305,11 +327,17 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
             path.points = points.to(args.device)
         for group, color in zip(renderer.shape_groups, ck["colors"]):
             group.stroke_color = color.to(group.stroke_color.device)
+        for path, width in zip(renderer.shapes, ck.get("widths") or []):  # (learnt widths)
+            path.stroke_width = width.to(args.device)
+        if ck.get("roles") is not None:  # (the experimental sketch improvement's edge / hatch strokes)
+            renderer.roles = list(ck["roles"])
         renderer.optimize_flag = list(ck["optimize_flag"])
         optimizer.init_optimizers()
         optimizer.points_optim.load_state_dict(ck["points_optim"])
         if ck.get("color_optim") is not None and optimizer.optim_color:
             optimizer.color_optim.load_state_dict(ck["color_optim"])
+        if ck.get("width_optim") is not None and optimizer.optim_width:
+            optimizer.width_optim.load_state_dict(ck["width_optim"])
         stage, counter, first_epoch = int(ck["stage"]), int(ck["counter"]), int(ck["epoch"]) + 1
         best_loss, best_iter = ck["best_loss"], ck["best_iter"]
         best_fc_loss, best_iter_fc, terminate = ck["best_fc_loss"], ck["best_iter_fc"], ck["terminate"]
@@ -329,6 +357,9 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
             "optimize_flag": list(renderer.optimize_flag),
             "points_optim": optimizer.points_optim.state_dict(),
             "color_optim": optimizer.color_optim.state_dict() if optimizer.optim_color else None,
+            "widths": [p.stroke_width.detach().cpu() for p in renderer.shapes],
+            "width_optim": optimizer.width_optim.state_dict() if optimizer.optim_width else None,
+            "roles": list(renderer.roles),
             "best_loss": best_loss, "best_iter": best_iter, "best_fc_loss": best_fc_loss,
             "best_iter_fc": best_iter_fc, "terminate": terminate, "configs": configs_to_save,
             "active_time": active_time})
@@ -368,6 +399,10 @@ def run_single(settings: dict, target: str, run_dir: str, seed: int, reporter: R
             losses_dict = loss_func(sketches, inputs.detach(), renderer.get_color_parameters(), renderer, counter,
                                     optimizer)
             loss = sum(list(losses_dict.values()))
+            if optimizer.optim_width:  # (learnt widths: pulled back towards the set width a little)
+                loss = loss + renderer.width_penalty()
+            if guide is not None:  # (experimental: along the edges, hatching in the dark)
+                loss = loss + renderer.guide_loss()
             loss.backward()
             optimizer.step_()
             svg_text = None

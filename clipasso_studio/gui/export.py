@@ -920,10 +920,10 @@ def matrix_sheet_svg(cells: dict[int, str], cell: int = 224, gap: int = 16, text
                      background: str | None = "#FFFFFF") -> str:
     """Overview of a SceneSketch matrix: one column per fidelity layer, one row per simplicity level."""
     layers = sorted({c // 100 for c in cells})
-    levels = max(c % 100 for c in cells) + 1
+    levels = sorted({c % 100 for c in cells})  # (only the computed ones: some may have been left out)
     side, head = 70, 34
     width = side + len(layers) * (cell + gap) + gap
-    height = head + levels * (cell + gap) + gap
+    height = head + len(levels) * (cell + gap) + gap
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{width}" height="{height}" '
              f'viewBox="0 0 {width} {height}">']
     if background:
@@ -932,11 +932,11 @@ def matrix_sheet_svg(cells: dict[int, str], cell: int = 224, gap: int = 16, text
     for col, layer in enumerate(layers):
         x = side + gap + col * (cell + gap)
         parts.append(f'<text x="{x + cell / 2:g}" y="{head - 10}" text-anchor="middle" {font}>L{layer}</text>')
-    for row in range(levels):
+    for row, level in enumerate(levels):
         y = head + gap + row * (cell + gap)
-        parts.append(f'<text x="{side - 8}" y="{y + cell / 2 + 6:g}" text-anchor="end" {font}>{row}</text>')
+        parts.append(f'<text x="{side - 8}" y="{y + cell / 2 + 6:g}" text-anchor="end" {font}>{level}</text>')
     for c, svg in cells.items():
-        col, row = layers.index(c // 100), c % 100
+        col, row = layers.index(c // 100), levels.index(c % 100)
         parts.append(_nested_svg(svg, side + gap + col * (cell + gap), head + gap + row * (cell + gap), cell))
     parts.append("</svg>")
     return "\n".join(parts)

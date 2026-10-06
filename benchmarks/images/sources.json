@@ -1,0 +1,101 @@
+[
+ {
+  "category": "portrait",
+  "file": "portrait/peake.jpg",
+  "label": "person",
+  "nasa_id": "jsc2013e079278",
+  "title": "Official NASA portrait of British astronaut Timothy Peake",
+  "photographer": "Robert Markowitz - NASA - JSC",
+  "center": "JSC",
+  "date": "2013-08-28",
+  "url": "https://images.nasa.gov/details/jsc2013e079278"
+ },
+ {
+  "category": "portrait",
+  "file": "portrait/noguchi.jpg",
+  "label": "person",
+  "nasa_id": "jsc2016e096719",
+  "title": "Official portrait of JAXA astronaut Soichi Noguchi",
+  "photographer": "Robert Markowitz - NASA - Johnso",
+  "center": "JSC",
+  "date": "2016-08-15",
+  "url": "https://images.nasa.gov/details/jsc2016e096719"
+ },
+ {
+  "category": "portrait",
+  "file": "portrait/meir.jpg",
+  "label": "person",
+  "nasa_id": "jsc2025e078605_alt",
+  "title": "Official portrait of NASA astronaut Jessica Meir wearing a spacesuit",
+  "photographer": "Josh Valcarcel - NASA - JSC",
+  "center": "JSC",
+  "date": "2025-09-26",
+  "url": "https://images.nasa.gov/details/jsc2025e078605_alt"
+ },
+ {
+  "category": "animal",
+  "file": "animal/deer.jpg",
+  "label": "deer",
+  "nasa_id": "05pd1821",
+  "title": "KSC-05PD-1821",
+  "photographer": "NASA or National Aeronautics and Space Administration",
+  "center": "KSC",
+  "date": "2005-08-08",
+  "url": "https://images.nasa.gov/details/05pd1821"
+ },
+ {
+  "category": "animal",
+  "file": "animal/bobcat.jpg",
+  "label": "bobcat",
+  "nasa_id": "KSC-98pc1602",
+  "title": "KSC-98pc1602",
+  "photographer": "",
+  "center": "KSC",
+  "date": "1998-11-10",
+  "url": "https://images.nasa.gov/details/KSC-98pc1602"
+ },
+ {
+  "category": "animal",
+  "file": "animal/armadillo.jpg",
+  "label": "armadillo",
+  "nasa_id": "KSC-07pd0148",
+  "title": "KSC-07pd0148",
+  "photographer": "",
+  "center": "KSC",
+  "date": "2007-01-19",
+  "url": "https://images.nasa.gov/details/KSC-07pd0148"
+ },
+ {
+  "category": "animal",
+  "file": "animal/alligator.jpg",
+  "label": "alligator",
+  "nasa_id": "KSC-04pd0049",
+  "title": "KENNEDY SPACE CENTER, FLA. -- An alligator is spotted sunning on the muddy bank of a canal in KSC.  Nearly 5,000 alligators can be found in canals, ponds, and waterways throughout the Center and the surrounding Merritt Island National Wildlife Refuge. American alligators feed and rest in the water, and lay their eggs in dens they dig into the banks. The young alligators spend their first several weeks in these dens. The Wildlife Refuge encompasses 92,000 acres that are a habitat for more than 331 species of birds, 31 mammals, 117 fishes, and 65 amphibians and reptiles.",
+  "photographer": "",
+  "center": "KSC",
+  "date": "2004-01-08",
+  "url": "https://images.nasa.gov/details/KSC-04pd0049"
+ },
+ {
+  "category": "scene",
+  "file": "scene/lighthouse.jpg",
+  "label": "lighthouse",
+  "nasa_id": "KSC-2012-3669",
+  "title": "KSC-2012-3669",
+  "photographer": "",
+  "center": "KSC",
+  "date": "2012-07-05",
+  "url": "https://images.nasa.gov/details/KSC-2012-3669"
+ },
+ {
+  "category": "scene",
+  "file": "scene/porch.jpg",
+  "label": "porch",
+  "nasa_id": "KSC-20201013-PH-JBS02_0017",
+  "title": "Creative Photography - Sunrise at Cape Canaveral Lighthouse",
+  "photographer": "NASA/Ben Smeglesky",
+  "center": "KSC",
+  "date": "2020-10-13",
+  "url": "https://images.nasa.gov/details/KSC-20201013-PH-JBS02_0017"
+ }
+]

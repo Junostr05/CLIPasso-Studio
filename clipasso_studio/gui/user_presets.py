@@ -22,7 +22,7 @@ def clean_name(name) -> str:
 def _clean_settings(settings: dict) -> dict:
     s = schema.normalize(settings)
     for p in schema.params_for(s["method"]):
-        if p.kind == "path":
+        if p.kind == "path" or p.hidden:  # (hidden: the app's settings decide, not a preset)
             s[p.key] = p.default
     return s
 

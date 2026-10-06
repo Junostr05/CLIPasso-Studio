@@ -1,0 +1,129 @@
+name: Measure variants
+
+# The quality of setting variants against the defaults, graded by the independent judge (tools/benchmark.py
+# --suite, tools/judge.py): every variant of benchmarks/variants.json on the pictures of its categories – one job per
+# variant and category, in parallel – then every variant compared with "base" (or its "against"), picture by
+# picture. For pushes whose message contains [measure].
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  plan:
+    name: Plan
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        shell: python
+        run: |
+          import json, os
+          spec = json.load(open("benchmarks/variants.json", encoding="utf-8"))
+          jobs = [{"variant": name, "category": cat}
+                  for name, v in spec["variants"].items() for cat in v.get("categories", spec["categories"])]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("matrix=" + json.dumps(jobs) + "\n")
+
+  run:
+    name: ${{ matrix.variant }} · ${{ matrix.category }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      VARIANT: ${{ matrix.variant }}
+      CATEGORY: ${{ matrix.category }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/torch-cpu.txt
+          pip install -r requirements/dev.txt
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-bench-v1-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
+          restore-keys: |
+            models-bench-v1-
+            models-v2-
+      - name: Download models
+        run: |
+          python tools/fetch_models.py
+          python tools/fetch_models.py --only clip:ViT-L/14
+      - name: Measure
+        shell: python
+        run: |
+          import json, os, subprocess, sys
+          spec = json.load(open("benchmarks/variants.json", encoding="utf-8"))
+          variant, category = os.environ["VARIANT"], os.environ["CATEGORY"]
+          cmd = [sys.executable, "tools/benchmark.py", "--suite", spec["method"], "--fetch", "--categories", category,
+                 "--seeds", spec["seeds"], "--label", variant, "--out", f"measure/{variant}/{category}",
+                 "--summary", os.environ["GITHUB_STEP_SUMMARY"]]
+          for item in spec["variants"][variant]["set"]:
+              cmd += ["--set", item]
+          sys.exit(subprocess.call(cmd))
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: measure-${{ matrix.variant }}-${{ matrix.category }}
+          path: measure
+          retention-days: 30
+
+  compare:
+    name: Against base
+    needs: run
+    if: always() && needs.run.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: measure-*
+          path: measure
+          merge-multiple: true
+      - name: Compare
+        shell: python
+        run: |
+          import json, os, subprocess, sys
+          spec = json.load(open("benchmarks/variants.json", encoding="utf-8"))
+          status = 0
+          for name, v in spec["variants"].items():
+              against = v.get("against", "base")
+              if name != "base" and os.path.isdir(f"measure/{name}") and os.path.isdir(f"measure/{against}"):
+                  status |= subprocess.call([sys.executable, "tools/benchmark.py", "--compare", f"measure/{against}",
+                                             f"measure/{name}", "--summary", os.environ["GITHUB_STEP_SUMMARY"]])
+          sys.exit(status)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: measure
+          path: measure
+          retention-days: 30

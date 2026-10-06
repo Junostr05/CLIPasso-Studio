@@ -665,7 +665,7 @@ function renderMatrix(sc) {
   box.style.gridTemplateColumns = `22px repeat(${sc.layers.length}, minmax(0, 140px))`;  // (the CSSOM: CSP)
   const items = [el("div")];
   for (const layer of sc.layers) items.push(el("div", {class: "head", text: "L" + layer}));
-  for (let level = 0; level <= sc.levels; level++) {
+  for (const level of sc.levels) {  // (the computed levels: 0 and the chosen ones)
     items.push(el("div", {class: "head", text: String(level)}));
     for (const layer of sc.layers) {
       const c = sc.cells.find((x) => x.layer === layer && x.level === level);

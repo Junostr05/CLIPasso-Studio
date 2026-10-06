@@ -534,13 +534,14 @@ class MatrixView(QWidget):
 
     clicked = Signal(int)
     activated = Signal(int)  # double click
+    menu_requested = Signal(int, object)  # (cell, global position): e.g. "Compute this cell again"
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(200, 200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.layers: list[int] = []
-        self.levels = 0
+        self.levels: list[int] = []  # the computed simplicity levels (rows): 0 and the chosen ones
         self._renderers: dict[int, QSvgRenderer] = {}
         self._svgs: dict[int, str] = {}  # the raw sketches (for another brush style)
         self._style = "plain"
@@ -548,8 +549,10 @@ class MatrixView(QWidget):
         self.best: int | None = None
         self.setCursor(Qt.PointingHandCursor)
 
-    def set_layout(self, layers: list[int], levels: int):
-        self.layers, self.levels = list(layers), int(levels)
+    def set_layout(self, layers: list[int], levels):
+        """``levels``: the computed simplicity levels (or their number for 0 … levels)."""
+        self.layers = list(layers)
+        self.levels = list(range(int(levels) + 1)) if isinstance(levels, int) else list(levels)
         self._renderers.clear()
         self._svgs.clear()
         self.selected = self.best = None
@@ -593,7 +596,7 @@ class MatrixView(QWidget):
     def _geometry(self):
         """(x0, y0, cell size, gap, transposed). Layers are columns and levels rows like in the paper,
         unless the grid is transposed because that gives larger cells (e.g. one tall column in a wide view)."""
-        layers, levels = max(len(self.layers), 1), self.levels + 1
+        layers, levels = max(len(self.layers), 1), max(len(self.levels), 1)
         transposed = self._cell_size(levels, layers) > self._cell_size(layers, levels)
         cols, rows = (levels, layers) if transposed else (layers, levels)
         size = max(self._cell_size(cols, rows), 16)
@@ -602,9 +605,9 @@ class MatrixView(QWidget):
         y0 = self._HEAD + (self.height() - self._HEAD - rows * size - (rows + 1) * self._GAP) / 2
         return x0, y0, size, self._GAP, transposed
 
-    def _cell_rect(self, layer_index: int, level: int) -> QRectF:
+    def _cell_rect(self, layer_index: int, level_index: int) -> QRectF:
         x0, y0, size, gap, transposed = self._geometry()
-        col, row = (level, layer_index) if transposed else (layer_index, level)
+        col, row = (level_index, layer_index) if transposed else (layer_index, level_index)
         return QRectF(x0 + gap + col * (size + gap), y0 + gap + row * (size + gap), size, size)
 
     def paintEvent(self, event):  # noqa: N802
@@ -619,7 +622,7 @@ class MatrixView(QWidget):
         _, y0, _, _, transposed = self._geometry()
         p.setPen(QColor(pal.muted))
         layers = [f"L{layer}" for layer in self.layers]
-        levels = [str(level) for level in range(self.levels + 1)]
+        levels = [str(level) for level in self.levels]
         head, side = (levels, layers) if transposed else (layers, levels)
         for i, text in enumerate(head):
             r = self._cell_rect(0, i) if transposed else self._cell_rect(i, 0)
@@ -631,8 +634,9 @@ class MatrixView(QWidget):
         across, down = (tr("ui.matrix.simplicity"), tr("ui.matrix.fidelity")) if transposed else (
             tr("ui.matrix.fidelity"), tr("ui.matrix.simplicity"))
         first = self._cell_rect(0, 0)
-        last_col = self._cell_rect(0, self.levels) if transposed else self._cell_rect(len(self.layers) - 1, 0)
-        last_row = self._cell_rect(len(self.layers) - 1, 0) if transposed else self._cell_rect(0, self.levels)
+        last = len(self.levels) - 1
+        last_col = self._cell_rect(0, last) if transposed else self._cell_rect(len(self.layers) - 1, 0)
+        last_row = self._cell_rect(len(self.layers) - 1, 0) if transposed else self._cell_rect(0, last)
         p.setPen(QColor(pal.faint))
         p.drawText(QRectF(first.left(), y0 - 40, last_col.right() - first.left(), 18), Qt.AlignCenter, across + "  →")
         p.save()
@@ -642,8 +646,8 @@ class MatrixView(QWidget):
         p.drawText(QRectF(-span / 2, -9, span, 18), Qt.AlignCenter, down + "  →")
         p.restore()
         for c, layer in enumerate(self.layers):
-            for row in range(self.levels + 1):
-                cell = layer * 100 + row
+            for row, level in enumerate(self.levels):
+                cell = layer * 100 + level
                 r = self._cell_rect(c, row)
                 p.setPen(Qt.NoPen)
                 p.setBrush(QColor(pal.paper))
@@ -663,9 +667,9 @@ class MatrixView(QWidget):
 
     def _cell_at(self, pos) -> int | None:
         for c, layer in enumerate(self.layers):
-            for row in range(self.levels + 1):
+            for row, level in enumerate(self.levels):
                 if self._cell_rect(c, row).contains(pos):
-                    return layer * 100 + row
+                    return layer * 100 + level
         return None
 
     def mouseReleaseEvent(self, e):  # noqa: N802
@@ -681,6 +685,11 @@ class MatrixView(QWidget):
     def mouseMoveEvent(self, e):  # noqa: N802
         cell = self._cell_at(e.position())
         self.setToolTip(tr("ui.cell_tip", layer=cell // 100, level=cell % 100) if cell is not None else "")
+
+    def contextMenuEvent(self, e):  # noqa: N802
+        cell = self._cell_at(e.pos())
+        if cell is not None and cell in self._renderers:
+            self.menu_requested.emit(cell, e.globalPos())
 
 
 class LossChart(QWidget):

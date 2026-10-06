@@ -8,6 +8,8 @@ from .. import model_store
 
 SWIFT_DIFFUSION_KEY = "swiftsketch:diffusion"
 SWIFT_REFINE_KEY = "swiftsketch:refine"
+# CLIPasso's experimental semantic models (engine/semantic.py)
+SEMANTIC_KEYS = {"openclip_b16": "semantic:openclip-b16", "siglip_b16": "semantic:siglip-b16"}
 # ControlNet conditions that need a detector network to compute the condition image
 DETECTOR_MODELS = {"depth": "dpt-hybrid", "normal": "dpt-hybrid", "hed": "hed", "scribble": "hed", "seg": "upernet",
                    "canny": None}
@@ -22,6 +24,8 @@ def clipasso(settings: dict) -> list[str]:
         needed.add(s["mask_model"])
     if s["percep_loss"] == "LPIPS":
         needed.add("vgg16")
+    if s["semantic_model"] in SEMANTIC_KEYS and s["clip_conv_loss"] and s["clip_fc_loss_weight"]:
+        needed.add(SEMANTIC_KEYS[s["semantic_model"]])
     return sorted(needed)
 
 

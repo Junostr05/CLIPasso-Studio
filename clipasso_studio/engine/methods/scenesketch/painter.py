@@ -83,6 +83,8 @@ class MLPPainter(nn.Module):
         self.out_of_canvas_mask = torch.ones(self.num_paths, device=device)
         self.stroke_probs = None
         self.widths = None
+        self.guide = None  # experimental sketch improvement (engine/sketch_guide.py): hatch strokes stay lines
+        self.roles: list[int] | None = None
         self.shapes: list[renderer.Path] = []
         self.shape_groups: list[renderer.ShapeGroup] = []
 
@@ -101,7 +103,18 @@ class MLPPainter(nn.Module):
                 points = self.mlp(x)
         points = 0.5 * (points + 1.0) * self.canvas
         points = points + 1e-4 * torch.randn_like(points)
-        return points.reshape(self.num_paths, self.num_cp, 2)
+        points = points.reshape(self.num_paths, self.num_cp, 2)
+        if self.guide is not None and self.roles:
+            points = self.guide.project(points, self.roles)
+        return points
+
+    def _width_factor(self, p: int) -> float:
+        """Hatch strokes of the experimental sketch improvement are finer."""
+        if self.guide is not None and self.roles and p < len(self.roles) and self.roles[p] == 1:
+            from ...sketch_guide import HATCH_WIDTH
+
+            return HATCH_WIDTH
+        return 1.0
 
     def sample_widths(self) -> torch.Tensor:
         probs = self.mlp_width(self.init_widths).clamp(min=1e-8)
@@ -122,7 +135,7 @@ class MLPPainter(nn.Module):
         shapes, groups = [], []
         for p in range(self.num_paths):
             w = widths[p] if widths is not None else torch.tensor(self.width, device=self.device)
-            path = renderer.Path(self.num_control_points, points[p], w, is_closed=False)
+            path = renderer.Path(self.num_control_points, points[p], w * self._width_factor(p), is_closed=False)
             if mode == "init" and not in_canvas(path, self.canvas):
                 self.out_of_canvas_mask[p] = 0
             shapes.append(path)
@@ -144,9 +157,9 @@ class MLPPainter(nn.Module):
     def kept_paths(self, shapes=None) -> list[renderer.Path]:
         """Strokes of the SVG: with width optimisation only those with width / 1.5 > 0.7."""
         out = []
-        for path in shapes if shapes is not None else self.shapes:
+        for p, path in enumerate(shapes if shapes is not None else self.shapes):
             w = float(path.stroke_width.detach())
-            if self.width_optim and w / BASE_WIDTH <= KEEP_THRESHOLD:
+            if self.width_optim and w / self._width_factor(p) / BASE_WIDTH <= KEEP_THRESHOLD:  # (hatch: finer)
                 continue
             out.append(renderer.Path(path.num_control_points, path.points.detach(), torch.tensor(w),
                                      is_closed=False))
@@ -179,6 +192,7 @@ class MLPPainter(nn.Module):
             w = float(widths[p]) if widths is not None else self.width
             path = renderer.Path(self.num_control_points, points[p].clone(), torch.tensor(w), is_closed=False)
             if in_canvas(path, self.canvas) and (widths is None or w / BASE_WIDTH > KEEP_THRESHOLD):
+                path.stroke_width = path.stroke_width * self._width_factor(p)
                 out.append(path)
         return out
 

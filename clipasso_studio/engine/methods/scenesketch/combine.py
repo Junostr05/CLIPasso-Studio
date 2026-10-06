@@ -107,13 +107,15 @@ def combine(background_paths, object_paths, mask_canvas: np.ndarray | None, canv
     return bg + list(object_paths)
 
 
-def matrix_image(cells: dict, layers: list[int], levels: int, cell_px: int = 200, gap: int = 12) -> Image.Image:
-    """Grid of the cell PNGs: one column per fidelity layer, one row per simplicity level."""
-    rows, cols = levels + 1, len(layers)
+def matrix_image(cells: dict, layers: list[int], levels, cell_px: int = 200, gap: int = 12) -> Image.Image:
+    """Grid of the cell PNGs: one column per fidelity layer, one row per simplicity level (``levels``: the computed
+    levels, or their number for 0 … levels)."""
+    levels = list(range(levels + 1)) if isinstance(levels, int) else list(levels)
+    rows, cols = len(levels), len(layers)
     img = Image.new("RGB", (cols * cell_px + (cols + 1) * gap, rows * cell_px + (rows + 1) * gap), "white")
     for c, layer in enumerate(layers):
-        for r in range(rows):
-            path = cells.get((layer, r))
+        for r, level in enumerate(levels):
+            path = cells.get((layer, level))
             if not path:
                 continue
             try:

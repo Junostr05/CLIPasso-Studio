@@ -19,6 +19,15 @@ from .app_settings import app_settings
 _ids = itertools.count(1)
 
 
+def new_job_settings(settings: dict) -> dict:
+    """The settings of a new job: normalised, with the switches of the app's settings (the experimental sketch
+    improvement – kept with the job, so continuing it later does the same)."""
+    s = schema.normalize(settings)
+    if schema.method_of(s) in schema.SKETCH_GUIDE_METHODS:
+        s["sketch_guide"] = bool(app_settings().get("experimental_sketch", False))
+    return s
+
+
 @dataclass
 class QueuedJob:
     target: str
@@ -143,7 +152,9 @@ class JobController(QObject):
         return self.enqueue(target, state["settings"], start=start, resume_dir=job_dir)
 
     def enqueue(self, target: str, settings: dict, start: bool = True, resume_dir: str = "") -> QueuedJob:
-        job = QueuedJob(target=target, settings=schema.normalize(settings), resume_dir=resume_dir)
+        # (continuing a job: its own settings as they were)
+        settings = schema.normalize(settings) if resume_dir else new_job_settings(settings)
+        job = QueuedJob(target=target, settings=settings, resume_dir=resume_dir)
         self.jobs.append(job)
         self._persist_queue()
         self.queue_changed.emit()
@@ -154,7 +165,7 @@ class JobController(QObject):
     def enqueue_many(self, targets: list[str], settings: dict, start: bool = True) -> list[QueuedJob]:
         """Queue several images with the same settings – the queue is saved and shown once, not per image
         (a folder of hundreds of images)."""
-        normalized = schema.normalize(settings)
+        normalized = new_job_settings(settings)
         added = [QueuedJob(target=t, settings=dict(normalized)) for t in targets]
         self.jobs.extend(added)
         if added:
@@ -210,7 +221,7 @@ class JobController(QObject):
         job = next((j for j in self.jobs if j.id == job_id), None)
         if job is None or job.status != "queued" or job.resume_dir:
             return False
-        job.settings = schema.normalize(settings)
+        job.settings = new_job_settings(settings)
         self._persist_queue()
         self.queue_changed.emit()
         return True

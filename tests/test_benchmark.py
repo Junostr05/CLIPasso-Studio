@@ -85,3 +85,120 @@ def test_every_case_names_its_models(bench):
         keys = bench.required_models(case)
         assert keys and all(isinstance(k, str) for k in keys)
     assert "sd15" in bench.required_models("controlsketch") and "lama" in bench.required_models("scenesketch")
+
+
+# ---------------------------------------------------------------- categories and the independent judge (3.7)
+def test_the_suite_pictures(bench):
+    items = bench.suite_images()
+    cats = {c: [it for it in items if it["category"] == c] for c in bench.CATEGORIES}
+    assert len(cats["object"]) == 4 and len(cats["portrait"]) == 3 and len(cats["animal"]) == 4
+    assert len(cats["scene"]) == 4
+    for it in items:
+        assert Path(it["path"]).is_file() and it["label"]
+    quick = bench.suite_images(quick=True)
+    assert [it["category"] for it in quick] == list(bench.CATEGORIES)
+    assert {it["category"] for it in bench.suite_images(["portrait"])} == {"portrait"}
+    # every photo of the benchmark is listed with its source and a public-domain licence
+    sources = json.loads((ROOT / "benchmarks" / "images" / "sources.json").read_text(encoding="utf-8"))
+    listed = (ROOT / "benchmarks" / "images" / "SOURCES.md").read_text(encoding="utf-8")
+    on_disk = sorted(p.relative_to(ROOT / "benchmarks" / "images").as_posix()
+                     for p in (ROOT / "benchmarks" / "images").rglob("*.jpg"))
+    assert sorted(s["file"] for s in sources) == on_disk
+    assert all(s["nasa_id"] in listed and s["url"].startswith("https://images.nasa.gov/") for s in sources)
+
+
+def _rows(values, key="clip_l14", rec=None):
+    rows = []
+    for i, v in enumerate(values):
+        rows.append({"category": "object" if i % 2 else "animal", "name": f"p{i}", "seed": 0, key: v,
+                     "recog": (rec[i] if rec else 50.0)})
+    return {"rows": rows}
+
+
+def test_paired_comparison_and_verdict(bench):
+    a = _rows([60.0, 62.0, 58.0, 61.0, 59.0, 63.0])
+    better = _rows([62.1, 64.0, 60.2, 63.1, 60.9, 65.2])  # about 2 points, every picture: a clear gain
+    res = bench.paired(a, better)
+    assert res["all"]["n"] == 6 and res["all"]["clip_l14"]["diff"] == pytest.approx(2.08, abs=0.01)
+    assert res["all"]["verdict"] == "gain"
+    noisy = _rows([63.0, 59.0, 60.0, 64.0, 57.0, 62.0])  # up and down: no clear difference
+    assert bench.paired(a, noisy)["all"]["verdict"] == "no clear difference"
+    # more similar but clearly less recognisable: no gain
+    worse_rec = _rows([62.1, 64.0, 60.2, 63.1, 60.9, 65.2], rec=[30.0, 31.0, 29.0, 32.0, 30.0, 28.0])
+    assert bench.paired(a, worse_rec)["all"]["verdict"] == "no clear difference"
+    assert bench.paired(better, a)["all"]["verdict"] == "loss"
+    assert bench.paired(a, better)["animal"]["verdict"] == "gain"  # (3 pictures per category)
+    # pictures in only one of them are left out; too few pictures: no verdict
+    assert bench.paired(a, {"rows": better["rows"][:2]})["all"]["verdict"] == "too few pictures"
+    md = bench.compare_markdown(res, "A", "B")
+    assert "| all | 6 | +2.08 ± " in md and "gain" in md
+
+
+def test_parts_of_a_variant_are_merged(bench, tmp_path):
+    """The CI measures every variant in one job per category: a folder's parts are compared as one suite."""
+    a, b = _rows([60.0, 62.0, 58.0, 61.0, 59.0, 63.0]), _rows([62.1, 64.0, 60.2, 63.1, 60.9, 65.2])
+    for name, res in (("base", a), ("better", b)):
+        for cat in ("animal", "object"):
+            part = tmp_path / name / cat
+            part.mkdir(parents=True)
+            rows = [r for r in res["rows"] if r["category"] == cat]
+            (part / f"suite_{name}.json").write_text(json.dumps({"method": "clipasso", "label": name, "rows": rows}))
+    merged = bench.load_suite(str(tmp_path / "base"))
+    assert len(merged["rows"]) == 6 and merged["label"] == "base" and merged["categories"]["all"]["n"] == 6
+    assert bench.paired(merged, bench.load_suite(str(tmp_path / "better")))["all"]["verdict"] == "gain"
+    single = tmp_path / "base" / "animal" / "suite_base.json"
+    assert len(bench.load_suite(str(single))["rows"]) == 3
+    with pytest.raises(SystemExit):
+        bench.load_suite(str(tmp_path / "empty"))
+
+
+def test_the_measured_variants(bench):
+    """benchmarks/variants.json (the CI's measurements): every setting exists, "base" changes nothing."""
+    from clipasso_studio import settings_schema as schema
+
+    spec = json.loads((ROOT / "benchmarks" / "variants.json").read_text(encoding="utf-8"))
+    assert spec["method"] in bench.SUITES and set(spec["categories"]) <= set(bench.CATEGORIES)
+    assert spec["variants"]["base"]["set"] == []
+    keys = {p.key for p in schema.METHOD_PARAMS[spec["method"]]}
+    for name, v in spec["variants"].items():
+        assert set(v.get("categories", [])) <= set(bench.CATEGORIES), name
+        assert v.get("against", "base") in spec["variants"], name  # (compared with "base" or this one)
+        for item in v["set"]:
+            assert item.partition("=")[0] in keys, (name, item)
+
+
+def test_summary_and_table(bench):
+    rows = [{"category": "object", "name": "a", "seed": 0, "clip_l14": 60.0, "recog": 40.0, "clip_b32": 70.0,
+             "seconds": 10.0},
+            {"category": "portrait", "name": "b", "seed": 0, "clip_l14": 50.0, "recog": 20.0, "clip_b32": 60.0,
+             "seconds": 12.0}]
+    summary = bench.summarise(rows)
+    assert summary["all"] == {"clip_l14": 55.0, "recog": 30.0, "clip_b32": 65.0, "seconds": 11.0, "n": 2}
+    assert summary["object"]["n"] == 1 and "animal" not in summary
+    table = bench.suite_markdown({"method": "clipasso", "overrides": {"num_iter": 51}, "categories": summary})
+    assert "| portrait | 1 | 50.0 | 20.0 | 60.0 | 12.0 |" in table and '"num_iter": 51' in table
+
+
+def test_set_values_and_the_taste_file(bench, tmp_path):
+    assert bench.parse_value("true") is True and bench.parse_value("0.5") == 0.5
+    assert bench.parse_value("[1, 2]") == [1, 2] and bench.parse_value("ViT-B/16") == "ViT-B/16"
+    assert bench.load_taste_model(str(tmp_path)) is None
+    (tmp_path / "CLIPassoStudio").mkdir()
+    (tmp_path / "CLIPassoStudio" / "taste.json").write_text(json.dumps({"samples": {}, "model": {"w": [1.0]}}))
+    assert bench.load_taste_model(str(tmp_path)) == {"w": [1.0]}
+
+
+def test_the_judge_is_in_no_optimisation():
+    """The judge's model is used by nothing the app optimises with, and is not offered on the models page."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import model_store
+    from clipasso_studio.gui.pages.other_pages import model_group
+
+    spec = model_store.SPECS["clip:ViT-L/14"]
+    assert spec.extra.get("purpose") == "benchmark" and not spec.bundled and model_group(spec.key) == "benchmark"
+    for params in schema.METHOD_PARAMS.values():
+        for p in params:
+            assert "ViT-L/14" not in [str(c) for c in (p.choices or [])], p.key
+    users = [f.relative_to(ROOT).as_posix() for f in (ROOT / "clipasso_studio").rglob("*.py")
+             if "ViT-L/14" in f.read_text(encoding="utf-8")]
+    assert users == ["clipasso_studio/engine/model_store.py"]

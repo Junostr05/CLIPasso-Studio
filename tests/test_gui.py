@@ -36,7 +36,7 @@ def window(tmp_path_factory):
 def test_every_parameter_has_a_field(window):
     from clipasso_studio import settings_schema as schema
 
-    assert set(window.studio.params.fields) == {p.key for p in schema.PARAMS}
+    assert set(window.studio.params.fields) == {p.key for p in schema.PARAMS if not p.hidden}
 
 
 def test_presets_and_quick_toggles(window):
@@ -190,10 +190,102 @@ def test_compare_page_and_models_page(window):
     assert set(window.compare.cards) == set(schema.METHODS)
     assert window.compare.image_name.text()
     window.show_page("models")
-    assert {r.key for r in window.models.rows} == set(model_store.SPECS)
+    # every model but the benchmark's judge (tools/judge.py), the experimental ones in their own group
+    shown = {k for k, spec in model_store.SPECS.items() if spec.extra.get("purpose") != "benchmark"}
+    assert {r.key for r in window.models.rows} == shown
+    experimental = {r.key for r in window.models.rows if not r.experimental.isHidden()}
+    assert experimental == {"semantic:openclip-b16", "semantic:siglip-b16"}
     window.show_page("gallery")
     window.gallery.filter.changed.emit("swiftsketch")
     window.show_page("studio")
+
+
+def test_models_page_shows_and_changes_the_studios_models(window, monkeypatch):
+    """3.7: the models chosen in the studio, by category – changed on the models page, both ways."""
+    panel, page = window.studio.params, window.models
+    panel.set_method("clipasso")
+    card = page.studio
+    assert set(card.items) == {"mask_model", "clip_model_name", "semantic_model", "saliency_model",
+                               "saliency_clip_model", "best_by", "face_crops"}
+    assert "CLIPasso" in card.title.text()
+    # the overview -> the studio
+    combo = card.items["clip_model_name"]["editor"]
+    combo.setCurrentIndex(combo.findData("ViT-B/32"))
+    assert panel.settings()["clip_model_name"] == "ViT-B/32"
+    assert len(panel.settings()["clip_conv_layer_weights"].split(",")) == 12  # (as if changed in the studio)
+    # the studio -> the overview
+    panel.fields["clip_model_name"].set_value("RN101", emit=True)
+    assert combo.currentData() == "RN101"
+    used = {r.key for r in page.rows if not r.used.isHidden()}
+    assert "clip:RN101" in used and "clip:RN50" not in used
+    # an experimental choice: marked, and its download offered when it is missing
+    from clipasso_studio.engine import model_store
+
+    monkeypatch.setattr(model_store, "is_available",
+                        lambda key: not key.startswith("semantic:") and model_store.find(key) is not None)
+    sem = card.items["semantic_model"]
+    sem_combo = sem["editor"]
+    assert "experiment" in sem_combo.itemText(sem_combo.findData("siglip_b16")).lower() or \
+        "experimentell" in sem_combo.itemText(sem_combo.findData("siglip_b16"))
+    sem_combo.setCurrentIndex(sem_combo.findData("siglip_b16"))
+    assert panel.settings()["semantic_model"] == "siglip_b16"
+    assert not sem["experimental"].isHidden() and not sem["get"].isHidden()
+    asked = []
+    monkeypatch.setattr("clipasso_studio.gui.dialogs.ask_download_missing", lambda parent, keys: asked.append(keys))
+    sem["get"].click()
+    assert asked == [["semantic:siglip-b16"]]
+    panel.fields["semantic_model"].set_value("clip", emit=True)
+    assert sem["experimental"].isHidden() and sem["get"].isHidden()
+    # another method: its own roles
+    panel.set_method("controlsketch")
+    assert "condition" in card.items and "clip_model_name" not in card.items
+    panel.set_method("clipasso")
+
+
+def test_experimental_sketch_improvement_switch(window, tmp_path, monkeypatch):
+    """3.7: the switch at the bottom of the settings – new CLIPasso / SceneSketch jobs get ``sketch_guide``, a
+    continued job keeps its own; a badge in the studio leads to the switch."""
+    from clipasso_studio.gui.app_settings import app_settings
+
+    settings, studio, controller = window.settings, window.studio, window.controller
+    monkeypatch.setattr(controller, "start_next", lambda: None)  # (only queued here)
+    lay = settings.experimental.parentWidget().layout()
+    cards = [lay.itemAt(i).widget() for i in range(lay.count()) if lay.itemAt(i).widget() is not None]
+    assert cards[-1] is settings.experimental  # at the very bottom
+    assert "sketch_guide" not in studio.params.fields  # (not among the studio's parameters)
+    studio.params.set_method("clipasso")
+    settings.sketch_switch.setChecked(True)
+    assert app_settings().get("experimental_sketch") is True and studio.experimental_btn.isVisibleTo(studio)
+    image = str(tmp_path / "x.png")
+    on = controller.enqueue(image, studio.params.settings(), start=False)
+    assert on.settings["sketch_guide"] is True
+    swift = controller.enqueue(image, schema_settings("swiftsketch"), start=False)
+    assert "sketch_guide" not in swift.settings
+    studio.params.set_method("swiftsketch")
+    assert not studio.experimental_btn.isVisibleTo(studio)
+    studio.params.set_method("clipasso")
+    settings.sketch_switch.setChecked(False)
+    assert not studio.experimental_btn.isVisibleTo(studio)
+    off = controller.enqueue(image, studio.params.settings(), start=False)
+    assert off.settings["sketch_guide"] is False
+    # continuing a job: its own setting, whatever the switch says now
+    kept = controller.enqueue(image, {**on.settings}, start=False, resume_dir=str(tmp_path / "job"))
+    assert kept.settings["sketch_guide"] is True
+    settings.sketch_switch.setChecked(True)
+    shown = []
+    monkeypatch.setattr(settings, "show_experimental", lambda: shown.append(True))
+    studio.experimental_btn.click()  # the badge: to the switch
+    assert window.stack.currentWidget() is settings and shown
+    settings.sketch_switch.setChecked(False)
+    for job in (on, swift, off, kept):
+        controller.remove(job.id)
+    window.show_page("studio")
+
+
+def schema_settings(method):
+    from clipasso_studio import settings_schema as schema
+
+    return schema.default_settings(method)
 
 
 def test_loading_a_swiftsketch_result(window, tmp_path):
@@ -857,6 +949,18 @@ def test_saved_steps_and_simplify_in_the_studio(window, tmp_path, monkeypatch):
     studio.edit_bar.close_bar()
     assert json.loads(open(os.path.join(run, importance.FILE)).read())["drops"] == [1.0, 0.1]
 
+    # 3.7: the button says what it does, and after the first finished sketch a hint says where it is – once
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import tr
+
+    assert studio.simplify_btn.text() == tr("ui.edit_bar.simplify") and studio.simplify_btn.isVisibleTo(studio)
+    app_settings().set("simplify_tip_shown", False)
+    toasts = []
+    studio.toast.connect(lambda text, kind: toasts.append(text))
+    studio._simplify_tip()
+    studio._simplify_tip()
+    assert toasts == [tr("ui.edit_bar.simplify_hint")] and app_settings().get("simplify_tip_shown") is True
+
 
 def test_time_budget_in_the_studio(window, monkeypatch):
     from clipasso_studio.gui import methods_ui
@@ -1247,7 +1351,7 @@ def test_scenesketch_views_and_layers(window, tmp_path):
     os.makedirs(out, exist_ok=True)
     job = fake_scene_job(out, "scene_gui_job", str(tmp_path / "scene.png"))
     studio.show_job_dir(job)
-    assert studio.view_method == "scenesketch" and studio.scene_layout == ([8], 1)
+    assert studio.view_method == "scenesketch" and studio.scene_layout == ([8], [0, 1])
     assert studio.best_seed == 800 and 800 in studio.seed_attn  # (from runs/background_l8/seed0)
     studio.modes.set_current("matrix")
     studio.matrix.resize(500, 500)
@@ -1263,7 +1367,7 @@ def test_scenesketch_views_and_layers(window, tmp_path):
     # the phone
     st = call("get_studio", {})
     sc = st["scene"]
-    assert sc["layers"] == [8] and sc["levels"] == 1 and sc["background"] and sc["layered"]
+    assert sc["layers"] == [8] and sc["levels"] == [0, 1] and sc["background"] and sc["layered"]
     assert [c["seed"] for c in sc["cells"]] == [800, 801] and all(c["has"] for c in sc["cells"])
     assert next(c for c in sc["cells"] if c["best"])["seed"] == 800
     jpg = call("file_background", {})
@@ -1837,3 +1941,46 @@ def test_studio_columns_fit_a_small_window(window):
         assert st.input_buttons.is_wrapped()
     finally:
         window.resize(size)
+
+
+def test_stroke_recommendation(window, tmp_path):
+    """3.7: next to "Strokes" the number that suits the photo's detail, with "Apply" (CLIPasso, ControlSketch)."""
+    from PIL import Image, ImageDraw
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.engine import complexity
+    from clipasso_studio.gui.i18n import tr
+    from tests.helpers import wait_until
+
+    app = QApplication.instance()
+    studio = window.studio
+    busy = tmp_path / "busy.png"
+    im = Image.new("RGB", (400, 400), "white")
+    d = ImageDraw.Draw(im)
+    for x in range(0, 400, 12):
+        d.line((x, 0, x + 60, 400), fill=(20, 20, 20), width=3)
+    im.save(busy)
+    studio.set_image(str(busy))
+    field = studio.params.pages["clipasso"].fields["num_paths"]
+    assert field.recommended is None  # (measured in the background)
+    wait_until(app, lambda: field.recommended is not None)
+    n, level = complexity.recommend("clipasso", studio._density)
+    assert field.recommended == n == 32 and field.note.text() == tr("ui.recommend.strokes", n=32,
+                                                                    level=tr("ui.recommend.level.very_many"))
+    other = studio.params.pages["controlsketch"].fields["num_strokes"]
+    assert other.recommended == complexity.recommend("controlsketch", studio._density)[0]
+    studio.params.set_method("clipasso")
+    before = studio.params.settings()["num_paths"]
+    assert before != 32 and field.note_btn.isVisibleTo(field)
+    field.note_btn.click()
+    assert studio.params.settings()["num_paths"] == 32 and not field.note_btn.isVisibleTo(field)
+    field.reset()
+    # a plain photo: few strokes; no photo: no recommendation
+    plain = tmp_path / "plain.png"
+    im = Image.new("RGB", (400, 400), "white")
+    ImageDraw.Draw(im).ellipse((120, 120, 280, 280), fill=(60, 60, 60))
+    im.save(plain)
+    studio.set_image(str(plain))
+    wait_until(app, lambda: field.recommended == 8)
+    studio.forget_job_dir(str(tmp_path))  # (the photo was inside it)
+    assert field.recommended is None and not field.note_box.isVisibleTo(field)

@@ -36,7 +36,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .... import settings_schema as schema
-from ... import checkpoint, imaging, masking
+from ... import checkpoint, imaging, jobs, masking
 from ...jobs import SeedResult
 from . import combine as C
 from .painter import MLPPainter, paths_to_svg, render_paths
@@ -93,6 +93,7 @@ class PartConfig:
     init_points: torch.Tensor | None = None  # None: attention-based initial strokes
     states: dict | None = None  # MLP weights (and optimiser states) to start from
     load_optim: bool = False
+    roles: list | None = None  # with init_points: the strokes' roles (experimental sketch improvement)
 
 
 @dataclass
@@ -108,6 +109,7 @@ class RunResult:
     best_normalised_loss: float | None = None
     frames: list = field(default_factory=list)  # (iteration, paths) every save_interval
     seconds: float = 0.0
+    roles: list | None = None  # edge / hatch strokes of the experimental sketch improvement
 
 
 class _Ctx:
@@ -130,6 +132,7 @@ class _Ctx:
         self.clip_model = None
         self.cancelled = False
         self.skip_background = False
+        self.cell_seeds = jobs.read_cell_seeds(job_dir)  # (cells computed again: their own start values)
 
 
 # ----------------------------------------------------------------------------- inputs
@@ -187,8 +190,10 @@ def _prepare(ctx: _Ctx) -> dict:
     return out
 
 
-def _initial_strokes(ctx: _Ctx, target: torch.Tensor, mask_t: torch.Tensor | None):
-    """Attention-based start points + short random strokes, exactly like CLIPasso's ``Painter``."""
+def _initial_strokes(ctx: _Ctx, target: torch.Tensor, mask_t: torch.Tensor | None, num_strokes: int | None = None,
+                     guide=None):
+    """Attention-based start points + short random strokes, exactly like CLIPasso's ``Painter`` (with ``guide``:
+    some of them hatch strokes in the dark) -> (points, attention preview, the strokes' roles)."""
     from ...painter import Painter
 
     s = ctx.s
@@ -199,11 +204,11 @@ def _initial_strokes(ctx: _Ctx, target: torch.Tensor, mask_t: torch.Tensor | Non
         saliency_model=s["saliency_model"], xdog_intersec=int(bool(s["xdog_intersec"])),
         mask_object_attention=int(bool(s["mask_object_attention"]) and mask_t is not None),
         text_target="none", saliency_clip_model=s["saliency_clip_model"], num_iter=1, save_interval=1)
-    painter = Painter(args, num_strokes=int(s["num_strokes"]), num_segments=1, imsize=CANVAS, device=ctx.device,
-                      target_im=target, mask=mask_t)
+    painter = Painter(args, num_strokes=int(num_strokes or s["num_strokes"]), num_segments=1, imsize=CANVAS,
+                      device=ctx.device, target_im=target, mask=mask_t, guide=guide)
     painter.init_image(stage=0)
     points = torch.stack([p.points.detach().float() for p in painter.shapes]).to(ctx.device)
-    return points, painter.attention_preview()
+    return points, painter.attention_preview(), list(painter.roles)
 
 
 # ----------------------------------------------------------------------------- training
@@ -245,7 +250,7 @@ def _paths_from(data, device) -> list:
 def _save_part(res: RunResult) -> None:
     """A finished part (one optimisation of the background or the object of a cell): continuing an
     interrupted job loads it instead of computing it again."""
-    data = {"seed": res.seed, "points_init": res.points_init.cpu(), "paths": _paths_data(res.paths),
+    data = {"seed": res.seed, "points_init": res.points_init.cpu(), "paths": _paths_data(res.paths), "roles": res.roles,
             "state": res.state, "loss_eval": res.loss_eval, "evals": res.evals, "best_eval_index": res.best_eval_index,
             "best_normalised_loss": res.best_normalised_loss, "seconds": res.seconds,
             "frames": [(it, _paths_data(fr)) for it, fr in res.frames]}
@@ -264,7 +269,7 @@ def _load_part(run_dir: str, device) -> RunResult | None:
                          paths=_paths_from(d["paths"], device), state=checkpoint.to_device(d["state"], device),
                          loss_eval=d["loss_eval"], evals=d["evals"], best_eval_index=d["best_eval_index"],
                          best_normalised_loss=d["best_normalised_loss"], seconds=d["seconds"],
-                         frames=[(it, _paths_from(fr, device)) for it, fr in d["frames"]])
+                         frames=[(it, _paths_from(fr, device)) for it, fr in d["frames"]], roles=d.get("roles"))
     except Exception:  # unreadable (e.g. written by an older version): compute it again
         return None
 
@@ -302,11 +307,17 @@ def _steps(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict, pa
         return saved
     os.makedirs(os.path.join(run_dir, "svg_logs"), exist_ok=True)
     set_seed(seed)
+    guide = None
+    if s.get("sketch_guide"):  # experimental: strokes along the edges, hatching in the dark
+        from ...sketch_guide import Guide
+
+        guide = Guide(cfg.target)
     if cfg.init_points is None:
         mask_t = None
         if cfg.name == "object" and inputs.get("object_mask") is not None:
             mask_t = torch.from_numpy(C.mask_for_canvas(inputs["object_mask"], CANVAS).astype(np.float32))
-        points_init, preview = _initial_strokes(ctx, cfg.target, mask_t)
+        strokes = int(s["object_num_strokes"]) if cfg.name == "object" else 0  # (0: the background's number)
+        points_init, preview, roles = _initial_strokes(ctx, cfg.target, mask_t, strokes or None, guide)
         if preview is not None:
             preview.save(os.path.join(run_dir, "attention_map.png"))
             if cfg.name == "background":
@@ -314,9 +325,12 @@ def _steps(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict, pa
 
                 ctx.reporter.event("attention", seed=ctx.cell, png=_png_bytes(preview))
     else:
-        points_init = cfg.init_points
+        points_init, roles = cfg.init_points, cfg.roles
+    roles = list(roles) if roles is not None else [0] * int(points_init.shape[0])
     painter = MLPPainter(points_init, CANVAS, device, width_optim=cfg.width_optim,
                          gumbel_temp=float(s["gumbel_temp"]), width=float(s["width"]))
+    if guide is not None:
+        painter.guide, painter.roles = guide, roles
     states = cfg.states or {}
     if states.get("mlp") is not None:
         painter.mlp.load_state_dict(states["mlp"])
@@ -376,6 +390,8 @@ def _steps(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict, pa
         sketch = painter.render()
         weighted, _, _ = loss_fn(sketch, cfg.target, painter.stroke_probs, painter.strokes_in_canvas(),
                                  painter.mlp_width, painter.mlp, "train")
+        if guide is not None:  # (outside the gradient-norm balance: backward() propagates it as it is)
+            weighted["guide"] = guide.loss(torch.stack([p.points for p in painter.shapes]), roles, painter.num_cp - 1)
         loss = sum(weighted.values())
         loss_fn.backward(weighted)  # (reuses the gradients of the gradient-norm balancing)
         points_opt.step()
@@ -439,7 +455,7 @@ def _steps(ctx: _Ctx, cfg: PartConfig, seed: int, run_dir: str, inputs: dict, pa
         json.dump(config, f, indent=2)
     res = RunResult(seed=seed, run_dir=run_dir, points_init=points_init.detach(), paths=paths, state=chosen,
                     loss_eval=loss_eval, evals=evals, best_eval_index=best_index,
-                    best_normalised_loss=best_normalised, frames=frames, seconds=config["seconds"])
+                    best_normalised_loss=best_normalised, frames=frames, seconds=config["seconds"], roles=roles)
     if not ctx.cancelled:
         _save_part(res)
     return res
@@ -509,7 +525,7 @@ def _run_part(ctx: _Ctx, cfg: PartConfig, inputs: dict) -> RunResult:
     tag = f"{cfg.name}_l{cfg.layer}" + (f"_level{cfg.level}" if cfg.level else "")
     ctx.reporter.event("stage", seed=ctx.cell, name=f"scene_{cfg.name}")
     results = []
-    base = int(ctx.s["seed"])
+    base = ctx.cell_seeds.get(str(schema.scene_cell_id(cfg.layer, cfg.level)), int(ctx.s["seed"]))
     seeds = [base + j * 1000 for j in range(int(ctx.s["num_sketches"]))]
     dirs = {seed: os.path.join(ctx.job_dir, "runs", tag, f"seed{seed}") for seed in seeds}
     if schema.turbo_prunes(ctx.s) and not cfg.width_optim:
@@ -600,7 +616,7 @@ def _simplify_config(ctx: _Ctx, part: str, layer: int, level: int, ratio: float,
     return PartConfig(name=part, layer=layer, level=level, target=inputs[f"{part}_t"], layer_weights=weights,
                       num_iter=int(ctx.s["simplify_num_iter"]), eval_interval=SIMPLIFY_EVAL_INTERVAL,
                       min_eval_iter=SIMPLIFY_MIN_EVAL_ITER, gradnorm=True, width_optim=True, ratio=ratio,
-                      init_points=prev.points_init, states=states, load_optim=not first)
+                      init_points=prev.points_init, states=states, load_optim=not first, roles=prev.roles)
 
 
 def _write_cell(ctx: _Ctx, layer: int, level: int, bg: RunResult, obj: RunResult | None, inputs: dict,
@@ -743,9 +759,10 @@ def run_cells(settings, target, job_dir, cells, reporter=None, control=None, dev
         rat_obj = ratios(1.0 / _clip_layer_loss(obj, layer, "object"), obj_divs[layer], ctx.levels) \
             if obj is not None else []
         add(layer, 0, bg, obj, {"ratios_background": rat_bg, "ratios_object": rat_obj})
-        # ---------------------------------------------------- simplicity levels
+        # ---------------------------------------------------- simplicity levels (the chosen ones: each one starts
+        # from the one before it in the list)
         prev_bg, prev_obj = bg, obj
-        for level in range(1, ctx.levels + 1):
+        for level in schema.scene_levels(s)[1:]:
             if schema.scene_cell_id(layer, level) not in wanted or ctx.cancelled:
                 break
             _start_cell(ctx, schema.scene_cell_id(layer, level))
@@ -768,7 +785,7 @@ def run_cells(settings, target, job_dir, cells, reporter=None, control=None, dev
         reporter.event("log", message="SceneSketch: cancelled – the finished sketches are kept",
                        code="scene_cancelled")
     if cell_images:
-        C.matrix_image(cell_images, ctx.layers, ctx.levels).save(os.path.join(job_dir, "matrix.png"))
+        C.matrix_image(cell_images, ctx.layers, schema.scene_levels(s)).save(os.path.join(job_dir, "matrix.png"))
     ctx.clip_model = None
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

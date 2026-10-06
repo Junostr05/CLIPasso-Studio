@@ -22,12 +22,23 @@ from torchvision import transforms
 from . import imaging, nets, renderer, svg_io
 from .clip_ import clip
 
+# "Learn the stroke width" (3.7): every stroke's width is optimised too, within these factors of the set width,
+# pulled back towards it a little (the mean squared relative change, weighted) so it does not run away
+WIDTH_RANGE = (0.5, 2.5)
+WIDTH_LR = 0.02  # px per step (Adam)
+WIDTH_REG = 0.05
+
 
 class Painter(torch.nn.Module):
-    def __init__(self, args, num_strokes=4, num_segments=4, imsize=224, device=None, target_im=None, mask=None):
+    def __init__(self, args, num_strokes=4, num_segments=4, imsize=224, device=None, target_im=None, mask=None,
+                 guide=None):
         super().__init__()
 
         self.args = args
+        # experimental sketch improvement (engine/sketch_guide.py): some strokes start as hatching in the dark;
+        # every stroke's role (edge / hatch / free) for the guide's loss
+        self.guide = guide
+        self.roles: list[int] = []
         self.num_paths = num_strokes
         self.num_segments = num_segments
         # one-line mode: a single path with num_segments segments through num_segments + 1 start points
@@ -82,12 +93,14 @@ class Painter(torch.nn.Module):
                                                  fill_color=None, stroke_color=stroke_color)
                 self.shape_groups.append(path_group)
                 self.optimize_flag.append(True)
+                self.roles.append(0)  # (strokes of later stages: along the edges)
         else:
             num_paths_exists = 0
             if self.path_svg not in (None, "", "none"):
                 self.canvas_width, self.canvas_height, self.shapes, self.shape_groups = self._load_init_svg()
                 # if you want to add more strokes to existing ones and optimize on all of them
                 num_paths_exists = len(self.shapes)
+            self.roles = [-1] * num_paths_exists  # (a start sketch's strokes: not guided)
 
             for _ in range(num_paths_exists, self.num_paths):
                 stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
@@ -96,10 +109,53 @@ class Painter(torch.nn.Module):
                 path_group = renderer.ShapeGroup(shape_ids=torch.tensor([len(self.shapes) - 1]),
                                                  fill_color=None, stroke_color=stroke_color)
                 self.shape_groups.append(path_group)
+                self.roles.append(0)
+            # experimental sketch improvement: hatch strokes in addition, in the dark
+            for points in self._hatch_strokes(self.num_paths - num_paths_exists):
+                self.shapes.append(self._hatch_path(points))
+                self.shape_groups.append(renderer.ShapeGroup(
+                    shape_ids=torch.tensor([len(self.shapes) - 1]), fill_color=None,
+                    stroke_color=torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)))
+                self.roles.append(1)
             # strokes drawn by hand (``data-fixed`` in the start SVG) stay where they are
             self.optimize_flag = [not getattr(s, "fixed", False) for s in self.shapes]
 
         return self.get_image()
+
+    def _hatch_strokes(self, new: int) -> list:
+        """The start points of the hatch strokes among ``new`` strokes (experimental sketch improvement)."""
+        if self.guide is None or self.one_line or new <= 0:
+            return []
+        n = self.guide.hatch_count(new)
+        points = 1 + self.num_segments * (self.control_points_per_seg - 1)
+        return self.guide.init_hatch(n, points, weight=self.attention_map) if n else []
+
+    def _hatch_path(self, points):
+        ncp = torch.zeros(self.num_segments, dtype=torch.int32) + (self.control_points_per_seg - 2)
+        from .sketch_guide import HATCH_WIDTH
+
+        return renderer.Path(num_control_points=ncp, points=torch.tensor(points, dtype=torch.float32,
+                                                                         device=self.device),
+                             stroke_width=torch.tensor(self.width * HATCH_WIDTH, device=self.device), is_closed=False)
+
+    def project_hatch(self) -> None:
+        """Hatch strokes stay straight lines at 45° (after every step: only their position is optimised)."""
+        idx = [i for i, r in enumerate(self.roles) if r == 1 and i < len(self.shapes)]
+        if self.guide is None or not idx:
+            return
+        with torch.no_grad():
+            points = torch.stack([self.shapes[i].points for i in idx])
+            straight = self.guide.project(points, [1] * len(idx))
+            for k, i in enumerate(idx):
+                self.shapes[i].points.data.copy_(straight[k])
+
+    def guide_loss(self) -> torch.Tensor:
+        """The experimental sketch improvement's loss of the strokes being optimised (0 without it)."""
+        idx = [i for i, r in enumerate(self.roles) if r >= 0 and i < len(self.shapes) and self.optimize_flag[i]]
+        if self.guide is None or not idx:
+            return torch.zeros((), device=self.device)
+        points = torch.stack([self.shapes[i].points for i in idx])
+        return self.guide.loss(points, [self.roles[i] for i in idx], self.control_points_per_seg - 1)
 
     def _load_init_svg(self):
         w, h, shapes, groups = svg_io.load_svg(self.path_svg, device=self.device)
@@ -197,6 +253,29 @@ class Painter(torch.nn.Module):
                 group.stroke_color.requires_grad = True
                 self.color_vars.append(group.stroke_color)
         return self.color_vars
+
+    def width_parameters(self) -> list:
+        """The widths of the strokes being optimised, as leaf tensors (``learn_width``)."""
+        self.width_vars = []
+        for i, path in enumerate(self.shapes):
+            if self.optimize_flag[i] and not getattr(path, "fixed", False):
+                path.stroke_width = path.stroke_width.detach().clone().float().to(self.device).requires_grad_(True)
+                self.width_vars.append(path.stroke_width)
+        return self.width_vars
+
+    def clamp_widths(self) -> None:
+        lo, hi = WIDTH_RANGE[0] * float(self.width), WIDTH_RANGE[1] * float(self.width)
+        with torch.no_grad():
+            for w in getattr(self, "width_vars", []):
+                w.clamp_(lo, hi)
+
+    def width_penalty(self) -> torch.Tensor:
+        """The pull of the learnt widths back towards the set width."""
+        widths = getattr(self, "width_vars", [])
+        if not widths:
+            return torch.zeros((), device=self.device)
+        w = torch.stack([v.reshape(()) for v in widths])
+        return WIDTH_REG * ((w / float(self.width) - 1.0) ** 2).mean()
 
     def get_color_parameters(self):
         return self.color_vars
@@ -442,11 +521,14 @@ class PainterOptimizer:
         self.color_lr = args.color_lr
         self.args = args
         self.optim_color = args.force_sparse
+        self.optim_width = bool(getattr(args, "learn_width", False))
 
     def init_optimizers(self):
         self.points_optim = torch.optim.Adam(self.renderer.parameters(), lr=self.points_lr)
         if self.optim_color:
             self.color_optim = torch.optim.Adam(self.renderer.set_color_parameters(), lr=self.color_lr)
+        if self.optim_width:
+            self.width_optim = torch.optim.Adam(self.renderer.width_parameters(), lr=WIDTH_LR)
 
     def update_lr(self, counter):
         new_lr = get_epoch_lr(counter, self.args)
@@ -457,11 +539,18 @@ class PainterOptimizer:
         self.points_optim.zero_grad()
         if self.optim_color:
             self.color_optim.zero_grad()
+        if self.optim_width:
+            self.width_optim.zero_grad()
 
     def step_(self):
         self.points_optim.step()
+        if getattr(self.renderer, "guide", None) is not None:  # (experimental: the hatch strokes keep their form)
+            self.renderer.project_hatch()
         if self.optim_color:
             self.color_optim.step()
+        if self.optim_width:
+            self.width_optim.step()
+            self.renderer.clamp_widths()
 
     def get_lr(self):
         return self.points_optim.param_groups[0]['lr']

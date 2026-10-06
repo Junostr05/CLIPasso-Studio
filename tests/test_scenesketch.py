@@ -370,3 +370,61 @@ def test_gradient_balancing_without_an_extra_backward_pass():
     fn.backward({k: v * weights[k] * coeffs[k] for k, v in losses.items()})
     for a, b in zip(old, [q.grad for q in params]):
         assert torch.allclose(a, b, atol=1e-6)
+
+
+def test_chosen_levels(tmp_path):
+    """3.7: only the chosen simplicity levels are computed (each from the chosen one before it)."""
+    s = {**schema.default_settings("scenesketch"), "layers": "4_8", "simplicity_levels": 4}
+    assert schema.scene_levels(s) == [0, 1, 2, 3, 4]
+    s["simplicity_pick"] = schema.coerce(schema._BY_KEY["scenesketch"]["simplicity_pick"], "7,4,2")
+    assert s["simplicity_pick"] == "2_4_7" and schema.scene_levels(s) == [0, 2, 4]  # (7 is above the 4 levels)
+    assert schema.scene_cells(s) == [400, 402, 404, 800, 802, 804]
+    s["simplicity_levels"] = 0
+    assert schema.scene_levels(s) == [0]
+    s["simplicity_levels"], s["simplicity_pick"] = 3, "none"
+    assert schema.scene_levels(s) == [0]
+    # the matrix picture: one row per computed level
+    from PIL import Image
+
+    cells = {}
+    for layer in (4, 8):
+        for level in (0, 2, 4):
+            path = tmp_path / f"{layer}_{level}.png"
+            Image.new("RGB", (20, 20), "black").save(path)
+            cells[(layer, level)] = str(path)
+    img = C.matrix_image(cells, [4, 8], [0, 2, 4], cell_px=50, gap=10)
+    assert img.size == (2 * 50 + 3 * 10, 3 * 50 + 4 * 10)
+    assert img.getpixel((10 + 25, 10 + 2 * 60 + 25)) == (0, 0, 0)  # level 4: the third row
+
+
+@pytest.mark.skipif(not BUNDLED, reason="bundled models missing (run tools/fetch_models.py)")
+def test_object_strokes_levels_and_computing_a_cell_again(monkeypatch, tmp_path):
+    """3.7: the object's own number of strokes, chosen levels, and a cell computed again with a new start (it and
+    the later levels of its layer; the other layer is restored)."""
+    from clipasso_studio.engine import jobs, pipeline, svg_io
+    from clipasso_studio.engine.selftest_models import tiny_lama
+
+    monkeypatch.setattr(lama, "load_lama", tiny_lama)
+    s = {**schema.default_settings("scenesketch"), "layers": "4_8", "simplicity_levels": 2, "simplicity_pick": "2",
+         "num_sketches": 1, "num_iter": 4, "object_num_iter": 5, "simplify_num_iter": 3, "eval_interval": 2,
+         "min_eval_iter": 2, "save_interval": 2, "num_strokes": 6, "object_num_strokes": 3, "device": "cpu",
+         "mask_model": "u2net"}
+    summary = pipeline.run_job(s, SAMPLE, str(tmp_path))
+    assert [r["seed"] for r in summary["runs"]] == [400, 402, 800, 802]
+    job_dir = os.path.dirname(summary["best_svg"])
+    first = {r["seed"]: r for r in summary["runs"]}
+    cell_dir = first[800]["run_dir"]
+    for part, n in (("background", 6), ("object", 3)):
+        assert len(svg_io.load_svg(os.path.join(cell_dir, f"{part}.svg"))[2]) == n, part
+    # compute cell L8 · level 0 again: it and level 2 of layer 8 go, layer 4 stays
+    with open(os.path.join(first[802]["run_dir"], "best_iter.svg")) as f:
+        old_802 = f.read()
+    assert sorted(jobs.rerun_scene_cell(job_dir, 800)) == [800, 802]
+    assert jobs.read_cell_seeds(job_dir) == {"800": 1}
+    assert sorted(jobs.remaining_seeds(job_dir)) == [800, 802]
+    assert not os.path.isdir(os.path.join(job_dir, "runs", "background_l8"))
+    again = pipeline.run_job(s, SAMPLE, str(tmp_path), job_dir=job_dir, resume=True)
+    assert sorted(r["seed"] for r in again["runs"]) == [400, 402, 800, 802] and not jobs.remaining_seeds(job_dir)
+    assert os.path.isdir(os.path.join(job_dir, "runs", "background_l8", "seed1"))  # (the new start)
+    with open(os.path.join(first[802]["run_dir"], "best_iter.svg")) as f:
+        assert f.read() != old_802

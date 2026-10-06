@@ -1170,6 +1170,7 @@ MODEL_NAMES = {
     "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
     "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
     "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite", "taesd": "TAESD", "blazeface": "BlazeFace",
+    "semantic:openclip-b16": "OpenCLIP ViT-B/16 (LAION-2B)", "semantic:siglip-b16": "SigLIP B/16",
 }
 
 

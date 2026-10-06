@@ -138,9 +138,13 @@ jobs:
         # the bundled ones and those of SwiftSketch and SceneSketch (ControlSketch's ~3 GB are left out here)
         run: |
           python tools/fetch_models.py
-          python tools/fetch_models.py --only swiftsketch:diffusion,swiftsketch:refine,lama
+          python tools/fetch_models.py --only swiftsketch:diffusion,swiftsketch:refine,lama,clip:ViT-L/14
       - name: Benchmark
         run: python tools/benchmark.py --cases clipasso,swiftsketch,scenesketch --out benchmark --summary "$GITHUB_STEP_SUMMARY"
+      - name: Categories with the independent judge
+        # one picture per category (object, portrait, animal, scene), graded by CLIP ViT-L/14 (tools/judge.py)
+        if: always()
+        run: python tools/benchmark.py --suite clipasso --quick --out benchmark/suite --summary "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

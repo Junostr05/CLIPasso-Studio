@@ -167,7 +167,8 @@ def release_cached_models() -> None:
     import gc
     import sys
 
-    for name in ("methods.swiftsketch", "methods.controlsketch", "methods.scenesketch", "nets", "clip_.clip"):
+    for name in ("methods.swiftsketch", "methods.controlsketch", "methods.scenesketch", "nets", "clip_.clip",
+                 "semantic"):
         module = sys.modules.get(f"{__package__}.{name}")
         if module is not None and hasattr(module, "release_models"):
             module.release_models()

@@ -43,6 +43,7 @@ _CLIP_SOURCES = {
     "RN50x16": "52378b407f34354e150460fe41077663dd5b39c54cd0bfd2b27167a4a06ec9aa/RN50x16.pt",
     "ViT-B/32": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt",
     "ViT-B/16": "5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt",
+    "ViT-L/14": "b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
 }
 
 
@@ -59,7 +60,7 @@ class ModelSpec:
     extra: dict = field(default_factory=dict)
 
 
-def _clip_spec(name: str, bundled: bool, size: int, stored_mb: int) -> ModelSpec:
+def _clip_spec(name: str, bundled: bool, size: int, stored_mb: int, extra: dict | None = None) -> ModelSpec:
     src = _CLIP_SOURCES[name]
     return ModelSpec(
         key=f"clip:{name}",
@@ -70,6 +71,7 @@ def _clip_spec(name: str, bundled: bool, size: int, stored_mb: int) -> ModelSpec
         stored_size_mb=stored_mb,
         bundled=bundled,
         kind="clip",
+        extra=dict(extra or {}),
     )
 
 
@@ -79,12 +81,14 @@ class HFFile:
     local: str  # path inside the model folder
     size: int | None = None  # expected download size (checked when given)
     fp16: bool = False  # store floating point tensors as float16
+    prefix: str = ""  # keep only the tensors whose names start with this (e.g. the image part of a CLIP model)
 
 
 _HF = "https://huggingface.co"
 
 
-def _hf_spec(key: str, folder: str, repo: str, revision: str, files, stored_mb: int) -> ModelSpec:
+def _hf_spec(key: str, folder: str, repo: str, revision: str, files, stored_mb: int,
+             extra: dict | None = None) -> ModelSpec:
     """A model made of several files of a Hugging Face repository (pinned revision), stored in
     ``folder``; ``folder/manifest.json`` marks a complete installation."""
     files = tuple(f if isinstance(f, HFFile) else HFFile(*f) for f in files)
@@ -97,7 +101,7 @@ def _hf_spec(key: str, folder: str, repo: str, revision: str, files, stored_mb: 
         stored_size_mb=stored_mb,
         bundled=False,
         kind="hf",
-        extra={"repo": repo, "revision": revision, "files": files},
+        extra={"repo": repo, "revision": revision, "files": files, **(extra or {})},
     )
 
 
@@ -197,6 +201,20 @@ MASK_SPECS = (
              ), 89),
 )
 
+# 3.7, experimental: newer image models for CLIPasso's semantic loss (``semantic_model``, engine/semantic.py) –
+# OpenCLIP ViT-B/16 trained on LAION-2B (MIT) and Google's SigLIP B/16 (Apache-2.0); only their image part is kept,
+# in float16. Downloaded on request only
+SEMANTIC_SPECS = (
+    _hf_spec("semantic:openclip-b16", "semantic/openclip-vit-b-16-laion2b", "laion/CLIP-ViT-B-16-laion2B-s34B-b88K",
+             "7288da5a0d6f0b51c4a2b27c624837a9236d0112", (
+                 HFFile("open_clip_model.safetensors", "model.safetensors", 598_516_980, True, "visual."),
+             ), 172, {"experimental": True}),
+    _hf_spec("semantic:siglip-b16", "semantic/siglip-base-patch16-224", "google/siglip-base-patch16-224",
+             "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed", (
+                 HFFile("model.safetensors", "model.safetensors", 812_672_320, True, "vision_model."),
+             ), 186, {"experimental": True}),
+)
+
 # BlazeFace (MediaPipe's face detector, Apache-2.0; PyTorch weights by M. Hollemans, Apache-2.0) for the portrait
 # mode of the detail brush: the eyes, nose and mouth of a face get more detail
 PORTRAIT_SPEC = ModelSpec(
@@ -218,6 +236,8 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
     _clip_spec("RN50x4", False, 421_854_225, 420),
     _clip_spec("RN50x16", False, 661_125_706, 660),
     _clip_spec("ViT-B/16", False, 350_837_078, 350),
+    # the benchmark's independent judge (tools/judge.py) – in no optimisation, not on the models page
+    _clip_spec("ViT-L/14", False, 932_768_134, 890, {"purpose": "benchmark"}),
     ModelSpec(
         key="u2net",
         filename="u2net/u2net_fp16.pt",
@@ -287,6 +307,7 @@ SPECS: dict[str, ModelSpec] = {s.key: s for s in (
 )}
 SPECS.update({s.key: s for s in CONTROLSKETCH_SPECS})
 SPECS.update({s.key: s for s in MASK_SPECS})
+SPECS.update({s.key: s for s in SEMANTIC_SPECS})
 SPECS[PORTRAIT_SPEC.key] = PORTRAIT_SPEC
 
 
@@ -611,6 +632,8 @@ def _convert_hf_file(src: Path, dst: Path, f: HFFile) -> None:
         state = state.get("state_dict", state) if isinstance(state, dict) else state
     out = {}
     for k, v in state.items():
+        if not k.startswith(f.prefix):
+            continue
         if f.fp16 and v.is_floating_point():
             v = v.half()
         out[k] = v.contiguous().clone()  # no shared storage (tied weights) for safetensors

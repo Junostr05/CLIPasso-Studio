@@ -545,13 +545,18 @@ MODEL_PURPOSE = {
     "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
     "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
     "blazeface": "ui.models.purpose.blazeface",
+    "semantic:openclip-b16": "ui.models.purpose.openclip_b16", "semantic:siglip-b16": "ui.models.purpose.siglip_b16",
 }
 
 
 def model_group(key: str) -> str:
     spec = model_store.SPECS[key]
+    if spec.extra.get("purpose") == "benchmark":
+        return "benchmark"  # (not on the models page)
     if spec.bundled:
         return "bundled"
+    if spec.extra.get("experimental"):
+        return "experimental"
     if key.startswith("birefnet"):
         return "masking"
     if key.startswith("clip:"):
@@ -591,6 +596,12 @@ class ModelRow(Card):
         row.addLayout(col, 1)
         self.size = label(_size_text(spec.stored_size_mb), "muted")
         row.addWidget(self.size)
+        self.used = label("", "badge")  # the studio's settings use it
+        self.used.setVisible(False)
+        row.addWidget(self.used)
+        self.experimental = label("", "badge-warning")
+        self.experimental.setVisible(bool(spec.extra.get("experimental")))
+        row.addWidget(self.experimental)
         self.state = label("", "badge")
         row.addWidget(self.state)
         self.import_btn = None
@@ -613,6 +624,11 @@ class ModelRow(Card):
             self.desc.setText(tr("ui.models.purpose.controlnet", condition=tr(f"param.condition.choice.{cond}")))
         else:
             self.desc.setText(tr(MODEL_PURPOSE.get(self.key, "ui.models.purpose.clip_extra")))
+        self.used.setText(tr("ui.models.used"))
+        self.used.setToolTip(tr("ui.models.used_tip"))
+        self.used.setVisible(self.key in self.page.studio_models)
+        self.experimental.setText(tr("ui.models.experimental"))
+        self.experimental.setToolTip(tr("ui.models.experimental_tip"))
         if self.import_btn is not None:
             self.import_btn.setToolTip(tr("ui.models.import_tip"))
             self.import_btn.setVisible(not found)
@@ -662,11 +678,132 @@ class ModelRow(Card):
         self.page.refresh()
 
 
+class StudioModels(Card):
+    """The models the studio's settings choose, by category (mask, shape, semantics, …) – and the choice changed
+    from here: the same settings as the studio's parameters, both ways (3.7)."""
+
+    setting_changed = Signal(str, object)  # (key, value) for the studio's parameters
+    download_requested = Signal(list)  # model keys
+
+    def __init__(self):
+        super().__init__()
+        self.title = label("", "h2")
+        self.hint = label("", "faint", wrap=True)
+        self.body.addWidget(self.title)
+        self.body.addWidget(self.hint)
+        self.grid = QGridLayout()
+        self.grid.setHorizontalSpacing(12)
+        self.grid.setVerticalSpacing(8)
+        self.grid.setColumnStretch(3, 1)
+        self.body.addLayout(self.grid)
+        self.method = schema.DEFAULT_METHOD
+        self.settings = schema.default_settings(self.method)
+        self.items: dict[str, dict] = {}  # setting key -> its widgets
+        self._built_for = None
+
+    def set_studio(self, method: str, settings: dict) -> None:
+        self.method, self.settings = method, dict(settings)
+        if self._built_for != method:
+            self._build()
+        self.refresh()
+
+    def _build(self) -> None:
+        from .. import model_roles
+
+        while self.grid.count():
+            w = self.grid.takeAt(0).widget()
+            if w is not None:
+                w.hide()
+                w.deleteLater()
+        self.items.clear()
+        seen = set()
+        for r, row in enumerate(model_roles.rows(self.method, self.settings)):
+            key, param = row["key"], schema.param(self.method, row["key"])
+            cat = label("", "h3")  # the category, once
+            cat.setVisible(row["category"] not in seen)
+            seen.add(row["category"])
+            name = label("", "faint")
+            if param.kind == "bool":
+                editor = ToggleSwitch()
+                editor.toggled.connect(lambda v, k=key: self.setting_changed.emit(k, bool(v)))
+            else:
+                editor = QComboBox()
+                for value in param.choices:
+                    editor.addItem("", value)
+                editor.currentIndexChanged.connect(
+                    lambda i, k=key, e=editor: i >= 0 and self.setting_changed.emit(k, e.itemData(i)))
+            name.setBuddy(editor)  # (the setting's name for screen readers)
+            models = label("", "muted", wrap=True)
+            experimental = label("", "badge-warning")
+            state = label("", "badge")
+            get = button("", "download", size="sm")
+            get.clicked.connect(lambda _=False, k=key: self._download(k))
+            for col, w in enumerate((cat, name, editor, models, experimental, state, get)):
+                self.grid.addWidget(w, r, col)
+            self.items[key] = {"category": row["category"], "cat": cat, "name": name, "editor": editor,
+                               "models": models, "experimental": experimental, "state": state, "get": get,
+                               "param": param}
+        self._built_for = self.method
+
+    def _download(self, key: str) -> None:
+        from .. import model_roles
+
+        row = next((r for r in model_roles.rows(self.method, self.settings) if r["key"] == key), None)
+        if row and row["missing"]:
+            self.download_requested.emit(row["missing"])
+
+    def refresh(self) -> None:
+        from .. import model_roles
+        from ..widgets.param_panel import _choice_text, param_text_key
+
+        self.title.setText(tr("ui.models.studio.title", method=methods_ui.name(self.method)))
+        self.hint.setText(tr("ui.models.studio.hint"))
+        for row in model_roles.rows(self.method, self.settings):
+            it = self.items.get(row["key"])
+            if it is None:
+                continue
+            param, editor = it["param"], it["editor"]
+            it["cat"].setText(tr(f"ui.models.role.{row['category']}"))
+            name_key = param_text_key(self.method, row["key"], "label")
+            it["name"].setText(tr(name_key) if i18n.has(name_key) else row["key"])
+            editor.blockSignals(True)
+            if param.kind == "bool":
+                editor.setChecked(bool(row["value"]))
+            else:
+                for i, value in enumerate(param.choices):
+                    text = _choice_text(param, value, self.method)
+                    if any(model_roles.experimental(k) for k in
+                           model_roles.choice_models(self.method, row["key"], value, self.settings)) \
+                            and tr("ui.models.experimental") not in text:
+                        text += f" · {tr('ui.models.experimental')}"
+                    editor.setItemText(i, text)
+                editor.setCurrentIndex(max(editor.findData(row["value"]), 0))
+            editor.blockSignals(False)
+            editor.setEnabled(row["enabled"])
+            names = ", ".join(dialogs.model_display_name(k) for k in row["models"]) or tr("ui.models.studio.none")
+            it["models"].setText(names if row["enabled"] else tr("ui.models.studio.unused", models=names))
+            it["experimental"].setText(tr("ui.models.experimental"))
+            it["experimental"].setToolTip(tr("ui.models.experimental_tip"))
+            it["experimental"].setVisible(row["experimental"])
+            missing = bool(row["missing"])
+            it["state"].setText(tr("ui.models.not_installed") if missing else tr("ui.models.installed"))
+            it["state"].setProperty("role", "badge" if missing else "badge-success")
+            it["state"].style().unpolish(it["state"])
+            it["state"].style().polish(it["state"])
+            it["state"].setVisible(bool(row["models"]) and row["enabled"])  # (unused: nothing to download)
+            size = sum(model_store.SPECS[k].download_size for k in row["missing"]) / 1e6
+            it["get"].setText(tr("ui.download") + f" ({_size_text(size)})")
+            it["get"].setVisible(missing and row["enabled"])
+
+
 class ModelsPage(QWidget):
+    studio_setting_changed = Signal(str, object)  # (key, value): the studio's parameters change with it
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("Page")
         self.release_worker = lambda: None  # the main window: end the warm worker (it keeps model files open)
+        self.studio_models: set[str] = set()  # the models the studio's settings use
         root = QVBoxLayout(self)
         theme.page_layout(root)
         lay, self.title, self.subtitle = _page_header("ui.models.title", "ui.models.subtitle")
@@ -675,9 +812,15 @@ class ModelsPage(QWidget):
         self.list_lay = QVBoxLayout(host)
         self.list_lay.setContentsMargins(0, 0, 8, 0)
         self.list_lay.setSpacing(8)
+        self.studio = StudioModels()
+        self.studio.setting_changed.connect(self.studio_setting_changed)
+        self.studio.download_requested.connect(self._download)
+        self.list_lay.addWidget(self.studio)
+        self.list_lay.addSpacing(10)
         self.rows = []
         self.group_titles: dict[str, tuple[QLabel, QLabel]] = {}
-        for group in ("bundled", "masking", "clipasso", "swiftsketch", "controlsketch", "scenesketch"):
+        for group in ("bundled", "masking", "clipasso", "experimental", "swiftsketch", "controlsketch",
+                      "scenesketch"):
             title = label("", "h2")
             hint = label("", "faint", wrap=True)
             if group != "bundled":
@@ -700,6 +843,20 @@ class ModelsPage(QWidget):
     def refresh(self):
         for r in self.rows:
             r.refresh()
+        self.studio.refresh()
+
+    def set_studio(self, method: str, settings: dict) -> None:
+        """The studio's method and settings changed: show their models (and mark them in the list)."""
+        from .. import model_roles
+
+        self.studio_models = model_roles.in_use(method, settings)
+        self.studio.set_studio(method, settings)
+        for r in self.rows:
+            r.used.setVisible(r.key in self.studio_models)
+
+    def _download(self, keys: list) -> None:
+        dialogs.ask_download_missing(self, list(keys))
+        self.refresh()
 
     def retranslate(self):
         self.title.setText(tr("ui.models.title"))
@@ -719,6 +876,7 @@ class SettingsPage(QWidget):
     watch_changed = Signal()  # the watched folder was set up differently
     output_dir_changed = Signal(str, str, bool)  # (old, new, the results were moved along)
     hints_changed = Signal()  # the quality hints switched off are shown again
+    experimental_changed = Signal(bool)  # the experimental sketch improvement switched on / off
     check_updates_now = Signal()
     backup_restored = Signal(dict)  # the report of backup.restore (its queue entries are still to be queued)
 
@@ -922,8 +1080,22 @@ class SettingsPage(QWidget):
         row.addStretch(1)
         self.system.body.addLayout(row)
         col.addWidget(self.system)
+        # experimental (3.7), at the very bottom: CLIPasso / SceneSketch strokes along the edges, hatching in the dark
+        self.experimental = Card()
+        self.experimental_title = label("", "h2")
+        self.experimental.body.addWidget(self.experimental_title)
+        self.sketch_label = label("", None)
+        self.sketch_switch = ToggleSwitch()
+        self.sketch_switch.setChecked(bool(s.get("experimental_sketch", False)))
+        self.sketch_switch.toggled.connect(self._experimental_sketch)
+        self.sketch_label.setBuddy(self.sketch_switch)
+        self.experimental.body.addLayout(self._row(self.sketch_label, self.sketch_switch))
+        self.sketch_hint = label("", "faint", wrap=True)
+        self.experimental.body.addWidget(self.sketch_hint)
+        col.addWidget(self.experimental)
         col.addStretch(1)
-        root.addWidget(_scroll(host), 1)
+        self.scroll = _scroll(host)
+        root.addWidget(self.scroll, 1)
         from .. import hardware
 
         self._hardware = hardware.cached()  # the main window probes again after the start
@@ -1000,6 +1172,14 @@ class SettingsPage(QWidget):
         n = len(app_settings().get("hints_off") or [])
         self.hints_state.setText(tr("ui.hint.off_n", n=n) if n else tr("ui.hint.all_on"))
         self.hints_reset.setEnabled(bool(n))
+
+    def _experimental_sketch(self, on: bool) -> None:
+        app_settings().set("experimental_sketch", bool(on))
+        self.experimental_changed.emit(bool(on))
+
+    def show_experimental(self) -> None:
+        """Scroll to the experimental switches (the studio's badge leads here)."""
+        self.scroll.ensureWidgetVisible(self.experimental)
 
     def show_hints_again(self) -> None:
         """Every kind of quality hint is shown again."""
@@ -1543,6 +1723,10 @@ class SettingsPage(QWidget):
         self.report_btn.setText(tr("ui.report.button"))
         self.report_btn.setToolTip(tr("ui.report.tip"))
         self.system_title.setText(tr("ui.settings.system"))
+        self.experimental_title.setText(tr("ui.settings.experimental.title"))
+        self.sketch_label.setText(tr("ui.settings.experimental.sketch"))
+        self.sketch_switch.setAccessibleName(tr("ui.settings.experimental.sketch"))
+        self.sketch_hint.setText(tr("ui.settings.experimental.sketch_hint"))
         edition = tr(f"ui.edition.{EDITION}")
         info = [f"{APP_NAME} {__version__} · {edition}",
                 f"{platform.system()} {platform.release()} · Python {platform.python_version()}",

@@ -38,6 +38,8 @@ def main() -> int:
             continue
         if not only and not spec.bundled and not args.include_optional:
             continue
+        if not only and spec.extra.get("purpose") == "benchmark":
+            continue  # (the benchmark's judge: only with --only)
         target = dest / spec.filename
         if target.is_file():
             print(f"[skip] {key}: {target} exists")

@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
 CLIP_MODELS = ("RN50", "RN101", "RN50x4", "RN50x16", "ViT-B/32", "ViT-B/16")
+# 3.7, experimental: the model of CLIPasso's semantic loss ("clip": the conv model's own embedding, as in the
+# original; the others: engine/semantic.py, downloaded on request)
+SEMANTIC_MODELS = ("clip", "openclip_b16", "siglip_b16")
 
 GROUPS = (
     "basics",
@@ -41,6 +44,8 @@ class Param:
     advanced: bool = True
     # enabled only when ``enabled_if(settings)`` is true (UI greys the field out)
     enabled_if: Callable[[dict], bool] | None = None
+    # not among the studio's parameters: set from elsewhere (a switch in the app's settings), kept with the job
+    hidden: bool = False
 
 
 def _on(key: str) -> Callable[[dict], bool]:
@@ -82,6 +87,12 @@ def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
 BEST_BY = ("faithful", "beautiful", "mine")
 
 
+# 3.7, experimental sketch improvement (engine/sketch_guide.py): strokes along the edges, even hatching at 45° in the
+# dark areas – switched on for new jobs at the bottom of the app's settings, not among the studio's parameters
+SKETCH_GUIDE_METHODS = ("clipasso", "scenesketch")
+SKETCH_GUIDE = Param("sketch_guide", False, "bool", "strokes", hidden=True)
+
+
 def _best_by() -> Param:
     return Param("best_by", "faithful", "choice", "basics", choices=BEST_BY, advanced=False,
                  enabled_if=lambda s: int(s.get("num_sketches", 1) or 1) > 1 and not s.get("turbo"))
@@ -108,6 +119,9 @@ PARAMS: tuple[Param, ...] = (
     Param("one_line_segments", 48, "int", "strokes", minimum=8, maximum=128, step=8, advanced=False,
           enabled_if=_on("one_line")),
     Param("width", 1.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
+    # not in the original (3.7): every stroke learns its own width, within 0.5–2.5 × the set width
+    Param("learn_width", False, "bool", "strokes"),
+    SKETCH_GUIDE,
     Param("num_segments", 1, "int", "strokes", cli="num_segments", minimum=1, maximum=16, enabled_if=_off("one_line")),
     Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4),
           enabled_if=_off("one_line")),
@@ -134,6 +148,8 @@ PARAMS: tuple[Param, ...] = (
           minimum=0.0, maximum=10.0, step=0.1, enabled_if=_on("clip_conv_loss")),
     Param("clip_fc_loss_weight", 0.1, "float", "loss", cli="clip_fc_loss_weight", minimum=0.0, maximum=10.0,
           step=0.05, decimals=3, enabled_if=_on("clip_conv_loss")),
+    Param("semantic_model", "clip", "choice", "loss", choices=SEMANTIC_MODELS,
+          enabled_if=lambda s: bool(s.get("clip_conv_loss")) and float(s.get("clip_fc_loss_weight") or 0) > 0),
     Param("train_with_clip", False, "bool", "loss", cli="train_with_clip"),
     Param("clip_weight", 0.0, "float", "loss", cli="clip_weight", minimum=0.0, maximum=10.0, step=0.1,
           decimals=3, enabled_if=_on("train_with_clip")),
@@ -162,6 +178,8 @@ PARAMS: tuple[Param, ...] = (
     Param("augemntations", "affine", "flags", "augment", cli="augemntations", choices=("affine", "noise")),
     Param("num_aug_clip", 4, "int", "augment", cli="num_aug_clip", minimum=0, maximum=32),
     Param("augment_both", True, "bool", "augment", cli="augment_both"),
+    # portraits (3.7): two of the augmentations are crops around the face BlazeFace finds (none found: as before)
+    Param("face_crops", False, "bool", "augment"),
     Param("aug_scale_min", 0.8, "float", "augment", cli="aug_scale_min", minimum=0.1, maximum=1.0, step=0.05,
           decimals=2),
     Param("noise_thresh", 0.5, "float", "augment", cli="noise_thresh", minimum=0.0, maximum=1.0, step=0.05,
@@ -341,6 +359,7 @@ CONTROL_PRESETS: dict[str, dict[str, Any]] = {
 # driver scripts (run_all.py, run_background.py, run_foreground.py, generate_fidelity_levels.py,
 # run_ratio.py). Defaults are the values the scripts pass, not the bare config.py defaults.
 SCENE_LAYERS = ("2", "3", "4", "7", "8", "11")  # CLIP ViT-B/32 layers of the paper's fidelity axis
+SCENE_PICKS = ("1", "2", "3", "4", "5", "6", "7", "8")  # the simplicity levels one can choose
 SCENE_ORIGINAL_LEVELS = 8  # simplification levels of get_ratios_dict (num_ratios=8)
 # min_div per layer: defaults of run_background.py / run_foreground.py for 2, 8, 11, the values
 # listed in their comments for 3, 4, 7
@@ -372,7 +391,12 @@ def _scene_simplify(s: dict) -> bool:
 SCENE_PARAMS: tuple[Param, ...] = (
     Param("layers", "2_8_11", "flags", "basics", cli="layers", choices=SCENE_LAYERS, advanced=False),
     Param("simplicity_levels", 8, "int", "basics", minimum=0, maximum=8, advanced=False),
+    # which of them are computed (3.7): e.g. only 4 and 8 – each starts from the one before it in this list
+    Param("simplicity_pick", "_".join(SCENE_PICKS), "flags", "basics", choices=SCENE_PICKS,
+          enabled_if=_scene_simplify),
     Param("num_strokes", 64, "int", "basics", cli="num_strokes", minimum=4, maximum=256, advanced=False),
+    # the object's own number of strokes (3.7; 0: the same as the background's)
+    Param("object_num_strokes", 0, "int", "basics", minimum=0, maximum=256, enabled_if=_on("split_scene")),
     Param("num_sketches", 2, "int", "basics", cli="num_sketches", minimum=1, maximum=8, advanced=False),
     Param("seed", 0, "int", "basics", cli="seed", minimum=0, maximum=10_000_000, advanced=False),
     Param("split_scene", True, "bool", "image", advanced=False),
@@ -397,6 +421,7 @@ SCENE_PARAMS: tuple[Param, ...] = (
           enabled_if=_scene_simplify),
     Param("width", 1.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
     Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4)),
+    SKETCH_GUIDE,
     Param("attention_init", True, "bool", "init", cli="attention_init"),
     Param("saliency_model", "clip", "choice", "init", cli="saliency_model", choices=("clip", "dino"),
           enabled_if=_on("attention_init")),
@@ -519,9 +544,17 @@ def scene_cell_id(layer: int, level: int) -> int:
     return int(layer) * 100 + int(level)
 
 
-def scene_cells(settings: dict) -> list[int]:
+def scene_levels(settings: dict) -> list[int]:
+    """The simplicity levels a job computes: 0 (the fidelity sketch) and the chosen ones of 1 … simplicity_levels
+    (all of them unless ``simplicity_pick`` leaves some out)."""
     levels = int(settings.get("simplicity_levels", 0))
-    return [scene_cell_id(layer, level) for layer in scene_layers(settings) for level in range(levels + 1)]
+    pick = str(settings.get("simplicity_pick", "") or "_".join(SCENE_PICKS))
+    chosen = {int(p) for p in pick.split("_") if p.isdigit()}
+    return [0] + [lv for lv in range(1, levels + 1) if lv in chosen]
+
+
+def scene_cells(settings: dict) -> list[int]:
+    return [scene_cell_id(layer, level) for layer in scene_layers(settings) for level in scene_levels(settings)]
 
 
 def scene_part_iterations(settings: dict, num_iter: int) -> int:

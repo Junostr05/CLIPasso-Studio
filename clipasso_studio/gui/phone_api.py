@@ -117,7 +117,7 @@ class PhoneApi:
         c = self.controller
         method = s.params.method()
         settings = s.params.settings()
-        params = [p for p in schema.params_for(method) if p.kind != "path"]
+        params = [p for p in schema.params_for(method) if p.kind != "path" and not p.hidden]
         image = None
         if s.image_path and os.path.isfile(s.image_path):
             from .image_io import image_size
@@ -197,7 +197,7 @@ class PhoneApi:
                   "has": schema.scene_cell_id(layer, level) in s.seed_svgs,
                   "best": schema.scene_cell_id(layer, level) == s.best_seed,
                   "rev": abs(hash(s.seed_svgs.get(schema.scene_cell_id(layer, level), ""))) % 10 ** 10}
-                 for layer in layers for level in range(levels + 1)]
+                 for layer in layers for level in levels]
         bg = self._background_file()
         return {"layers": layers, "levels": levels, "cells": cells,
                 "part": s.scene_part if s.controller.is_busy() and s.view_job is s.controller.current else "",
@@ -258,8 +258,8 @@ class PhoneApi:
             raise PhoneError("unknown method")
         groups: dict[str, list] = {}
         for p in schema.params_for(method):
-            if p.kind == "path":
-                continue  # (a file on the computer: not from the phone)
+            if p.kind == "path" or p.hidden:
+                continue  # (a file on the computer: not from the phone; hidden: set in the app's settings)
             label_key, help_key = param_text_key(method, p.key, "label"), param_text_key(method, p.key, "help")
             item = {"key": p.key, "kind": p.kind, "label": tr(label_key) if i18n.has(label_key) else p.key,
                     "help": tr(help_key) if i18n.has(help_key) else "", "advanced": p.advanced,

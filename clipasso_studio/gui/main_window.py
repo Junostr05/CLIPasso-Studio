@@ -294,6 +294,15 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(1500, self._probe_hardware)  # GPU / CUDA, in a child process (no torch here)
         self.settings.release_worker = self.controller.release_worker
         self.models.release_worker = self.controller.release_worker
+        # the models page shows the models the studio's settings choose – and changes them (both ways)
+        self.studio.params.settings_changed.connect(
+            lambda s: self.models.set_studio(self.studio.params.method(), s))
+        self.models.studio_setting_changed.connect(self.set_studio_setting)
+        self.models.set_studio(self.studio.params.method(), self.studio.params.settings())
+        # the experimental sketch improvement: switched at the bottom of the settings, a badge in the studio
+        self.settings.experimental_changed.connect(lambda _on: self.studio.update_experimental())
+        self.studio.open_settings.connect(lambda: (self.show_page("settings"), self.settings.show_experimental()))
+        self.studio.update_experimental()
         self.power_action = power.run  # replaced in tests
         self.setAcceptDrops(True)  # drops anywhere else: the queue page queues, every other page opens
         self.settings.theme_changed.connect(self.apply_theme)
@@ -800,6 +809,12 @@ class MainWindow(QMainWindow):
         self.controller.shutdown()
         self._closing_for_theme = True
         self.close()
+
+    def set_studio_setting(self, key: str, value) -> None:
+        """A model chosen on the models page: the studio's parameter changes as if it was set there."""
+        field = self.studio.params.fields.get(key)
+        if field is not None:
+            field.set_value(value, emit=True)
 
     def _update_nav_badges(self):
         n = len(self.controller.pending())

@@ -1,0 +1,61 @@
+{
+ "_comment": "Setting variants measured in the CI (.github/workflows/measure.yml, pushes with [measure] in the message): every variant on the pictures of its categories, then each compared with 'base' – or with the variant named in 'against' (tools/benchmark.py --compare).",
+ "method": "clipasso",
+ "seeds": "0,1",
+ "categories": [
+  "object",
+  "portrait",
+  "animal",
+  "scene"
+ ],
+ "variants": {
+  "base": {
+   "set": []
+  },
+  "face_crops": {
+   "set": [
+    "face_crops=true"
+   ],
+   "categories": [
+    "portrait"
+   ]
+  },
+  "learn_width": {
+   "set": [
+    "learn_width=true"
+   ]
+  },
+  "strokes8": {
+   "set": [
+    "num_paths=8"
+   ]
+  },
+  "strokes32": {
+   "set": [
+    "num_paths=32"
+   ]
+  },
+  "openclip_b16": {
+   "set": [
+    "semantic_model=openclip_b16"
+   ]
+  },
+  "siglip_b16": {
+   "set": [
+    "semantic_model=siglip_b16"
+   ]
+  },
+  "sketch_guide": {
+   "set": [
+    "sketch_guide=true"
+   ]
+  },
+  "sketch_guide_32": {
+   "set": [
+    "sketch_guide=true",
+    "num_paths=32"
+   ],
+   "against": "strokes32"
+  }
+ }
+}

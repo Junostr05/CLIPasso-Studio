@@ -68,6 +68,7 @@ def _scene_attention(job_dir: str, cell_dir: str) -> str:
 class StudioPage(QWidget):
     toast = Signal(str, str)
     open_queue = Signal()
+    open_settings = Signal()  # the badge of the experimental sketch improvement: to its switch
     focus_requested = Signal()  # the focus button: the main window shows only the canvas (full screen)
 
     def __init__(self, controller: JobController, parent=None):
@@ -87,7 +88,7 @@ class StudioPage(QWidget):
         self.seed_scores: dict[int, float] = {}
         # SceneSketch: the part being drawn ("background" / "object"), the layout of the matrix and the layer shown
         self.scene_part = ""
-        self.scene_layout: tuple[list[int], int] | None = None
+        self.scene_layout: tuple[list[int], list[int]] | None = None
         self.layer_part = "all"
         self._layers_ok: dict[str, bool] = {}
         self._status_key = ("ui.status.idle", {})
@@ -138,6 +139,7 @@ class StudioPage(QWidget):
         self.hint_box.dismissed.connect(self.dismiss_hint)
         self.input_card.body.addWidget(self.hint_box)
         self._photo_hints: list = []
+        self._density: float | None = None  # the photo's detail: the recommended number of strokes
         self._mask_hints: list = []
         # every earlier job of this picture (any method): a strip to open one again
         self.history_title = label("", "faint")
@@ -381,6 +383,7 @@ class StudioPage(QWidget):
         self._lapse_timer = QTimer(self)
         self._lapse_timer.timeout.connect(self._timelapse_step)
         self.simplify_btn = tool_button("sliders-horizontal", "", 18)
+        self.simplify_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)  # (with its name: easy to find)
         self.simplify_btn.clicked.connect(self.open_simplify)
         # thumbs up / down: the user's own taste ("Best sketch: My taste" from 10 ratings on)
         self.up_btn = tool_button("thumbs-up", "", 18, checkable=True)
@@ -480,6 +483,7 @@ class StudioPage(QWidget):
         self.matrix = MatrixView()  # SceneSketch: all cells of the abstraction matrix
         self.matrix.clicked.connect(self.select_seed)
         self.matrix.activated.connect(self._open_cell)
+        self.matrix.menu_requested.connect(lambda cell, pos: self._matrix_menu_for(cell).exec(pos))
         self.matrix.setVisible(False)
         center.body.addWidget(self.matrix, 1)
         self.sheet = SheetView()  # every sketch of the job side by side (contact sheet)
@@ -561,6 +565,11 @@ class StudioPage(QWidget):
         self.params.import_btn.clicked.connect(self.import_preset)
         self.params.export_btn.clicked.connect(self.export_preset)
         self.params.cli_btn.clicked.connect(self.copy_cli)
+        # the experimental sketch improvement is on (switched in the settings): new jobs use it
+        self.experimental_btn = button("", "wand-sparkles", "ghost", size="sm")
+        self.experimental_btn.clicked.connect(self.open_settings.emit)
+        self.experimental_btn.setVisible(False)
+        right.body.addWidget(self.experimental_btn)
         right.body.addWidget(self.params)
         splitter.addWidget(right)
         self.right_pane = right
@@ -745,7 +754,9 @@ class StudioPage(QWidget):
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
         self._mask = None
         self._photo_hints, self._mask_hints = [], []
+        self._density = None  # the photo's detail (engine/complexity.py), measured in the background
         self.show_hints()
+        self.update_recommendation()
         self._check_photo(path)
         self._update_mask_preview()
         self._update_detail_button()
@@ -758,14 +769,29 @@ class StudioPage(QWidget):
         found = {}  # (run_in_thread hands a result on as text)
 
         def measure(path, progress=None):
+            from ...engine import complexity
+
             found["hints"] = image_hints.photo_hints(path)
+            found["density"] = complexity.analyse(path)
 
         def done(_, path=path):
             if path == self.image_path:
                 self._photo_hints = found.get("hints", [])
                 self.show_hints()
+                if self._density is None:  # (the mask's, when it came first, is the better one)
+                    self._density = found.get("density")
+                    self.update_recommendation()
 
         dialogs.run_in_thread(self, measure, path, on_done=done, on_error=lambda _: None)
+
+    def update_recommendation(self):
+        """The number of strokes that suits the photo's detail, next to "Strokes" (CLIPasso, ControlSketch)."""
+        from ...engine import complexity
+
+        for method, key in complexity.STROKE_KEY.items():
+            rec = complexity.recommend(method, self._density) if self._density is not None else None
+            text = tr("ui.recommend.strokes", n=rec[0], level=tr(f"ui.recommend.level.{rec[1]}")) if rec else None
+            self.params.set_recommendation(method, key, rec[0] if rec else None, text)
 
     def hints(self) -> list:
         """The hints shown (the kinds not switched off, the most helpful first)."""
@@ -910,7 +936,7 @@ class StudioPage(QWidget):
         if not used or path != self.image_path or model != current:
             return  # an earlier image or model
         try:
-            _, prob, edited = mask_view.load_mask(path, model)
+            im, prob, edited = mask_view.load_mask(path, model)
         except OSError as exc:
             self._mask_failed(path, model, str(exc))
             return
@@ -920,6 +946,11 @@ class StudioPage(QWidget):
         self._mask = {"key": (path, model), "prob": prob, "edited": edited is not None}
         self._mask_hints = image_hints.mask_hints(prob, edited)
         self.show_hints()
+        from ...engine import complexity
+
+        self._density = complexity.edge_density(im, edited.astype(bool) if edited is not None
+                                                else prob >= masking.OBJECT_THRESHOLD)  # (in the object)
+        self.update_recommendation()
         mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
         pal = theme.current()
         veil = QColor(pal.surface2)
@@ -1036,6 +1067,12 @@ class StudioPage(QWidget):
         self._update_estimate()
         self._update_mask_preview()
         self._update_detail_button()
+        self.update_experimental()
+
+    def update_experimental(self) -> None:
+        """The badge of the experimental sketch improvement: on, and a method it works for."""
+        on = bool(app_settings().get("experimental_sketch", False))
+        self.experimental_btn.setVisible(on and self.params.method() in schema.SKETCH_GUIDE_METHODS)
 
     def _set_view_method(self, method: str):
         """Adapt statistics, chart and canvas views to the method of the displayed run."""
@@ -1224,7 +1261,9 @@ class StudioPage(QWidget):
             self.file_label.setToolTip("")
             self.canvas.set_input(None)
             self._photo_hints, self._mask_hints = [], []
+            self._density = None
             self.show_hints()
+            self.update_recommendation()
             self._update_buttons()
 
     def _ensure_thumbs(self, seeds: list[int]):
@@ -1390,6 +1429,7 @@ class StudioPage(QWidget):
             self.sheet.set_best(self.best_seed)
             if self.best_seed is not None:
                 self.select_seed(self.best_seed)
+                self._simplify_tip()
         elif kind == "warning":
             key = f"ui.warn.{data.get('code', '')}"
             self.toast.emit(tr(key) if i18n.has(key) else data.get("message", ""), "warning")
@@ -1832,6 +1872,36 @@ class StudioPage(QWidget):
             act.setEnabled(self._can_choose_best(seed))
         return menu
 
+    def _matrix_menu_for(self, cell: int) -> QMenu:
+        """The matrix's menu: the contact sheet's, and computing a cell again (with a new start)."""
+        menu = self._sheet_menu_for(cell)
+        menu.addSeparator()
+        again = menu.addAction(icons.icon("refresh-cw", theme.current().text), tr("ui.matrix.rerun"),
+                               lambda: self.rerun_scene_cell(cell))
+        again.setEnabled(self._can_choose_best(cell))
+        return menu
+
+    def rerun_scene_cell(self, cell: int, confirm: bool = True) -> bool:
+        """SceneSketch: compute a cell of the shown job again with a new start value – and the later levels of its
+        layer, which start from it. The job continues in the queue; the other cells stay."""
+        if not self._can_choose_best(cell):
+            return False
+        state = jobs.read_state(self.view_dir) or {}
+        layer, level = divmod(int(cell), 100)
+        later = [lv for lv in schema.scene_levels(state.get("settings") or {}) if lv > level]
+        if confirm and later and QMessageBox.question(
+                self, tr("ui.matrix.rerun"), tr("ui.matrix.rerun_q", layer=layer, level=level,
+                                                later=", ".join(str(lv) for lv in later))) != QMessageBox.Yes:
+            return False
+        job_dir = self.view_dir
+        removed = jobs.rerun_scene_cell(job_dir, cell)
+        for c in removed:
+            self.seed_runs.pop(c, None)
+        if self.controller.continue_job(job_dir) is None:
+            return False
+        self.toast.emit(tr("ui.matrix.rerun_queued", n=len(removed)), "info")
+        return True
+
     def _can_choose_best(self, seed: int) -> bool:
         """A finished sketch of a job that is not running (shown from its folder)."""
         job = self.controller.current
@@ -1860,7 +1930,7 @@ class StudioPage(QWidget):
 
     def _setup_matrix(self, settings: dict):
         if schema.method_of(settings) == "scenesketch":
-            self.scene_layout = (schema.scene_layers(settings), int(settings.get("simplicity_levels", 0)))
+            self.scene_layout = (schema.scene_layers(settings), schema.scene_levels(settings))
             self.matrix.set_layout(*self.scene_layout)
         else:
             self.scene_layout = None
@@ -2036,6 +2106,9 @@ class StudioPage(QWidget):
         self._update_play_btn()
         self.up_btn.setToolTip(tr("ui.rate.up"))
         self.down_btn.setToolTip(tr("ui.rate.down"))
+        self.simplify_btn.setText(tr("ui.edit_bar.simplify"))
+        self.experimental_btn.setText(tr("ui.studio.experimental_badge"))
+        self.experimental_btn.setToolTip(tr("ui.studio.experimental_tip"))
         self.simplify_btn.setToolTip(tr("ui.edit_bar.simplify_tip"))
         self.edit_bar.retranslate()
         self.pen_btn.setToolTip(tr("ui.pen.tip"))
@@ -2477,6 +2550,14 @@ class StudioPage(QWidget):
             self.toast.emit(tr("ui.edit_bar.no_steps"), "info")
             return False
         return True
+
+    def _simplify_tip(self) -> None:
+        """Once, after the first finished sketch: where "Simplify" is (it was easy to miss)."""
+        st = app_settings()
+        if st.get("simplify_tip_shown") or self._editable_seed() is None:
+            return
+        st.set("simplify_tip_shown", True)
+        self.toast.emit(tr("ui.edit_bar.simplify_hint"), "info")
 
     def open_simplify(self) -> bool:
         """A slider that leaves out the least important strokes first (measured with CLIP the first time)."""

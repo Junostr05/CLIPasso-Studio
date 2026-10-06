@@ -295,6 +295,39 @@ def remaining_seeds(job_dir: str) -> list[int]:
 
 
 CHECKPOINT_FILE = "checkpoint.pt"  # (engine/checkpoint.py, without importing torch here)
+CELL_SEEDS_FILE = "cell_seeds.json"  # SceneSketch cells computed again: their new start values
+
+
+def read_cell_seeds(job_dir: str) -> dict[str, int]:
+    try:
+        with open(os.path.join(job_dir, CELL_SEEDS_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return {str(k): int(v) for k, v in data.items()}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}
+
+
+def rerun_scene_cell(job_dir: str, cell: int) -> list[int]:
+    """Prepare a cell of a SceneSketch job to be computed again with a new start value: the cell and the later levels
+    of its layer (each starts from the one before it) are removed – continuing the job computes them again. Returns
+    the cells removed."""
+    state = read_state(job_dir) or {}
+    settings, target = state.get("settings") or {}, state.get("target") or ""
+    layer, level = divmod(int(cell), 100)
+    seeds = read_cell_seeds(job_dir)
+    seeds[str(cell)] = seeds.get(str(cell), int(settings.get("seed", 0))) + 1
+    with open(os.path.join(job_dir, CELL_SEEDS_FILE), "w", encoding="utf-8") as f:
+        json.dump(seeds, f, indent=1)
+    removed = []
+    for lv in schema.scene_levels(settings):
+        if lv < level:
+            continue
+        shutil.rmtree(os.path.join(job_dir, schema.scene_run_name(target, layer, lv)), ignore_errors=True)
+        for part in ("background", "object"):
+            shutil.rmtree(os.path.join(job_dir, "runs", f"{part}_l{layer}" + (f"_level{lv}" if lv else "")),
+                          ignore_errors=True)
+        removed.append(schema.scene_cell_id(layer, lv))
+    return removed
 
 
 def drop_checkpoints(job_dir: str) -> int:
