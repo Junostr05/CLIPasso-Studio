@@ -255,6 +255,8 @@ class MainWindow(QMainWindow):
 
         self.phone = PhoneLink(self.controller, lambda: self.studio.params.settings(), self, studio=self.studio)
         self.phone.api.gallery = self.gallery
+        self.phone.api.compare = self.compare
+        self.phone.api.models_page = self.models
         self.phone.toast.connect(self.toast.show_message)
         self.settings.phone_card.set_link(self.phone)
         self.about.show_tour.connect(self.show_tour)

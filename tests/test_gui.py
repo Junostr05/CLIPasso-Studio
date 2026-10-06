@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+from tests.helpers import fake_job
+
 
 @pytest.fixture(scope="module")
 def window(tmp_path_factory):
@@ -108,7 +110,7 @@ def test_scenesketch_in_the_studio(window):
     # one column of 5 levels in a wide, low view: shown as a row, with larger cells
     m.resize(600, 280)
     m.set_layout([8], 4)
-    assert m._geometry()[4] and m._geometry()[2] > 100
+    assert m._geometry()[4] and m._geometry()[2] >= 95  # (3.5: a little room went to the axis titles)
     assert m._cell_at(m._cell_rect(0, 3).center()) == 803
     assert m._cell_rect(0, 3).left() > m._cell_rect(0, 2).right()
     m.grab()
@@ -231,33 +233,7 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
     assert not studio.chart.isVisibleTo(studio)
 
 
-def _fake_job(out, name, target, clip, method="swiftsketch", created="2026-09-29 12:00:00"):
-    import json
-
-    from PIL import Image
-
-    from clipasso_studio import settings_schema as schema
-    from clipasso_studio.engine import jobs
-
-    job = os.path.join(out, name)
-    run = os.path.join(job, f"{name}_run")
-    os.makedirs(os.path.join(run, "svg_logs"))
-    svg = '<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224"><path d="M 10 10 C 20 20 30 30 40 40" ' \
-          'stroke="rgb(0,0,0)" stroke-width="2" fill="none"/></svg>'
-    for p in (os.path.join(run, "best_iter.svg"), os.path.join(job, f"{name}_run_best.svg")):
-        with open(p, "w") as f:
-            f.write(svg)
-    if not os.path.isfile(target):
-        Image.new("RGB", (30, 20), "white").save(target)
-    jobs.save_input(job, target)
-    summary = {"target": target, "created": created, "settings": schema.default_settings(method), "method": method,
-               "clip_score": clip, "best_svg": os.path.join(job, f"{name}_run_best.svg"), "best_run": f"{name}_run",
-               "runs": [{"seed": 0, "run_name": f"{name}_run", "run_dir": run, "best_loss": 0.2, "best_iter": 0,
-                         "iterations_done": 1, "best_svg": os.path.join(run, "best_iter.svg"), "status": "done",
-                         "method": method, "clip_score": clip, "seconds": 1.0}]}
-    with open(os.path.join(job, "job.json"), "w") as f:
-        json.dump(summary, f)
-    return job
+_fake_job = fake_job  # (in tests/helpers.py: the phone's browser tests use it, too)
 
 
 def test_gallery_favourites_sorting_and_delete(window, tmp_path):
@@ -1064,7 +1040,7 @@ def test_phone_exports_every_format(window, tmp_path):
     window.studio.show_job_dir(job)
     info = call("get_export_info", {})
     fmts = {f["fmt"]: f for f in info["formats"]}
-    assert set(fmts) == set(export_jobs.FORMATS) - {"matrix"}  # (the matrix only for SceneSketch)
+    assert set(fmts) == set(export_jobs.FORMATS) - {"matrix", "svglayers"}  # (those only for SceneSketch)
     assert fmts["png"]["applies"]["transparent"] and not fmts["gif"]["applies"]["transparent"]
     assert not fmts["gif"]["applies"]["mode"] and fmts["gif"]["defaults"]["mode"] == "strokes"  # (no saved steps)
     assert all(f["desc"] and f["title"] for f in fmts.values())
@@ -1153,3 +1129,167 @@ def test_own_presets_in_studio_and_phone(window, monkeypatch, tmp_path):
     assert call("do_delete_preset", {"name": "Vom Handy", "method": "clipasso"})["ok"] is False
     assert call("get_studio", {})["user_preset"] == ""
     assert p.delete_user_preset("Mein Preset") and user_presets.all_presets() == []
+
+
+def test_scenesketch_views_and_layers(window, tmp_path):
+    """3.5: a SceneSketch job – the matrix with its axes, the layer switch, the attention map from the background's
+    run, the layered export; on the phone the matrix, the background photo and the layers."""
+    import io
+
+    from PIL import Image
+
+    from clipasso_studio.gui.app_settings import app_settings
+    from tests.helpers import SCENE_BG, SCENE_OBJ, fake_scene_job
+
+    studio = window.studio
+    call = window.phone.api.handle
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    job = fake_scene_job(out, "scene_gui_job", str(tmp_path / "scene.png"))
+    studio.show_job_dir(job)
+    assert studio.view_method == "scenesketch" and studio.scene_layout == ([8], 1)
+    assert studio.best_seed == 800 and 800 in studio.seed_attn  # (from runs/background_l8/seed0)
+    studio.modes.set_current("matrix")
+    studio.matrix.resize(500, 500)
+    assert not studio.matrix.grab().isNull()  # (the axis titles are drawn without an error)
+    studio.modes.set_current("sketch")
+    assert studio.layer_btn.isVisibleTo(studio) and studio.layer_btn.isEnabled()
+    assert studio.export_btns["svglayers"].isVisibleTo(studio) and studio.export_btns["svglayers"].isEnabled()
+    studio.set_layer_part("object")
+    assert studio._shown_svg(800).count("<path") == len(SCENE_OBJ)
+    studio.eraser_btn.setChecked(True)  # the eraser works on the whole sketch
+    assert studio.layer_part == "all"
+    studio.eraser_btn.setChecked(False)
+    # the phone
+    st = call("get_studio", {})
+    sc = st["scene"]
+    assert sc["layers"] == [8] and sc["levels"] == 1 and sc["background"] and sc["layered"]
+    assert [c["seed"] for c in sc["cells"]] == [800, 801] and all(c["has"] for c in sc["cells"])
+    assert next(c for c in sc["cells"] if c["best"])["seed"] == 800
+    jpg = call("file_background", {})
+    assert jpg["_type"] == "image/jpeg" and Image.open(io.BytesIO(jpg["_bytes"])).size[0] > 0
+    obj = call("file_sketch", {"seed": "800", "part": "object"})["_bytes"].decode()
+    bg = call("file_sketch", {"seed": "800", "part": "background"})["_bytes"].decode()
+    assert obj.count("<path") == len(SCENE_OBJ) and bg.count("<path") == len(SCENE_BG)
+    fmts = [f["fmt"] for f in call("get_export_info", {})["formats"]]
+    assert "svglayers" in fmts and "matrix" in fmts
+    # another method: no SceneSketch block, no layer switch
+    other = fake_job(out, "plain_gui_job", str(tmp_path / "plain.png"), 30.0)
+    studio.show_job_dir(other)
+    assert call("get_studio", {})["scene"] is None and not studio.layer_btn.isVisibleTo(studio)
+    assert "svglayers" not in [f["fmt"] for f in call("get_export_info", {})["formats"]]
+    assert call("do_export", {"fmt": "svglayers"})["ok"] is False
+    assert call("file_background", {})["ok"] is False
+
+
+def test_phone_gallery_queue_compare_download_crop(window, tmp_path, monkeypatch):
+    """3.5: the phone's gallery (all results, search, filters, favourites), queue (move, again), compare, model
+    downloads, crop and the mask."""
+    import io
+    import time
+
+    from PIL import Image
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs, model_store
+    from clipasso_studio.gui import methods_ui
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.controller import QueuedJob
+
+    studio, c = window.studio, window.controller
+    api = window.phone.api
+    call = api.handle
+    out = app_settings().get("output_dir")
+    os.makedirs(out, exist_ok=True)
+    a = fake_job(out, "phone_gal_alpha", str(tmp_path / "alpha.png"), 25.0, method="clipasso",
+                 created="2026-10-01 10:00:00")
+    fake_job(out, "phone_gal_beta", str(tmp_path / "beta.png"), 26.0, created="2026-10-01 11:00:00")
+    jobs.write_meta(a, notes="ein Hund am Strand", tags=["tier"], albums=["Urlaub"])
+    # search (name, notes, tags), filters, pages
+    found = call("get_results", {"q": "strand"})
+    assert [r["dir"] for r in found["results"]] == ["phone_gal_alpha"] and found["total"] == 1
+    assert call("get_results", {"q": "TIER"})["total"] == 1
+    assert call("get_results", {"album": "Urlaub"})["results"][0]["dir"] == "phone_gal_alpha"
+    assert "Urlaub" in found["albums"] and {m["key"] for m in found["methods"]} == set(schema.METHODS)
+    clip = call("get_results", {"method": "clipasso"})["results"]
+    assert all(r["method_key"] == "clipasso" for r in clip) and any(r["dir"] == "phone_gal_alpha" for r in clip)
+    total = call("get_results", {})["total"]
+    page2 = call("get_results", {"offset": 1, "limit": 1})
+    assert page2["total"] == total and len(page2["results"]) == 1 and page2["results"][0]["i"] == 1
+    # a favourite, by folder name; the result itself by folder name
+    assert call("do_fav", {"dir": "phone_gal_beta", "value": True})["ok"]
+    assert jobs.read_meta(os.path.join(out, "phone_gal_beta"))["favourite"]
+    assert [r["dir"] for r in call("get_results", {"fav": "1"})["results"]] == ["phone_gal_beta"]
+    assert b"<svg" in call("file_result", {"d": "phone_gal_alpha"})["_bytes"]
+    assert call("do_open", {"dir": "phone_gal_alpha"})["ok"] and studio.view_dir.endswith("phone_gal_alpha")
+    assert call("do_fav", {"dir": "gone"})["ok"] is False
+    # the queue: a waiting job to the top, a failed one again
+    image = str(tmp_path / "q.png")
+    Image.new("RGB", (32, 32), "white").save(image)
+    saved = list(c.jobs)
+    try:
+        q = [QueuedJob(image, schema.default_settings("clipasso"), status=st) for st in ("queued", "queued", "failed")]
+        c.jobs = list(q)
+        monkeypatch.setattr(c, "start_next", lambda: None)
+        assert call("do_move", {"id": q[1].id, "index": 0})["ok"] and c.jobs[0] is q[1]
+        assert call("do_move", {"id": q[2].id, "index": 0})["ok"] is False  # (only waiting jobs move)
+        assert call("do_retry", {"id": q[2].id})["ok"] and q[2].status == "queued"
+        assert call("do_retry", {"id": q[2].id})["ok"] is False
+        assert call("do_move", {"id": 999999, "index": 0})["ok"] is False
+    finally:
+        c.jobs = saved
+    # compare: missing models, the questions of a computer without GPU, then queued
+    studio.set_image(image)
+    queued = []
+    monkeypatch.setattr(c, "enqueue", lambda target, settings, start=True: queued.append(settings["method"]))
+    monkeypatch.setattr(methods_ui, "missing_models", lambda s: ["clip:RN50"] if s["method"] == "swiftsketch" else [])
+    monkeypatch.setattr(methods_ui, "has_cuda", lambda: False)
+    answer = call("do_compare", {"methods": ["swiftsketch", "clipasso"]})
+    assert answer["ok"] is False and answer["missing"] == ["clip:RN50"]
+    answer = call("do_compare", {"methods": ["clipasso", "controlsketch", "scenesketch"]})
+    assert answer["ok"] is False and {q["key"] for q in answer["asks"]} == {"controlsketch_cpu", "scene_fast"}
+    answer = call("do_compare", {"methods": ["clipasso", "controlsketch", "scenesketch"], "controlsketch_cpu": False,
+                                 "scene_fast": True})
+    assert answer == {"ok": True, "queued": 2} and queued == ["clipasso", "scenesketch"]
+    assert call("do_compare", {"methods": []})["ok"] is False
+    overview = call("get_compare", {})
+    assert overview["ok"] and [m["key"] for m in overview["methods"]] == list(schema.METHODS)
+    # models downloaded on the phone's request (one after the other, with progress)
+    installed = []
+
+    def install(key, progress=None, cancel=None):
+        progress(5, 10)
+        installed.append(key)
+        return key
+
+    monkeypatch.setattr(model_store, "install", install)
+    monkeypatch.setattr(model_store, "is_available", lambda k: k in installed)
+    assert call("do_download_models", {"keys": ["clip:RN50", "nonsense"]})["ok"]
+    end = time.time() + 20
+    while (call("get_studio", {})["download"] or {}).get("status") == "running" and time.time() < end:
+        QApplication.processEvents()
+        time.sleep(0.02)
+    assert call("get_studio", {})["download"]["status"] == "done" and installed == ["clip:RN50"]
+    assert call("do_download_models", {"keys": ["clip:RN50"]})["ok"] is False  # (nothing missing any more)
+    # crop: turned a quarter, the left half kept -> a new picture of half the turned width
+    Image.new("RGB", (80, 40), "white").save(image)
+    studio.set_image(image)
+    assert call("do_crop", {"rotate": 90, "x": 0, "y": 0, "w": 0.5, "h": 1})["ok"]
+    assert "-edited-" in studio.image_path and Image.open(studio.image_path).size == (20, 80)
+    assert call("do_crop", {"rotate": 45})["ok"] is False and call("do_crop", {"w": 0.01, "h": 0.01})["ok"] is False
+    # the mask: on the phone once the studio has it (the background veiled, the object outlined)
+    import numpy as np
+
+    from clipasso_studio.gui import mask_view
+
+    monkeypatch.setattr(studio, "_mask_settings", lambda: (True, "u2net", {}))
+    monkeypatch.setattr(studio, "_mask", None)
+    assert call("get_studio", {})["mask"]["ready"] is False and call("file_mask", {})["ok"] is False
+    prob = np.zeros((80, 20), np.float32)
+    prob[20:60, 5:15] = 1.0
+    monkeypatch.setattr(studio, "_mask", {"key": (studio.image_path, "u2net"), "prob": prob, "edited": False})
+    monkeypatch.setattr(mask_view, "load_mask", lambda path, model: (None, prob, None))
+    assert call("get_studio", {})["mask"]["ready"]
+    jpg = call("file_mask", {})
+    assert jpg["_type"] == "image/jpeg" and Image.open(io.BytesIO(jpg["_bytes"])).size == (20, 80)

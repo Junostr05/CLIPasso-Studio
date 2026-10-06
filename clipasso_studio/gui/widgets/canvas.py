@@ -448,7 +448,7 @@ class MatrixView(QWidget):
         self.best = cell
         self.update()
 
-    _HEAD, _SIDE, _GAP = 22, 30, 8
+    _HEAD, _SIDE, _GAP = 42, 52, 8  # (room for the cell labels and the axis titles)
 
     def _cell_size(self, cols: int, rows: int) -> float:
         return min((self.width() - self._SIDE - self._GAP * (cols + 1)) / cols,
@@ -491,6 +491,20 @@ class MatrixView(QWidget):
         for i, text in enumerate(side):
             r = self._cell_rect(i, 0) if transposed else self._cell_rect(0, i)
             p.drawText(QRectF(r.left() - 34, r.top(), 28, r.height()), Qt.AlignRight | Qt.AlignVCenter, text)
+        # the axes: fidelity (CLIP layer) and simplicity – across and down, or the other way round when transposed
+        across, down = (tr("ui.matrix.simplicity"), tr("ui.matrix.fidelity")) if transposed else (
+            tr("ui.matrix.fidelity"), tr("ui.matrix.simplicity"))
+        first = self._cell_rect(0, 0)
+        last_col = self._cell_rect(0, self.levels) if transposed else self._cell_rect(len(self.layers) - 1, 0)
+        last_row = self._cell_rect(len(self.layers) - 1, 0) if transposed else self._cell_rect(0, self.levels)
+        p.setPen(QColor(pal.faint))
+        p.drawText(QRectF(first.left(), y0 - 40, last_col.right() - first.left(), 18), Qt.AlignCenter, across + "  →")
+        p.save()
+        p.translate(first.left() - 40, (first.top() + last_row.bottom()) / 2)
+        p.rotate(90)  # (read from the top down: the arrow points the way the levels go)
+        span = last_row.bottom() - first.top()
+        p.drawText(QRectF(-span / 2, -9, span, 18), Qt.AlignCenter, down + "  →")
+        p.restore()
         for c, layer in enumerate(self.layers):
             for row in range(self.levels + 1):
                 cell = layer * 100 + row

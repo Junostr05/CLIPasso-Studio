@@ -6,7 +6,7 @@ from __future__ import annotations
 import math
 import os
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from .. import settings_schema as schema
 from ..engine import jobs
@@ -15,6 +15,7 @@ from .app_settings import app_settings
 from .i18n import i18n, tr
 
 PAGE_TEXTS = "ui.phone.page."
+WATCH_MS = 400
 
 
 def _eta(seconds: float) -> str:
@@ -50,8 +51,29 @@ class PhoneLink(QObject):
         controller.job_event.connect(self._event)
         controller.job_finished.connect(self._finished)
         i18n.language_changed.connect(lambda _: self.retranslate())
+        # live updates: while a page listens, what it shows is compared every WATCH_MS and the page told of changes
+        self._shown = None
+        self._watch = QTimer(self)
+        self._watch.setInterval(WATCH_MS)
+        self._watch.timeout.connect(self.check_changes)
+        self._watch.start()
         self.retranslate()
         self.apply_settings()
+
+    def check_changes(self) -> bool:
+        """Tell the listening pages when what they show has changed (True when told)."""
+        if not self.bridge.streams():
+            self._shown = None
+            return False
+        try:
+            now = self.api.signature()
+        except Exception:  # (the studio is being rebuilt: next time)
+            return False
+        if now == self._shown:
+            return False
+        self._shown = now
+        self.bridge.changed()
+        return True
 
     # ------------------------------------------------------------------ remote server
     def apply_settings(self) -> str:
@@ -91,7 +113,8 @@ class PhoneLink(QObject):
                      x_size=tr("ui.size_longest"), x_width_cm=tr("ui.export_pdf_width"),
                      x_mode=tr("ui.export_mode.label"), x_mode_process=tr("ui.export_mode.process"),
                      x_mode_strokes=tr("ui.export_mode.strokes"), x_length=tr("ui.export_length"),
-                     x_hold=tr("ui.export_hold"), preset_applied=tr("ui.user_presets.applied"))
+                     x_hold=tr("ui.export_hold"), preset_applied=tr("ui.user_presets.applied"),
+                     matrix_fidelity=tr("ui.matrix.fidelity"), matrix_simplicity=tr("ui.matrix.simplicity"))
         texts.update({f"method_{m}": methods_ui.name(m) for m in remote.METHODS})
         texts["lang"] = i18n.lang
         self.bridge.texts = texts
@@ -139,6 +162,7 @@ class PhoneLink(QObject):
         self.toast.emit(tr("ui.phone.received_queue", name=os.path.basename(path)), "success")
 
     def shutdown(self):
+        self._watch.stop()
         if self.server is not None:
             self.server.stop()
             self.server = None

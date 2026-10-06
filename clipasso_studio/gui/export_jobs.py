@@ -12,13 +12,13 @@ from . import paper as paper_mod
 from .app_settings import app_settings
 from .i18n import tr
 
-FORMATS = ("png", "svg", "svg1", "pdf", "gif", "mp4", "webp", "svganim", "lottie", "html", "matrix")
+FORMATS = ("png", "svg", "svg1", "svglayers", "pdf", "gif", "mp4", "webp", "svganim", "lottie", "html", "matrix")
 ANIMATIONS = ("gif", "mp4", "webp")  # the drawing process or stroke by stroke, rendered frame by frame
 DRAWN = ("svganim", "lottie", "html")  # the finished strokes drawn one by one by the viewer
 TIMED = ANIMATIONS + DRAWN
-EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg", "lottie": "json", "html": "html"}
-SUFFIX = {"svg1": "_1layer", "matrix": "_matrix", "svganim": "_animated"}
-TRANSPARENT_OK = ("svg", "png", "webp", "matrix", "svganim", "pdf", "lottie")
+EXTENSIONS = {"svg1": "svg", "svglayers": "svg", "matrix": "zip", "svganim": "svg", "lottie": "json", "html": "html"}
+SUFFIX = {"svg1": "_1layer", "svglayers": "_layers", "matrix": "_matrix", "svganim": "_animated"}
+TRANSPARENT_OK = ("svg", "svglayers", "png", "webp", "matrix", "svganim", "pdf", "lottie")
 CONTENT_TYPES = {"png": "image/png", "svg": "image/svg+xml", "pdf": "application/pdf", "gif": "image/gif",
                  "mp4": "video/mp4", "webp": "image/webp", "json": "application/json",
                  "html": "application/octet-stream", "zip": "application/zip"}  # (a page only to save, not to open)
@@ -30,7 +30,8 @@ def extension(fmt: str) -> str:
 
 
 def title(fmt: str) -> str:
-    return {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix"),
+    return {"svg1": tr("ui.export_svg1"), "svglayers": tr("ui.export_svglayers"), "webp": "WebP",
+            "matrix": tr("ui.export_matrix"),
             "svganim": tr("ui.export_svganim"), "lottie": "Lottie", "html": tr("ui.export_html")}.get(fmt, fmt.upper())
 
 
@@ -39,7 +40,8 @@ def applies(fmt: str, process_frames: int = 0) -> dict:
     return {"stroke": True, "width": True, "style": fmt not in ("svg1", "lottie"),
             "background": fmt != "svg1", "transparent": fmt in TRANSPARENT_OK, "paper": fmt != "svg1",
             "frame": fmt != "matrix",
-            "size": fmt not in ("svg", "svg1", "svganim", "pdf", "lottie", "html"), "width_cm": fmt == "pdf",
+            "size": fmt not in ("svg", "svg1", "svglayers", "svganim", "pdf", "lottie", "html"),
+            "width_cm": fmt == "pdf",
             "mode": fmt in ANIMATIONS and process_frames > 1, "length": fmt in TIMED, "hold": fmt in TIMED}
 
 
@@ -64,7 +66,8 @@ def _photo_frame_known(svg_path: str) -> bool:
 def defaults(fmt: str, sketch: dict) -> dict:
     """The options the dialog would start with (the choices of the last export, shared with the phone)."""
     st = app_settings()
-    bg = st.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svganim", "lottie") else "transparent")
+    bg = st.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svglayers", "svganim", "lottie")
+                                         else "transparent")
     if bg == "transparent" and fmt not in TRANSPARENT_OK:
         bg = "#FFFFFF"
     frame = st.get("export_frame", "square")
@@ -154,8 +157,9 @@ def run(fmt: str, svg_path: str, run_dir: str, dest: str, o: dict, progress=None
     shape = {"frame": o["frame"], "margin": o["margin"] / 100} if fmt != "matrix" else {}
     width = o["width"]
     try:
-        if fmt == "svg":
-            export.export_svg(svg_path, dest, stroke, width, bg, style, **shape, paper=pp)
+        if fmt in ("svg", "svglayers"):
+            write = export.export_svg if fmt == "svg" else export.export_layered_svg
+            write(svg_path, dest, stroke, width, bg, style, **shape, paper=pp)
         elif fmt == "svg1":
             export.export_single_layer_svg(svg_path, dest, stroke, width, **shape)
         elif fmt == "png":

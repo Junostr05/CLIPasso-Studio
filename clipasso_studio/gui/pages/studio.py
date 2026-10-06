@@ -46,6 +46,24 @@ class StatTile(QWidget):
         lay.addWidget(self.caption)
 
 
+def _scene_attention(job_dir: str, cell_dir: str) -> str:
+    """The attention map of a SceneSketch cell: it lies in the run of its background part (also when the job
+    folder has moved since)."""
+    import json
+
+    try:
+        with open(os.path.join(cell_dir, "config.json"), encoding="utf-8") as f:
+            run = json.load(f).get("background_run") or ""
+    except (OSError, ValueError):
+        return ""
+    path = os.path.join(run, "attention_map.png")
+    if not os.path.isfile(path):
+        parts = os.path.normpath(run).split(os.sep)
+        if "runs" in parts:
+            path = os.path.join(job_dir, *parts[parts.index("runs"):], "attention_map.png")
+    return path
+
+
 class StudioPage(QWidget):
     toast = Signal(str, str)
     open_queue = Signal()
@@ -65,6 +83,11 @@ class StudioPage(QWidget):
         self.best_seed: int | None = None
         self.view_method = schema.DEFAULT_METHOD  # method of the displayed run
         self.seed_scores: dict[int, float] = {}
+        # SceneSketch: the part being drawn ("background" / "object"), the layout of the matrix and the layer shown
+        self.scene_part = ""
+        self.scene_layout: tuple[list[int], int] | None = None
+        self.layer_part = "all"
+        self._layers_ok: dict[str, bool] = {}
         self._status_key = ("ui.status.idle", {})
 
         root = QVBoxLayout(self)
@@ -236,8 +259,12 @@ class StudioPage(QWidget):
         # SceneSketch: every sketch of the matrix at once
         b = button("", "layers", "ghost")
         b.clicked.connect(lambda _=False: self.export("matrix"))
-        grid.addWidget(b, 5, 0, 1, 2)
+        grid.addWidget(b, 5, 0)
         self.export_btns["matrix"] = b
+        b = button("", "pen-tool", "ghost")  # the cell with background and object as two layers
+        b.clicked.connect(lambda _=False: self.export("svglayers"))
+        grid.addWidget(b, 5, 1)
+        self.export_btns["svglayers"] = b
         b = button("", "copy", "ghost")  # the sketch on the clipboard (PNG + SVG)
         b.clicked.connect(lambda _=False: self.copy_sketch())
         grid.addWidget(b, 6, 0, 1, 2)
@@ -314,6 +341,22 @@ class StudioPage(QWidget):
         et.addWidget(self.up_btn)
         et.addWidget(self.down_btn)
         tools_row.addWidget(self.edit_tools)
+        # SceneSketch: the whole cell, only its background or only its object (gui/scene_layers.py)
+        self.layer_btn = tool_button("layers", "", 18)
+        self.layer_btn.setPopupMode(QToolButton.InstantPopup)
+        self.layer_menu = QMenu(self)
+        self.layer_group = QActionGroup(self)
+        self.layer_actions = {}
+        for key in ("all", "background", "object"):
+            action = self.layer_menu.addAction("")
+            action.setCheckable(True)
+            action.setChecked(key == "all")
+            action.triggered.connect(lambda _=False, k=key: self.set_layer_part(k))
+            self.layer_group.addAction(action)
+            self.layer_actions[key] = action
+        self.layer_btn.setMenu(self.layer_menu)
+        self.layer_btn.setVisible(False)
+        tools_row.addWidget(self.layer_btn)
         # brush style the sketches are shown in – also while they are computed; the export starts with it
         self.style_btn = tool_button("palette", "", 18)
         self.style_btn.setPopupMode(QToolButton.InstantPopup)
@@ -908,6 +951,10 @@ class StudioPage(QWidget):
         self.best_seed = None
         self.selected_seed = None
         self.view_dir = ""
+        self.scene_part, self.scene_layout = "", None
+        self._layers_ok.clear()
+        self.layer_part = "all"
+        self.layer_actions["all"].setChecked(True)
         self.thumb_area.setVisible(False)
         self.progress.setValue(0)
         for t in (self.stat_iter, self.stat_loss, self.stat_best, self.stat_time, self.stat_eta):
@@ -989,8 +1036,9 @@ class StudioPage(QWidget):
         self.matrix.set_selected(seed)
         for s, t in self.thumbs.items():
             t.set_selected(s == seed)
-        self.canvas.set_svg(self.seed_svgs.get(seed))
+        self.canvas.set_svg(self._shown_svg(seed))
         self.canvas.set_attention(self.seed_attn.get(seed))
+        self._update_layer_btn()
         if not methods_ui.uses_loss(self.view_method) and seed in self.seed_scores:
             self.stat_loss.value.setText(f"{self.seed_scores[seed]:.1f}")
         self._update_buttons()
@@ -1105,7 +1153,8 @@ class StudioPage(QWidget):
             if self.view_method == "scenesketch":
                 self.matrix.set_cell(seed, data["svg"])
             if seed == self.selected_seed:
-                self.canvas.set_svg(data["svg"])
+                self.canvas.set_svg(self._shown_svg(seed))
+                self._update_layer_btn()
             if not methods_ui.uses_loss(self.view_method) and self.seed_scores:
                 self.stat_best.value.setText(f"{max(self.seed_scores.values()):.1f}")
                 if seed == self.selected_seed and data.get("clip_score") is not None:
@@ -1177,6 +1226,7 @@ class StudioPage(QWidget):
         else:
             n = job.seeds.index(data["seed"]) + 1 if data["seed"] in job.seeds else 1
             part = data.get("part")
+            self.scene_part = part or ""
             self._set_status(f"ui.status.scene_{part}" if part else "ui.status.optimizing", n=n, total=len(job.seeds))
 
     def _job_finished(self, job: QueuedJob):
@@ -1274,6 +1324,8 @@ class StudioPage(QWidget):
             if cond:
                 self.canvas.set_condition(QPixmap(cond))
             attn = os.path.join(r["run_dir"], "attention_map.png")
+            if self.view_method == "scenesketch" and not os.path.isfile(attn):
+                attn = _scene_attention(job_dir, r["run_dir"])
             if os.path.isfile(attn):
                 self.seed_attn[seed] = QPixmap(attn)
             mask = os.path.join(r["run_dir"], "mask.png")
@@ -1531,9 +1583,52 @@ class StudioPage(QWidget):
 
     def _setup_matrix(self, settings: dict):
         if schema.method_of(settings) == "scenesketch":
-            self.matrix.set_layout(schema.scene_layers(settings), int(settings.get("simplicity_levels", 0)))
+            self.scene_layout = (schema.scene_layers(settings), int(settings.get("simplicity_levels", 0)))
+            self.matrix.set_layout(*self.scene_layout)
         else:
+            self.scene_layout = None
             self.matrix.clear()
+
+    # ------------------------------------------------------------------ SceneSketch layers
+    def layers_available(self, seed: int | None) -> bool:
+        """The cell has its background and object as layers (finished; cached per cell folder)."""
+        from .. import scene_layers
+
+        run_dir = self.seed_runs.get(seed) if seed is not None else None
+        if self.view_method != "scenesketch" or not run_dir:
+            return False
+        if run_dir not in self._layers_ok:
+            self._layers_ok[run_dir] = scene_layers.available(run_dir)
+        return self._layers_ok[run_dir]
+
+    def _shown_svg(self, seed: int | None) -> str | None:
+        """The sketch of ``seed`` as the canvas shows it: whole, or only the chosen layer of a SceneSketch cell."""
+        svg = self.seed_svgs.get(seed)
+        if svg and self.layer_part != "all" and self.layers_available(seed):
+            from .. import scene_layers
+
+            return scene_layers.part(svg, self.seed_runs.get(seed), self.layer_part)
+        return svg
+
+    def set_layer_part(self, part: str):
+        """Show the whole SceneSketch cell, only its background or only its object (editing shows it whole)."""
+        self.layer_part = part if part in ("all", "background", "object") else "all"
+        self.layer_actions[self.layer_part].setChecked(True)
+        if self.layer_part != "all":
+            for b in (self.eraser_btn, self.pen_btn):
+                if b.isChecked():
+                    b.setChecked(False)
+        seed = self.selected_seed if self.selected_seed is not None else self.best_seed
+        if seed is not None and seed in self.seed_svgs:
+            self.canvas.set_svg(self._shown_svg(seed))
+        self._update_layer_btn()
+
+    def _update_layer_btn(self):
+        seed = self.selected_seed if self.selected_seed is not None else self.best_seed
+        scene = self.view_method == "scenesketch"
+        self.layer_btn.setVisible(scene and self.modes.current() == "sketch")
+        self.layer_btn.setEnabled(self.layers_available(seed))
+        self.layer_btn.setToolTip(tr("ui.layer.tip") if self.layer_btn.isEnabled() else tr("ui.layer.not_yet"))
 
     def _open_cell(self, cell: int):
         self.select_seed(cell)
@@ -1560,6 +1655,9 @@ class StudioPage(QWidget):
         self._update_edit_tools()
         self.export_btns["matrix"].setVisible(self.view_method == "scenesketch")
         self.export_btns["matrix"].setEnabled(self._matrix_exportable())
+        self.export_btns["svglayers"].setVisible(self.view_method == "scenesketch")
+        sel = self.selected_seed if self.selected_seed is not None else self.best_seed
+        self.export_btns["svglayers"].setEnabled(self.layers_available(sel))
         for b in (self.reuse_btn,):
             b.setEnabled(has_result)
         self.folder_btn.setEnabled(bool(self.view_dir) or bool(app_settings().get("output_dir")))
@@ -1650,6 +1748,9 @@ class StudioPage(QWidget):
         self.paper_color_action.setText(tr("ui.paper.color") + " …")
         self.vignette_action.setText(tr("ui.paper.vignette"))
         self.style_btn.setToolTip(tr("ui.canvas_style.tip", style=tr(f"ui.brush.{self.canvas.style()}")))
+        for key, action in self.layer_actions.items():
+            action.setText(tr(f"ui.layer.{key}"))
+        self._update_layer_btn()
         self.eraser_btn.setToolTip(tr("ui.eraser.tip"))
         self.history_btn.setToolTip(tr("ui.edit_bar.history_tip"))
         self.up_btn.setToolTip(tr("ui.rate.up"))
@@ -1708,6 +1809,8 @@ class StudioPage(QWidget):
         self.export_btns["html"].setToolTip(tr("ui.export_html_tip"))
         self.export_btns["matrix"].setText(tr("ui.export_matrix"))
         self.export_btns["matrix"].setToolTip(tr("ui.export_matrix_tip"))
+        self.export_btns["svglayers"].setText(tr("ui.export_svglayers"))
+        self.export_btns["svglayers"].setToolTip(tr("ui.export_svglayers_tip"))
         self.folder_btn.setText(tr("ui.open_folder"))
         self.reuse_btn.setText(tr("ui.use_as_initial"))
         self.reuse_btn.setToolTip(tr("ui.use_as_initial_tip"))
@@ -1741,6 +1844,7 @@ class StudioPage(QWidget):
         self.canvas.setVisible(mode != "matrix")
         self.matrix.setVisible(mode == "matrix")
         self._update_edit_tools()
+        self._update_layer_btn()
 
     # ------------------------------------------------------------------ eraser
     def _editable_seed(self) -> int | None:
@@ -1784,11 +1888,15 @@ class StudioPage(QWidget):
     def _toggle_eraser(self, on: bool):
         if on and self.pen_btn.isChecked():
             self.pen_btn.setChecked(False)
+        if on and self.layer_part != "all":  # (the eraser works on the whole sketch)
+            self.set_layer_part("all")
         self.canvas.set_eraser(on)
 
     def _toggle_pen(self, on: bool):
         if on and self.eraser_btn.isChecked():
             self.eraser_btn.setChecked(False)
+        if on and self.layer_part != "all":
+            self.set_layer_part("all")
         self.canvas.set_pen(on)
 
     def _pen_stroke(self, points: list):

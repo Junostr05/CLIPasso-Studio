@@ -78,27 +78,54 @@ for (const b of document.querySelectorAll("#tabs button")) b.onclick = () => sho
 let S = null;           // the latest studio state
 let schemaOf = {};      // method -> its parameters
 let builtFor = "";      // the method the parameter fields are built for
-let lastSeen = {input: "", sketch: "", seeds: "", note: 0, details: -1};
+let lastSeen = {input: "", sketch: "", seeds: "", note: 0, details: -1, bg: ""};
 
 let timer = 0;
+let lastRefresh = 0;
 function schedule(ms) {
   clearTimeout(timer);
   timer = setTimeout(refresh, ms);
 }
 
+// live updates: the PC says when something changed (server-sent events); asking every few seconds only when that
+// stream is quiet for too long (no "ping" for 20 s – e.g. blocked on the way)
+let live = null;
+let heard = 0;
+const isLive = () => live !== null && Date.now() - heard < 20000;
+function listen() {
+  if (!window.EventSource || live) return;
+  live = new EventSource("/api/events");
+  live.addEventListener("changed", () => {
+    heard = Date.now();
+    schedule(Math.max(60, lastRefresh + 400 - Date.now()));  // (at most every 0.4 s while a sketch is drawn)
+  });
+  live.addEventListener("ping", () => { heard = Date.now(); });
+  live.onerror = () => {
+    if (live && live.readyState === EventSource.CLOSED) { live = null; }  // (refused, e.g. signed out: polling)
+  };
+}
+function unlisten() {
+  if (live) { live.close(); live = null; }
+}
+
 async function refresh() {
+  lastRefresh = Date.now();
   try {
     const s = await getJSON("/api/get/studio");
     if (s.ok === false) throw new Error(s.error || T.offline);
     S = s;
     await render();
-    schedule(document.hidden ? 8000 : (s.busy ? 1500 : 3000));
+    schedule(document.hidden ? 8000 : (isLive() ? 15000 : (s.busy ? 1500 : 3000)));
   } catch (e) {
     $("status").textContent = e.message && e.message !== "Failed to fetch" ? e.message : T.offline;
     schedule(4000);
   }
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) schedule(50); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { unlisten(); return; }  // (no stream while the page is not seen: the battery)
+  listen();
+  schedule(50);
+});
 
 async function render() {
   renderTop();
@@ -140,18 +167,28 @@ $("cancel").onclick = () => {
 };
 
 // ------------------------------------------------------------------ picture
+let showMask = false;
 function renderPicture() {
   const img = S.image;
   $("no-input").hidden = !!img;
   $("input-name").textContent = img ? img.name + " · " + img.size : "";
-  if (img && img.rev !== lastSeen.input) {
-    lastSeen.input = img.rev;
-    $("input").src = "/api/file/input?v=" + encodeURIComponent(img.rev);
+  const m = S.mask || {};
+  if (!m.ready) showMask = false;
+  const want = img ? (showMask ? "mask:" : "") + img.rev + ":" + (m.text || "") : "";
+  if (img && want !== lastSeen.input) {
+    lastSeen.input = want;
+    $("input").src = (showMask ? "/api/file/mask?v=" : "/api/file/input?v=") + encodeURIComponent(want);
   } else if (!img) {
     $("input").removeAttribute("src");
     lastSeen.input = "";
   }
+  $("crop").disabled = !img;
+  $("mask").hidden = !(img && m.used);
+  $("mask").disabled = !m.ready;
+  $("mask").textContent = showMask ? T.mask_hide : T.mask_show;
+  $("mask-state").textContent = img && m.used ? m.text : "";
 }
+$("mask").onclick = () => { showMask = !showMask; renderPicture(); };
 
 async function upload(file) {
   if (!file) return;
@@ -198,9 +235,25 @@ function renderMethods() {
                     el("span", {text: m.name}), m.missing ? el("small", {text: T.missing_badge}) : null));
     }
   }
-  $("missing").hidden = !S.missing.length;
-  if (S.missing.length) $("missing").textContent = t("models_missing", {size: S.missing_mb});
+  const dl = S.download;
+  const loading = !!(dl && dl.status === "running");
+  $("missing").hidden = !S.missing.length || loading;
+  if (S.missing.length) {
+    $("missing-text").textContent = t("models_missing", {size: S.missing_mb});
+    $("download").textContent = t("download_models", {size: S.missing_mb});
+  }
+  $("downloading").hidden = !dl || dl.status === "done" && !S.missing.length;
+  if (dl) {
+    const part = dl.total > 0 ? dl.done / dl.total : 0;
+    $("download-text").textContent = loading ? t("downloading", {name: dl.name, i: dl.index, n: dl.count,
+                                                                  pct: Math.round(100 * part)})
+      : dl.status === "failed" ? t("download_failed", {error: dl.error}) : T["download_" + dl.status] || "";
+    $("download-bar").style.width = Math.round(100 * (loading ? part : (dl.status === "done" ? 1 : 0))) + "%";
+    $("download-cancel").hidden = !loading;
+  }
 }
+$("download").onclick = () => act("download_models");
+$("download-cancel").onclick = () => act("cancel_download");
 
 $("budget").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-min]");
@@ -557,15 +610,91 @@ for (const [id, prefix] of [["style", "style_"], ["paper", "paper_"]]) {
   sel.onchange = (e) => act("style", {[id]: e.target.value});
 }
 
+// SceneSketch: the views (the sketch, the background LaMa filled in behind the object, the matrix) and the layers
+// of a finished cell (whole, only the background, only the object)
+let sceneView = "sketch";
+let layerPart = "all";
+document.querySelector(".axis-x").textContent = (T.matrix_fidelity || "") + "  →";
+document.querySelector(".axis-y").textContent = (T.matrix_simplicity || "") + "  →";
+$("scene-views").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-view]");
+  if (!b) return;
+  sceneView = b.dataset.view;
+  renderScene();
+});
+$("layer-switch").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-part]");
+  if (!b) return;
+  layerPart = b.dataset.part;
+  renderSketch();
+});
+
+function renderScene() {
+  const sc = S && S.scene;
+  if (!sc) sceneView = "sketch";
+  $("scene-views").hidden = !sc;
+  for (const b of $("scene-views").children) b.classList.toggle("on", b.dataset.view === sceneView);
+  $("sketch-box").hidden = sceneView !== "sketch";
+  $("background-box").hidden = sceneView !== "background";
+  $("matrix-box").hidden = sceneView !== "matrix";
+  $("scene-part").hidden = !(sc && sc.part);
+  if (sc && sc.part) $("scene-part").textContent = "✎ " + (T["scene_part_" + sc.part] || "");
+  const layered = !!(sc && sc.layered);
+  if (!layered) layerPart = "all";
+  $("layer-switch").hidden = !layered || sceneView !== "sketch";
+  for (const b of $("layer-switch").children) b.classList.toggle("on", b.dataset.part === layerPart);
+  if (!sc) return;
+  if (sceneView === "background") {
+    $("no-bg").hidden = sc.background;
+    if (sc.background && lastSeen.bg !== sc.background_rev) {
+      lastSeen.bg = sc.background_rev;
+      $("scene-bg").src = "/api/file/background?v=" + encodeURIComponent(sc.background_rev);
+    } else if (!sc.background) {
+      $("scene-bg").removeAttribute("src");
+      lastSeen.bg = "";
+    }
+  }
+  if (sceneView === "matrix") renderMatrix(sc);
+}
+
+function renderMatrix(sc) {
+  const box = $("matrix");
+  const sig = JSON.stringify(sc.cells) + S.shown + S.style;
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.style.gridTemplateColumns = `22px repeat(${sc.layers.length}, minmax(0, 140px))`;  // (the CSSOM: CSP)
+  const items = [el("div")];
+  for (const layer of sc.layers) items.push(el("div", {class: "head", text: "L" + layer}));
+  for (let level = 0; level <= sc.levels; level++) {
+    items.push(el("div", {class: "head", text: String(level)}));
+    for (const layer of sc.layers) {
+      const c = sc.cells.find((x) => x.layer === layer && x.level === level);
+      if (!c || !c.has) {
+        items.push(el("div", {class: "cell empty", title: t("cell", {layer, level})}));
+        continue;
+      }
+      items.push(el("button", {
+        class: "cell" + (c.best ? " best" : "") + (c.seed === S.shown ? " sel" : ""), title: t("cell", {layer, level}),
+        onclick: async () => {
+          const a = await act("select", {seed: c.seed});
+          if (a.ok) { sceneView = "sketch"; renderScene(); }
+        }}, el("img", {src: `/api/file/sketch?seed=${c.seed}&v=${c.rev}&s=${S.style}`, alt: "", loading: "lazy"})));
+    }
+  }
+  box.replaceChildren(...items);
+}
+
 function renderSketch() {
+  renderScene();
   const has = S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
   $("no-sketch").hidden = has;
   $("no-sketch").textContent = S.running_here ? (S.status || T.running) : T.no_sketch;
   $("view-name").textContent = S.view || "";
-  const sig = S.shown + ":" + S.live_rev + ":" + S.style + ":" + S.paper;
+  const sig = S.shown + ":" + S.live_rev + ":" + S.style + ":" + S.paper + ":" + layerPart;
   if (has && sig !== lastSeen.sketch) {
     lastSeen.sketch = sig;
-    $("sketch").src = `/api/file/sketch?seed=${S.shown}&full=1&v=${S.live_rev}&s=${S.style}&p=${S.paper}`;
+    const part = layerPart !== "all" ? "&part=" + layerPart : "";
+    $("sketch").src = `/api/file/sketch?seed=${S.shown}&full=1&v=${S.live_rev}&s=${S.style}&p=${S.paper}${part}`;
   } else if (!has) {
     $("sketch").removeAttribute("src");
     lastSeen.sketch = "";
@@ -746,50 +875,460 @@ async function pollExport(id, misses) {
 }
 
 // ------------------------------------------------------------------ gallery and queue
-async function loadResults() {
-  const box = $("results");
-  const list = await getJSON("/api/get/results").catch(() => ({results: []}));
-  box.replaceChildren();
-  for (const r of list.results || []) {
-    const open = async () => {
-      const a = await act("open", {i: r.i, dir: r.dir});
-      if (a.ok) showTab("sketch");
-    };
-    const remove = async (e) => {
-      e.stopPropagation();
-      if (!confirm(t("delete_ask", {name: r.name}))) return;
-      const a = await act("delete", {i: r.i, dir: r.dir});
-      if (a.ok) toast(T.deleted);
-      loadResults();
-    };
-    box.append(el("div", {class: "result", onclick: open},
-       el("button", {class: "del", title: T.delete, "aria-label": T.delete, onclick: remove, text: "🗑"}),
-       el("img", {src: `/api/file/result?i=${r.i}&d=${encodeURIComponent(r.dir)}`, alt: "", loading: "lazy"}),
-       el("b", {text: (r.fav ? "★ " : "") + r.name}),
-       el("span", {text: r.method + (r.score !== null ? " · " + r.score : "") + " · " + (r.created || "").slice(0, 16)})));
+// the gallery: every result, searched and filtered, page by page; a result large (swipe to the next one)
+const G = {items: [], total: 0, q: "", method: "", album: "", fav: false, at: -1, busy: false};
+$("search").placeholder = T.search;
+$("filter-method").title = T.filter_method;
+$("filter-album").title = T.filter_album;
+$("filter-fav").title = T.filter_fav;
+let searchTimer = 0;
+$("search").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { G.q = $("search").value.trim(); loadResults(); }, 300);
+});
+$("filter-method").onchange = (e) => { G.method = e.target.value; loadResults(); };
+$("filter-album").onchange = (e) => { G.album = e.target.value; loadResults(); };
+$("filter-fav").onclick = () => { G.fav = !G.fav; loadResults(); };
+$("more").onclick = () => loadResults(true);
+
+function fillSelect(sel, items, all, current) {
+  const sig = JSON.stringify(items);
+  if (sel.dataset.sig !== sig) {
+    sel.dataset.sig = sig;
+    sel.replaceChildren(el("option", {value: "", text: all}),
+                        ...items.map((i) => el("option", {value: i.key, text: i.name})));
   }
-  if (!box.children.length) box.append(el("div", {class: "muted", text: T.empty}));
+  sel.value = current;
+  sel.hidden = !items.length;
 }
 
+async function loadResults(more) {
+  if (G.busy) return;
+  G.busy = true;
+  const q = new URLSearchParams({q: G.q, method: G.method, album: G.album, fav: G.fav ? "1" : "",
+                                 offset: more ? G.items.length : 0});
+  const list = await getJSON("/api/get/results?" + q).catch(() => null);
+  G.busy = false;
+  if (!list || list.ok === false) return;
+  G.items = more ? G.items.concat(list.results) : list.results;
+  G.total = list.total;
+  fillSelect($("filter-method"), list.methods, T.all_methods, G.method);
+  fillSelect($("filter-album"), list.albums.map((a) => ({key: a, name: a})), T.all_albums, G.album);
+  $("filter-fav").textContent = G.fav ? "★" : "☆";
+  $("filter-fav").classList.toggle("on", G.fav);
+  renderResults();
+}
+
+function renderResults() {
+  const box = $("results");
+  box.replaceChildren(...G.items.map((r, k) => el("div", {class: "result", onclick: () => openViewer(k)},
+    el("button", {class: "fav" + (r.fav ? " on" : ""), title: T.filter_fav, "aria-label": T.filter_fav,
+                  text: r.fav ? "★" : "☆", onclick: (e) => { e.stopPropagation(); toggleFav(r); }}),
+    el("button", {class: "del", title: T.delete, "aria-label": T.delete, text: "🗑",
+                  onclick: (e) => { e.stopPropagation(); removeResult(r); }}),
+    el("img", {src: `/api/file/result?d=${encodeURIComponent(r.dir)}`, alt: "", loading: "lazy"}),
+    el("b", {text: r.name}),
+    el("span", {text: r.method + (r.score !== null ? " · " + r.score : "") + " · " + (r.created || "").slice(0, 16)}))));
+  if (!G.items.length) box.append(el("div", {class: "muted", text: T.empty}));
+  $("results-count").textContent = G.total ? t("results_count", {n: G.items.length, total: G.total}) : "";
+  $("more").hidden = G.items.length >= G.total;
+}
+
+async function toggleFav(r) {
+  const a = await act("fav", {dir: r.dir, value: !r.fav});
+  if (a.ok) { r.fav = !r.fav; renderResults(); renderViewer(); }
+}
+
+async function removeResult(r) {
+  if (!confirm(t("delete_ask", {name: r.name}))) return;
+  const a = await act("delete", {dir: r.dir});
+  if (a.ok) toast(T.deleted);
+  closeViewer();
+  loadResults();
+}
+
+let viewerZoom = null;
+function openViewer(k) {
+  G.at = k;
+  $("viewer").hidden = false;
+  renderViewer();
+}
+function renderViewer() {
+  const r = G.items[G.at];
+  if ($("viewer").hidden || !r) return;
+  $("viewer-name").textContent = r.name;
+  $("viewer-info").textContent = [r.method, r.score !== null ? "CLIP " + r.score : "", (r.created || "").slice(0, 16),
+                                  t("of", {i: G.at + 1, n: G.total})].filter(Boolean).join(" · ");
+  const src = `/api/file/result?d=${encodeURIComponent(r.dir)}`;
+  if ($("viewer-img").dataset.src !== src) {
+    $("viewer-img").dataset.src = src;
+    $("viewer-img").src = src;
+    if (viewerZoom) viewerZoom.reset();
+  }
+  $("viewer-fav").textContent = r.fav ? "★" : "☆";
+  $("viewer-fav").classList.toggle("on", r.fav);
+}
+function closeViewer() { $("viewer").hidden = true; G.at = -1; }
+async function stepViewer(d) {
+  const k = G.at + d;
+  if (k >= G.items.length && G.items.length < G.total) await loadResults(true);
+  if (k < 0 || k >= G.items.length) return;
+  G.at = k;
+  renderViewer();
+}
+$("viewer-close").onclick = closeViewer;
+$("viewer-fav").onclick = () => { const r = G.items[G.at]; if (r) toggleFav(r); };
+$("viewer-delete").onclick = () => { const r = G.items[G.at]; if (r) removeResult(r); };
+$("viewer-open").onclick = async () => {
+  const r = G.items[G.at];
+  if (!r) return;
+  const a = await act("open", {dir: r.dir});
+  if (a.ok) { closeViewer(); showTab("sketch"); }
+};
+
+let dragging = null;  // (a waiting job being dragged: the list is not rebuilt meanwhile)
 async function loadQueue() {
+  if (dragging) return;
   const box = $("jobs");
   const list = await getJSON("/api/get/queue").catch(() => ({jobs: []}));
+  if (dragging) return;
+  const jobs = list.jobs || [];
+  // only the bars move while a job runs: the rows stay (a tap on a button that is rebuilt meanwhile is lost)
+  const sig = JSON.stringify(jobs.map((j) => [j.id, j.name, j.status, j.method]));
+  if (box.dataset.sig === sig) {
+    for (const j of jobs) {
+      const fill = box.querySelector(`.job[data-id="${j.id}"] .bar > div`);
+      if (fill) fill.style.width = Math.round(100 * j.progress) + "%";
+    }
+    return;
+  }
+  box.dataset.sig = sig;
   box.replaceChildren();
-  for (const j of list.jobs || []) {
+  jobs.forEach((j, index) => {
     const fill = el("div");
     fill.style.width = Math.round(100 * j.progress) + "%";  // (through the CSSOM: the page allows no inline styles)
     const bar = el("div", {class: "bar"}, fill);
-    box.append(el("div", {class: "job"},
+    const live = j.status === "running" || j.status === "paused";
+    const buttons = [];
+    if (live) {
+      buttons.push(el("button", {class: "small", text: j.status === "paused" ? T.resume : T.pause, onclick: () =>
+        fetch(j.status === "paused" ? "/api/resume" : "/api/pause", {method: "POST", headers: {"X-Access": TOKEN}})
+          .then(() => schedule(100))}));
+      buttons.push(el("button", {class: "small", text: T.cancel, onclick: () => {
+        if (confirm(T.cancel_ask)) fetch("/api/cancel", {method: "POST", headers: {"X-Access": TOKEN}}).then(() => schedule(100));
+      }}));
+    } else if (j.status === "queued") {
+      buttons.push(el("button", {class: "small", text: T.remove, onclick: () => act("remove", {id: j.id}).then(loadQueue)}));
+    } else if (j.status === "failed" || j.status === "cancelled") {
+      buttons.push(el("button", {class: "small", text: T.retry, onclick: () => act("retry", {id: j.id}).then(loadQueue)}));
+    }
+    const handle = j.status === "queued" ? el("span", {class: "handle", title: T.drag, "aria-label": T.drag, text: "☰"}) : null;
+    const row = el("div", {class: "job", "data-id": j.id, "data-index": index}, handle,
       el("div", {class: "info"}, el("b", {text: j.name}),
          el("span", {class: "muted", text: j.method + " · " + (T["status_" + j.status] || j.status)}), bar),
-      j.status === "queued" ? el("button", {class: "small", text: T.remove, onclick: () => act("remove", {id: j.id}).then(loadQueue)}) : null));
-  }
+      ...buttons);
+    if (handle) dragRow(handle, row);
+    box.append(row);
+  });
   if (!box.children.length) box.append(el("div", {class: "muted", text: T.queue_empty}));
-  $("clear-queue").hidden = !(list.jobs || []).some((j) => ["done", "failed", "cancelled"].includes(j.status));
+  $("clear-queue").hidden = !jobs.some((j) => ["done", "failed", "cancelled"].includes(j.status));
 }
+
+function dragRow(handle, row) {
+  // drag a waiting job up or down by its handle; dropped, it takes the place of the job it is over
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    dragging = {row, y0: e.clientY, dy: 0};
+    row.classList.add("dragging");
+  });
+  handle.addEventListener("pointermove", (e) => {
+    if (!dragging || dragging.row !== row) return;
+    dragging.dy = e.clientY - dragging.y0;
+    row.style.transform = `translateY(${dragging.dy}px)`;
+  });
+  const drop = async () => {
+    if (!dragging || dragging.row !== row) return;
+    const mid = row.getBoundingClientRect().top + row.offsetHeight / 2;
+    const rows = [...$("jobs").querySelectorAll(".job")].filter((r) => r !== row);
+    let index = rows.filter((r) => r.getBoundingClientRect().top + r.offsetHeight / 2 < mid).length;
+    row.style.transform = "";
+    row.classList.remove("dragging");
+    const moved = Math.abs(dragging.dy) > 12;
+    dragging = null;
+    if (moved && index !== Number(row.dataset.index)) await act("move", {id: Number(row.dataset.id), index});
+    $("jobs").dataset.sig = "";
+    loadQueue();
+  };
+  handle.addEventListener("pointerup", drop);
+  handle.addEventListener("pointercancel", drop);
+}
+
+$("many").onchange = async (e) => {
+  // several photos at once: each one into the queue, with the studio's settings
+  const files = [...e.target.files];
+  e.target.value = "";
+  let ok = 0;
+  for (let k = 0; k < files.length; k++) {
+    $("many-msg").textContent = t("uploading_n", {i: k + 1, n: files.length});
+    try {
+      const r = await fetch("/api/upload", {method: "POST", body: files[k], headers: {
+        "X-Access": TOKEN, "X-Method": S ? S.method : "clipasso",
+        "X-Filename": encodeURIComponent(files[k].name || "photo.jpg")}});
+      if (r.ok) ok++;
+    } catch (err) { /* (counted as not sent) */ }
+  }
+  $("many-msg").textContent = t("uploaded_n", {ok, n: files.length});
+  loadQueue();
+};
 $("clear-queue").onclick = async () => {
   const a = await act("clear_queue");
   if (a.ok) { toast(t("cleared", {n: a.removed})); loadQueue(); }
 };
 
+// ------------------------------------------------------------------ compare the methods (the studio's picture)
+let C = null;
+$("compare-card").addEventListener("toggle", () => { if ($("compare-card").open) loadCompare(); });
+async function loadCompare() {
+  const c = await getJSON("/api/get/compare").catch(() => null);
+  if (!c || c.ok === false) return;
+  const first = C === null;
+  C = c;
+  const box = $("compare-methods");
+  if (first || box.dataset.sig !== JSON.stringify(c.methods.map((m) => m.key))) {
+    box.dataset.sig = JSON.stringify(c.methods.map((m) => m.key));
+    box.replaceChildren(...c.methods.map((m) => el("label", {class: "check"},
+      el("input", {type: "checkbox", value: m.key, checked: m.default}), el("span", {text: m.name}))));
+  }
+  $("compare-results").replaceChildren(...c.methods.filter((m) => m.state !== "none").map((m) => {
+    const fill = el("div");
+    fill.style.width = Math.round(100 * m.progress) + "%";
+    const state = m.state === "running" ? el("div", {class: "bar"}, fill)
+      : el("span", {class: "muted small-text", text: m.state === "queued" ? T.status_queued : m.created});
+    return el("div", {class: "compare-item" + (m.best ? " best" : ""), onclick: async () => {
+      if (!m.dir) return;
+      const a = await act("open", {dir: m.dir});
+      if (a.ok) showTab("sketch");
+    }}, el("b", {text: (m.best ? "★ " : "") + m.name}),
+      m.dir ? el("img", {src: `/api/file/result?d=${encodeURIComponent(m.dir)}`, alt: "", loading: "lazy"}) : null,
+      el("span", {class: "small-text", text: [m.score !== null ? "CLIP " + m.score.toFixed(1) : "", m.time,
+                                              m.strokes ? t("strokes", {n: m.strokes}) : ""].filter(Boolean).join(" · ")}),
+      state);
+  }));
+  const best = c.methods.find((m) => m.best);
+  $("compare-verdict").textContent = best ? t("compare_best", {name: best.name}) : "";
+  $("compare-go").disabled = !c.image;
+}
+async function startCompare(extra) {
+  const methods = [...$("compare-methods").querySelectorAll("input:checked")].map((i) => i.value);
+  const a = await act("compare", Object.assign({methods, use_studio: $("compare-studio").checked}, extra || {}));
+  if (a.asks) {
+    const answers = Object.assign({}, extra || {});
+    for (const q of a.asks) answers[q.key] = confirm(q.text);
+    return startCompare(answers);
+  }
+  if (a.missing && confirm(T.download_ask)) {
+    await act("download_models", {keys: a.missing});
+    showTab("studio");
+    return;
+  }
+  if (a.ok) { toast(a.queued === 1 ? T.compare_queued_one : t("compare_queued", {n: a.queued})); loadCompare(); }
+}
+$("compare-go").onclick = () => startCompare();
+
+// ------------------------------------------------------------------ crop / turn / mirror the picture
+const K = {canvas: $("crop-canvas"), img: null, rot: 0, flip: false, box: null, drag: null};
+$("crop").onclick = async () => {
+  $("cropper").hidden = false;
+  $("crop-msg").textContent = "";
+  const img = new Image();
+  img.src = "/api/file/input?v=" + Date.now();
+  await img.decode().catch(() => { $("crop-msg").textContent = T.failed; });
+  K.img = img;
+  K.rot = 0;
+  K.flip = false;
+  K.box = {x: 0, y: 0, w: 1, h: 1};
+  drawCrop(true);
+};
+$("crop-close").onclick = () => { $("cropper").hidden = true; };
+$("crop-left").onclick = () => { K.rot = (K.rot + 270) % 360; K.box = {x: 0, y: 0, w: 1, h: 1}; drawCrop(true); };
+$("crop-right").onclick = () => { K.rot = (K.rot + 90) % 360; K.box = {x: 0, y: 0, w: 1, h: 1}; drawCrop(true); };
+$("crop-flip").onclick = () => { K.flip = !K.flip; K.box.x = 1 - K.box.x - K.box.w; drawCrop(); };
+$("crop-reset").onclick = () => { K.rot = 0; K.flip = false; K.box = {x: 0, y: 0, w: 1, h: 1}; drawCrop(true); };
+
+function sizeCrop() {
+  // the canvas in the picture's (turned) shape, as large as fits: its box is the picture, so touches map straight
+  const c = K.canvas, iw = K.img.naturalWidth, ih = K.img.naturalHeight;
+  const turned = K.rot % 180 !== 0;
+  c.width = turned ? ih : iw;
+  c.height = turned ? iw : ih;
+  const fit = Math.min((c.parentElement.clientWidth || c.width) / c.width, window.innerHeight * 0.6 / c.height);
+  c.style.width = Math.round(c.width * fit) + "px";  // (the CSSOM: the page's CSP allows no inline styles)
+  c.style.height = Math.round(c.height * fit) + "px";
+}
+
+function drawCrop(resize) {
+  if (!K.img) return;
+  if (resize) sizeCrop();
+  const c = K.canvas, iw = K.img.naturalWidth, ih = K.img.naturalHeight;
+  const g = c.getContext("2d");
+  g.save();
+  g.translate(c.width / 2, c.height / 2);
+  if (K.flip) g.scale(-1, 1);  // (the mirror after the turn, as the app does it)
+  g.rotate(K.rot * Math.PI / 180);
+  g.drawImage(K.img, -iw / 2, -ih / 2);
+  g.restore();
+  const b = K.box, x = b.x * c.width, y = b.y * c.height, w = b.w * c.width, h = b.h * c.height;
+  g.fillStyle = "rgba(0,0,0,0.55)";
+  g.fillRect(0, 0, c.width, y);
+  g.fillRect(0, y + h, c.width, c.height - y - h);
+  g.fillRect(0, y, x, h);
+  g.fillRect(x + w, y, c.width - x - w, h);
+  g.strokeStyle = "#ffffff";
+  g.lineWidth = Math.max(2, c.width / 300);
+  g.strokeRect(x, y, w, h);
+  const r = Math.max(8, c.width / 40);
+  g.fillStyle = "#ffffff";
+  for (const [px, py] of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) g.fillRect(px - r / 2, py - r / 2, r, r);
+}
+
+function cropPos(e) {
+  const r = K.canvas.getBoundingClientRect();
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  return [clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height), 28 / r.width, 28 / r.height];
+}
+// (the touches go to the area around the picture, too: a corner is grabbed also a little outside of it)
+const cropArea = K.canvas.parentElement;
+cropArea.addEventListener("pointerdown", (e) => {
+  if (!K.box) return;
+  const [px, py, tx, ty] = cropPos(e);
+  const b = K.box;
+  const corners = {nw: [b.x, b.y], ne: [b.x + b.w, b.y], sw: [b.x, b.y + b.h], se: [b.x + b.w, b.y + b.h]};
+  const corner = Object.keys(corners).find((k) => Math.abs(corners[k][0] - px) < tx && Math.abs(corners[k][1] - py) < ty);
+  const inside = px > b.x && px < b.x + b.w && py > b.y && py < b.y + b.h;
+  if (!corner && !inside) return;
+  e.preventDefault();
+  cropArea.setPointerCapture(e.pointerId);
+  K.drag = {corner, px, py, box: Object.assign({}, b)};
+});
+cropArea.addEventListener("pointermove", (e) => {
+  if (!K.drag) return;
+  const [px, py] = cropPos(e);
+  const d = K.drag, o = d.box, dx = px - d.px, dy = py - d.py, min = 0.05;
+  let {x, y, w, h} = o;
+  if (!d.corner) {
+    x = Math.min(1 - w, Math.max(0, o.x + dx));
+    y = Math.min(1 - h, Math.max(0, o.y + dy));
+  } else {
+    if (d.corner.includes("w")) { x = Math.min(o.x + o.w - min, Math.max(0, o.x + dx)); w = o.x + o.w - x; }
+    if (d.corner.includes("e")) { w = Math.min(1 - o.x, Math.max(min, o.w + dx)); }
+    if (d.corner.includes("n")) { y = Math.min(o.y + o.h - min, Math.max(0, o.y + dy)); h = o.y + o.h - y; }
+    if (d.corner.includes("s")) { h = Math.min(1 - o.y, Math.max(min, o.h + dy)); }
+  }
+  K.box = {x, y, w, h};
+  requestAnimationFrame(() => drawCrop());
+});
+for (const ev of ["pointerup", "pointercancel"]) cropArea.addEventListener(ev, () => { K.drag = null; });
+$("crop-apply").onclick = async () => {
+  $("crop-msg").textContent = T.sending;
+  const a = await act("crop", Object.assign({rotate: K.rot, flip: K.flip}, K.box));
+  if (a.ok) { $("cropper").hidden = true; toast(T.cropped); } else $("crop-msg").textContent = a.error || T.failed;
+};
+
+// ------------------------------------------------------------------ gestures: zoom and swipe, pull to refresh
+function zoomable(img, onSwipe) {
+  // one finger: swipe to the next / previous (or move the picture when zoomed); two fingers: zoom; double tap: 1×
+  const st = {pts: new Map(), scale: 1, x: 0, y: 0, start: null, pinch: null, tap: 0};
+  img.classList.add("zoomable");
+  img.draggable = false;  // (a mouse would drag the picture away instead of swiping)
+  img.addEventListener("dragstart", (e) => e.preventDefault());
+  const apply = () => {
+    img.style.transform = st.scale === 1 ? "" : `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
+    img.classList.toggle("zoomed", st.scale > 1);
+  };
+  const begin = () => {
+    const p = [...st.pts.values()][0];
+    st.start = p ? {x: p.x, y: p.y, tx: st.x, ty: st.y, t: Date.now()} : null;
+  };
+  img.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") e.preventDefault();
+    img.setPointerCapture(e.pointerId);
+    st.pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (st.pts.size === 1) begin();
+    if (st.pts.size === 2) {
+      const [a, b] = [...st.pts.values()];
+      st.pinch = {d: Math.hypot(a.x - b.x, a.y - b.y) || 1, scale: st.scale};
+      st.start = null;
+    }
+  });
+  img.addEventListener("pointermove", (e) => {
+    if (!st.pts.has(e.pointerId)) return;
+    st.pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (st.pts.size === 2 && st.pinch) {
+      const [a, b] = [...st.pts.values()];
+      st.scale = Math.min(6, Math.max(1, st.pinch.scale * Math.hypot(a.x - b.x, a.y - b.y) / st.pinch.d));
+      if (st.scale === 1) st.x = st.y = 0;
+      apply();
+    } else if (st.pts.size === 1 && st.scale > 1 && st.start) {
+      st.x = st.start.tx + e.clientX - st.start.x;
+      st.y = st.start.ty + e.clientY - st.start.y;
+      apply();
+    }
+  });
+  const up = (e) => {
+    if (!st.pts.has(e.pointerId)) return;
+    const single = st.pts.size === 1;
+    st.pts.delete(e.pointerId);
+    if (single && st.start && st.scale === 1 && e.type === "pointerup") {
+      const dx = e.clientX - st.start.x, dy = e.clientY - st.start.y;
+      if (Math.abs(dx) > 60 && Math.abs(dy) < 60 && Date.now() - st.start.t < 800) onSwipe(dx < 0 ? 1 : -1);
+    }
+    if (single && e.type === "pointerup" && st.start && Math.abs(e.clientX - st.start.x) < 10
+        && Math.abs(e.clientY - st.start.y) < 10) {
+      if (Date.now() - st.tap < 320) { st.scale = 1; st.x = st.y = 0; apply(); }
+      st.tap = Date.now();
+    }
+    if (st.pts.size < 2) st.pinch = null;
+    begin();
+  };
+  img.addEventListener("pointerup", up);
+  img.addEventListener("pointercancel", up);
+  return {reset() { st.scale = 1; st.x = st.y = 0; apply(); }};
+}
+
+const sketchZoom = zoomable($("sketch"), async (d) => {
+  // the next / previous sketch of the job
+  if (!S || !S.seeds.length) return;
+  const seeds = S.seeds.map((x) => x.seed);
+  const k = seeds.indexOf(S.shown) + d;
+  if (k >= 0 && k < seeds.length) { sketchZoom.reset(); await act("select", {seed: seeds[k]}); }
+});
+viewerZoom = zoomable($("viewer-img"), (d) => stepViewer(d));
+
+(function pullToRefresh() {
+  let y0 = null, pulled = 0;
+  const sheetOpen = () => [...document.querySelectorAll(".sheet")].some((x) => !x.hidden);
+  window.addEventListener("touchstart", (e) => {
+    y0 = window.scrollY <= 0 && e.touches.length === 1 && !sheetOpen() ? e.touches[0].clientY : null;
+    pulled = 0;
+  }, {passive: true});
+  window.addEventListener("touchmove", (e) => {
+    if (y0 === null) return;
+    pulled = e.touches[0].clientY - y0;
+    $("pull").hidden = pulled < 24;
+    $("pull").classList.toggle("ready", pulled > 90);
+  }, {passive: true});
+  window.addEventListener("touchend", () => {
+    if (y0 !== null && pulled > 90) {
+      schedule(0);
+      if (tab === "gallery") loadResults();
+      if (tab === "queue") loadQueue();
+      if ($("compare-card").open) loadCompare();
+    }
+    y0 = null;
+    $("pull").hidden = true;
+  });
+})();
+
+listen();
 refresh();

@@ -167,6 +167,63 @@ input[type=color] { width: 100%; height: 42px; padding: 2px; border: 1px solid v
   background: var(--field); }
 input[type=color]:disabled { opacity: .35; }
 #export-state { margin-top: 8px; }
+/* SceneSketch: views, the part being drawn, the matrix, the layers */
+.seg.views, .seg.layers { margin: 8px 0 4px; }
+.seg.views button, .seg.layers button { min-height: 36px; padding: 6px 8px; font-size: 14px; }
+.seg.layers button { flex: 1 1 auto; white-space: nowrap; padding: 6px; font-size: 13px; }
+.phase { font-size: 14px; color: var(--accent); margin: 4px 0 2px; }
+.matrix-box { margin-top: 6px; }
+.axis-x { font-size: 12px; color: var(--muted); text-align: center; margin: 2px 0 4px 26px; }
+.matrix-wrap { display: flex; gap: 4px; }
+.axis-y { writing-mode: vertical-rl; font-size: 12px; color: var(--muted); text-align: center; }
+.matrix { flex: 1; display: grid; gap: 6px; align-items: center; justify-content: center; min-width: 0; }
+.matrix .head { font-size: 12px; color: var(--muted); text-align: center; }
+.matrix .cell { aspect-ratio: 1; padding: 0; min-height: 0; border-radius: 8px; background: #fff;
+  border: 2px solid transparent; overflow: hidden; flex: none; }
+.matrix .cell img { width: 100%; height: 100%; object-fit: contain; }
+.matrix .cell.empty { background: var(--field); border: 2px dashed var(--line); }
+.matrix .cell.best { border-color: #2fb36b; }
+.matrix .cell.sel { border-color: var(--accent); }
+/* gallery: search, filters, favourites, the viewer */
+input[type=search] { font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; min-height: 42px; width: 100%; }
+.filters select { flex: 1 1 0; min-width: 0; }
+button.fav-filter { font-size: 18px; }
+button.fav-filter.on { color: #f5b301; background: var(--field); border-color: #f5b301; }
+.result .fav { position: absolute; top: 10px; left: 10px; min-height: 0; width: 36px; height: 36px; padding: 0;
+  border-radius: 18px; flex: 0 0 auto; background: rgba(20, 22, 27, .72); border-color: transparent; color: #fff;
+  font-size: 18px; }
+.result .fav.on { color: #f5b301; }
+.viewer-box { background: #fff; border-radius: 10px; overflow: hidden; margin: 8px 0; display: flex;
+  align-items: center; justify-content: center; aspect-ratio: 1; }
+.viewer-box img { width: 100%; height: 100%; object-fit: contain; }
+#viewer-fav.on { color: #f5b301; }
+.zoomable { touch-action: pan-y; transform-origin: center; transition: transform .05s; }
+.zoomable.zoomed { touch-action: none; }
+/* queue: drag a waiting job */
+.job .handle { cursor: grab; font-size: 20px; color: var(--muted); padding: 6px 8px; touch-action: none; }
+.job.dragging { background: var(--field); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.2); position: relative;
+  z-index: 2; }
+/* compare */
+details.compare > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; }
+details.compare > summary h2 { margin: 0; }
+details.compare > summary::after { content: "▾"; color: var(--muted); }
+details.compare[open] > summary::after { content: "▴"; }
+.flags-row { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 8px; }
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+.compare-item { background: var(--field); border: 2px solid var(--line); border-radius: 10px; padding: 6px; display: flex;
+  flex-direction: column; gap: 4px; cursor: pointer; }
+.compare-item.best { border-color: #2fb36b; }
+.compare-item img { width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; object-fit: contain; }
+#crop-canvas { display: block; }
+#cropper .paint-area { touch-action: none; padding: 14px 0; }
+.sheet { -webkit-user-select: none; user-select: none; }
+/* pull to refresh */
+#pull { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; background: var(--card);
+  border: 1px solid var(--line); border-radius: 20px; width: 40px; height: 40px; display: flex; align-items: center;
+  justify-content: center; font-size: 20px; color: var(--muted); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+#pull.ready { color: var(--accent); border-color: var(--accent); }
+html, body { overscroll-behavior-y: contain; }
 /* sign in with the PIN */
 body.login { padding-bottom: 0; }
 .login main { min-height: 100vh; display: flex; align-items: center; justify-content: center; }

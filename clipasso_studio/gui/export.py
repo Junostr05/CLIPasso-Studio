@@ -124,13 +124,28 @@ def qimage_to_pil(img: QImage) -> Image.Image:
 
 def export_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_scale: float = 1.0,
                background: str | None = None, style: str = "plain", frame: str = "square",
-               margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
-    with open(src_svg, encoding="utf-8") as f:
-        svg = f.read()
+               margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None, svg: str | None = None) -> None:
+    """``svg``: the sketch to write instead of the file's (framed like the file, e.g. its layers)."""
+    if svg is None:
+        with open(src_svg, encoding="utf-8") as f:
+            svg = f.read()
     fr = framing_for(src_svg, frame, margin, svg)
     out = stylize_svg(_framed(restyle_svg(svg, stroke_color, width_scale, background), fr), style)
     with open(dest, "w", encoding="utf-8") as f:
         f.write(paper_mod.svg_with_paper(out, paper, background))
+
+
+def export_layered_svg(src_svg: str, dest: str, stroke_color: str | None = None, width_scale: float = 1.0,
+                       background: str | None = None, style: str = "plain", frame: str = "square",
+                       margin: float = framing.DEFAULT_MARGIN, paper: dict | None = None) -> None:
+    """A SceneSketch cell as an SVG with two layers, "Background" and "Object" (gui/scene_layers.py)."""
+    from . import scene_layers
+    from .i18n import tr
+
+    with open(src_svg, encoding="utf-8") as f:
+        svg = f.read()
+    svg = scene_layers.layered(svg, run_dir_of(src_svg), (tr("ui.layer.background"), tr("ui.layer.object")))
+    export_svg(src_svg, dest, stroke_color, width_scale, background, style, frame, margin, paper, svg=svg)
 
 
 def single_layer_svg(svg: str, stroke_color: str | None = None, width_scale: float = 1.0) -> str:

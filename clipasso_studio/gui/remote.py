@@ -35,6 +35,8 @@ MAX_UPLOAD = 25 * 1024 * 1024
 MAX_JSON = 64 * 1024
 STATIC = {"phone.js": "text/javascript; charset=utf-8"}
 CALL_TIMEOUT = 20.0
+EVENT_STREAMS = 8  # open event streams at most (one per phone tab; the oldest goes, e.g. of a phone gone to sleep)
+EVENT_PING = 15.0  # s – a sign of life on a quiet stream (the page falls back to asking when it hears nothing)
 COOKIE = "cs_access"
 UPLOAD_DIR = "_remote"  # in the output folder (cleared with the other pictures of the app)
 METHODS = ("clipasso", "swiftsketch", "controlsketch", "scenesketch")
@@ -196,6 +198,16 @@ def qr_png(text: str, scale: int = 6) -> bytes:
     return buf.getvalue()
 
 
+class _Stream:
+    """One open event stream (a phone's page)."""
+
+    __slots__ = ("ended", "generation")
+
+    def __init__(self, generation: int):
+        self.ended = False
+        self.generation = generation
+
+
 class RemoteBridge(QObject):
     """Between the server threads and the app: requests come in as signals (handled in the GUI thread); the app
     keeps ``state`` up to date (a dict replaced as a whole, read by the server threads). ``call`` asks the app's
@@ -214,6 +226,50 @@ class RemoteBridge(QObject):
         self.texts: dict = {}
         self.handler = None  # (action, data) -> answer, called in the GUI thread
         self._request.connect(self._run)
+        # what the open pages are told: a revision counted up on every change (server-sent events)
+        self.rev = 0
+        self._cond = threading.Condition()
+        self._streams: list[_Stream] = []
+        self._generation = 0  # (counted up when the server stops: its streams end)
+
+    # ------------------------------------------------------------------ live updates for the pages
+    def changed(self) -> None:
+        """Something a page shows has changed: the open event streams tell their phones (from any thread)."""
+        with self._cond:
+            self.rev += 1
+            self._cond.notify_all()
+
+    def streams(self) -> int:
+        with self._cond:
+            return len(self._streams)
+
+    def listen(self) -> "_Stream":
+        """A new event stream; with too many open, the oldest ends."""
+        me = _Stream(self._generation)
+        with self._cond:
+            self._streams.append(me)
+            while len(self._streams) > EVENT_STREAMS:
+                self._streams.pop(0).ended = True
+            self._cond.notify_all()
+        return me
+
+    def unlisten(self, me: "_Stream") -> None:
+        with self._cond:
+            self._streams = [x for x in self._streams if x is not me]
+
+    def wait_change(self, me: "_Stream", rev: int, timeout: float) -> int | None:
+        """The revision once it differs from ``rev`` (``rev`` itself after ``timeout``); None: the stream ends."""
+        with self._cond:
+            self._cond.wait_for(lambda: self.rev != rev or me.ended or me.generation != self._generation, timeout)
+            if me.ended or me.generation != self._generation:
+                return None
+            return self.rev
+
+    def end_streams(self) -> None:
+        with self._cond:
+            self._generation += 1
+            self._streams = []
+            self._cond.notify_all()
 
     def set_state(self, **changes):
         self.state = {**self.state, **changes}
@@ -371,6 +427,36 @@ class _Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
 
+    def _events(self):
+        """Server-sent events: "changed" whenever the page should ask for the studio again (instead of asking every
+        few seconds), "ping" on a quiet stream."""
+        bridge = self.bridge
+        me = bridge.listen()
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Accel-Buffering", "no")
+            self.end_headers()
+            rev = bridge.rev
+            self.wfile.write(f"retry: 3000\nevent: changed\ndata: {rev}\n\n".encode())
+            self.wfile.flush()
+            while True:
+                new = bridge.wait_change(me, rev, EVENT_PING)
+                if new is None:
+                    break
+                if new == rev:
+                    self.wfile.write(b"event: ping\ndata: 0\n\n")
+                else:
+                    rev = new
+                    self.wfile.write(f"event: changed\ndata: {rev}\n\n".encode())
+                self.wfile.flush()
+        except OSError:  # (the phone went away)
+            pass
+        finally:
+            bridge.unlisten(me)
+            self.close_connection = True
+
     def _body(self, limit: int) -> bytes | None:
         try:
             length = int(self.headers.get("Content-Length") or 0)
@@ -417,6 +503,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._answer("get_" + parsed.path.rsplit("/", 1)[1], {k: v[0] for k, v in query.items()})
         elif parsed.path.startswith("/api/file/"):
             self._answer("file_" + parsed.path.rsplit("/", 1)[1], {k: v[0] for k, v in query.items()})
+        elif parsed.path == "/api/events":
+            self._events()
         elif parsed.path == "/api/status":
             state = dict(self.bridge.state)
             state["preview"] = str(hash(self.bridge.preview_svg)) if self.bridge.preview_svg else ""
@@ -516,6 +604,18 @@ def _is_picture(path: str) -> bool:
         return False
 
 
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        """A phone that went away in the middle of an answer is no error (no trace on stderr)."""
+        import sys
+
+        if isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
+
 class RemoteServer:
     """The web server of the phone page (threads of its own)."""
 
@@ -524,8 +624,7 @@ class RemoteServer:
         out = app_settings().get("output_dir") or "."
         handler = type("Handler", (_Handler,), {"bridge": bridge,
                                                  "upload_dir": upload_dir or os.path.join(out, UPLOAD_DIR)})
-        self.httpd = ThreadingHTTPServer((host, int(port)), handler)
-        self.httpd.daemon_threads = True
+        self.httpd = _Server((host, int(port)), handler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, name="remote", daemon=True)
 
@@ -534,5 +633,6 @@ class RemoteServer:
         return self
 
     def stop(self) -> None:
+        self.httpd.RequestHandlerClass.bridge.end_streams()  # (the open event streams end with the server)
         self.httpd.shutdown()
         self.httpd.server_close()

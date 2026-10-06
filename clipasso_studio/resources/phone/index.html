@@ -41,6 +41,11 @@
           <input id="choose" type="file" accept="image/*" hidden></label>
         <button id="from-pc" data-t="from_pc"></button>
       </div>
+      <div class="row wrap">
+        <button id="crop" class="small" data-t="crop"></button>
+        <button id="mask" class="small" data-t="mask_show" hidden></button>
+        <span id="mask-state" class="muted small-text"></span>
+      </div>
       <div id="upload-msg" class="muted"></div>
       <div id="pc-images" hidden>
         <div class="sub" data-t="recent"></div><div id="recent" class="grid"></div>
@@ -51,7 +56,15 @@
     <div class="card">
       <h2 data-t="method"></h2>
       <div id="methods" class="methods"></div>
-      <div id="missing" class="warn" hidden></div>
+      <div id="missing" class="warn" hidden>
+        <div id="missing-text"></div>
+        <div class="row"><button id="download" class="primary small"></button></div>
+      </div>
+      <div id="downloading" class="warn" hidden>
+        <div id="download-text"></div>
+        <div class="bar"><div id="download-bar"></div></div>
+        <div class="row"><button id="download-cancel" class="small" data-t="cancel"></button></div>
+      </div>
     </div>
 
     <div class="card">
@@ -82,6 +95,16 @@
       </div>
     </div>
 
+    <details class="card compare" id="compare-card">
+      <summary><h2 data-t="compare"></h2></summary>
+      <div class="muted small-text" data-t="compare_hint"></div>
+      <div id="compare-methods" class="flags-row"></div>
+      <label class="check"><input id="compare-studio" type="checkbox"><span data-t="compare_studio"></span></label>
+      <div class="row"><button id="compare-go" class="primary" data-t="compare_go"></button></div>
+      <div id="compare-results" class="compare-grid"></div>
+      <div id="compare-verdict" class="muted"></div>
+    </details>
+
     <div class="card">
       <div class="row between"><h2 data-t="params"></h2><button id="reset" class="small" data-t="reset"></button></div>
       <label class="check"><input id="advanced" type="checkbox"><span data-t="advanced"></span></label>
@@ -108,7 +131,26 @@
   <section id="tab-sketch" class="tab" hidden>
     <div class="card">
       <div id="view-name" class="muted one-line"></div>
-      <div class="preview"><img id="sketch" alt=""><div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="scene-views" class="seg views" hidden>
+        <button data-view="sketch" class="on" data-t="view_sketch"></button>
+        <button data-view="background" data-t="view_background"></button>
+        <button data-view="matrix" data-t="view_matrix"></button>
+      </div>
+      <div id="scene-part" class="phase" hidden></div>
+      <div id="sketch-box" class="preview"><img id="sketch" alt="">
+        <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
+        <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
+      <div id="matrix-box" class="matrix-box" hidden>
+        <div class="axis-x"></div>
+        <div class="matrix-wrap"><div class="axis-y"></div><div id="matrix" class="matrix"></div></div>
+        <div class="muted small-text" data-t="matrix_hint"></div>
+      </div>
+      <div id="layer-switch" class="seg layers" hidden>
+        <button data-part="all" class="on" data-t="layer_all"></button>
+        <button data-part="background" data-t="layer_background"></button>
+        <button data-part="object" data-t="layer_object"></button>
+      </div>
       <div id="seeds" class="seeds"></div>
       <div id="stats" class="stats"></div>
       <button id="continue" class="primary" data-t="continue" hidden></button>
@@ -148,7 +190,15 @@
   <section id="tab-gallery" class="tab" hidden>
     <div class="card">
       <h2 data-t="results"></h2>
+      <input id="search" type="search" enterkeyhint="search" autocomplete="off">
+      <div class="row filters">
+        <select id="filter-method"></select>
+        <select id="filter-album"></select>
+        <button id="filter-fav" class="small fav-filter">☆</button>
+      </div>
+      <div id="results-count" class="muted small-text"></div>
       <div id="results" class="results"></div>
+      <button id="more" class="wide" data-t="more" hidden></button>
     </div>
   </section>
 
@@ -157,6 +207,9 @@
     <div class="card">
       <div class="row between"><h2 data-t="tab_queue"></h2>
         <button id="clear-queue" class="small" data-t="clear_done" hidden></button></div>
+      <label class="btn wide" for="many"><span data-t="add_many"></span>
+        <input id="many" type="file" accept="image/*" multiple hidden></label>
+      <div id="many-msg" class="muted small-text"></div>
       <div id="jobs"></div>
     </div>
   </section>
@@ -192,6 +245,41 @@
   <div id="paint-msg" class="muted"></div>
 </div>
 
+<!-- ========================================================== a result large -->
+<div id="viewer" class="sheet viewer" hidden>
+  <div class="sheet-head">
+    <b id="viewer-name" class="one-line"></b>
+    <button id="viewer-close" class="small" data-t="close"></button>
+  </div>
+  <div id="viewer-info" class="muted small-text"></div>
+  <div class="viewer-box"><img id="viewer-img" alt=""></div>
+  <div class="muted small-text center" data-t="viewer_hint"></div>
+  <div class="row wrap">
+    <button id="viewer-open" class="primary" data-t="open_studio"></button>
+    <button id="viewer-fav" class="small"></button>
+    <button id="viewer-delete" class="small">🗑</button>
+  </div>
+</div>
+
+<!-- ========================================================== crop / turn the picture -->
+<div id="cropper" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="crop_title"></b>
+    <button id="crop-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="crop_hint"></div>
+  <div class="paint-area"><canvas id="crop-canvas"></canvas></div>
+  <div class="row wrap">
+    <button id="crop-left" class="small">⟲</button>
+    <button id="crop-right" class="small">⟳</button>
+    <button id="crop-flip" class="small">⇋</button>
+    <button id="crop-reset" class="small" data-t="crop_reset"></button>
+    <button id="crop-apply" class="primary" data-t="crop_apply"></button>
+  </div>
+  <div id="crop-msg" class="muted"></div>
+</div>
+
+<div id="pull" hidden>↻</div>
 <div id="toast" hidden></div>
 <script src="/phone.js"></script>
 </body>

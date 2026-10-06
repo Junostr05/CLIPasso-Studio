@@ -235,7 +235,7 @@ def run_in_thread(parent, fn, *args, on_progress=None, on_done=None, on_error=No
 ANIMATIONS = ("gif", "mp4", "webp")
 DRAWN = ("svganim", "lottie", "html")  # the finished strokes drawn one by one, in the browser or an app
 TIMED = ANIMATIONS + DRAWN  # formats with a drawing length
-EXTENSIONS = {"svg1": "svg", "matrix": "zip", "svganim": "svg", "lottie": "json", "html": "html"}
+EXTENSIONS = {"svg1": "svg", "svglayers": "svg", "matrix": "zip", "svganim": "svg", "lottie": "json", "html": "html"}
 FILTERS = {"svg": "SVG (*.svg)", "png": "PNG (*.png)", "gif": "GIF (*.gif)", "mp4": "MP4 (*.mp4)",
            "webp": "WebP (*.webp)", "zip": "ZIP (*.zip)", "pdf": "PDF (*.pdf)", "json": "Lottie (*.json)",
            "html": "HTML (*.html)"}
@@ -420,7 +420,8 @@ class ExportDialog(QDialog):
         self.default_name = default_name
         # "svg1": all strokes as one path in one layer (for plotters / cutting machines)
         self.ext = EXTENSIONS.get(fmt, fmt)
-        title = {"svg1": tr("ui.export_svg1"), "webp": "WebP", "matrix": tr("ui.export_matrix"),
+        title = {"svg1": tr("ui.export_svg1"), "svglayers": tr("ui.export_svglayers"), "webp": "WebP",
+                 "matrix": tr("ui.export_matrix"),
                  "svganim": tr("ui.export_svganim"), "lottie": "Lottie",
                  "html": tr("ui.export_html")}.get(fmt, fmt.upper())
         heading = tr("ui.export_matrix_title") if fmt == "matrix" else tr("ui.export_title", fmt=title)
@@ -455,8 +456,8 @@ class ExportDialog(QDialog):
         self.style.setCurrentIndex(max(self.style.findData(last), 0))
         if fmt not in ("svg1", "lottie"):  # the plotter SVG and Lottie stay plain lines
             form.addRow(tr("ui.brush.label"), self.style)
-        allow_transparent = fmt in ("svg", "png", "webp", "matrix", "svganim", "pdf", "lottie")
-        bg = remembered.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svganim", "lottie")
+        allow_transparent = fmt in ("svg", "svglayers", "png", "webp", "matrix", "svganim", "pdf", "lottie")
+        bg = remembered.get("export_background") or ("#FFFFFF" if fmt not in ("svg", "svglayers", "svganim", "lottie")
                                                      else "transparent")
         if bg == "transparent" and not allow_transparent:
             bg = "#FFFFFF"
@@ -481,7 +482,7 @@ class ExportDialog(QDialog):
         self.size.setValue(1024 if fmt in ("png", "matrix") else 512)
         self.size.setSuffix(" px")
         self.size.setToolTip(tr("ui.size_longest"))
-        if fmt not in ("svg", "svg1", "svganim", "pdf", "lottie", "html"):
+        if fmt not in ("svg", "svg1", "svglayers", "svganim", "pdf", "lottie", "html"):
             form.addRow(tr("ui.size"), self.size)
         self.width_cm = QDoubleSpinBox()  # PDF: the printed width
         self.width_cm.setRange(2.0, 200.0)
@@ -608,7 +609,8 @@ class ExportDialog(QDialog):
 
     def _save(self):
         ext = FILTERS[self.ext]
-        suffix = {"svg1": "_1layer", "matrix": "_matrix", "svganim": "_animated"}.get(self.fmt, "")
+        suffix = {"svg1": "_1layer", "svglayers": "_layers", "matrix": "_matrix", "svganim": "_animated"}.get(
+            self.fmt, "")
         folder = app_settings().get("export_dir") or ""
         if not os.path.isdir(folder):
             folder = os.path.expanduser("~")
@@ -641,9 +643,9 @@ class ExportDialog(QDialog):
             app_settings().data["export_margin"] = self.margin.value()
             app_settings().set("export_frame", shape["frame"])
         try:
-            if self.fmt == "svg":
-                export.export_svg(self.svg_path, dest, stroke, self.width_scale.value(), bg, style, **shape,
-                                  paper=pp)
+            if self.fmt in ("svg", "svglayers"):
+                write = export.export_svg if self.fmt == "svg" else export.export_layered_svg
+                write(self.svg_path, dest, stroke, self.width_scale.value(), bg, style, **shape, paper=pp)
             elif self.fmt == "svg1":
                 export.export_single_layer_svg(self.svg_path, dest, stroke, self.width_scale.value(), **shape)
             elif self.fmt in ("png", "pdf"):  # big images take a while: in the background

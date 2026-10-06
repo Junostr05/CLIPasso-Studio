@@ -18,6 +18,18 @@ from ..widgets.common import Card, ToggleSwitch, button, label
 from .other_pages import _page_header, _scroll, job_method, scan_jobs
 
 
+def result_numbers(summary: dict, method: str) -> tuple[float | None, float, int]:
+    """(CLIP score, seconds, strokes) of a result."""
+    runs = summary.get("runs", [])
+    scores = [r["clip_score"] for r in runs if r.get("clip_score") is not None]
+    score = summary.get("clip_score") or (max(scores) if scores else None)
+    secs = summary.get("seconds") or sum(r.get("seconds", 0) or 0 for r in runs)
+    return score, secs, schema.num_strokes({**summary.get("settings", {}), "method": method})
+
+
+ORDER = ("swiftsketch", "clipasso", "controlsketch", "scenesketch")  # fastest first: the first results come early
+
+
 def _same_image(summary: dict, image: str) -> bool:
     target = summary.get("target", "")
     return bool(target) and os.path.normcase(os.path.abspath(target)) == os.path.normcase(os.path.abspath(image))
@@ -92,13 +104,10 @@ class CompareCard(Card):
         self.canvas.set_svg(svg)
         score_v, time_v, strokes_v = (self.stat_values[k][0] for k in ("score", "time", "strokes"))
         if summary:
-            runs = summary.get("runs", [])
-            scores = [r["clip_score"] for r in runs if r.get("clip_score") is not None]
-            score = summary.get("clip_score") or (max(scores) if scores else None)
+            score, secs, strokes = result_numbers(summary, self.method)
             score_v.setText(f"{score:.1f}" if score is not None else "–")
-            secs = summary.get("seconds") or sum(r.get("seconds", 0) or 0 for r in runs)
             time_v.setText(imaging.eta_string(secs) if secs else "–")
-            strokes_v.setText(str(schema.num_strokes({**summary.get("settings", {}), "method": self.method})))
+            strokes_v.setText(str(strokes))
         else:
             for v in (score_v, time_v, strokes_v):
                 v.setText("–")
@@ -229,8 +238,8 @@ class ComparePage(QWidget):
         self.retranslate()
 
     # ------------------------------------------------------------------ run
-    def _settings(self, method: str) -> dict:
-        if self.use_studio.isChecked():
+    def _settings(self, method: str, use_studio: bool | None = None) -> dict:
+        if self.use_studio.isChecked() if use_studio is None else use_studio:
             s = self.studio.params.settings_for(method)
         else:
             s = schema.apply_preset(schema.default_settings(method), "standard")
@@ -256,12 +265,39 @@ class ComparePage(QWidget):
             res = QMessageBox.question(self, methods_ui.name("scenesketch"), tr("ui.compare.scene_cpu_warning"))
             if res == QMessageBox.Yes:
                 settings["scenesketch"] = schema.normalize(schema.apply_preset(settings["scenesketch"], "fast"))
-        # fastest first, so the first results arrive early
-        order = sorted(methods, key=lambda m: ("swiftsketch", "clipasso", "controlsketch", "scenesketch").index(m))
-        for m in order:
+        n = self.enqueue_compare(image, {m: settings[m] for m in methods})
+        self.toast.emit(tr("ui.compare.queued", n=n), "success")
+
+    def enqueue_compare(self, image: str, settings: dict[str, dict]) -> int:
+        """Sketch ``image`` with each method of ``settings`` (the fastest first); the number of jobs queued."""
+        for m in sorted(settings, key=ORDER.index):
             self.controller.enqueue(image, settings[m], start=not self.controller.is_busy())
-        self.toast.emit(tr("ui.compare.queued", n=len(order)), "success")
         self.refresh()
+        return len(settings)
+
+    def overview(self, image: str) -> dict[str, dict]:
+        """Per method: the latest result for ``image`` and its job in the queue (for the phone)."""
+        latest: dict[str, tuple[str, dict]] = {}
+        if image:
+            for job_dir, summary in scan_jobs():
+                if _same_image(summary, image):
+                    latest.setdefault(job_method(summary), (job_dir, summary))
+        active = self._jobs_for_image(image) if image else {}
+        out = {}
+        for m in schema.METHODS:
+            job = active.get(m)
+            entry = {"state": "none", "progress": 0.0, "dir": "", "score": None, "seconds": 0, "strokes": 0,
+                     "created": ""}
+            if m in latest:
+                job_dir, summary = latest[m]
+                score, secs, strokes = result_numbers(summary, m)
+                entry.update(state="done", dir=os.path.basename(os.path.normpath(job_dir)), score=score,
+                             seconds=secs, strokes=strokes, created=str(summary.get("created", ""))[:16])
+            if job is not None:
+                entry.update(state="running" if job.status in ("running", "paused") else "queued",
+                             progress=round(job.progress, 3))
+            out[m] = entry
+        return out
 
     # -------------------------------------------------------------- display
     def _schedule_refresh(self):

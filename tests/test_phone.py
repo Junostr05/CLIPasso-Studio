@@ -270,6 +270,7 @@ def test_phone_link(qapp, user_data, tmp_path, monkeypatch):
     assert not link.running()  # off by default
     texts = link.bridge.texts  # the page's texts: its own and some of the app's (the export options …)
     assert texts["x_mode_process"] and texts["x_size"] and texts["preset_applied"] and texts["login_hint"]
+    assert texts["matrix_fidelity"] and texts["matrix_simplicity"]
     job = SimpleNamespace(name="a.png", status="running", settings={"method": "clipasso"}, progress=0.25,
                           eta=75.0, job_dir="", best_svg="", started=0, finished=0, message="")
     c.current = job
@@ -379,7 +380,8 @@ def test_page_texts_exist():
         | set(re.findall(r'\bt\("([a-z_]+)"', js))
     extra = {"detail_title", "detail_hint", "tool_more", "tool_normal", "tool_less", "face", "rate_up", "rate_down",
              "preset_applied", "x_stroke", "x_width", "x_style", "x_background", "x_paper", "x_vignette", "x_frame",
-             "x_margin", "x_size", "x_width_cm", "x_mode", "x_length", "x_hold"}  # (the app's other texts, phone.py)
+             "x_margin", "x_size", "x_width_cm", "x_mode", "x_length", "x_hold",  # (the app's other texts, phone.py)
+             "matrix_fidelity", "matrix_simplicity"}
     page = {k[len("ui.phone.page."):] for k in i18n.keys("ui.phone.page.")}
     assert used - page - extra == set()
     for k in page:
@@ -467,4 +469,101 @@ def test_tailscale(qapp, user_data, monkeypatch):
     monkeypatch.setattr(remote, "tailscale_address", lambda: "")  # Tailscale stopped: a hint, the home address
     card.refresh()
     assert not card.net.isVisibleTo(card) and card.ts_hint.text() and "100.88" not in card.url.text()
+    settings_module._instance = None
+
+
+# ----------------------------------------------------------------------------- live updates (3.5)
+def test_event_streams_of_the_bridge():
+    import threading
+
+    from clipasso_studio.gui import remote
+
+    bridge = remote.RemoteBridge()
+    a = bridge.listen()
+    rev = bridge.rev
+    assert bridge.wait_change(a, rev, 0.05) == rev  # nothing changed: the same revision after the wait
+    threading.Timer(0.05, bridge.changed).start()
+    assert bridge.wait_change(a, rev, 5.0) == rev + 1
+    # too many streams: the oldest ends (e.g. a phone gone to sleep)
+    more = [bridge.listen() for _ in range(remote.EVENT_STREAMS)]
+    assert bridge.wait_change(a, bridge.rev, 1.0) is None and bridge.streams() == remote.EVENT_STREAMS
+    bridge.unlisten(more[0])
+    assert bridge.streams() == remote.EVENT_STREAMS - 1
+    bridge.end_streams()  # the server stops: every stream ends
+    assert all(bridge.wait_change(m, bridge.rev, 1.0) is None for m in more[1:]) and bridge.streams() == 0
+
+
+def test_event_stream_over_http(server, monkeypatch):
+    import http.client
+    import threading
+
+    from clipasso_studio.gui import remote
+
+    srv, bridge, base, _up = server
+    monkeypatch.setattr(remote, "EVENT_PING", 0.3)
+    assert _get(base + "/api/events")[0] == 403  # (signed in only)
+    cookie = _cookie(base)
+    conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=10)
+    conn.request("GET", "/api/events", headers={"Cookie": cookie})
+    r = conn.getresponse()
+    assert r.status == 200 and r.getheader("Content-Type").startswith("text/event-stream")
+
+    def event():
+        lines = []
+        while True:
+            line = r.fp.readline().decode().rstrip("\n")
+            if not line:
+                if lines:
+                    return dict(x.split(": ", 1) for x in lines if ": " in x)
+                continue
+            lines.append(line)
+
+    first = event()
+    assert first["event"] == "changed" and first["retry"] == "3000"
+    assert event()["event"] == "ping"  # quiet: a sign of life
+    threading.Timer(0.05, bridge.changed).start()
+    nxt = event()
+    while nxt["event"] == "ping":
+        nxt = event()
+    assert nxt["event"] == "changed" and int(nxt["data"]) == int(first["data"]) + 1
+    assert bridge.streams() == 1
+    srv.stop()  # the stream ends with the server
+    end = time.time() + 5
+    while bridge.streams() and time.time() < end:
+        time.sleep(0.02)
+    assert bridge.streams() == 0
+    conn.close()
+
+
+def test_pages_hear_of_changes(qapp, user_data):
+    """The link compares what the page shows and tells the listening pages when it changed."""
+    from PySide6.QtCore import QObject, Signal
+
+    from clipasso_studio.gui import app_settings as settings_module
+    from clipasso_studio.gui.phone import PhoneLink
+
+    settings_module._instance = None
+
+    class Controller(QObject):
+        queue_changed = Signal()
+        job_started = Signal(object)
+        job_event = Signal(object, str, dict)
+        job_finished = Signal(object)
+        jobs, current = [], None
+
+        def is_busy(self):
+            return False
+
+        pause = resume = cancel = lambda self: None
+
+    link = PhoneLink(Controller())
+    rev = link.bridge.rev
+    assert not link.check_changes() and link.bridge.rev == rev  # nobody listens: nothing to do
+    me = link.bridge.listen()
+    assert link.check_changes() and link.bridge.rev == rev + 1  # (the first look)
+    assert not link.check_changes()  # unchanged
+    link.api.signature = lambda: ("other",)
+    assert link.check_changes() and link.bridge.rev == rev + 2
+    link.bridge.unlisten(me)
+    link.shutdown()
     settings_module._instance = None

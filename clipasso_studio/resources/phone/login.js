@@ -18,7 +18,7 @@ $("form").addEventListener("submit", async (e) => {
                                      body: JSON.stringify({pin})});
     const a = await r.json().catch(() => ({}));
     if (a.ok) { location.replace("/"); return; }
-    $("pin").value = "";
+    if ($("pin").value.replace(/\D/g, "") === pin) $("pin").value = "";  // (not what was typed meanwhile)
     $("msg").textContent = a.wait ? (T.login_wait || "").replace("{s}", a.wait) : T.login_wrong;
   } catch (err) {
     $("msg").textContent = T.offline;

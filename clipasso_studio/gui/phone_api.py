@@ -42,6 +42,12 @@ def _jpeg(path: str, side: int) -> bytes:
     return bytes(buf.data())
 
 
+def imaging_eta(seconds) -> str:
+    from ..engine.imaging import eta_string
+
+    return eta_string(seconds) if seconds else ""
+
+
 def _file(data: bytes, ctype: str, name: str = "") -> dict:
     return {"_bytes": data, "_type": ctype, "_name": name}
 
@@ -64,6 +70,9 @@ class PhoneApi:
         self._cache = None
         self._exports: dict[str, dict] = {}  # the phone's exports (id -> state), files in export_root()
         self.gallery = None  # the gallery page (deleting goes its way), set by the main window
+        self.compare = None  # the compare page (its jobs and results), set by the main window
+        self.models_page = None  # refreshed when the phone had models downloaded
+        self._download: dict | None = None  # models downloaded on the phone's request
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
 
@@ -89,6 +98,20 @@ class PhoneApi:
         self._note_id += 1
 
     # ------------------------------------------------------------------ state
+    def signature(self) -> tuple:
+        """A cheap fingerprint of what the page shows – when it changes, the open pages are told (live updates)."""
+        c, s = self.controller, self.studio
+        queue = tuple((id(j), j.status, round(float(j.progress or 0), 3)) for j in c.jobs)
+        if s is None:
+            return (queue,)
+        st = app_settings()
+        return (queue, s.params.method(), tuple(sorted(s.params.settings().items())), s.params.user_preset(),
+                s.image_path, s.view_dir, s.selected_seed, s.best_seed,
+                tuple((seed, hash(svg)) for seed, svg in s.seed_svgs.items()), s.status.text(),
+                s.progress.value(), s.estimate.text(), self._note_id, self._details_rev,
+                st.get("canvas_style"), st.get("canvas_paper"), repr(st.get("user_presets")),
+                repr(self._download_state()), s.mask_status.text())
+
     def get_studio(self, data: dict) -> dict:
         s = self.studio
         c = self.controller
@@ -158,7 +181,39 @@ class PhoneApi:
             "style": st.get("canvas_style", "plain"),
             "paper": st.get("canvas_paper", "none"),
             "note": {"id": self._note_id, "text": self.note} if self.note else None,
+            "scene": self._scene(shown),
+            "download": self._download_state(),
+            "mask": self._mask_state(),
         }
+
+    def _scene(self, shown) -> dict | None:
+        """SceneSketch: the matrix (layers × levels, which cells are there), the part being drawn, the background
+        photo and whether the shown cell has its layers."""
+        s = self.studio
+        if s.view_method != "scenesketch" or not s.scene_layout:
+            return None
+        layers, levels = s.scene_layout
+        cells = [{"seed": schema.scene_cell_id(layer, level), "layer": layer, "level": level,
+                  "has": schema.scene_cell_id(layer, level) in s.seed_svgs,
+                  "best": schema.scene_cell_id(layer, level) == s.best_seed,
+                  "rev": abs(hash(s.seed_svgs.get(schema.scene_cell_id(layer, level), ""))) % 10 ** 10}
+                 for layer in layers for level in range(levels + 1)]
+        bg = self._background_file()
+        return {"layers": layers, "levels": levels, "cells": cells,
+                "part": s.scene_part if s.controller.is_busy() and s.view_job is s.controller.current else "",
+                "background": bool(bg), "background_rev": f"{os.path.getmtime(bg):.0f}" if bg else "",
+                "layered": s.layers_available(shown)}
+
+    def _background_file(self) -> str:
+        """The background behind the object as LaMa filled it in (``background.png`` of the shown job)."""
+        path = os.path.join(self.studio.view_dir or "", "background.png")
+        return path if self.studio.view_dir and os.path.isfile(path) else ""
+
+    def file_background(self, data: dict) -> dict:
+        path = self._background_file()
+        if not path:
+            raise PhoneError(tr("ui.phone.page.no_background_yet"))
+        return _file(_jpeg(path, INPUT_SIDE), "image/jpeg")
 
     def _detail_file(self, image_path: str):
         """Where the picture's detail map is (cached: finding it means reading the whole picture)."""
@@ -239,7 +294,8 @@ class PhoneApi:
         except (ValueError, IndexError):
             raise PhoneError(tr("ui.phone.page.no_picture")) from None
 
-    def _results(self) -> list:
+    def _all_results(self) -> list:
+        """Every result of the output folder, the newest first."""
         from .pages.gallery import GalleryItem, ScanCache
 
         if self._cache is None:
@@ -247,15 +303,49 @@ class PhoneApi:
         items = [GalleryItem(d, s) for d, s in self._cache.scan(app_settings().get("output_dir"))]
         items = [it for it in items if it.sketch and os.path.isfile(it.sketch)]
         items.sort(key=lambda it: it.created, reverse=True)
-        return items[:RESULTS_MAX]
+        return items
+
+    def _results(self) -> list:
+        return self._all_results()[:RESULTS_MAX]
 
     def get_results(self, data: dict) -> dict:
+        """A page of the results (``offset``, ``limit``), searched (``q``: name, notes, tags) and filtered by
+        ``method``, ``album`` and ``fav``; with the albums and methods to filter by."""
+        from . import albums
+
+        items = self._all_results()
+        q = str(data.get("q") or "").strip().lower()
+        method, album = str(data.get("method") or ""), str(data.get("album") or "")
+        fav = str(data.get("fav") or "") in ("1", "true")
+
+        def keep(it) -> bool:
+            return ((not method or it.method == method) and (not fav or it.favourite)
+                    and (not album or album in it.albums)
+                    and (not q or q in " ".join([it.name, it.notes, *it.tags]).lower()))
+
+        shown = [it for it in items if keep(it)]
+        try:
+            offset = max(0, int(data.get("offset") or 0))
+            limit = min(100, max(1, int(data.get("limit") or RESULTS_MAX)))
+        except ValueError:
+            offset, limit = 0, RESULTS_MAX
         out = []
-        for i, it in enumerate(self._results()):
-            out.append({"i": i, "name": it.name, "method": methods_ui.name(it.method), "created": it.created,
-                        "score": round(it.score, 1) if it.score is not None else None, "fav": it.favourite,
-                        "dir": os.path.basename(it.job_dir)})
-        return {"results": out}
+        for k, it in enumerate(shown[offset:offset + limit]):
+            out.append({"i": offset + k, "name": it.name, "method": methods_ui.name(it.method), "created": it.created,
+                        "method_key": it.method, "score": round(it.score, 1) if it.score is not None else None,
+                        "fav": it.favourite, "albums": it.albums, "dir": os.path.basename(it.job_dir)})
+        return {"results": out, "total": len(shown), "offset": offset,
+                "albums": albums.names([it.summary for it in items]),
+                "methods": [{"key": m, "name": methods_ui.name(m)} for m in schema.METHODS]}
+
+    def do_fav(self, data: dict) -> dict:
+        from .pages.gallery import set_favourite
+
+        it = self._result({"dir": data.get("dir")})
+        set_favourite(it.job_dir, bool(data.get("value")))
+        if self.gallery is not None:
+            self.gallery.refresh()
+        return {"ok": True}
 
     def get_queue(self, data: dict) -> dict:
         out = []
@@ -264,6 +354,214 @@ class PhoneApi:
                         "method": methods_ui.name(j.settings.get("method", "clipasso")),
                         "progress": round(j.progress, 3)})
         return {"jobs": out}
+
+    def _job(self, data: dict):
+        try:
+            job_id = int(data.get("id"))
+        except (TypeError, ValueError):
+            job_id = None
+        job = next((j for j in self.controller.jobs if j.id == job_id), None)
+        if job is None:
+            raise PhoneError(tr("ui.phone.page.list_changed"))
+        return job
+
+    def do_move(self, data: dict) -> dict:
+        """A waiting job to another place of the queue (dragged on the phone)."""
+        job = self._job(data)
+        if job.status != "queued":
+            raise PhoneError(tr("ui.phone.page.list_changed"))
+        try:
+            index = int(data.get("index"))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.bad_value")) from None
+        self.controller.move_to(job.id, index)
+        return {"ok": True}
+
+    def do_retry(self, data: dict) -> dict:
+        """A failed or cancelled job once more (it continues where it stopped when it can)."""
+        if self.controller.retry(self._job(data).id) is None:
+            raise PhoneError(tr("ui.phone.page.list_changed"))
+        return {"ok": True}
+
+    # ------------------------------------------------------------------ compare (the methods side by side)
+    def get_compare(self, data: dict) -> dict:
+        if self.compare is None:
+            raise PhoneError(tr("ui.phone.page.no_studio"))
+        image = self.studio.image_path if self.studio.image_path and os.path.isfile(self.studio.image_path) else ""
+        overview = self.compare.overview(image)
+        scored = {m: e["score"] for m, e in overview.items() if e["score"] is not None}
+        best = max(scored, key=scored.get) if len(scored) > 1 else None
+        return {"ok": True, "image": os.path.basename(image),
+                "methods": [{"key": m, "name": methods_ui.name(m), "default": m != "scenesketch", "best": m == best,
+                             "time": imaging_eta(overview[m]["seconds"]), **overview[m]} for m in schema.METHODS]}
+
+    def do_compare(self, data: dict) -> dict:
+        """The studio's picture with several methods (standard preset or the studio's settings). Questions the
+        compare page asks at the computer come back as ``asks``; missing models as ``missing``."""
+        s = self.studio
+        if self.compare is None:
+            raise PhoneError(tr("ui.phone.page.no_studio"))
+        if not s.image_path or not os.path.isfile(s.image_path):
+            raise PhoneError(tr("ui.phone.page.no_picture"))
+        methods = [m for m in schema.METHODS if m in (data.get("methods") or [])]
+        use = bool(data.get("use_studio"))
+        settings = {m: self.compare._settings(m, use) for m in methods}
+        missing = sorted({k for st in settings.values() for k in methods_ui.missing_models(st)})
+        if missing:
+            size = f"{methods_ui.download_mb(missing):.0f}"
+            return {"ok": False, "missing": missing, "error": tr("ui.phone.page.models_missing", size=size)}
+        asks = []
+        if not methods_ui.has_cuda():
+            if "controlsketch" in settings:
+                answer = data.get("controlsketch_cpu")
+                if answer is None:
+                    asks.append({"key": "controlsketch_cpu", "text": tr("ui.compare.cpu_warning")})
+                elif not answer:
+                    settings.pop("controlsketch")
+            if "scenesketch" in settings and not use:
+                answer = data.get("scene_fast")
+                if answer is None:
+                    asks.append({"key": "scene_fast", "text": tr("ui.compare.scene_cpu_warning")})
+                elif answer:
+                    settings["scenesketch"] = schema.normalize(schema.apply_preset(settings["scenesketch"], "fast"))
+        if asks:
+            return {"ok": False, "asks": asks}
+        if not settings:
+            raise PhoneError(tr("ui.phone.page.compare_none"))
+        return {"ok": True, "queued": self.compare.enqueue_compare(s.image_path, settings)}
+
+    # ------------------------------------------------------------------ models downloaded on the phone's request
+    def do_download_models(self, data: dict) -> dict:
+        """Download the missing models (of the studio's settings, or ``keys``) one after the other."""
+        from ..engine import model_store as store
+
+        if self._download and self._download["status"] == "running":
+            raise PhoneError(tr("ui.phone.page.download_running"))
+        keys = [k for k in (data.get("keys") or self.studio.params.missing_models()) if k in store.SPECS]
+        keys = [k for k in keys if not store.is_available(k)]
+        if not keys:
+            raise PhoneError(tr("ui.phone.page.download_nothing"))
+        self._download = {"keys": keys, "idx": 0, "done": 0, "total": 0, "status": "running", "error": "",
+                          "cancel": False, "name": ""}
+        self._next_download()
+        return {"ok": True, "count": len(keys)}
+
+    def _next_download(self):
+        from ..engine import model_store as store
+        from . import dialogs
+
+        st = self._download
+        if st["cancel"] or st["idx"] >= len(st["keys"]):
+            st["status"] = "cancelled" if st["cancel"] else "done"
+            self.studio.params._after_change()
+            self.studio._update_buttons()
+            if self.models_page is not None:
+                self.models_page.refresh()
+            return
+        key = st["keys"][st["idx"]]
+        st["name"], st["done"], st["total"] = dialogs.model_display_name(key), 0, 0
+
+        def prog(a, b):
+            st["done"], st["total"] = a, b
+
+        def done(_):
+            st["idx"] += 1
+            self._next_download()
+
+        def failed(msg):
+            st["status"], st["error"] = ("cancelled" if st["cancel"] else "failed"), msg
+
+        dialogs.run_in_thread(self.studio, store.install, key, cancel=lambda: st["cancel"], on_progress=prog,
+                              on_done=done, on_error=failed)
+
+    def do_cancel_download(self, data: dict) -> dict:
+        if self._download:
+            self._download["cancel"] = True
+        return {"ok": True}
+
+    def _download_state(self) -> dict | None:
+        st = self._download
+        if st is None:
+            return None
+        return {"status": st["status"], "name": st["name"], "index": min(st["idx"] + 1, len(st["keys"])),
+                "count": len(st["keys"]), "done": st["done"], "total": st["total"], "error": st["error"]}
+
+    # ------------------------------------------------------------------ the picture: crop / rotate, the mask
+    def do_crop(self, data: dict) -> dict:
+        """Crop (normalised ``x``, ``y``, ``w``, ``h`` of the turned picture), turn (``rotate``: 0/90/180/270,
+        clockwise) and mirror (``flip``) the studio's picture – saved as a new file, like the studio's editor."""
+        import time
+
+        from PySide6.QtCore import QRect
+        from PySide6.QtGui import QTransform
+
+        from .image_io import read_image
+
+        s = self.studio
+        if not s.image_path or not os.path.isfile(s.image_path):
+            raise PhoneError(tr("ui.phone.page.no_picture"))
+        try:
+            rotate = int(data.get("rotate") or 0) % 360
+            x, y, w, h = (min(1.0, max(0.0, float(data.get(k, d)))) for k, d in
+                          (("x", 0), ("y", 0), ("w", 1), ("h", 1)))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.bad_value")) from None
+        if rotate not in (0, 90, 180, 270):
+            raise PhoneError(tr("ui.phone.page.bad_value"))
+        img = read_image(s.image_path)
+        if img.isNull():
+            raise PhoneError(tr("ui.phone.page.no_picture"))
+        if rotate:
+            img = img.transformed(QTransform().rotate(rotate))
+        if data.get("flip"):
+            img = img.mirrored(True, False)
+        rect = QRect(round(x * img.width()), round(y * img.height()), round(w * img.width()),
+                     round(h * img.height())).intersected(img.rect())
+        if rect.width() < 16 or rect.height() < 16:
+            raise PhoneError(tr("ui.phone.page.crop_small"))
+        folder = os.path.join(app_settings().get("output_dir"), "_edited")
+        os.makedirs(folder, exist_ok=True)
+        stem = os.path.splitext(os.path.basename(s.image_path))[0]
+        path = os.path.join(folder, f"{stem}-edited-{time.strftime('%Y%m%d-%H%M%S')}.png")
+        if not img.copy(rect).save(path):
+            raise PhoneError(tr("ui.phone.page.failed"))
+        s.set_image(path)
+        return {"ok": True}
+
+    def _mask_state(self) -> dict:
+        s = self.studio
+        used = s._mask_settings()[0] and bool(s.image_path)
+        return {"used": used, "ready": used and s._mask is not None, "text": s.mask_status.text() if used else ""}
+
+    def file_mask(self, data: dict) -> dict:
+        """The studio's picture with its mask: the background veiled, the object outlined (as in the studio)."""
+        from PySide6.QtCore import QBuffer, QIODevice
+        from PySide6.QtGui import QColor, QPainter
+
+        from ..engine import masking
+        from . import mask_view, theme
+        from .image_io import read_image
+
+        s = self.studio
+        if not self._mask_state()["ready"]:
+            raise PhoneError(tr("ui.phone.page.mask_not_ready"))
+        _, model, _ = s._mask_settings()
+        _, prob, edited = mask_view.load_mask(s.image_path, model)
+        if prob is None and edited is None:
+            raise PhoneError(tr("ui.phone.page.mask_not_ready"))
+        mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
+        photo = read_image(s.image_path, INPUT_SIDE)
+        pal = theme.current()
+        veil = QColor(pal.surface2)
+        veil.setAlpha(215)
+        over = mask_view.overlay(mask, veil, QColor(pal.accent), max_side=INPUT_SIDE)
+        p = QPainter(photo)
+        p.drawImage(photo.rect(), over)
+        p.end()
+        buf = QBuffer()
+        buf.open(QIODevice.WriteOnly)
+        photo.save(buf, "JPEG", 85)
+        return _file(bytes(buf.data()), "image/jpeg")
 
     # ------------------------------------------------------------------ files
     def file_input(self, data: dict) -> dict:
@@ -309,17 +607,25 @@ class PhoneApi:
         from .export import restyle_svg
 
         style, paper, background = self._look()
-        svg = brush.stylize_svg(restyle_svg(self._seed_svg(data)[1], None, 1.0, background), style)
+        seed, svg = self._seed_svg(data)
+        if data.get("part") in ("background", "object") and self.studio.layers_available(seed):
+            from . import scene_layers  # (SceneSketch: only the background or only the object of the cell)
+
+            svg = scene_layers.part(svg, self.studio.seed_runs.get(seed), data["part"])
+        svg = brush.stylize_svg(restyle_svg(svg, None, 1.0, background), style)
         if data.get("full") and paper is not None:
             svg = paper_mod.svg_with_paper(svg, paper, background)
         return _file(svg.encode("utf-8"), "image/svg+xml")
 
     def file_result(self, data: dict) -> dict:
-        items = self._results()
-        try:
-            it = items[int(data.get("i", -1))]
-        except (ValueError, IndexError):
-            raise PhoneError(tr("ui.phone.page.no_sketch")) from None
+        if data.get("d") and "i" not in data:  # (by its folder name)
+            it = self._result({"dir": data["d"]})
+        else:
+            items = self._results()
+            try:
+                it = items[int(data.get("i", -1))]
+            except (ValueError, IndexError):
+                raise PhoneError(tr("ui.phone.page.no_sketch")) from None
         with open(it.sketch, encoding="utf-8") as f:
             return _file(f.read().encode("utf-8"), "image/svg+xml")
 
@@ -353,6 +659,10 @@ class PhoneApi:
                 return _file(f.read(), ctype, f"{stem}.{fmt}")
 
     # ------------------------------------------------------------------ export (all the formats of the studio)
+    def _shown_seed(self):
+        s = self.studio
+        return s.selected_seed if s.selected_seed is not None else s.best_seed
+
     def _export_source(self, fmt: str) -> tuple[str, str, str]:
         """(sketch file, run folder – the job folder for the matrix –, name) of the shown sketch."""
         s = self.studio
@@ -375,7 +685,8 @@ class PhoneApi:
 
         svg, run_dir, name = self._export_source("svg")
         sketch = export_jobs.info(svg, run_dir)
-        formats = [f for f in export_jobs.FORMATS if f != "matrix" or self.studio._matrix_exportable()]
+        formats = [f for f in export_jobs.FORMATS if (f != "matrix" or self.studio._matrix_exportable())
+                   and (f != "svglayers" or self.studio.layers_available(self._shown_seed()))]
         return {"ok": True, "name": name, "sketch": sketch,
                 "formats": [{"fmt": f, "title": export_jobs.title(f), "desc": tr(f"ui.export_desc.{f}"),
                              "ext": export_jobs.extension(f),
@@ -412,6 +723,8 @@ class PhoneApi:
         fmt = data.get("fmt")
         if fmt not in export_jobs.FORMATS:
             raise PhoneError("unknown format")
+        if fmt == "svglayers" and not self.studio.layers_available(self._shown_seed()):
+            raise PhoneError(tr("ui.layer.not_yet"))
         svg, run_dir, name = self._export_source(fmt)
         sketch = export_jobs.info(svg, run_dir) if svg else {"process_frames": 0, "draw_length": 2.0,
                                                               "process_length": 2.0, "photo_frame": False}
@@ -625,8 +938,15 @@ class PhoneApi:
         return {"ok": True}
 
     def _result(self, data: dict):
-        """A recent result by its place in the list – and its folder name, so a list that changed meanwhile never
-        hits another one."""
+        """A result by its folder name – or by its place in the list of the newest and its folder name, so a list
+        that changed meanwhile never hits another one."""
+        if "i" not in data:
+            name = str(data.get("dir") or "")
+            it = next((x for x in self._all_results() if os.path.basename(os.path.normpath(x.job_dir)) == name),
+                      None) if name else None
+            if it is None:
+                raise PhoneError(tr("ui.phone.page.list_changed"))
+            return it
         items = self._results()
         try:
             it = items[int(data.get("i", -1))]
