@@ -1,4 +1,15 @@
-## New in 3.6: the studio on the PC
+## New in 3.7: models & quality
+
+- **The studio's models in view:** on the *Models* page, a card at the top shows which models the studio's current settings use – sorted by task (mask, shape, meaning, starting points, condition, scoring). Each can be changed there, too; the studio follows, and the other way round.
+- **SceneSketch:** the *object's own number of strokes* (more detail in the object without making the background denser), compute only the *levels* you want (e.g. 4 and 8 instead of 1 to 8 – saves much time) and *compute one cell of the matrix again* with a right click.
+- **"Simplify" easier to find:** the button above the sketch now shows its name, and after the first finished sketch a hint says once where it is.
+- **Experimental sketch improvement** (Settings, at the very bottom): with CLIPasso and SceneSketch the strokes follow the edges more closely, and dark areas get a fine, even hatching at 45°. For newly started jobs.
+- **Measured, not guessed:** an independent judge (CLIP ViT-L/14) now grades likeness and recognisability on 15 photos in four categories. What did not clearly get better did not go into 3.7: face crops for portraits (faces became harder to recognise), learnt stroke widths (no clear difference) and a stroke count recommended from the photo's details – more strokes help with every subject, most of all with plain objects.
+<!-- semantic models -->
+
+---
+
+**New in 3.6: the studio on the PC**
 
 - **Full screen for the sketch:** the new button above the canvas (or F11) hides everything but the canvas and its tools; Esc or the button ends it.
 - **Time lapse:** ▶ next to the step slider plays how the sketch came to be – at half to four times the speed, ending on the result.

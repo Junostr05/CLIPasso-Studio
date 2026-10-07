@@ -1,3 +1,31 @@
+## CLIPasso Studio 3.7 – models and quality
+
+**The studio's models in view**
+- **On the Models page**, a card at the top shows the models the studio's current settings use, sorted by task: mask, shape (CLIP layers), meaning, starting points, condition (ControlNet), scoring. Changing one there changes the setting in the studio – and a change in the studio shows there at once. In the list, a badge *in the studio* marks those models.
+
+**SceneSketch**
+- **The object's own number of strokes** (*Object strokes*, 0 = the same as the background): more detail in the object without making the background denser – or fewer for a plainer object.
+- **Computed levels:** compute only the simplicity levels you want – e.g. 4 and 8 instead of 1 to 8, which saves much time. Each chosen level starts from the chosen one before it.
+- **Compute one cell again:** right click on a cell of the matrix → *Compute this cell again*, with a new start. The later levels of its layer build on it and are computed again; the job goes back into the queue.
+
+**Simplify, easier to find**
+- The *Simplify* button above the sketch now shows its name, and after the first finished sketch a hint says once where it is.
+
+**Experimental sketch improvement** (Settings → *Experimental*, at the very bottom)
+- CLIPasso and SceneSketch: the strokes follow the edges of the photo more closely, and dark areas get extra fine, straight strokes at 45° – an even hatching. The set number of strokes stays for edges and shape; the hatching comes on top.
+- It applies to newly started jobs (continuing keeps a job's setting); a badge in the studio shows when it is on. Measured (below): neither a gain nor a loss in likeness that the measurement can tell apart – so it stays experimental and off by default.
+
+**Measured, not guessed**
+- New: quality is measured with an **independent judge** – CLIP ViT-L/14, a model the sketches are not optimised with. It grades the likeness to the photo and whether the subject is still recognised (zero-shot). The test set has 15 photos in four categories (objects, portraits, animals, scenes; NASA pictures in the public domain), each drawn with two seeds. Every change is measured against the defaults, in parallel in the CI; only a clear gain counts.
+- What it decided for 3.7 (CLIPasso, 16 strokes, 301 steps):
+  - **Face crops for portraits** (planned): recognisability −23 points (± 9). Not in 3.7.
+  - **Learnt stroke widths** (planned): no clear difference (likeness +0.9 ± 0.8). Not in 3.7.
+  - **A stroke count recommended from the photo's details** (planned): the measurement showed that more strokes help in every category, most of all with plain objects (8 → 16 strokes: likeness +8.7; 16 → 32: +4.4). The idea "few details, few strokes" does not hold – so there is no recommendation; more strokes are the better choice when there is time.
+<!-- semantic models -->
+
+**Small update**
+- An app on 3.6.0 downloads only the files that changed (`…-Patch-from-3.6.0.exe` / `…-Portable-Patch-from-3.6.0.zip`).
+
 ## CLIPasso Studio 3.6 – the studio on the PC
 
 **Seeing the sketch**

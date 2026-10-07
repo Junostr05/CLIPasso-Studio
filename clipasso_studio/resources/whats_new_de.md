@@ -1,4 +1,15 @@
-## Neu in 3.6: das Studio am PC
+## Neu in 3.7: Modelle & Qualität
+
+- **Die Modelle des Studios im Blick:** Auf der Seite *Modelle* zeigt eine Karte oben, welche Modelle die aktuellen Einstellungen des Studios nutzen – nach Aufgabe sortiert (Maske, Form, Bedeutung, Startpunkte, Bedingung, Bewertung). Dort lässt sich jedes auch wechseln; das Studio zieht mit, und umgekehrt.
+- **SceneSketch:** eine eigene *Strichzahl fürs Objekt* (mehr Details im Objekt, ohne den Hintergrund zu verdichten), nur die gewünschten *Stufen* rechnen (z. B. 4 und 8 statt 1 bis 8 – spart viel Zeit) und per Rechtsklick *eine Zelle der Matrix neu rechnen*.
+- **„Vereinfachen“ leichter zu finden:** Der Knopf über der Skizze trägt jetzt seinen Namen, und nach der ersten fertigen Skizze zeigt ein Hinweis einmal, wo er ist.
+- **Experimentelle Skizzen-Verbesserung** (Einstellungen, ganz unten): Bei CLIPasso und SceneSketch folgen die Striche stärker den Kanten, und dunkle Flächen bekommen eine feine, gleichmäßige Schraffur im 45°-Winkel. Gilt für neu gestartete Aufträge.
+- **Gemessen statt geschätzt:** Ein unabhängiger Richter (CLIP ViT-L/14) bewertet jetzt Ähnlichkeit und Erkennbarkeit auf 15 Fotos in vier Kategorien. Was dabei nicht klar besser wurde, kam nicht in 3.7: Gesichts-Ausschnitte für Porträts (machten Gesichter schlechter erkennbar), gelernte Strichbreiten (kein klarer Unterschied) und eine Strichzahl-Empfehlung nach Details im Foto – mehr Striche helfen bei jedem Motiv, am meisten bei schlichten Objekten.
+<!-- semantic models -->
+
+---
+
+**Neu in 3.6: das Studio am PC**
 
 - **Vollbild für die Skizze:** der neue Knopf über der Leinwand (oder F11) blendet alles außer Leinwand und Werkzeugen aus; Esc oder der Knopf beenden es.
 - **Zeitraffer:** ▶ neben dem Zwischenstand-Regler spielt ab, wie die Skizze entstanden ist – in halber bis vierfacher Geschwindigkeit, am Ende steht das Ergebnis.
