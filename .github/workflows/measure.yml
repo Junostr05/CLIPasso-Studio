@@ -12,8 +12,9 @@ on:
 permissions:
   contents: read
 
+# (only a new measurement cancels a running one – a push without [measure] has a group of its own)
 concurrency:
-  group: measure-${{ github.ref }}
+  group: measure-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure]') }}
   cancel-in-progress: true
 
 env:

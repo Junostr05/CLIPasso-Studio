@@ -180,7 +180,9 @@ jobs:
       - name: Unit tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest -q -m "not slow" --durations=20
+        # -v: the name of every test before it runs; faulthandler_timeout: the stacks of all threads when a test
+        # takes over 4 minutes (a hanging test is ended by pytest-timeout after 10 – its own dump was lost)
+        run: python -m pytest -v -m "not slow" --durations=20 -o faulthandler_timeout=240
 
   build-windows:
     name: Windows ${{ matrix.edition }}
