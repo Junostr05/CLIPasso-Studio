@@ -139,6 +139,7 @@
       </div>
       <div id="scene-part" class="phase" hidden></div>
       <div id="sketch-box" class="preview"><img id="sketch" alt="">
+        <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
         <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
       <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
         <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
@@ -151,6 +152,40 @@
         <button data-part="all" class="on" data-t="layer_all"></button>
         <button data-part="background" data-t="layer_background"></button>
         <button data-part="object" data-t="layer_object"></button>
+      </div>
+      <div id="edit-tools" class="edit-tools" hidden>
+        <div class="seg">
+          <button id="tool-erase" data-t="edit_eraser"></button>
+          <button id="tool-pen" data-t="edit_pen"></button>
+          <button id="edit-undo" class="small" aria-label="undo">↶</button>
+          <button id="edit-redo" class="small" aria-label="redo">↷</button>
+          <button id="edit-revert" class="small" data-t="edit_revert"></button>
+        </div>
+        <div class="row wrap">
+          <button id="open-simplify" class="small" data-t="edit_simplify"></button>
+          <button id="open-steps" class="small" data-t="edit_steps"></button>
+          <button id="play-lapse" class="small" data-t="edit_lapse"></button>
+          <select id="lapse-speed" class="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            <option value="2">2×</option><option value="4">4×</option></select>
+          <button id="rerun-cell" class="small" data-t="rerun_cell" hidden></button>
+        </div>
+        <div id="edit-hint" class="muted small-text"></div>
+        <div id="edit-panel" class="edit-panel" hidden>
+          <div class="row between"><b id="edit-panel-title"></b><span id="edit-panel-value" class="muted"></span></div>
+          <input id="edit-slider" type="range" min="0" max="0" value="0">
+          <div id="edit-panel-note" class="muted small-text"></div>
+          <div class="row"><button id="edit-apply" class="primary"></button><button id="edit-close" data-t="close"></button></div>
+        </div>
+        <details id="continue-box" class="group">
+          <summary data-t="edit_continue"></summary>
+          <div class="muted small-text" data-t="edit_continue_hint"></div>
+          <div class="row"><span class="muted grow" data-t="edit_new_strokes"></span>
+            <input id="cont-new" type="number" class="num" min="0" max="128" inputmode="numeric"></div>
+          <div class="row"><span class="muted grow" data-t="edit_iterations"></span>
+            <input id="cont-iter" type="number" class="num" min="1" max="20000" inputmode="numeric"></div>
+          <label class="check"><input id="cont-keep" type="checkbox" checked><span data-t="edit_keep_drawn"></span></label>
+          <div class="row"><button id="cont-go" class="primary" data-t="edit_continue_go"></button></div>
+        </details>
       </div>
       <div id="seeds" class="seeds"></div>
       <div id="stats" class="stats"></div>

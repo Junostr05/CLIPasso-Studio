@@ -22,6 +22,8 @@ from .i18n import i18n, tr
 
 RESULTS_MAX = 40
 INPUT_SIDE = 900  # the picture as the phone sees it (and paints the detail map on)
+ERASE_REACH = 0.02  # the eraser on the phone: this far (of the sketch's width) from a stroke still hits it
+EDIT_POINTS = 2000  # at most this many points of one stroke of the pen / the eraser
 
 
 class PhoneError(Exception):
@@ -75,6 +77,8 @@ class PhoneApi:
         self._download: dict | None = None  # models downloaded on the phone's request
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
+        self._importance: dict | None = None  # "Simplify" measured on the phone's request: {run_dir, svg, status}
+        self._importance_proc = None
 
     # ------------------------------------------------------------------ dispatch
     def handle(self, action: str, data: dict):
@@ -110,7 +114,8 @@ class PhoneApi:
                 tuple((seed, hash(svg)) for seed, svg in s.seed_svgs.items()), s.status.text(),
                 s.progress.value(), s.estimate.text(), self._note_id, self._details_rev,
                 st.get("canvas_style"), st.get("canvas_paper"), repr(st.get("user_presets")),
-                repr(self._download_state()), s.mask_status.text(), self._update_signature())
+                repr(self._download_state()), s.mask_status.text(), self._update_signature(),
+                repr(self._importance and self._importance["status"]))
 
     def get_studio(self, data: dict) -> dict:
         s = self.studio
@@ -184,6 +189,7 @@ class PhoneApi:
             "scene": self._scene(shown),
             "download": self._download_state(),
             "mask": self._mask_state(),
+            "edit": self._edit_state(),
             "version": __version__,  # (a page of an older version loads again: its script and texts)
             "update": self._update_signature()[0],
         }
@@ -440,6 +446,218 @@ class PhoneApi:
         if not settings:
             raise PhoneError(tr("ui.phone.page.compare_none"))
         return {"ok": True, "queued": self.compare.enqueue_compare(s.image_path, settings)}
+
+    # ------------------------------------------------------------------ editing the shown sketch (3.8)
+    def _edit_seed(self) -> int:
+        seed = self.studio._editable_seed()
+        if seed is None:
+            raise PhoneError(tr("ui.phone.page.edit_none"))
+        return seed
+
+    def _edit_state(self) -> dict | None:
+        """What the eraser, the pen, "Simplify" and the saved steps can do with the shown sketch (None: nothing to edit,
+        e.g. while it is being drawn)."""
+        from ..engine import importance
+        from . import dialogs, strokes
+
+        s = self.studio
+        seed = s._editable_seed()
+        if seed is None:
+            return None
+        svg, run_dir = s.seed_svgs[seed], s.seed_runs[seed]
+        try:
+            n, fixed = strokes.count(svg), strokes.fixed_count(svg)
+        except Exception:
+            n, fixed = 0, 0
+        measured = importance.read(run_dir, svg) is not None
+        busy = bool(self._importance and self._importance["status"] == "measuring"
+                    and self._importance["svg"] == svg)
+        failed = bool(self._importance and self._importance["status"] == "failed" and self._importance["svg"] == svg)
+        return {"seed": seed, "strokes": n, "fixed": fixed, "can_erase": n > 1,
+                "undo": bool(s._edit_undo.get(seed)), "redo": bool(s._edit_redo.get(seed)),
+                "edited": os.path.isfile(os.path.join(run_dir, jobs.EDITED_FILE)),
+                "can_continue": os.path.isfile(os.path.join(run_dir, "input.png")),
+                "continue": {"new": dialogs.ContinueDialog.NEW_STROKES,
+                             "iterations": dialogs.ContinueDialog.ITERATIONS},
+                "simplify": "ready" if measured else ("measuring" if busy else ("failed" if failed else "none")),
+                "rev": abs(hash(svg)) % 10 ** 10}
+
+    def _points(self, data: dict, svg: str) -> list[tuple[float, float]]:
+        """The phone's points (0..1 of the sketch's width and height) in the sketch's own coordinates."""
+        from .strokes import view_box
+
+        x0, y0, w, h = view_box(svg)
+        pts = []
+        for p in (data.get("points") or [])[:EDIT_POINTS]:
+            try:
+                x, y = float(p[0]), float(p[1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if 0 <= x <= 1 and 0 <= y <= 1:
+                pts.append((x0 + x * w, y0 + y * h))
+        return pts
+
+    def do_edit(self, data: dict) -> dict:
+        """The studio's eraser and pen from the phone (``op``: erase, pen, undo, redo, revert) – one undo step each,
+        kept with the sketch like the edits on the PC."""
+        from . import strokes
+
+        s = self.studio
+        seed = self._edit_seed()
+        op = data.get("op")
+        if op in ("undo", "redo", "revert"):
+            {"undo": s.undo_edit, "redo": s.redo_edit, "revert": s.revert_edits}[op]()
+            return {"ok": True}
+        pts = self._points(data, s.seed_svgs[seed])
+        if op == "pen":
+            if len(pts) < 2:
+                raise PhoneError(tr("ui.phone.page.edit_too_short"))
+            before = s.seed_svgs[seed]
+            s._pen_stroke(pts)
+            return {"ok": True, "changed": s.seed_svgs[seed] != before}
+        if op != "erase":
+            raise PhoneError("unknown edit")
+        if strokes.count(s.seed_svgs[seed]) <= 1:  # (one line: nothing to erase but the whole drawing)
+            raise PhoneError(tr("ui.phone.page.edit_one_line"))
+        s._erase_begin()
+        erased, index = 0, None
+        reach = ERASE_REACH * strokes.view_box(s.seed_svgs[seed])[2]
+        for x, y in pts:
+            if index is None:
+                index = strokes.StrokeIndex(s.seed_svgs[seed])
+            hit = index.hit(x, y, reach)
+            if hit is not None and len(index) > 1:
+                s._erase_stroke(hit)
+                erased, index = erased + 1, None  # (the strokes are counted anew)
+        s._erase_end()
+        return {"ok": True, "erased": erased}
+
+    def do_continue_clipasso(self, data: dict) -> dict:
+        """Continue the shown sketch with CLIPasso (the strokes drawn by hand stay): the questions of the PC's dialog
+        as the phone's fields."""
+        s = self.studio
+        seed = self._edit_seed()
+        if not os.path.isfile(os.path.join(s.seed_runs[seed], "input.png")):
+            raise PhoneError(tr("ui.continue.no_input"))
+        try:
+            new = max(0, min(128, int(data.get("new", 4))))
+            iterations = max(1, min(20000, int(data.get("iterations", 501))))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.failed")) from None
+        image, settings = s.continue_job(seed, new, iterations, bool(data.get("keep", True)))
+        busy = self.controller.is_busy()
+        self.controller.enqueue(image, settings, start=not busy)
+        return {"ok": True, "queued": busy}
+
+    # "Simplify": how much each stroke adds is measured once per sketch (CLIP, in a process of its own)
+    def do_simplify_measure(self, data: dict) -> dict:
+        from PySide6.QtCore import QProcess
+
+        from ..engine import importance
+        from .widgets.edit_bar import importance_command
+
+        s = self.studio
+        seed = self._edit_seed()
+        run_dir, svg = s.seed_runs[seed], s.seed_svgs[seed]
+        if importance.read(run_dir, svg) is not None:
+            return {"ok": True, "ready": True}
+        if self._importance and self._importance["status"] == "measuring" and self._importance["svg"] == svg:
+            return {"ok": True, "ready": False}
+        if self._importance_proc is not None and self._importance_proc.state() != QProcess.NotRunning:
+            self._importance_proc.kill()
+        state = {"run_dir": run_dir, "svg": svg, "status": "measuring"}
+        self._importance = state
+        proc = QProcess(s)
+
+        def done(code=-1, *_):
+            if self._importance is state and state["status"] == "measuring":
+                state["status"] = "ready" if importance.read(run_dir, svg) is not None else "failed"
+
+        proc.finished.connect(lambda code, _status: done(code))
+        proc.errorOccurred.connect(lambda _e: done(-1))
+        self._importance_proc = proc
+        proc.start(*importance_command(run_dir))
+        return {"ok": True, "ready": False}
+
+    def _kept(self, seed: int, keep: int) -> str:
+        from ..engine import importance
+        from . import strokes
+
+        s = self.studio
+        run_dir, svg = s.seed_runs[seed], s.seed_svgs[seed]
+        values = importance.read(run_dir, svg)
+        if values is None:
+            raise PhoneError(tr("ui.edit_bar.measuring"))
+        order = importance.order(values)
+        drop = order[: max(0, len(order) - max(1, int(keep)))]
+        return strokes.remove_strokes(svg, sorted(drop)) if drop else svg
+
+    def file_simplified(self, data: dict) -> dict:
+        """The shown sketch with only its ``keep`` most important strokes (in the studio's brush style)."""
+        seed = self._edit_seed()
+        try:
+            keep = int(data.get("keep", 1))
+        except ValueError:
+            keep = 1
+        return self._styled(self._kept(seed, keep))
+
+    def do_simplify_apply(self, data: dict) -> dict:
+        seed = self._edit_seed()
+        try:
+            keep = int(data.get("keep", 1))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.failed")) from None
+        self.studio._edit_bar_apply(self._kept(seed, keep))
+        return {"ok": True}
+
+    # the saved steps of the shown sketch: one of them as the result, or all of them as a time lapse
+    def _frames(self, seed: int, upto_best: bool) -> list[str]:
+        from . import export
+
+        return export.animation_frames(self.studio.seed_runs[seed], upto_best=upto_best)
+
+    def get_steps(self, data: dict) -> dict:
+        seed = self._edit_seed()
+        return {"ok": True, "seed": seed, "count": len(self._frames(seed, False)),
+                "lapse": len(self._frames(seed, True))}
+
+    def file_step(self, data: dict) -> dict:
+        seed = self._edit_seed()
+        frames = self._frames(seed, data.get("lapse") == "1")
+        try:
+            with open(frames[int(data.get("i", -1))], encoding="utf-8") as f:
+                return self._styled(f.read())
+        except (OSError, ValueError, IndexError):
+            raise PhoneError(tr("ui.edit_bar.no_steps")) from None
+
+    def do_take_step(self, data: dict) -> dict:
+        seed = self._edit_seed()
+        frames = self._frames(seed, False)
+        try:
+            with open(frames[int(data.get("i", -1))], encoding="utf-8") as f:
+                svg = f.read()
+        except (OSError, ValueError, IndexError, TypeError):
+            raise PhoneError(tr("ui.edit_bar.no_steps")) from None
+        self.studio._edit_bar_apply(svg)
+        return {"ok": True}
+
+    def do_rerun_cell(self, data: dict) -> dict:
+        """SceneSketch: compute a cell of the matrix again with a new start (the phone asked already)."""
+        try:
+            cell = int(data.get("cell"))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.failed")) from None
+        if not self.studio.rerun_scene_cell(cell, confirm=False):
+            raise PhoneError(tr("ui.phone.page.failed"))
+        return {"ok": True}
+
+    def _styled(self, svg: str) -> dict:
+        from . import brush
+        from .export import restyle_svg
+
+        style, _paper, background = self._look()
+        return _file(brush.stylize_svg(restyle_svg(svg, None, 1.0, background), style).encode("utf-8"),
+                     "image/svg+xml")
 
     # ------------------------------------------------------------------ updating the app from the phone (3.8)
     def _update_signature(self) -> tuple:

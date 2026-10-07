@@ -700,7 +700,7 @@ function renderSketch() {
   $("no-sketch").textContent = S.running_here ? (S.status || T.running) : T.no_sketch;
   $("view-name").textContent = S.view || "";
   const sig = S.shown + ":" + S.live_rev + ":" + S.style + ":" + S.paper + ":" + layerPart;
-  if (has && sig !== lastSeen.sketch) {
+  if (has && sig !== lastSeen.sketch && !panel && !lapse) {  // (not while the slider or the time lapse shows a step)
     lastSeen.sketch = sig;
     const part = layerPart !== "all" ? "&part=" + layerPart : "";
     $("sketch").src = `/api/file/sketch?seed=${S.shown}&full=1&v=${S.live_rev}&s=${S.style}&p=${S.paper}${part}`;
@@ -736,6 +736,7 @@ function renderSketch() {
   $("continue").hidden = !S.can_continue;
   $("export-card").hidden = !has || !X.info;
   if (has && (tab === "sketch" || (desk && tab === "studio"))) loadExportInfo(false);
+  renderEdit();
 }
 $("continue").onclick = () => act("continue");
 $("up").onclick = () => act("rate", {value: 1});
@@ -1314,6 +1315,205 @@ const sketchZoom = zoomable($("sketch"), async (d) => {
 });
 viewerZoom = zoomable($("viewer-img"), (d) => stepViewer(d));
 
+// ------------------------------------------------------------------ editing the sketch (3.8)
+// the studio's eraser and pen, undo / redo / back to the original, "Simplify", the saved steps (one as the result,
+// all as a time lapse), continuing with CLIPasso, and a cell of the matrix computed again
+let tool = "";     // "erase" | "pen" | ""
+let panel = null;  // the slider of "Simplify" or of the saved steps: {kind, seed, count}
+let lapse = null;  // the time lapse playing: {i, timer}
+
+function renderEdit() {
+  const E = S && S.edit;
+  const show = !!E && sceneView === "sketch" && S.shown !== null && S.shown !== undefined;
+  $("edit-tools").hidden = !show;
+  if (!show) { setTool(""); closePanel(false); stopLapse(false); return; }
+  $("tool-erase").disabled = !E.can_erase;
+  if (!E.can_erase && tool === "erase") setTool("");
+  $("edit-undo").disabled = !E.undo;
+  $("edit-redo").disabled = !E.redo;
+  $("edit-revert").disabled = !E.edited;
+  $("continue-box").hidden = !E.can_continue;
+  if (!$("cont-new").value) $("cont-new").value = E.continue.new;
+  if (!$("cont-iter").value) $("cont-iter").value = E.continue.iterations;
+  $("rerun-cell").hidden = !(S.scene && S.scene.cells.some((c) => c.seed === S.shown && c.has));
+  if (panel && panel.seed !== E.seed) closePanel(true);
+  else if (panel && panel.kind === "simplify") updateSimplify();
+}
+
+function setTool(name) {
+  tool = name;
+  $("tool-erase").classList.toggle("on", tool === "erase");
+  $("tool-pen").classList.toggle("on", tool === "pen");
+  $("edit-canvas").hidden = !tool;
+  $("edit-hint").textContent = tool === "erase" ? T.edit_hint_erase : (tool === "pen" ? T.edit_hint_pen : "");
+  if (tool) { sketchZoom.reset(); closePanel(true); stopLapse(true); }
+}
+$("tool-erase").onclick = () => setTool(tool === "erase" ? "" : "erase");
+$("tool-pen").onclick = () => setTool(tool === "pen" ? "" : "pen");
+$("edit-undo").onclick = () => act("edit", {op: "undo"});
+$("edit-redo").onclick = () => act("edit", {op: "redo"});
+$("edit-revert").onclick = () => act("edit", {op: "revert"});
+
+(function drawing() {
+  // the finger (or the mouse) on the sketch: the trail is shown at once, the points go to the PC when lifted –
+  // as 0..1 of the sketch's width and height (the picture is shown whole: object-fit contain)
+  const cv = $("edit-canvas");
+  let pts = null, ctx = null;
+  const clear = () => { if (ctx) ctx.clearRect(0, 0, cv.width, cv.height); };
+  const shown = () => {
+    const img = $("sketch"), r = img.getBoundingClientRect();
+    const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1;
+    const k = Math.min(r.width / nw, r.height / nh);
+    return {x: r.left + (r.width - nw * k) / 2, y: r.top + (r.height - nh * k) / 2, w: nw * k, h: nh * k};
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    if (!tool) return;
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * devicePixelRatio);
+    cv.height = Math.round(r.height * devicePixelRatio);
+    ctx = cv.getContext("2d");
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.lineCap = ctx.lineJoin = "round";
+    ctx.lineWidth = tool === "pen" ? 2.5 : 18;
+    ctx.strokeStyle = tool === "pen" ? "#111" : "rgba(239, 68, 68, .45)";
+    pts = [[e.clientX, e.clientY]];
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
+    ctx.lineTo(e.clientX - r.left + .1, e.clientY - r.top);
+    ctx.stroke();
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!pts) return;
+    const r = cv.getBoundingClientRect();
+    pts.push([e.clientX, e.clientY]);
+    ctx.lineTo(e.clientX - r.left, e.clientY - r.top);
+    ctx.stroke();
+  });
+  const end = async () => {
+    if (!pts) return;
+    const b = shown();
+    const points = pts.map(([x, y]) => [(x - b.x) / b.w, (y - b.y) / b.h])
+      .filter(([x, y]) => x >= 0 && x <= 1 && y >= 0 && y <= 1).slice(0, 2000);
+    const op = tool === "pen" ? "pen" : "erase";
+    pts = null;
+    if (!points.length || (op === "pen" && points.length < 2)) { clear(); return; }
+    const a = await act("edit", {op, points});
+    if (!a.ok || a.erased === 0 || a.changed === false) clear();
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", end);
+  $("sketch").addEventListener("load", clear);  // (the edited sketch is there)
+})();
+
+async function openSimplify() {
+  stopLapse(false);
+  setTool("");
+  const E = S.edit;
+  panel = {kind: "simplify", seed: E.seed, count: E.strokes};
+  $("edit-panel").hidden = false;
+  $("edit-panel-title").textContent = T.edit_simplify;
+  $("edit-apply").textContent = T.edit_apply;
+  Object.assign($("edit-slider"), {min: 1, max: Math.max(1, E.strokes)});
+  $("edit-slider").value = E.strokes;
+  updateSimplify();
+  if (E.simplify !== "ready") await act("simplify_measure");
+}
+function updateSimplify() {
+  const E = S.edit, ready = E.simplify === "ready";
+  $("edit-slider").disabled = !ready || E.strokes < 2;
+  $("edit-apply").disabled = !ready || Number($("edit-slider").value) >= E.strokes;
+  $("edit-panel-note").textContent = ready ? T.edit_simplify_note
+    : (E.simplify === "failed" ? T.edit_measure_failed : T.edit_measuring);
+  $("edit-panel-value").textContent = t("edit_keep", {n: $("edit-slider").value, total: E.strokes});
+}
+async function openSteps() {
+  stopLapse(false);
+  setTool("");
+  const st = await getJSON("/api/get/steps");
+  if (!st.ok || st.count < 2) { toast(T.edit_no_steps); return; }
+  panel = {kind: "steps", seed: st.seed, count: st.count};
+  $("edit-panel").hidden = false;
+  $("edit-panel-title").textContent = T.edit_steps;
+  $("edit-apply").textContent = T.edit_take;
+  $("edit-panel-note").textContent = T.edit_steps_note;
+  Object.assign($("edit-slider"), {min: 0, max: st.count - 1, disabled: false});
+  $("edit-slider").value = st.count - 1;
+  $("edit-apply").disabled = false;
+  previewPanel();
+}
+function previewPanel() {
+  if (!panel || !S.edit) return;
+  const v = Number($("edit-slider").value);
+  if (panel.kind === "simplify") {
+    if (S.edit.simplify === "ready") $("sketch").src = `/api/file/simplified?keep=${v}&v=${S.edit.rev}&s=${S.style}`;
+    $("edit-panel-value").textContent = t("edit_keep", {n: v, total: S.edit.strokes});
+    $("edit-apply").disabled = S.edit.simplify !== "ready" || v >= S.edit.strokes;
+  } else {
+    $("sketch").src = `/api/file/step?i=${v}&v=${S.edit.rev}&s=${S.style}`;
+    $("edit-panel-value").textContent = t("edit_step", {i: v + 1, n: panel.count});
+  }
+}
+function closePanel(show) {
+  if (!panel) return;
+  panel = null;
+  $("edit-panel").hidden = true;
+  if (show) { lastSeen.sketch = ""; renderSketch(); }
+}
+$("open-simplify").onclick = openSimplify;
+$("open-steps").onclick = openSteps;
+$("edit-slider").addEventListener("input", previewPanel);
+$("edit-close").onclick = () => closePanel(true);
+$("edit-apply").onclick = async () => {
+  const v = Number($("edit-slider").value);
+  const a = panel.kind === "simplify" ? await act("simplify_apply", {keep: v}) : await act("take_step", {i: v});
+  if (a.ok) { toast(T.edit_taken); closePanel(true); }
+};
+
+async function playLapse() {
+  // the saved steps one after the other (at 1× in about 6 s), ending on the result
+  if (lapse) { stopLapse(true); return; }
+  setTool("");
+  closePanel(false);
+  const st = await getJSON("/api/get/steps");
+  if (!st.ok || st.lapse < 2) { toast(T.edit_no_steps); return; }
+  const take = Math.min(st.lapse, 120);  // (a long sketch: every n-th step)
+  const pick = [...Array(take).keys()].map((k) => Math.round(k * (st.lapse - 1) / Math.max(1, take - 1)));
+  const frames = pick.map((i) => `/api/file/step?lapse=1&i=${i}&v=${S.edit.rev}&s=${S.style}`);
+  for (const src of frames) new Image().src = src;  // (loaded ahead)
+  const speed = Number($("lapse-speed").value) || 1;
+  lapse = {i: 0, timer: 0};
+  $("play-lapse").classList.add("on");
+  const step = () => {
+    if (!lapse) return;
+    if (lapse.i >= frames.length) { stopLapse(true); return; }
+    $("sketch").src = frames[lapse.i++];
+    lapse.timer = setTimeout(step, Math.max(20, 6000 / frames.length / speed));
+  };
+  step();
+}
+function stopLapse(show) {
+  if (!lapse) return;
+  clearTimeout(lapse.timer);
+  lapse = null;
+  $("play-lapse").classList.remove("on");
+  if (show) { lastSeen.sketch = ""; renderSketch(); }
+}
+$("play-lapse").onclick = playLapse;
+
+$("rerun-cell").onclick = async () => {
+  const c = S.scene && S.scene.cells.find((x) => x.seed === S.shown);
+  if (!c || !confirm(t("rerun_ask", {layer: c.layer, level: c.level}))) return;
+  const a = await act("rerun_cell", {cell: c.seed});
+  if (a.ok) toast(T.rerun_queued);
+};
+$("cont-go").onclick = async () => {
+  const a = await act("continue_clipasso", {new: Number($("cont-new").value), keep: $("cont-keep").checked,
+                                            iterations: Number($("cont-iter").value)});
+  if (a.ok) { toast(a.queued ? T.edit_continue_queued : T.edit_continue_started); $("continue-box").open = false; }
+};
+
 // ------------------------------------------------------------------ the studio layout of a wide screen (3.8)
 // On a computer or a tablet held across, the page looks almost like the studio on the PC: the areas in a bar on the
 // left, the studio in three columns – the picture and the result on the left, the sketch in the middle, the settings
@@ -1362,7 +1562,14 @@ $("full").onclick = () => {
 
 // keys on a computer: Space pauses / goes on, ←/→ the previous / next sketch, F full screen
 document.addEventListener("keydown", (e) => {
-  if (!desk || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!desk) return;
+  const field = e.target && (e.target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName));
+  if ((e.ctrlKey || e.metaKey) && !field && S && S.edit && tab === "studio" && ["z", "y"].includes(e.key.toLowerCase())) {
+    e.preventDefault();  // Ctrl+Z / Ctrl+Y: the edits of the sketch
+    act("edit", {op: e.key.toLowerCase() === "y" || e.shiftKey ? "redo" : "undo"});
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   const target = e.target;
   if (target && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(target.tagName))) return;
   if ([...document.querySelectorAll(".sheet")].some((x) => !x.hidden)) return;

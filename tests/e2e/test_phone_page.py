@@ -243,3 +243,29 @@ def test_compare_crop_and_swipe(signed_in):
     _swipe(page, "#sketch", -150 if shown == 800 else 150)
     signed_in.wait_state(lambda s: s["shown"] != shown)
     assert signed_in.errors == []
+
+
+def test_drawing_on_the_sketch_and_undo(signed_in):
+    """3.8: the pen of the studio on the phone – a line drawn with the finger is a stroke of the sketch; ↶ undoes it."""
+    page = signed_in.page
+    signed_in.open_result("camel")
+    page.wait_for_selector("#edit-tools:not([hidden])")
+    before = signed_in.state()["edit"]["strokes"]
+    page.click("#tool-pen")
+    assert page.is_visible("#edit-canvas")
+    box = page.eval_on_selector("#sketch", "e => { const r = e.getBoundingClientRect(); "
+                                           "return [r.left, r.top, r.width, r.height]; }")
+    x, y, w, h = box
+    page.mouse.move(x + w * 0.2, y + h * 0.5)
+    page.mouse.down()
+    for k in range(1, 9):
+        page.mouse.move(x + w * (0.2 + 0.07 * k), y + h * (0.5 + 0.02 * k))
+    page.mouse.up()
+    st = signed_in.wait_state(lambda s: s["edit"] and s["edit"]["strokes"] == before + 1)
+    assert st["edit"]["undo"] and st["edit"]["fixed"] >= 1
+    page.click("#tool-pen")
+    page.click("#edit-undo")
+    signed_in.wait_state(lambda s: s["edit"]["strokes"] == before)
+    page.click("#open-steps")  # (the fake result has no saved steps: the page says so)
+    page.wait_for_selector("#toast:not([hidden])")
+    assert signed_in.width() == 390 and signed_in.errors == []
