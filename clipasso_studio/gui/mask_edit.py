@@ -65,6 +65,45 @@ def _component(mask: np.ndarray, x: int, y: int) -> np.ndarray:
     return _grow_and_scale(np.asarray(small) == 128, w, h)
 
 
+def part_click(mask: np.ndarray, candidate: np.ndarray, source: Image.Image | None, x: float,
+               y: float) -> np.ndarray | None:
+    """A click at image position (x, y): inside the mask the part under it goes; outside, the part of the candidate
+    map (what the mask model was less sure about) comes in – or, where the model saw nothing, the area of similar
+    colours (magic wand). The new mask, None when there is nothing to change. (The studio and the phone.)"""
+    h, w = mask.shape
+    xi, yi = int(x), int(y)
+    if not (0 <= xi < w and 0 <= yi < h):
+        return None
+    if mask[yi, xi]:
+        return mask & ~_component(mask, xi, yi)
+    if candidate[yi, xi]:
+        return mask | (_component(candidate, xi, yi) & candidate)
+    if source is not None:
+        return mask | wand(source, (w, h), xi, yi)
+    return None
+
+
+def dab(mask: np.ndarray, x: float, y: float, r: float, value: bool) -> None:
+    """One brush dab (a disc of radius ``r``) at image position (x, y), in place."""
+    h, w = mask.shape
+    x0, x1 = max(0, int(x - r)), min(w, int(x + r) + 1)
+    y0, y1 = max(0, int(y - r)), min(h, int(y + r) + 1)
+    if x0 >= x1 or y0 >= y1:
+        return
+    yy, xx = np.ogrid[y0:y1, x0:x1]
+    disc = (xx - x) ** 2 + (yy - y) ** 2 <= r * r
+    mask[y0:y1, x0:x1][disc] = value
+
+
+def line(mask: np.ndarray, a: tuple[float, float], b: tuple[float, float], r: float, value: bool) -> None:
+    """Brush dabs along a line (half a radius apart), in place."""
+    step = max(1.0, r / 2)
+    n = max(1, int(np.hypot(b[0] - a[0], b[1] - a[1]) / step))
+    for i in range(1, n + 1):
+        t = i / n
+        dab(mask, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, r, value)
+
+
 class MaskCanvas(QWidget):
     """The photo with the excluded area veiled; click parts or paint to change the mask."""
 
@@ -146,42 +185,20 @@ class MaskCanvas(QWidget):
         """Inside the mask: remove the part under the cursor. Outside: add the part of the candidate
         map (what the mask model was less sure about) – or, where the model saw nothing, the area of
         similar colours (magic wand). False when there is nothing to change."""
-        h, w = self.mask.shape
-        xi, yi = int(x), int(y)
-        if not (0 <= xi < w and 0 <= yi < h):
+        new = part_click(self.mask, self.candidate, self.source, x, y)
+        if new is None:
             return False
-        if self.mask[yi, xi]:
-            self._snapshot()
-            self.mask &= ~_component(self.mask, xi, yi)
-        elif self.candidate[yi, xi]:
-            self._snapshot()
-            self.mask |= _component(self.candidate, xi, yi) & self.candidate
-        elif self.source is not None:
-            self._snapshot()
-            self.mask |= wand(self.source, (w, h), xi, yi)
-        else:
-            return False
+        self._snapshot()
+        self.mask = new
         self._changed()
         return True
 
     def dab(self, x: float, y: float, value: bool):
         """One brush dab (a disc of the brush size) at image position (x, y)."""
-        r = self._radius()
-        h, w = self.mask.shape
-        x0, x1 = max(0, int(x - r)), min(w, int(x + r) + 1)
-        y0, y1 = max(0, int(y - r)), min(h, int(y + r) + 1)
-        if x0 >= x1 or y0 >= y1:
-            return
-        yy, xx = np.ogrid[y0:y1, x0:x1]
-        disc = (xx - x) ** 2 + (yy - y) ** 2 <= r * r
-        self.mask[y0:y1, x0:x1][disc] = value
+        dab(self.mask, x, y, self._radius(), value)
 
     def _line(self, a: tuple[float, float], b: tuple[float, float], value: bool):
-        step = max(1.0, self._radius() / 2)
-        n = max(1, int(np.hypot(b[0] - a[0], b[1] - a[1]) / step))
-        for i in range(1, n + 1):
-            t = i / n
-            self.dab(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, value)
+        line(self.mask, a, b, self._radius(), value)
 
     def _changed(self):
         self._dirty = True

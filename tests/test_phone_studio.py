@@ -132,3 +132,98 @@ def test_nothing_to_edit_while_it_is_drawn(window, monkeypatch):
     assert st["edit"] is None
     assert window.phone.api.handle("do_edit", {"op": "undo"})["ok"] is False
     assert window.phone.api.handle("do_rerun_cell", {"cell": "x"})["ok"] is False
+
+
+def test_views_best_history_hints_and_paper(window, tmp_path, monkeypatch):
+    """The views of a job (photo / sketch, attention), another sketch as the result, the earlier jobs of the photo,
+    the hints about the photo and the paper's colour and vignette – from the phone."""
+    import io
+
+    from PIL import Image
+
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui import image_hints
+    from clipasso_studio.gui.app_settings import app_settings
+
+    out = tmp_path / "out"
+    out.mkdir()
+    monkeypatch.setitem(app_settings().data, "output_dir", str(out))
+    photo = tmp_path / "camel.png"
+    Image.new("RGB", (64, 64), "white").save(photo)
+    job, run = _job(out)
+    Image.new("L", (224, 224), 128).save(run / "attention_map.png")
+    run2 = job / "run2"
+    run2.mkdir()
+    (run2 / "best_iter.svg").write_text(SVG)
+    summary = json.loads((job / "job.json").read_text())
+    summary["target"] = str(photo)
+    summary["runs"].append({**summary["runs"][0], "seed": 21, "run_name": "run2", "run_dir": str(run2),
+                            "best_svg": str(run2 / "best_iter.svg")})
+    (job / "job.json").write_text(json.dumps(summary))
+    studio, call = window.studio, window.phone.api.handle
+    studio.set_image(str(photo))
+    studio.show_job_dir(str(job))
+    st = call("get_studio", {})
+    assert {"compare", "attention"} <= set(st["views"]) and len(st["seeds"]) == 2
+    png = call("file_view", {"kind": "attention"})
+    assert png["_type"] == "image/png" and Image.open(io.BytesIO(png["_bytes"])).size == (224, 224)
+    assert call("file_view", {"kind": "nothing"})["ok"] is False
+    # another sketch as the job's result
+    assert call("do_choose_best", {"seed": 21})["ok"]
+    assert jobs.job_summary(str(job))["best_run"] == "run2"
+    assert next(x for x in call("get_studio", {})["seeds"] if x["seed"] == 21)["best"]
+    assert call("do_choose_best", {"seed": "x"})["ok"] is False
+    # the earlier jobs of the photo
+    studio._history_cache = None
+    history = call("get_history", {})
+    assert history["ok"] and [j["dir"] for j in history["jobs"]] == ["job"] and history["jobs"][0]["shown"]
+    # a hint about the photo, and "don't show again"
+    monkeypatch.setattr(studio, "_photo_hints", [image_hints.Hint("dark")])
+    hints = call("get_studio", {})["hints"]
+    assert [h["key"] for h in hints] == ["dark"] and hints[0]["text"]
+    assert call("do_dismiss_hint", {"key": "dark"})["ok"] and "dark" in app_settings().get("hints_off")
+    assert call("get_studio", {})["hints"] == [] and call("do_dismiss_hint", {"key": "x"})["ok"] is False
+    app_settings().set("hints_off", [])
+    # the paper's colour and vignette (as the studio's look menu)
+    assert call("do_paper", {"color": "#112233", "vignette": True})["ok"]
+    st = call("get_studio", {})
+    assert st["paper_color"] == "#112233" and st["vignette"]
+    assert call("do_paper", {"color": "red; x"})["ok"] is False
+    assert call("do_paper", {"color": "", "vignette": False})["ok"] and not call("get_studio", {})["vignette"]
+
+
+def test_touching_up_the_mask_on_the_phone(window, tmp_path, monkeypatch):
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.engine import masking
+    from clipasso_studio.gui import mask_view
+
+    photo = tmp_path / "dog.png"
+    Image.new("RGB", (40, 80), "white").save(photo)
+    studio, call = window.studio, window.phone.api.handle
+    studio.set_image(str(photo))
+    prob = np.zeros((80, 40), np.float32)
+    prob[20:60, 10:30] = 1.0
+    monkeypatch.setattr(studio, "_mask_settings", lambda: (True, "u2net", {}))
+    monkeypatch.setattr(studio, "_mask", {"key": (str(photo), "u2net"), "prob": prob, "edited": False})
+    monkeypatch.setattr(mask_view, "load_mask", lambda path, model: (Image.open(photo).convert("RGB"), prob, None))
+    saved, previews = [], []
+    monkeypatch.setattr(masking, "save_edited_mask", lambda im, mask: saved.append(mask.copy()))
+    monkeypatch.setattr(studio, "_update_mask_preview", lambda: previews.append(True))
+    begin = call("do_mask_begin", {})
+    assert begin["ok"] and begin["share"] == 0.25 and not begin["undo"]
+    jpg = call("file_mask_edit", {})
+    assert jpg["_type"] == "image/jpeg"
+    gone = call("do_mask_edit", {"op": "part", "x": 0.5, "y": 0.5})  # the object tapped: it goes
+    assert gone["share"] == 0 and gone["undo"]
+    assert call("do_mask_save", {})["ok"] is False  # (an empty mask is not kept)
+    assert call("do_mask_edit", {"op": "undo"})["share"] == 0.25
+    more = call("do_mask_edit", {"op": "add", "points": [[0.1, 0.05], [0.9, 0.05]], "size": 0.2})
+    assert more["share"] > 0.25
+    wand = call("do_mask_edit", {"op": "part", "x": 0.05, "y": 0.95})  # where the model saw nothing: magic wand
+    assert wand["share"] > more["share"]  # (the white photo: all of it)
+    assert call("do_mask_edit", {"op": "undo"})["share"] == more["share"]
+    assert call("do_mask_edit", {"op": "melt"})["ok"] is False
+    assert call("do_mask_save", {})["ok"] and saved and saved[0].mean() > 0.25 and previews
+    assert call("do_mask_edit", {"op": "undo"})["ok"] is False  # (saved: the session is over)

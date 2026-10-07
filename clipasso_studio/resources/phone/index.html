@@ -44,7 +44,13 @@
       <div class="row wrap">
         <button id="crop" class="small" data-t="crop"></button>
         <button id="mask" class="small" data-t="mask_show" hidden></button>
+        <button id="mask-edit" class="small" data-t="mask_edit" hidden></button>
         <span id="mask-state" class="muted small-text"></span>
+      </div>
+      <div id="hints" class="hints"></div>
+      <div id="history" hidden>
+        <div id="history-title" class="sub"></div>
+        <div id="history-list" class="history"></div>
       </div>
       <div id="upload-msg" class="muted"></div>
       <div id="pc-images" hidden>
@@ -132,6 +138,14 @@
     <div class="card" id="sketch-card">
       <div class="row between"><div id="view-name" class="muted one-line"></div>
         <button id="full" class="small desk-only" data-t="full_screen"></button></div>
+      <div id="views" class="seg views" hidden>
+        <button data-v="sketch" class="on" data-t="view_sketch"></button>
+        <button data-v="compare" data-t="view_compare"></button>
+        <button data-v="attention" data-t="view_attention"></button>
+        <button data-v="mask" data-t="view_mask"></button>
+        <button data-v="condition" data-t="view_condition"></button>
+        <button data-v="all" data-t="view_all"></button>
+      </div>
       <div id="scene-views" class="seg views" hidden>
         <button data-view="sketch" class="on" data-t="view_sketch"></button>
         <button data-view="background" data-t="view_background"></button>
@@ -141,6 +155,10 @@
       <div id="sketch-box" class="preview"><img id="sketch" alt="">
         <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
         <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="compare-view" class="preview split" hidden><img id="split-photo" alt=""><img id="split-sketch" alt=""></div>
+      <input id="split" class="split-range" type="range" min="0" max="100" value="50" hidden>
+      <div id="plain-view" class="preview" hidden><img id="plain-img" alt=""></div>
+      <div id="all-view" class="sheet-grid" hidden></div>
       <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
         <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
       <div id="matrix-box" class="matrix-box" hidden>
@@ -200,6 +218,11 @@
       <h2 data-t="look"></h2>
       <div class="field"><label data-t="style"></label><select id="style"></select></div>
       <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
+      <div class="row wrap">
+        <label class="check grow"><input id="vignette" type="checkbox"><span data-t="x_vignette"></span></label>
+        <input id="paper-color" type="color" class="color-sm" aria-label="color">
+        <button id="paper-color-reset" class="small" data-t="paper_color_reset"></button>
+      </div>
       <div class="row wrap">
         <a id="dl-svg" class="btn" download data-t="download_svg"></a>
         <a id="dl-png" class="btn" download data-t="download_png"></a>
@@ -370,6 +393,29 @@
     <b data-t="update_restart_title"></b>
     <div id="restart-msg" class="muted"></div>
   </div>
+</div>
+
+<!-- ========================================================== touching up the mask -->
+<div id="masker" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="mask_edit_title"></b>
+    <button id="mask-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="mask_edit_hint"></div>
+  <div class="mask-area"><img id="mask-img" alt=""><canvas id="mask-canvas"></canvas></div>
+  <div id="mask-tools" class="seg">
+    <button data-tool="part" class="on" data-t="mask_tool_part"></button>
+    <button data-tool="add" data-t="mask_tool_add"></button>
+    <button data-tool="erase" data-t="mask_tool_erase"></button>
+  </div>
+  <div class="row"><span class="muted" data-t="brush_size"></span><input id="mask-brush" type="range" min="1" max="20" value="5"></div>
+  <div class="row wrap">
+    <button id="mask-undo" class="small" aria-label="undo">↶</button>
+    <button id="mask-redo" class="small" aria-label="redo">↷</button>
+    <button id="mask-reset" class="small" data-t="mask_reset"></button>
+    <button id="mask-save" class="primary" data-t="save"></button>
+  </div>
+  <div id="mask-msg" class="muted"></div>
 </div>
 
 <div id="pull" hidden>↻</div>

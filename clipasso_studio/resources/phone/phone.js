@@ -196,8 +196,125 @@ function renderPicture() {
   $("mask").disabled = !m.ready;
   $("mask").textContent = showMask ? T.mask_hide : T.mask_show;
   $("mask-state").textContent = img && m.used ? m.text : "";
+  $("mask-edit").hidden = !(img && m.used && m.ready);
+  renderHints();
+  renderHistory();
 }
 $("mask").onclick = () => { showMask = !showMask; renderPicture(); };
+
+// hints about the photo (too small, dark, blurred, a tiny object, an unsure mask …) with what helps
+function renderHints() {
+  const hints = (S.image && S.hints) || [];
+  const sig = JSON.stringify(hints);
+  if ($("hints").dataset.sig === sig) return;
+  $("hints").dataset.sig = sig;
+  $("hints").replaceChildren(...hints.map((h) => el("div", {class: "warn"}, el("div", {text: h.text}),
+    el("div", {class: "row wrap"},
+       h.action ? el("button", {class: "small", text: h.action_text, onclick: () => hintAction(h.action)}) : null,
+       el("button", {class: "small", text: T.hint_dismiss, onclick: () => act("dismiss_hint", {key: h.key})})))));
+}
+function hintAction(action) {
+  if (action === "crop") $("crop").click();
+  else if (S.mask && S.mask.ready) openMasker();
+  else { showMask = true; renderPicture(); }
+}
+
+// the earlier jobs of the same photo (any method), the newest first – a tap shows one
+async function renderHistory() {
+  const n = (S.image && S.history_n) || 0;
+  const sig = (S.image ? S.image.rev : "") + ":" + n + ":" + S.view;
+  if ($("history").dataset.sig === sig) return;
+  $("history").dataset.sig = sig;
+  $("history").hidden = !n;
+  if (!n) return;
+  const h = await getJSON("/api/get/history").catch(() => null);
+  if (!h || !h.ok) return;
+  $("history-title").textContent = t("history_title", {n: h.jobs.length});
+  $("history-list").replaceChildren(...h.jobs.map((j) => el("button", {
+    class: j.shown ? "sel" : "", title: j.created + (j.score ? " · " + j.score : ""),
+    onclick: async () => { const a = await act("open", {dir: j.dir}); if (a.ok) showTab("sketch"); }},
+    el("img", {src: "/api/file/result?d=" + encodeURIComponent(j.dir), alt: "", loading: "lazy"}),
+    el("span", {text: j.method}), el("span", {text: j.created.slice(5, 10)}))));
+}
+
+// touching up the mask: tap a part to remove it (or to add one the model left out), or paint
+let maskTool = "part";
+async function openMasker() {
+  const a = await act("mask_begin");
+  if (!a.ok) return;
+  $("masker").hidden = false;
+  $("mask-msg").textContent = "";
+  showMaskEdit(a);
+}
+function showMaskEdit(a) {
+  $("mask-img").src = "/api/file/mask_edit?v=" + a.rev + "-" + Date.now();
+  $("mask-undo").disabled = !a.undo;
+  $("mask-redo").disabled = !a.redo;
+  $("mask-msg").textContent = t("mask_share", {pct: Math.round(100 * a.share)});
+}
+async function maskEdit(data) {
+  const r = await fetch("/api/do", {method: "POST", headers: {"X-Access": TOKEN, "Content-Type": "application/json"},
+                                    body: JSON.stringify(Object.assign({action: "mask_edit"}, data))});
+  const a = await r.json().catch(() => ({ok: false, error: T.failed}));
+  signedOut(r, a);
+  if (a.ok) showMaskEdit(a);
+  else $("mask-msg").textContent = a.error || T.failed;
+}
+$("mask-edit").onclick = openMasker;
+$("mask-close").onclick = () => { $("masker").hidden = true; act("mask_cancel"); };
+$("mask-tools").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-tool]");
+  if (!b) return;
+  maskTool = b.dataset.tool;
+  for (const x of $("mask-tools").children) x.classList.toggle("on", x === b);
+});
+$("mask-undo").onclick = () => maskEdit({op: "undo"});
+$("mask-redo").onclick = () => maskEdit({op: "redo"});
+$("mask-reset").onclick = () => maskEdit({op: "reset"});
+$("mask-save").onclick = async () => {
+  const a = await act("mask_save");
+  if (a.ok) { $("masker").hidden = true; toast(T.mask_saved); showMask = true; lastSeen.input = ""; schedule(100); }
+};
+(function maskDrawing() {
+  const cv = $("mask-canvas");
+  let pts = null, ctx = null;
+  const rel = (e) => {
+    const r = $("mask-img").getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    pts = [rel(e)];
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * devicePixelRatio);
+    cv.height = Math.round(r.height * devicePixelRatio);
+    ctx = cv.getContext("2d");
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.lineCap = ctx.lineJoin = "round";
+    ctx.lineWidth = Number($("mask-brush").value) / 100 * r.width;
+    ctx.strokeStyle = maskTool === "erase" ? "rgba(239, 68, 68, .5)" : "rgba(139, 127, 255, .55)";
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!pts || maskTool === "part") return;
+    const r = cv.getBoundingClientRect();
+    pts.push(rel(e));
+    ctx.lineTo(e.clientX - r.left, e.clientY - r.top);
+    ctx.stroke();
+  });
+  const end = async () => {
+    if (!pts) return;
+    const points = pts.slice(0, 2000);
+    pts = null;
+    if (maskTool === "part") await maskEdit({op: "part", x: points[0][0], y: points[0][1]});
+    else await maskEdit({op: maskTool, points, size: Number($("mask-brush").value) / 100});
+    if (ctx) ctx.clearRect(0, 0, cv.width, cv.height);
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", end);
+})();
 
 async function upload(file) {
   if (!file) return;
@@ -618,6 +735,9 @@ for (const [id, prefix] of [["style", "style_"], ["paper", "paper_"]]) {
   }
   sel.onchange = (e) => act("style", {[id]: e.target.value});
 }
+$("vignette").onchange = (e) => act("paper", {vignette: e.target.checked});
+$("paper-color").onchange = (e) => act("paper", {color: e.target.value});
+$("paper-color-reset").onclick = () => act("paper", {color: ""});
 
 // SceneSketch: the views (the sketch, the background LaMa filled in behind the object, the matrix) and the layers
 // of a finished cell (whole, only the background, only the object)
@@ -693,6 +813,52 @@ function renderMatrix(sc) {
   box.replaceChildren(...items);
 }
 
+// the views of a job besides the sketch (as on the PC's canvas): the photo and the sketch with a divider, the
+// attention map, the mask, the condition, and all sketches of the job side by side (one can become the result)
+let view = "sketch";
+$("views").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-v]");
+  if (!b) return;
+  view = b.dataset.v;
+  renderViews();
+});
+$("split").addEventListener("input", () => {
+  $("split-sketch").style.clipPath = `inset(0 0 0 ${$("split").value}%)`;  // (the CSSOM: the page's CSP)
+});
+function renderViews() {
+  const avail = (S && S.views) || {};
+  const several = S && S.seeds.length > 1;
+  const has = (v) => v === "sketch" || (v === "all" ? several : !!avail[v]);
+  const on = !(S && S.scene) && S && S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
+  if (!on || !has(view)) view = "sketch";
+  $("views").hidden = !on || !["compare", "attention", "mask", "condition", "all"].some(has);
+  for (const b of $("views").children) { b.hidden = !has(b.dataset.v); b.classList.toggle("on", b.dataset.v === view); }
+  if (!on) { for (const id of ["compare-view", "split", "plain-view", "all-view"]) $(id).hidden = true; return; }
+  $("sketch-box").hidden = view !== "sketch";
+  $("compare-view").hidden = $("split").hidden = view !== "compare";
+  $("plain-view").hidden = !["attention", "mask", "condition"].includes(view);
+  $("all-view").hidden = view !== "all";
+  if (view === "compare") {
+    $("split-photo").src = "/api/file/view?kind=compare&v=" + avail.compare;
+    $("split-sketch").src = $("sketch").src || `/api/file/sketch?seed=${S.shown}&v=${S.live_rev}&s=${S.style}`;
+    $("split-sketch").style.clipPath = `inset(0 0 0 ${$("split").value}%)`;
+  } else if ($("plain-view").hidden === false) {
+    $("plain-img").src = `/api/file/view?kind=${view}&v=${avail[view]}`;
+  } else if (view === "all") {
+    const sig = JSON.stringify(S.seeds) + S.style;
+    if ($("all-view").dataset.sig !== sig) {
+      $("all-view").dataset.sig = sig;
+      $("all-view").replaceChildren(...S.seeds.map((x) => el("div", {class: "sheet-item" + (x.best ? " best" : "")},
+        el("img", {src: `/api/file/sketch?seed=${x.seed}&v=${x.rev}&s=${S.style}`, alt: "",
+                   onclick: async () => { await act("select", {seed: x.seed}); view = "sketch"; renderViews(); }}),
+        el("span", {text: x.caption || String(x.seed)}),
+        x.best ? el("b", {class: "small-text", text: "★ " + T.best_is})
+               : el("button", {class: "small", text: T.best_choose,
+                               onclick: () => act("choose_best", {seed: x.seed})}))));
+    }
+  }
+}
+
 function renderSketch() {
   renderScene();
   const has = S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
@@ -729,6 +895,9 @@ function renderSketch() {
   $("taste").textContent = t("taste", {up: S.taste.up, down: S.taste.down, need: S.taste.need});
   if (document.activeElement !== $("style")) $("style").value = S.style;
   if (document.activeElement !== $("paper")) $("paper").value = S.paper;
+  $("vignette").checked = !!S.vignette;
+  if (S.paper_color && document.activeElement !== $("paper-color")) $("paper-color").value = S.paper_color;
+  $("paper-color-reset").disabled = !S.paper_color;
   $("dl-svg").href = has ? `/api/file/download?fmt=svg&seed=${S.shown}` : "#";
   $("dl-png").href = has ? `/api/file/download?fmt=png&seed=${S.shown}` : "#";
   $("dl-svg").classList.toggle("off", !has);
@@ -736,6 +905,7 @@ function renderSketch() {
   $("continue").hidden = !S.can_continue;
   $("export-card").hidden = !has || !X.info;
   if (has && (tab === "sketch" || (desk && tab === "studio"))) loadExportInfo(false);
+  renderViews();
   renderEdit();
 }
 $("continue").onclick = () => act("continue");
@@ -1324,7 +1494,7 @@ let lapse = null;  // the time lapse playing: {i, timer}
 
 function renderEdit() {
   const E = S && S.edit;
-  const show = !!E && sceneView === "sketch" && S.shown !== null && S.shown !== undefined;
+  const show = !!E && sceneView === "sketch" && view === "sketch" && S.shown !== null && S.shown !== undefined;
   $("edit-tools").hidden = !show;
   if (!show) { setTool(""); closePanel(false); stopLapse(false); return; }
   $("tool-erase").disabled = !E.can_erase;

@@ -24,6 +24,8 @@ RESULTS_MAX = 40
 INPUT_SIDE = 900  # the picture as the phone sees it (and paints the detail map on)
 ERASE_REACH = 0.02  # the eraser on the phone: this far (of the sketch's width) from a stroke still hits it
 EDIT_POINTS = 2000  # at most this many points of one stroke of the pen / the eraser
+VIEWS = ("compare", "attention", "mask", "condition")  # the views of the studio's canvas besides the sketch
+VIEW_SIDE = 900
 
 
 class PhoneError(Exception):
@@ -78,6 +80,7 @@ class PhoneApi:
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
         self._importance: dict | None = None  # "Simplify" measured on the phone's request: {run_dir, svg, status}
+        self._mask_edit: dict | None = None  # the mask being touched up on the phone (as the studio's mask editor)
         self._importance_proc = None
 
     # ------------------------------------------------------------------ dispatch
@@ -115,7 +118,9 @@ class PhoneApi:
                 s.progress.value(), s.estimate.text(), self._note_id, self._details_rev,
                 st.get("canvas_style"), st.get("canvas_paper"), repr(st.get("user_presets")),
                 repr(self._download_state()), s.mask_status.text(), self._update_signature(),
-                repr(self._importance and self._importance["status"]))
+                repr(self._importance and self._importance["status"]), repr(self._views()),
+                tuple(h.key for h in s.hints()), st.get("canvas_vignette"), st.get("canvas_paper_color"),
+                tuple(s.history_jobs))
 
     def get_studio(self, data: dict) -> dict:
         s = self.studio
@@ -190,6 +195,13 @@ class PhoneApi:
             "download": self._download_state(),
             "mask": self._mask_state(),
             "edit": self._edit_state(),
+            "views": self._views(),
+            "hints": [{"key": h.key, "text": tr(f"ui.hint.{h.key}", **h.values),
+                       "action": h.action, "action_text": tr(f"ui.hint.action_{h.action}") if h.action else ""}
+                      for h in (s.hints() if s.image_path else [])],
+            "vignette": bool(st.get("canvas_vignette")),
+            "history_n": len(s.history_jobs) if s.image_path else 0,
+            "paper_color": st.get("canvas_paper_color") or "",
             "version": __version__,  # (a page of an older version loads again: its script and texts)
             "update": self._update_signature()[0],
         }
@@ -651,6 +663,82 @@ class PhoneApi:
             raise PhoneError(tr("ui.phone.page.failed"))
         return {"ok": True}
 
+    # ------------------------------------------------------------------ the views and the input (3.8)
+    def _view_pixmap(self, kind: str):
+        c = self.studio.canvas
+        return {"compare": c._input, "attention": c._attention, "mask": c._mask, "condition": c._condition}.get(kind)
+
+    def _views(self) -> dict:
+        """The views of the shown job the phone can show (as on the PC's canvas): {kind: revision}."""
+        out = {}
+        for kind in VIEWS:
+            pm = self._view_pixmap(kind)
+            if pm is not None and not pm.isNull():
+                out[kind] = str(pm.cacheKey())
+        return out
+
+    def file_view(self, data: dict) -> dict:
+        """The photo as the method used it (for the photo / sketch divider), the attention map, the mask or the
+        condition of the shown job – as PNG."""
+        from PySide6.QtCore import QBuffer, QIODevice, Qt
+
+        pm = self._view_pixmap(str(data.get("kind", "")))
+        if pm is None or pm.isNull():
+            raise PhoneError(tr("ui.phone.page.no_sketch"))
+        if max(pm.width(), pm.height()) > VIEW_SIDE:
+            pm = pm.scaled(VIEW_SIDE, VIEW_SIDE, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        buf = QBuffer()
+        buf.open(QIODevice.WriteOnly)
+        pm.save(buf, "PNG")
+        return _file(bytes(buf.data()), "image/png")
+
+    def do_choose_best(self, data: dict) -> dict:
+        """Another sketch of the job as its result (the gallery, the exports and the phone take it)."""
+        try:
+            seed = int(data.get("seed"))
+        except (TypeError, ValueError):
+            raise PhoneError(tr("ui.phone.page.failed")) from None
+        if not self.studio.choose_best(seed):
+            raise PhoneError(tr("ui.phone.page.failed"))
+        return {"ok": True}
+
+    def get_history(self, data: dict) -> dict:
+        """The earlier jobs of the studio's picture (any method), the newest first."""
+        s = self.studio
+        s.refresh_history()
+        shown = os.path.normcase(os.path.abspath(s.view_dir)) if s.view_dir else ""
+        out = []
+        for job_dir in s.history_jobs:
+            summary = jobs.job_summary(job_dir) or {}
+            method = summary.get("method") or schema.method_of(summary.get("settings"))
+            score = summary.get("clip_score")
+            out.append({"dir": os.path.basename(os.path.normpath(job_dir)), "method": methods_ui.name(method),
+                        "created": str(summary.get("created", ""))[:16],
+                        "score": f"{score:.1f}" if isinstance(score, (int, float)) else "",
+                        "shown": os.path.normcase(os.path.abspath(job_dir)) == shown})
+        return {"ok": True, "jobs": out}
+
+    def do_dismiss_hint(self, data: dict) -> dict:
+        """Do not show this kind of hint about the photo again (the PC's settings can show them again)."""
+        from . import image_hints
+
+        key = str(data.get("key", ""))
+        if key not in image_hints.ORDER:
+            raise PhoneError(tr("ui.phone.page.failed"))
+        self.studio.dismiss_hint(key)
+        return {"ok": True}
+
+    def do_paper(self, data: dict) -> dict:
+        """The paper's colour ("": the kind's own) and its vignette – as the studio's look menu."""
+        import re
+
+        color, vignette = data.get("color"), data.get("vignette")
+        if color is not None and color != "" and not re.fullmatch(r"#[0-9a-fA-F]{6}", str(color)):
+            raise PhoneError(tr("ui.phone.page.failed"))
+        self.studio.set_canvas_paper(color=None if color is None else str(color),
+                                     vignette=None if vignette is None else bool(vignette))
+        return {"ok": True}
+
     def _styled(self, svg: str) -> dict:
         from . import brush
         from .export import restyle_svg
@@ -807,12 +895,8 @@ class PhoneApi:
 
     def file_mask(self, data: dict) -> dict:
         """The studio's picture with its mask: the background veiled, the object outlined (as in the studio)."""
-        from PySide6.QtCore import QBuffer, QIODevice
-        from PySide6.QtGui import QColor, QPainter
-
         from ..engine import masking
-        from . import mask_view, theme
-        from .image_io import read_image
+        from . import mask_view
 
         s = self.studio
         if not self._mask_state()["ready"]:
@@ -821,8 +905,130 @@ class PhoneApi:
         _, prob, edited = mask_view.load_mask(s.image_path, model)
         if prob is None and edited is None:
             raise PhoneError(tr("ui.phone.page.mask_not_ready"))
-        mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
-        photo = read_image(s.image_path, INPUT_SIDE)
+        return self._mask_picture(edited if edited is not None else prob >= masking.OBJECT_THRESHOLD)
+
+    # ------------------------------------------------------------------ touching up the mask on the phone (3.8)
+    def do_mask_begin(self, data: dict) -> dict:
+        """Start touching up the mask of the studio's picture: a part tapped goes (or comes in), the brush adds or
+        erases – the same steps as the studio's mask editor; nothing is kept until "Save"."""
+        from PIL import Image
+
+        from ..engine import masking
+        from . import mask_edit, mask_view
+
+        s = self.studio
+        if not self._mask_state()["ready"]:
+            raise PhoneError(tr("ui.phone.page.mask_not_ready"))
+        _, model, _ = s._mask_settings()
+        image, prob, edited = mask_view.load_mask(s.image_path, model)
+        if prob is None:
+            raise PhoneError(tr("ui.phone.page.mask_not_ready"))
+        photo = image.copy()
+        photo.thumbnail((1600, 1600), Image.BILINEAR)
+        auto = prob >= masking.OBJECT_THRESHOLD
+        start = edited if edited is not None else auto
+        self._mask_edit = {"path": s.image_path, "image": image, "auto": auto, "mask": start.astype(bool).copy(),
+                           "candidate": (prob >= mask_edit.CANDIDATE) | start.astype(bool), "source": photo,
+                           "undo": [], "redo": [], "rev": 0}
+        return {"ok": True, **self._mask_info()}
+
+    def _mask_session(self) -> dict:
+        m = self._mask_edit
+        if m is None or m["path"] != self.studio.image_path:
+            raise PhoneError(tr("ui.phone.page.mask_not_ready"))
+        return m
+
+    def _mask_info(self) -> dict:
+        m = self._mask_edit
+        return {"share": round(float(m["mask"].mean()), 4), "undo": bool(m["undo"]), "redo": bool(m["redo"]),
+                "rev": m["rev"]}
+
+    def do_mask_edit(self, data: dict) -> dict:
+        """``op``: part (``x``, ``y``: 0..1 of the picture), add / erase (``points`` and the brush ``size``, 0..1 of
+        the picture's width), undo, redo, reset (the mask model's own)."""
+        from . import mask_edit
+
+        m = self._mask_session()
+        mask = m["mask"]
+        h, w = mask.shape
+        op = data.get("op")
+        if op in ("undo", "redo"):
+            frm, to = (m["undo"], m["redo"]) if op == "undo" else (m["redo"], m["undo"])
+            if frm:
+                to.append(mask)
+                m["mask"] = frm.pop()
+        else:
+            if op == "part":
+                try:
+                    x, y = float(data.get("x")) * w, float(data.get("y")) * h
+                except (TypeError, ValueError):
+                    raise PhoneError(tr("ui.phone.page.failed")) from None
+                new = mask_edit.part_click(mask, m["candidate"], m["source"], x, y)
+                if new is None:
+                    raise PhoneError(tr("ui.mask_edit.nothing_here"))
+            elif op in ("add", "erase"):
+                try:
+                    r = max(1.0, min(0.25, float(data.get("size", 0.04))) * w / 2)
+                except (TypeError, ValueError):
+                    r = 0.02 * w
+                pts = []
+                for p in (data.get("points") or [])[:EDIT_POINTS]:
+                    try:
+                        pts.append((float(p[0]) * w, float(p[1]) * h))
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                if not pts:
+                    raise PhoneError(tr("ui.phone.page.failed"))
+                new = mask.copy()
+                mask_edit.dab(new, pts[0][0], pts[0][1], r, op == "add")
+                for a, b in zip(pts, pts[1:]):
+                    mask_edit.line(new, a, b, r, op == "add")
+            elif op == "reset":
+                new = m["auto"].copy()
+            else:
+                raise PhoneError("unknown edit")
+            m["undo"] = (m["undo"] + [mask])[-mask_edit.UNDO_STEPS:]
+            m["redo"] = []
+            m["mask"] = new
+        m["rev"] += 1
+        return {"ok": True, **self._mask_info()}
+
+    def file_mask_edit(self, data: dict) -> dict:
+        """The picture with the mask being touched up (the left-out part veiled)."""
+        m = self._mask_session()
+        return self._mask_picture(m["mask"])
+
+    def do_mask_save(self, data: dict) -> dict:
+        """Keep the touched-up mask for this picture (every method uses it) – or the model's own again."""
+        import numpy as np
+
+        from ..engine import masking
+
+        m = self._mask_session()
+        if not m["mask"].any():
+            raise PhoneError(tr("ui.mask_edit.empty"))
+        if np.array_equal(m["mask"], m["auto"]):
+            masking.remove_edited_mask(m["image"])
+        else:
+            masking.save_edited_mask(m["image"], m["mask"])
+        self._mask_edit = None
+        s = self.studio
+        s._mask = None
+        s._update_mask_preview()
+        return {"ok": True}
+
+    def do_mask_cancel(self, data: dict) -> dict:
+        self._mask_edit = None
+        return {"ok": True}
+
+    def _mask_picture(self, mask) -> dict:
+        from PySide6.QtCore import QBuffer, QIODevice
+        from PySide6.QtGui import QColor, QPainter
+
+        from . import mask_view, theme
+        from .image_io import read_image
+
+        photo = read_image(self.studio.image_path, INPUT_SIDE)
         pal = theme.current()
         veil = QColor(pal.surface2)
         veil.setAlpha(215)

@@ -280,3 +280,24 @@ body.desk #tab-gallery, body.desk #tab-queue, body.desk #tab-app { max-width: 11
 .edit-panel input[type=range] { width: 100%; margin: 8px 0 4px; }
 select.speed { width: auto; flex: 0 0 auto; min-height: 34px; padding: 4px 8px; font-size: 14px; }
 .grow { flex: 1 1 auto; }
+
+/* the views of a job, its other sketches, earlier jobs of the photo, hints, the mask (3.8) */
+.split { position: relative; }
+.split img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.split-range { width: 100%; margin-top: 6px; }
+.sheet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 6px; }
+.sheet-item { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex;
+  flex-direction: column; gap: 4px; }
+.sheet-item.best { border-color: var(--accent); border-width: 2px; }
+.sheet-item img { width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; object-fit: contain; cursor: pointer; }
+.sheet-item span { font-size: 12px; color: var(--muted); }
+.history { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.history button { flex: 0 0 84px; flex-direction: column; padding: 4px; min-height: 0; gap: 2px; }
+.history button.sel { border-color: var(--accent); border-width: 2px; }
+.history img { width: 72px; height: 64px; background: #fff; border-radius: 6px; object-fit: contain; }
+.history span { font-size: 11px; color: var(--muted); }
+.hints .warn .row { margin-top: 6px; }
+input.color-sm { width: 52px; height: 38px; flex: 0 0 52px; padding: 2px; }
+.mask-area { position: relative; margin: 10px 0; }
+.mask-area img { width: 100%; display: block; border-radius: 8px; max-height: 60vh; object-fit: contain; }
+#mask-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
