@@ -34,13 +34,16 @@ def browser():
         b.close()
 
 
-@pytest.fixture(scope="module")
-def studio_app(browser, tmp_path_factory):
-    tmp = tmp_path_factory.mktemp("e2e")
+def start_app(tmp: Path, lang: str = "de", port: int = 0, version: str = ""):
+    """The app in a process of its own (tests/e2e/app_harness.py): (process, its address, PIN, folders, log)."""
     env = {**os.environ, "QT_QPA_PLATFORM": "offscreen",
            "PYTHONPATH": os.pathsep.join([str(ROOT), os.environ.get("PYTHONPATH", "")])}
-    proc = subprocess.Popen([sys.executable, "-m", "tests.e2e.app_harness", str(tmp / "data"), str(tmp / "out"),
-                             "de"], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+    if version:
+        env["CLIPASSO_E2E_VERSION"] = version
+    args = [sys.executable, "-m", "tests.e2e.app_harness", str(tmp / "data"), str(tmp / "out"), lang]
+    if port:
+        args.append(str(port))
+    proc = subprocess.Popen(args, cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
     lines: queue.Queue = queue.Queue()
     log: list[str] = []
@@ -63,13 +66,23 @@ def studio_app(browser, tmp_path_factory):
         pytest.fail("the app did not start:\n" + "".join(log[-40:]))
     url = found["URL"]
     _wait_until_answering(url, proc, log)
-    yield SimpleNamespace(url=url, base=url.split("/?", 1)[0], pin=found["PIN"], out=tmp / "out", data=tmp / "data",
-                          log=log)
+    return proc, SimpleNamespace(url=url, base=url.split("/?", 1)[0], pin=found["PIN"], out=tmp / "out",
+                                 data=tmp / "data", log=log, port=int(url.split(":")[2].split("/")[0]))
+
+
+def stop_app(proc) -> None:
     proc.stdin.close()
     try:
         proc.wait(60)
     except subprocess.TimeoutExpired:
         proc.kill()
+
+
+@pytest.fixture(scope="module")
+def studio_app(browser, tmp_path_factory):
+    proc, app = start_app(tmp_path_factory.mktemp("e2e"))
+    yield app
+    stop_app(proc)
 
 
 def _wait_until_answering(url: str, proc, log, seconds: float = 180.0):

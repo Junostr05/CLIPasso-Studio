@@ -32,7 +32,7 @@ def test_sign_in_with_the_pin(phone, studio_app):
 
 
 def test_every_tab_fits_the_phone(signed_in):
-    for tab in ("studio", "sketch", "gallery", "queue"):
+    for tab in ("studio", "sketch", "gallery", "queue", "app"):
         signed_in.tab(tab)
         assert signed_in.width() == 390, tab
     assert signed_in.errors == []
