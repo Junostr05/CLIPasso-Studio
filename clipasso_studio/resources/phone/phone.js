@@ -63,12 +63,16 @@ function toast(text) {
 for (const node of document.querySelectorAll("[data-t]")) node.textContent = t(node.dataset.t);
 
 let tab = "studio";
+let desk = false;  // the studio layout of a wide screen (three columns): studio and sketch are one
 function showTab(name) {
+  if (desk && name === "sketch") name = "studio";
   tab = name;
   for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("on", b.dataset.tab === name);
   for (const s of document.querySelectorAll("section.tab")) s.hidden = s.id !== "tab-" + name;
+  $("desk").hidden = !(desk && name === "studio");
+  if (desk && name === "studio") $("tab-studio").hidden = true;
   if (name === "gallery") loadResults();
-  if (name === "sketch" && S) renderSketch();
+  if ((name === "sketch" || (desk && name === "studio")) && S) renderSketch();
   if (name === "queue") loadQueue();
   if (name === "app") loadUpdate();
   window.scrollTo(0, 0);
@@ -731,7 +735,7 @@ function renderSketch() {
   $("dl-png").classList.toggle("off", !has);
   $("continue").hidden = !S.can_continue;
   $("export-card").hidden = !has || !X.info;
-  if (has && tab === "sketch") loadExportInfo(false);
+  if (has && (tab === "sketch" || (desk && tab === "studio"))) loadExportInfo(false);
 }
 $("continue").onclick = () => act("continue");
 $("up").onclick = () => act("rate", {value: 1});
@@ -1310,6 +1314,71 @@ const sketchZoom = zoomable($("sketch"), async (d) => {
 });
 viewerZoom = zoomable($("viewer-img"), (d) => stepViewer(d));
 
+// ------------------------------------------------------------------ the studio layout of a wide screen (3.8)
+// On a computer or a tablet held across, the page looks almost like the studio on the PC: the areas in a bar on the
+// left, the studio in three columns – the picture and the result on the left, the sketch in the middle, the settings
+// on the right. The cards move into the columns (and back to where they were for the phone layout).
+const DESK = [
+  ["picture-card", "left"], ["details-card", "left"], ["look-card", "left"], ["export-card", "left"],
+  ["method-card", "center"], ["sketch-card", "center"], ["rate-card", "center"], ["startbar", "center"],
+  ["preset-card", "right"], ["params-card", "right"], ["compare-card", "right"],
+];
+const wide = window.matchMedia ? window.matchMedia("(min-width: 1024px) and (orientation: landscape)") : null;
+
+function layoutChoice() {
+  try { return localStorage.getItem("cs_layout") || "auto"; } catch (e) { return "auto"; }
+}
+function setLayoutChoice(value) {
+  try { localStorage.setItem("cs_layout", value); } catch (e) { /* (not kept: private mode) */ }
+  applyLayout();
+}
+
+function applyLayout() {
+  const choice = layoutChoice();
+  for (const b of document.querySelectorAll("#layout button")) b.classList.toggle("on", b.dataset.layout === choice);
+  const want = choice === "studio" || (choice === "auto" && !!wide && wide.matches);
+  if (want === desk) return;
+  desk = want;
+  document.body.classList.toggle("desk", desk);
+  for (const [id, column] of DESK) {
+    const card = $(id);
+    if (!card) continue;
+    if (!card.home) { card.home = document.createComment(id); card.before(card.home); }  // (its place on the phone)
+    if (desk) $("desk-" + column).append(card);
+    else card.home.after(card);
+  }
+  showTab(tab);
+}
+for (const b of document.querySelectorAll("#layout button")) b.onclick = () => setLayoutChoice(b.dataset.layout);
+if (wide) wide.addEventListener("change", applyLayout);
+
+// the sketch as large as the screen (the browser's full screen; a large overlay where there is none)
+$("full").onclick = () => {
+  const box = $("sketch-box");
+  if (document.fullscreenElement) { document.exitFullscreen(); return; }
+  if (box.requestFullscreen) box.requestFullscreen().catch(() => box.classList.toggle("full"));
+  else box.classList.toggle("full");
+};
+
+// keys on a computer: Space pauses / goes on, ←/→ the previous / next sketch, F full screen
+document.addEventListener("keydown", (e) => {
+  if (!desk || e.ctrlKey || e.metaKey || e.altKey) return;
+  const target = e.target;
+  if (target && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(target.tagName))) return;
+  if ([...document.querySelectorAll(".sheet")].some((x) => !x.hidden)) return;
+  if (tab !== "studio" || !S) return;
+  if (e.key === " " && S.busy) {
+    e.preventDefault();
+    fetch(S.paused ? "/api/resume" : "/api/pause", {method: "POST", headers: {"X-Access": TOKEN}}).then(() => schedule(100));
+  } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && S.seeds.length) {
+    const seeds = S.seeds.map((x) => x.seed);
+    const k = seeds.indexOf(S.shown) + (e.key === "ArrowRight" ? 1 : -1);
+    if (k >= 0 && k < seeds.length) { e.preventDefault(); act("select", {seed: seeds[k]}); }
+  } else if (e.key === "f" || e.key === "F") {
+    $("full").click();
+  }
+});
+
 // ------------------------------------------------------------------ the app: version and updates (3.8)
 let U = null;           // the update state (get_update)
 let updating = false;   // an update was started from this page: losing the app means it restarts
@@ -1459,5 +1528,6 @@ function watchRestart() {
   });
 })();
 
+applyLayout();
 listen();
 refresh();

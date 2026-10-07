@@ -30,7 +30,7 @@
 <main>
   <!-- ======================================================== studio -->
   <section id="tab-studio" class="tab">
-    <div class="card">
+    <div class="card" id="picture-card">
       <h2 data-t="picture"></h2>
       <div class="input-wrap"><img id="input" alt=""><div id="no-input" class="muted center" data-t="no_picture"></div></div>
       <div id="input-name" class="muted one-line"></div>
@@ -53,7 +53,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="method-card">
       <h2 data-t="method"></h2>
       <div id="methods" class="methods"></div>
       <div id="missing" class="warn" hidden>
@@ -67,7 +67,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="preset-card">
       <h2 data-t="preset"></h2>
       <div id="presets" class="seg"></div>
       <div class="sub" data-t="my_presets"></div>
@@ -85,7 +85,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="details-card">
       <h2 data-t="details"></h2>
       <div id="details-state" class="muted"></div>
       <div class="row wrap">
@@ -105,14 +105,14 @@
       <div id="compare-verdict" class="muted"></div>
     </details>
 
-    <div class="card">
+    <div class="card" id="params-card">
       <div class="row between"><h2 data-t="params"></h2><button id="reset" class="small" data-t="reset"></button></div>
       <label class="check"><input id="advanced" type="checkbox"><span data-t="advanced"></span></label>
       <div id="params"></div>
       <button id="to-preset" class="wide" data-t="save_preset"></button>
     </div>
 
-    <div class="startbar">
+    <div class="startbar" id="startbar">
       <div id="estimate" class="muted center"></div>
       <div class="row">
         <button id="start" class="primary" data-t="start"></button>
@@ -129,8 +129,9 @@
 
   <!-- ======================================================== sketch -->
   <section id="tab-sketch" class="tab" hidden>
-    <div class="card">
-      <div id="view-name" class="muted one-line"></div>
+    <div class="card" id="sketch-card">
+      <div class="row between"><div id="view-name" class="muted one-line"></div>
+        <button id="full" class="small desk-only" data-t="full_screen"></button></div>
       <div id="scene-views" class="seg views" hidden>
         <button data-view="sketch" class="on" data-t="view_sketch"></button>
         <button data-view="background" data-t="view_background"></button>
@@ -160,7 +161,7 @@
       <div class="row"><button id="up" class="thumb">👍</button><button id="down" class="thumb">👎</button></div>
       <div id="taste" class="muted"></div>
     </div>
-    <div class="card">
+    <div class="card" id="look-card">
       <h2 data-t="look"></h2>
       <div class="field"><label data-t="style"></label><select id="style"></select></div>
       <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
@@ -214,8 +215,22 @@
     </div>
   </section>
 
+  <!-- ======================================================== the studio on a wide screen: three columns -->
+  <div id="desk" class="desk-grid" hidden>
+    <div id="desk-left" class="col"></div><div id="desk-center" class="col"></div><div id="desk-right" class="col"></div>
+  </div>
+
   <!-- ======================================================== the app: version and updates -->
   <section id="tab-app" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="layout_title"></h2>
+      <div id="layout" class="seg">
+        <button data-layout="auto" data-t="layout_auto"></button>
+        <button data-layout="phone" data-t="layout_phone"></button>
+        <button data-layout="studio" data-t="layout_studio"></button>
+      </div>
+      <div class="muted small-text" data-t="layout_hint"></div>
+    </div>
     <div class="card">
       <h2 data-t="app_title"></h2>
       <div class="row between"><span class="muted" data-t="app_version"></span><b id="app-version"></b></div>

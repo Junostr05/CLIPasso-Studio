@@ -244,3 +244,29 @@ input.pin { width: 100%; font: inherit; font-size: 26px; letter-spacing: 8px; te
 .spinner { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--accent);
   animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* the studio layout of a wide screen (3.8): the areas in a bar on the left, the studio in three columns that
+   scroll on their own – like the studio on the PC */
+.desk-only { display: none; }
+body.desk .desk-only { display: inline-flex; }
+body.desk { padding-bottom: 0; padding-left: 96px; }
+body.desk #tabs { top: 0; bottom: 0; right: auto; width: 96px; flex-direction: column; justify-content: flex-start;
+  border-top: 0; border-right: 1px solid var(--line); padding: 12px 4px; gap: 4px; }
+body.desk #tabs button { flex: 0 0 auto; min-height: 64px; border-radius: 10px; font-size: 11px; overflow-wrap: anywhere; }
+body.desk #tabs button.on { background: var(--field); }
+body.desk #tabs button[data-tab=sketch] { display: none; }
+body.desk main { max-width: none; padding: 12px 16px 0; }
+body.desk #toast { bottom: 24px; }
+.desk-grid { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr) minmax(280px, 380px); gap: 14px;
+  align-items: start; }
+.desk-grid .col { min-width: 0; position: sticky; top: 92px; max-height: calc(100vh - 104px); overflow-y: auto;
+  overscroll-behavior: contain; padding-bottom: 4px; }
+body.desk .startbar { bottom: 0; margin-bottom: 0; }
+body.desk #sketch-box, body.desk #background-box { width: min(100%, calc(100vh - 400px)); min-width: 240px;
+  margin: 6px auto 0; }
+body.desk .methods { grid-template-columns: repeat(4, 1fr); }
+body.desk .results { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+body.desk #tab-gallery, body.desk #tab-queue, body.desk #tab-app { max-width: 1100px; margin: 0 auto; }
+.preview.full { position: fixed; inset: 0; z-index: 25; border-radius: 0; aspect-ratio: auto; width: 100vw !important;
+  height: 100vh; margin: 0 !important; }
+#sketch-box:fullscreen { background: #fff; }
