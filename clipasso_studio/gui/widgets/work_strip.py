@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar
 from .. import icons, theme
 from ..background import work
 from ..i18n import tr
-from .common import label
+from .common import button, label
 
 
 class WorkStrip(QFrame):
@@ -25,10 +25,14 @@ class WorkStrip(QFrame):
         self.bar.setFixedWidth(220)
         self.bar.setMaximumHeight(8)
         self.percent = label("", "faint")
+        self.cancel_btn = button(tr("ui.cancel"), variant="ghost", size="sm")  # (the update from the phone)
+        self.cancel_btn.clicked.connect(self._cancel)
+        self.cancel_btn.hide()
         lay.addWidget(self.icon)
         lay.addWidget(self.text, 1)
         lay.addWidget(self.bar)
         lay.addWidget(self.percent)
+        lay.addWidget(self.cancel_btn)
         work().changed.connect(self.refresh)
         self.hide()
 
@@ -42,6 +46,10 @@ class WorkStrip(QFrame):
         self.icon.setPixmap(icons.pixmap("hourglass", theme.current().accent_text, 16))
         self.text.setText(w.jobs[kind]["text"] + (f"  (+{more})" if more else ""))
         self.setToolTip(tr(f"ui.work.tip_{kind}"))
+        from ..remote_update import updater
+
+        self.cancel_btn.setText(tr("ui.cancel"))
+        self.cancel_btn.setVisible(kind == "update" and updater().phase in ("downloading", "unpacking"))
         fraction = w.fraction(kind)
         if fraction is None:
             self.bar.setRange(0, 0)
@@ -51,3 +59,8 @@ class WorkStrip(QFrame):
             self.bar.setValue(int(fraction * 1000))
             self.percent.setText(f"{fraction * 100:.0f} %")
         self.show()
+
+    def _cancel(self) -> None:
+        from ..remote_update import updater
+
+        updater().cancel()

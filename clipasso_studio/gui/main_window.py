@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import a11y, background, dialogs, icons, methods_ui, power, shortcuts, theme, updates
+from . import a11y, background, dialogs, icons, methods_ui, power, remote_update, shortcuts, theme, updates
 from .app_settings import app_settings
 from .drop import dropped_images, has_images
 from .controller import JobController
@@ -279,6 +279,7 @@ class MainWindow(QMainWindow):
         self.phone.api.models_page = self.models
         self.phone.toast.connect(self.toast.show_message)
         self.settings.phone_card.set_link(self.phone)
+        remote_update.updater().window = self  # (an update from the phone closes this window to install)
         self.about.show_tour.connect(self.show_tour)
         self.about.show_whats_new.connect(self.show_whats_new)
         self.settings.check_updates_now.connect(self.check_updates_now)
@@ -411,6 +412,29 @@ class MainWindow(QMainWindow):
         QApplication.quit()
         return True
 
+    def restart_for_update(self, path: str, mode: str, version: str) -> bool:
+        """The update started from the phone (gui/remote_update.py): the running job continues after the restart,
+        with the queue; the app closes without a question (nobody may be at the PC) and installs the update."""
+        resume = self.controller.hold_for_restart()
+        remote_update.write_pending(version, resume, run_queue=bool(resume))
+        self._unattended = True
+        if not self.run_installer(path, mode):
+            self._unattended = False
+            app_settings().set(remote_update.PENDING, None)
+            return False
+        return True
+
+    def finish_remote_update(self) -> dict | None:
+        """The first start after an update from the phone: the queue goes on where it was; the PC says how it went
+        (the phone sees it in its "App" part)."""
+        last = remote_update.updater().finish_pending(self.controller)
+        if last is not None:
+            if last["ok"]:
+                self.toast.show_message(tr("ui.remote_update.done", version=last["to"]), "success")
+            else:
+                self.toast.show_message(tr("ui.remote_update.failed_install", version=last["to"]), "warning")
+        return last
+
     def offer_remove_old_version(self, folder: str) -> bool:
         """The first start after the update of a portable ZIP version: delete the previous version's folder?"""
         if not updates.is_old_portable_folder(folder):
@@ -452,6 +476,8 @@ class MainWindow(QMainWindow):
         """After the start: offer to continue jobs that were running when the app was closed or crashed.
         Asked once per job; afterwards the Gallery keeps offering "Continue"."""
         from ..engine import jobs
+
+        self.finish_remote_update()  # (an update from the phone continues its job itself – not asked about)
         from .pages.other_pages import scan_jobs
 
         found = [(d, s) for d, s in scan_jobs(unfinished=True)
@@ -907,11 +933,12 @@ class MainWindow(QMainWindow):
         if getattr(self, "_closing_for_theme", False):
             event.accept()
             return
-        if background.work().busy():  # (a half-moved folder must not stay behind)
+        unattended = getattr(self, "_unattended", False)  # the update from the phone: no questions (it waited)
+        if background.work().busy() and not unattended:  # (a half-moved folder must not stay behind)
             QMessageBox.information(self, APP_NAME, tr("ui.work.quit_wait"))
             event.ignore()
             return
-        if self.controller.is_busy():
+        if self.controller.is_busy() and not unattended:
             res = QMessageBox.question(self, APP_NAME, tr("ui.quit_running"))
             if res != QMessageBox.Yes:
                 event.ignore()

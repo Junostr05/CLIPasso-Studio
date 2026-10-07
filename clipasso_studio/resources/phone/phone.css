@@ -233,3 +233,14 @@ body.login { padding-bottom: 0; }
 .login-card form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 input.pin { font: inherit; font-size: 28px; letter-spacing: 10px; text-align: center; padding: 12px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--field); color: var(--text); width: 100%; }
+
+/* the app: version and updates (3.8) */
+.update-msg { margin-top: 10px; }
+.notes { white-space: pre-wrap; max-height: 40vh; overflow-y: auto; padding-bottom: 8px; }
+input.pin { width: 100%; font: inherit; font-size: 26px; letter-spacing: 8px; text-align: center; margin-top: 14px;
+  padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--text); }
+.sheet.restart { display: flex; align-items: center; justify-content: center; z-index: 30; }
+.restart-box { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; max-width: 320px; }
+.spinner { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--accent);
+  animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

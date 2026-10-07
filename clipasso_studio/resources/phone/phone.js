@@ -70,6 +70,7 @@ function showTab(name) {
   if (name === "gallery") loadResults();
   if (name === "sketch" && S) renderSketch();
   if (name === "queue") loadQueue();
+  if (name === "app") loadUpdate();
   window.scrollTo(0, 0);
 }
 for (const b of document.querySelectorAll("#tabs button")) b.onclick = () => showTab(b.dataset.tab);
@@ -113,11 +114,14 @@ async function refresh() {
   try {
     const s = await getJSON("/api/get/studio");
     if (s.ok === false) throw new Error(s.error || T.offline);
+    if (s.version && CFG.version && s.version !== CFG.version) { reloadForVersion(s.version); return; }
     S = s;
+    if (s.update === "stopping" || s.update === "restarting") watchRestart();
     await render();
     schedule(document.hidden ? 8000 : (isLive() ? 15000 : (s.busy ? 1500 : 3000)));
   } catch (e) {
     $("status").textContent = e.message && e.message !== "Failed to fetch" ? e.message : T.offline;
+    if (updating) watchRestart();  // (the app went away while it installed the update)
     schedule(4000);
   }
 }
@@ -140,6 +144,7 @@ async function render() {
     toast(S.note.text);
   }
   if (tab === "queue") loadQueue();
+  if (tab === "app") loadUpdate();
 }
 
 function renderTop() {
@@ -1304,6 +1309,130 @@ const sketchZoom = zoomable($("sketch"), async (d) => {
   if (k >= 0 && k < seeds.length) { sketchZoom.reset(); await act("select", {seed: seeds[k]}); }
 });
 viewerZoom = zoomable($("viewer-img"), (d) => stepViewer(d));
+
+// ------------------------------------------------------------------ the app: version and updates (3.8)
+let U = null;           // the update state (get_update)
+let updating = false;   // an update was started from this page: losing the app means it restarts
+let restartWatch = 0;
+
+function sessionGet(key) { try { return sessionStorage.getItem(key); } catch (e) { return null; } }
+function sessionSet(key, value) {
+  try { if (value === null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch (e) { /* (private mode) */ }
+}
+
+function reloadForVersion(version) {
+  // a new version of the app runs: its page (script and texts) is loaded; it says what happened
+  sessionSet("cs_updated", version);
+  location.reload();
+}
+
+async function loadUpdate() {
+  try {
+    const u = await getJSON("/api/get/update");
+    if (u.ok === false) return;
+    U = u;
+  } catch (e) { return; }
+  renderUpdate();
+}
+
+function renderUpdate() {
+  if (!U) return;
+  $("app-version").textContent = U.version;
+  const mb = (n) => Math.round(n / 1048576);
+  const texts = {
+    checking: T.update_checking, current: t("update_current", {version: U.version}),
+    found: t("update_found", {version: U.latest}), failed: U.error || T.failed,
+    downloading: U.total ? t("update_downloading", {done: mb(U.done), total: mb(U.total)}) : T.update_preparing,
+    unpacking: T.update_unpacking, stopping: T.update_stopping, restarting: T.update_restarting,
+    downloaded: T.update_downloaded_pc, cancelled: T.update_cancelled,
+  };
+  $("update-msg").textContent = texts[U.phase] || "";
+  const last = U.last;
+  $("update-last").hidden = !last || last.ok;
+  if (last && !last.ok) $("update-last").textContent = t("update_failed_install", {version: last.to});
+  const running = ["checking", "downloading", "unpacking", "stopping", "restarting"].includes(U.phase);
+  $("update-bar").hidden = !["downloading", "unpacking"].includes(U.phase);
+  $("update-progress").style.width = (U.total ? Math.round(100 * U.done / U.total) : 0) + "%";
+  $("update-check").disabled = running;
+  const offer = U.phase === "found" && U.can_install && U.mode !== "none";
+  $("update-install").hidden = !offer;
+  $("update-install").textContent = U.mode === "download" ? T.update_download : T.update_install;
+  $("update-hint").hidden = !(U.phase === "found");
+  $("update-hint").textContent = U.mode === "none" ? T.update_not_here
+    : (U.mode === "download" ? T.update_admin_hint : T.update_install_hint);
+  $("update-cancel").hidden = !["downloading", "unpacking"].includes(U.phase);
+  $("update-notes-box").hidden = !(U.notes && (U.phase === "found" || running));
+  $("update-notes").textContent = U.notes || "";
+  if (U.phase === "stopping" || U.phase === "restarting") watchRestart();
+}
+
+$("update-check").onclick = async () => {
+  const a = await act("check_update");
+  if (a.ok) { U = Object.assign(U || {}, {phase: "checking"}); renderUpdate(); }
+  setTimeout(loadUpdate, 800);
+};
+$("update-cancel").onclick = async () => { await act("cancel_update"); loadUpdate(); };
+$("update-install").onclick = () => {
+  $("pin-input").value = "";
+  $("pin-msg").textContent = "";
+  $("pin-sheet").hidden = false;
+  $("pin-input").focus();
+};
+$("pin-close").onclick = () => { $("pin-sheet").hidden = true; };
+$("pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("pin-ok").click(); });
+$("pin-ok").onclick = async () => {
+  const pin = $("pin-input").value.trim();
+  $("pin-ok").disabled = true;
+  try {
+    const r = await fetch("/api/do", {method: "POST", headers: {"X-Access": TOKEN, "Content-Type": "application/json"},
+                                      body: JSON.stringify({action: "install_update", pin})});
+    const a = await r.json().catch(() => ({ok: false, error: T.failed}));
+    signedOut(r, a);
+    if (a.error === "pin") {
+      $("pin-msg").textContent = a.wait ? t("update_pin_wait", {s: a.wait}) : T.update_pin_wrong;
+      return;
+    }
+    if (!a.ok) { $("pin-msg").textContent = a.error || T.failed; return; }
+    $("pin-sheet").hidden = true;
+    updating = a.mode !== "download";
+    loadUpdate();
+  } catch (e) {
+    $("pin-msg").textContent = T.offline;
+  } finally {
+    $("pin-ok").disabled = false;
+  }
+};
+
+function watchRestart() {
+  // the app installs the update and starts again: ask every 2 s until it answers – a new version loads its page
+  if (restartWatch) return;
+  updating = true;
+  $("restart").hidden = false;
+  $("restart-msg").textContent = T.update_restarting;
+  const started = Date.now();
+  let gone = false;
+  const tick = async () => {
+    try {
+      const r = await fetch("/api/status", {cache: "no-store"});
+      const st = await r.json();
+      if (st.version && st.version !== CFG.version) { reloadForVersion(st.version); return; }
+      if (gone) { location.reload(); return; }  // (back with the same version: it did not work – the page says so)
+    } catch (e) {
+      gone = true;
+    }
+    $("restart-msg").textContent = Date.now() - started > 600000 ? T.update_look_pc
+      : (gone ? T.update_reconnecting : T.update_restarting);
+    restartWatch = setTimeout(tick, 2000);
+  };
+  restartWatch = setTimeout(tick, 1000);
+}
+
+(function updatedJustNow() {
+  const v = sessionGet("cs_updated");
+  if (!v) return;
+  sessionSet("cs_updated", null);
+  if (v === CFG.version) setTimeout(() => toast(t("update_done", {version: v})), 300);
+})();
 
 (function pullToRefresh() {
   let y0 = null, pulled = 0;

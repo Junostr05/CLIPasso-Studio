@@ -86,16 +86,13 @@ Name: "{autodesktop}\{#ShortcutName}"; Filename: "{app}\{#AppExe}"; Tasks: deskt
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#ShortcutName}}"; Flags: nowait postinstall skipifsilent
 ; an update installed from within the app (silent, /UPDATE) starts the new version right away
-Filename: "{app}\{#AppExe}"; Flags: nowait; Check: IsAppUpdate
+Filename: "{app}\{#AppExe}"; Flags: nowait runasoriginaluser; Check: IsAppUpdate
 
 [CustomMessages]
 english.DeleteData=Also delete the downloaded models and the app data (settings, caches, logs), %1?%n%nYour sketches stay where they are.
 german.DeleteData=Auch die geladenen Modelle und die App-Daten (Einstellungen, Zwischenspeicher, Logs) löschen, %1?%n%nDeine Skizzen bleiben, wo sie sind.
 
 [Code]
-function IsAppUpdate: Boolean;
-begin
-  Result := WizardSilent and (Pos('/UPDATE', Uppercase(GetCmdTail)) > 0);
-end;
+#include "update_restart.iss"
 
 #include "uninstall_code.iss"

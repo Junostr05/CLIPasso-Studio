@@ -13,7 +13,7 @@ import os
 
 import numpy as np
 
-from .. import paths
+from .. import __version__, paths
 from .. import settings_schema as schema
 from ..engine import details, jobs, model_store
 from . import export_jobs, methods_ui, user_presets
@@ -110,7 +110,7 @@ class PhoneApi:
                 tuple((seed, hash(svg)) for seed, svg in s.seed_svgs.items()), s.status.text(),
                 s.progress.value(), s.estimate.text(), self._note_id, self._details_rev,
                 st.get("canvas_style"), st.get("canvas_paper"), repr(st.get("user_presets")),
-                repr(self._download_state()), s.mask_status.text())
+                repr(self._download_state()), s.mask_status.text(), self._update_signature())
 
     def get_studio(self, data: dict) -> dict:
         s = self.studio
@@ -184,6 +184,8 @@ class PhoneApi:
             "scene": self._scene(shown),
             "download": self._download_state(),
             "mask": self._mask_state(),
+            "version": __version__,  # (a page of an older version loads again: its script and texts)
+            "update": self._update_signature()[0],
         }
 
     def _scene(self, shown) -> dict | None:
@@ -438,6 +440,48 @@ class PhoneApi:
         if not settings:
             raise PhoneError(tr("ui.phone.page.compare_none"))
         return {"ok": True, "queued": self.compare.enqueue_compare(s.image_path, settings)}
+
+    # ------------------------------------------------------------------ updating the app from the phone (3.8)
+    def _update_signature(self) -> tuple:
+        from .remote_update import updater
+
+        u = updater()
+        return u.phase, u.error, u.done >> 20, repr(u.last), (u.release or {}).get("tag", "")
+
+    def get_update(self, data: dict) -> dict:
+        """The version, a newer one (after "Check for updates"), how far its download is, and how the update before
+        this start went."""
+        from .remote_update import updater
+
+        return {"ok": True, **updater().snapshot()}
+
+    def do_check_update(self, data: dict) -> dict:
+        from .remote_update import updater
+
+        if not updater().check():
+            raise PhoneError(tr("ui.remote_update.busy"))
+        return {"ok": True}
+
+    def do_install_update(self, data: dict) -> dict:
+        """Download, install and restart (or only download – an installation for all users needs an administrator on
+        the PC). The PIN was checked by the server already (``_pin_ok``), with the brakes of the sign-in."""
+        from .remote_update import updater
+
+        if not data.get("_pin_ok"):
+            raise PhoneError(tr("ui.phone.page.pin_wrong"))
+        u = updater()
+        if u.busy():
+            raise PhoneError(tr("ui.remote_update.busy"))
+        if u.phase != "found":
+            raise PhoneError(tr("ui.remote_update.check_first"))
+        if not u.install():
+            raise PhoneError(u.error or tr("ui.error"))
+        return {"ok": True, "mode": u.install_mode()}
+
+    def do_cancel_update(self, data: dict) -> dict:
+        from .remote_update import updater
+
+        return {"ok": updater().cancel()}
 
     # ------------------------------------------------------------------ models downloaded on the phone's request
     def do_download_models(self, data: dict) -> dict:

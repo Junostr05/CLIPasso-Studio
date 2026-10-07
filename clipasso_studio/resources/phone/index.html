@@ -213,6 +213,27 @@
       <div id="jobs"></div>
     </div>
   </section>
+
+  <!-- ======================================================== the app: version and updates -->
+  <section id="tab-app" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="app_title"></h2>
+      <div class="row between"><span class="muted" data-t="app_version"></span><b id="app-version"></b></div>
+      <div id="update-last" class="warn" hidden></div>
+      <div id="update-msg" class="muted update-msg"></div>
+      <div id="update-bar" class="bar" hidden><div id="update-progress"></div></div>
+      <div id="update-hint" class="muted small-text" hidden></div>
+      <details id="update-notes-box" class="group" hidden>
+        <summary data-t="update_notes"></summary>
+        <div id="update-notes" class="notes small-text"></div>
+      </details>
+      <div class="row wrap">
+        <button id="update-check" data-t="update_check"></button>
+        <button id="update-install" class="primary" hidden></button>
+        <button id="update-cancel" class="small" data-t="cancel" hidden></button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <nav id="tabs">
@@ -220,6 +241,7 @@
   <button data-tab="sketch"><span>◐</span><span data-t="tab_sketch"></span></button>
   <button data-tab="gallery"><span>▦</span><span data-t="tab_gallery"></span></button>
   <button data-tab="queue"><span>☰</span><span data-t="tab_queue"></span></button>
+  <button data-tab="app"><span>⚙</span><span data-t="tab_app"></span></button>
 </nav>
 
 <!-- ========================================================== detail brush -->
@@ -277,6 +299,27 @@
     <button id="crop-apply" class="primary" data-t="crop_apply"></button>
   </div>
   <div id="crop-msg" class="muted"></div>
+</div>
+
+<!-- ========================================================== the PIN before an update -->
+<div id="pin-sheet" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="update_pin_title"></b>
+    <button id="pin-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="update_pin_hint"></div>
+  <input id="pin-input" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6">
+  <div id="pin-msg" class="muted"></div>
+  <div class="row"><button id="pin-ok" class="primary" data-t="update_go"></button></div>
+</div>
+
+<!-- ========================================================== the app restarts with the update -->
+<div id="restart" class="sheet restart" hidden>
+  <div class="restart-box">
+    <div class="spinner"></div>
+    <b data-t="update_restart_title"></b>
+    <div id="restart-msg" class="muted"></div>
+  </div>
 </div>
 
 <div id="pull" hidden>↻</div>

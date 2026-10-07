@@ -332,6 +332,17 @@ class JobController(QObject):
             self.runner.cancel()
             self.queue_changed.emit()
 
+    def hold_for_restart(self) -> list[str]:
+        """Before the app restarts for an update: the running job continues afterwards – queued again at its place,
+        from its folder (finished sketches kept, the rest from its checkpoints). Its folder, [] when none runs."""
+        job = self.current
+        if not self.is_busy() or not job.job_dir:
+            return []
+        again = QueuedJob(target=job.target, settings=job.settings, resume_dir=job.job_dir)
+        self.jobs.insert(self.jobs.index(job), again)
+        self._persist_queue()
+        return [job.job_dir]
+
     def shutdown(self):
         self._timer.stop()
         self._idle.stop()

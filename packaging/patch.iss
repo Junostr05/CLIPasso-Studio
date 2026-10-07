@@ -72,7 +72,7 @@ Source: "{#PatchDir}\*"; Excludes: "removed.txt"; DestDir: "{app}"; Flags: ignor
 
 [Run]
 ; started from within the app (silent, /UPDATE): the new version right away
-Filename: "{app}\{#AppExe}"; Flags: nowait; Check: IsAppUpdate
+Filename: "{app}\{#AppExe}"; Flags: nowait runasoriginaluser; Check: IsAppUpdate
 
 [CustomMessages]
 english.PatchWrongVersion=This update is for CLIPasso Studio %1, but %2 is installed. Please install the full setup of the new version.
@@ -81,10 +81,7 @@ english.DeleteData=Also delete the downloaded models and the app data (settings,
 german.DeleteData=Auch die geladenen Modelle und die App-Daten (Einstellungen, Zwischenspeicher, Logs) löschen, %1?%n%nDeine Skizzen bleiben, wo sie sind.
 
 [Code]
-function IsAppUpdate: Boolean;
-begin
-  Result := WizardSilent and (Pos('/UPDATE', Uppercase(GetCmdTail)) > 0);
-end;
+#include "update_restart.iss"
 
 { The installed version (Inno Setup keeps it as DisplayVersion of the app's uninstall entry); '' if there is none. }
 function InstalledVersion: String;
@@ -106,8 +103,11 @@ begin
   Installed := InstalledVersion;
   Result := Installed = '{#FromVersion}';
   if not Result then
+  begin
     SuppressibleMsgBox(FmtMessage(CustomMessage('PatchWrongVersion'), ['{#FromVersion}', Installed]),
                        mbError, MB_OK, IDOK);
+    RestartInstalledApp;  { (an update from within the app: the app comes back with the version that is there) }
+  end;
 end;
 
 #include "uninstall_code.iss"

@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from PySide6.QtCore import QObject, Signal
 
-from .. import paths
+from .. import __version__, paths
 
 from .app_settings import app_settings
 
@@ -40,6 +40,7 @@ EVENT_PING = 15.0  # s – a sign of life on a quiet stream (the page falls back
 COOKIE = "cs_access"
 UPLOAD_DIR = "_remote"  # in the output folder (cleared with the other pictures of the app)
 METHODS = ("clipasso", "swiftsketch", "controlsketch", "scenesketch")
+PIN_ACTIONS = ("install_update",)  # actions that need the PIN once more (signed in is not enough)
 
 
 def new_token() -> str:
@@ -302,7 +303,7 @@ def _resource(name: str) -> bytes:
 def page(texts: dict, access: str) -> str:
     """The phone page (``resources/phone/index.html``) with its texts and the access code (as JSON data, read by
     ``phone.js``; nothing runs inline)."""
-    cfg = json.dumps({"token": access, "texts": texts, "lang": texts.get("lang", "en")})
+    cfg = json.dumps({"token": access, "texts": texts, "lang": texts.get("lang", "en"), "version": __version__})
     cfg = cfg.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     body = _resource("index.html").decode("utf-8")
     return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
@@ -507,6 +508,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._events()
         elif parsed.path == "/api/status":
             state = dict(self.bridge.state)
+            state["version"] = __version__
             state["preview"] = str(hash(self.bridge.preview_svg)) if self.bridge.preview_svg else ""
             self._json(state)
         elif parsed.path == "/api/preview.svg":
@@ -539,6 +541,13 @@ class _Handler(BaseHTTPRequestHandler):
             if not isinstance(data, dict) or not isinstance(data.get("action"), str):
                 self._json({"ok": False, "error": "bad request"}, 400)
                 return
+            data.pop("_pin_ok", None)  # (only this server says so)
+            if data["action"] in PIN_ACTIONS:  # once more the PIN, with the brakes of the sign-in
+                ok, wait = pin_guard.check(self.client_address[0], str(data.get("pin", "")))
+                if not ok:
+                    self._json({"ok": False, "error": "pin", "wait": wait}, 429 if wait else 403)
+                    return
+                data["_pin_ok"] = True
             self._answer("do_" + data["action"], data)
         elif path == "/api/details":
             raw = self._body(MAX_UPLOAD)
