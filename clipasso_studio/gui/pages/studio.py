@@ -139,7 +139,6 @@ class StudioPage(QWidget):
         self.hint_box.dismissed.connect(self.dismiss_hint)
         self.input_card.body.addWidget(self.hint_box)
         self._photo_hints: list = []
-        self._density: float | None = None  # the photo's detail: the recommended number of strokes
         self._mask_hints: list = []
         # every earlier job of this picture (any method): a strip to open one again
         self.history_title = label("", "faint")
@@ -754,9 +753,7 @@ class StudioPage(QWidget):
             self.toast.emit(tr("ui.hint_fix_scale"), "info")
         self._mask = None
         self._photo_hints, self._mask_hints = [], []
-        self._density = None  # the photo's detail (engine/complexity.py), measured in the background
         self.show_hints()
-        self.update_recommendation()
         self._check_photo(path)
         self._update_mask_preview()
         self._update_detail_button()
@@ -769,29 +766,14 @@ class StudioPage(QWidget):
         found = {}  # (run_in_thread hands a result on as text)
 
         def measure(path, progress=None):
-            from ...engine import complexity
-
             found["hints"] = image_hints.photo_hints(path)
-            found["density"] = complexity.analyse(path)
 
         def done(_, path=path):
             if path == self.image_path:
                 self._photo_hints = found.get("hints", [])
                 self.show_hints()
-                if self._density is None:  # (the mask's, when it came first, is the better one)
-                    self._density = found.get("density")
-                    self.update_recommendation()
 
         dialogs.run_in_thread(self, measure, path, on_done=done, on_error=lambda _: None)
-
-    def update_recommendation(self):
-        """The number of strokes that suits the photo's detail, next to "Strokes" (CLIPasso, ControlSketch)."""
-        from ...engine import complexity
-
-        for method, key in complexity.STROKE_KEY.items():
-            rec = complexity.recommend(method, self._density) if self._density is not None else None
-            text = tr("ui.recommend.strokes", n=rec[0], level=tr(f"ui.recommend.level.{rec[1]}")) if rec else None
-            self.params.set_recommendation(method, key, rec[0] if rec else None, text)
 
     def hints(self) -> list:
         """The hints shown (the kinds not switched off, the most helpful first)."""
@@ -936,7 +918,7 @@ class StudioPage(QWidget):
         if not used or path != self.image_path or model != current:
             return  # an earlier image or model
         try:
-            im, prob, edited = mask_view.load_mask(path, model)
+            _, prob, edited = mask_view.load_mask(path, model)
         except OSError as exc:
             self._mask_failed(path, model, str(exc))
             return
@@ -946,11 +928,6 @@ class StudioPage(QWidget):
         self._mask = {"key": (path, model), "prob": prob, "edited": edited is not None}
         self._mask_hints = image_hints.mask_hints(prob, edited)
         self.show_hints()
-        from ...engine import complexity
-
-        self._density = complexity.edge_density(im, edited.astype(bool) if edited is not None
-                                                else prob >= masking.OBJECT_THRESHOLD)  # (in the object)
-        self.update_recommendation()
         mask = edited if edited is not None else prob >= masking.OBJECT_THRESHOLD
         pal = theme.current()
         veil = QColor(pal.surface2)
@@ -1261,9 +1238,7 @@ class StudioPage(QWidget):
             self.file_label.setToolTip("")
             self.canvas.set_input(None)
             self._photo_hints, self._mask_hints = [], []
-            self._density = None
             self.show_hints()
-            self.update_recommendation()
             self._update_buttons()
 
     def _ensure_thumbs(self, seeds: list[int]):

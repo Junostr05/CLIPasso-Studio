@@ -3,7 +3,7 @@ strokes follow the photo's edges, and its dark areas are filled with even, strai
 
 From the target picture on the canvas:
 
-- an **edge map** (Sobel on the softened brightness, as ``engine/complexity.py``), every pixel's distance to the
+- an **edge map** (Sobel on the softened brightness, as the quality hints), every pixel's distance to the
   nearest edge, and the edges' direction (the smoothed structure tensor, as (cos 2θ, sin 2θ): a direction without
   a sign);
 - the **hatch region**: dark (brightness below ``DARK``) and a little away from the edges.
@@ -32,7 +32,7 @@ import torch.nn.functional as F
 
 HATCH_DIR = (1 / math.sqrt(2), -1 / math.sqrt(2))  # 45°: from lower left to upper right (y points down)
 DARK = 0.42  # brightness (0..1) below which an area is hatched
-EDGE = 0.12  # Sobel magnitude from which a pixel is on an edge (as engine/complexity.py)
+EDGE = 0.12  # Sobel magnitude from which a pixel is on an edge (a black-white step: 1)
 BLUR = 1.2  # px: softened first, so noise and fine texture are no edges
 TENSOR_BLUR = 2.0  # px: the structure tensor is averaged over this much (a calm direction field)
 EDGE_CLEAR = 0.025  # hatching keeps this far from edges (share of the canvas side)

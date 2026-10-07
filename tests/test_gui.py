@@ -206,7 +206,7 @@ def test_models_page_shows_and_changes_the_studios_models(window, monkeypatch):
     panel.set_method("clipasso")
     card = page.studio
     assert set(card.items) == {"mask_model", "clip_model_name", "semantic_model", "saliency_model",
-                               "saliency_clip_model", "best_by", "face_crops"}
+                               "saliency_clip_model", "best_by"}
     assert "CLIPasso" in card.title.text()
     # the overview -> the studio
     combo = card.items["clip_model_name"]["editor"]
@@ -1941,46 +1941,3 @@ def test_studio_columns_fit_a_small_window(window):
         assert st.input_buttons.is_wrapped()
     finally:
         window.resize(size)
-
-
-def test_stroke_recommendation(window, tmp_path):
-    """3.7: next to "Strokes" the number that suits the photo's detail, with "Apply" (CLIPasso, ControlSketch)."""
-    from PIL import Image, ImageDraw
-    from PySide6.QtWidgets import QApplication
-
-    from clipasso_studio.engine import complexity
-    from clipasso_studio.gui.i18n import tr
-    from tests.helpers import wait_until
-
-    app = QApplication.instance()
-    studio = window.studio
-    busy = tmp_path / "busy.png"
-    im = Image.new("RGB", (400, 400), "white")
-    d = ImageDraw.Draw(im)
-    for x in range(0, 400, 12):
-        d.line((x, 0, x + 60, 400), fill=(20, 20, 20), width=3)
-    im.save(busy)
-    studio.set_image(str(busy))
-    field = studio.params.pages["clipasso"].fields["num_paths"]
-    assert field.recommended is None  # (measured in the background)
-    wait_until(app, lambda: field.recommended is not None)
-    n, level = complexity.recommend("clipasso", studio._density)
-    assert field.recommended == n == 32 and field.note.text() == tr("ui.recommend.strokes", n=32,
-                                                                    level=tr("ui.recommend.level.very_many"))
-    other = studio.params.pages["controlsketch"].fields["num_strokes"]
-    assert other.recommended == complexity.recommend("controlsketch", studio._density)[0]
-    studio.params.set_method("clipasso")
-    before = studio.params.settings()["num_paths"]
-    assert before != 32 and field.note_btn.isVisibleTo(field)
-    field.note_btn.click()
-    assert studio.params.settings()["num_paths"] == 32 and not field.note_btn.isVisibleTo(field)
-    field.reset()
-    # a plain photo: few strokes; no photo: no recommendation
-    plain = tmp_path / "plain.png"
-    im = Image.new("RGB", (400, 400), "white")
-    ImageDraw.Draw(im).ellipse((120, 120, 280, 280), fill=(60, 60, 60))
-    im.save(plain)
-    studio.set_image(str(plain))
-    wait_until(app, lambda: field.recommended == 8)
-    studio.forget_job_dir(str(tmp_path))  # (the photo was inside it)
-    assert field.recommended is None and not field.note_box.isVisibleTo(field)

@@ -14,7 +14,7 @@ from ..engine import model_store
 from ..engine.methods import requirements
 
 # in this order on the page
-CATEGORIES = ("mask", "shape", "semantic", "attention", "condition", "scoring", "faces")
+CATEGORIES = ("mask", "shape", "semantic", "attention", "condition", "scoring")
 
 
 @dataclass(frozen=True)
@@ -53,7 +53,6 @@ ROLES: dict[str, tuple[Role, ...]] = {
         Role("semantic", "semantic_model", _semantic),
         *_ATTENTION,
         _SCORING,
-        Role("faces", "face_crops", lambda s: ["blazeface"] if s["face_crops"] else []),
     ),
     "swiftsketch": (_MASK, _SCORING),
     "controlsketch": (

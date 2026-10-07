@@ -127,8 +127,11 @@ def test_clipasso_with_the_guide_keeps_its_roles_when_continuing(tmp_path):
     ck = checkpoint.load(part["runs"][0]["run_dir"])
     assert ck["roles"].count(sg.HATCH_ROLE) >= 1 and set(ck["roles"]) <= {sg.EDGE_ROLE, sg.HATCH_ROLE}
     assert ck["roles"].count(sg.EDGE_ROLE) == 8  # (the hatching comes in addition to the set strokes)
-    widths = {round(float(w), 3) for w in ck["widths"]}
-    assert widths == {1.5, round(1.5 * sg.HATCH_WIDTH, 3)}  # (finer hatch strokes)
+    import re
+
+    with open(final, encoding="utf-8") as f:
+        widths = {round(float(w), 2) for w in re.findall(r'stroke-width="([0-9.]+)"', f.read())}
+    assert len(widths) == 2 and round(min(widths) / max(widths), 2) == sg.HATCH_WIDTH  # (finer hatch strokes)
     rec2, _ = _stop_after(10 ** 9)
     done = pipeline.run_job(s, BALLERINA, str(tmp_path), rec2, job_dir=os.path.dirname(part["best_svg"]),
                             resume=True)

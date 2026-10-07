@@ -37,25 +37,6 @@ def _affine_augmentations(args, normalize=True):
     return transforms.Compose(augs)
 
 
-# portraits (``face_crops``): two of the CLIP augmentations are crops around the face – their side in widths of
-# the face box: the face itself and head and shoulders; shifted a little at random (not in turbo mode)
-FACE_CROPS = (1.6, 2.6)
-FACE_JITTER = 0.06
-
-
-def face_crop_box(face_box, scale: float, size: int, shift=(0.0, 0.0)) -> tuple[int, int, int]:
-    """(top, left, side) in pixels of a ``size`` × ``size`` canvas: a square ``scale`` face widths wide around the
-    face box (x0, y0, x1, y1), moved by ``shift`` (in face widths), inside the canvas."""
-    x0, y0, x1, y1 = face_box
-    face = max(x1 - x0, y1 - y0, 1.0)
-    side = int(round(min(face * scale, size)))
-    cx = (x0 + x1) / 2 + shift[0] * face
-    cy = (y0 + y1) / 2 + shift[1] * face
-    left = int(round(min(max(cx - side / 2, 0), size - side)))
-    top = int(round(min(max(cy - side / 2, 0), size - side)))
-    return top, left, side
-
-
 AUG_BANK_SIZE = 64  # augmentations of the target kept in turbo mode
 AUG_BANK_BYTES = 256e6  # ... at most this much memory for their CLIP features
 
@@ -140,13 +121,6 @@ class Loss(nn.Module):
             self.loss_mapper["L2"] = L2_(args)
         elif self.percep_loss == "LPIPS":
             self.loss_mapper["LPIPS"] = LPIPS(args, device=args.device)
-
-    def set_face_box(self, box) -> None:
-        """Portraits: the face (x0, y0, x1, y1 on the canvas) – some CLIP augmentations become crops around it."""
-        conv = self.loss_mapper.get("clip_conv_loss")
-        if conv is not None:
-            conv.face_box = tuple(float(v) for v in box) if box is not None else None
-            conv._face_targets = None
 
     def get_losses_to_apply(self):
         losses_to_apply = []
@@ -412,9 +386,6 @@ def cos_layers(xs_conv_features, ys_conv_features, clip_model_name):
 
 
 class CLIPConvLoss(torch.nn.Module):
-    face_box = None  # (x0, y0, x1, y1) on the canvas: crops around the face (``face_crops``)
-    _face_targets = None  # turbo: the kept features of the target's face crops
-
     def __init__(self, args):
         super(CLIPConvLoss, self).__init__()
         self.clip_model_name = args.clip_model_name
@@ -460,38 +431,18 @@ class CLIPConvLoss(torch.nn.Module):
         self.turbo = bool(getattr(args, "turbo", False))
         self.bank: AugmentBank | None = None
         self._weighted = [i for i, w in enumerate(self.args.clip_conv_layer_weights) if w]
-        self.face_box = None  # (x0, y0, x1, y1) on the canvas: crops around the face (``face_crops``)
-        self._face_targets = None  # turbo: the kept features of the target's face crops
         # experimental (``semantic_model``): the embedding of the semantic (fc) loss from a newer model; the conv
         # layers stay the ones of this model
         name = getattr(args, "semantic_model", semantic.DEFAULT)
         self.semantic = semantic.load(name, args.device) if self.clip_fc_loss_weight and name != semantic.DEFAULT \
             else None
 
-    def _face_count(self, mode: str) -> int:
-        """How many of the augmentations are face crops (they replace affine ones)."""
-        return min(len(FACE_CROPS), self.num_augs) if self.face_box is not None and mode == "train" else 0
-
-    def _face_crops(self, img: torch.Tensor, n: int, jitter: bool) -> list[torch.Tensor]:
-        """The first ``n`` face crops of ``img`` [1,3,S,S], normalised for CLIP (the same shift for sketch and
-        target: call with both stacked)."""
-        import torchvision.transforms.functional as TF
-
-        out = []
-        for scale in FACE_CROPS[:n]:
-            shift = ((torch.rand(2) * 2 - 1) * FACE_JITTER).tolist() if jitter else (0.0, 0.0)
-            top, left, side = face_crop_box(self.face_box, scale, img.shape[-1], shift)
-            size = list(self.img_size) if isinstance(self.img_size, (list, tuple)) else [self.img_size] * 2
-            crop = TF.resized_crop(img, top, left, side, side, size, antialias=True)
-            out.append(transforms.Normalize(_CLIP_MEAN, _CLIP_STD)(crop))
-        return out
-
     def _encode(self, batch: torch.Tensor):
         if self.clip_model_name.startswith("RN"):
             fc, conv = self.forward_inspection_clip_resnet(batch.contiguous())
         else:
             fc, conv = self.visual_encoder(batch)
-        sem = getattr(self, "semantic", None)
+        sem = getattr(self, "semantic", None)  # (a loss made without __init__ in the tests has none)
         if sem is not None:
             fc = sem(batch)
         return fc, conv
@@ -506,27 +457,17 @@ class CLIPConvLoss(torch.nn.Module):
             self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)))
             self.bank.build(self.normalize_transform(y), y, self._kept)
         augment = mode == "train" and "affine" in self.args.augemntations
-        faces = self._face_count(mode)
-        n_aug = self.num_augs - faces
-        picked = self.bank.pick(n_aug) if augment and self.augment_both else []
+        picked = self.bank.pick(self.num_augs) if augment and self.augment_both else []
         sketch_augs = [self.normalize_transform(x)]
         if augment and self.augment_both:
             sketch_augs += [self.bank.apply(x, i) for i in picked]
         elif mode == "train":  # augmented sketch against the plain target, as without turbo
-            sketch_augs += [self.augment_trans(torch.cat([x, y]))[0].unsqueeze(0) for _ in range(n_aug)]
-        main = len(sketch_augs)
-        if faces:  # fixed crops (their target features are computed once)
-            sketch_augs += self._face_crops(x, faces, jitter=False)
-            if self._face_targets is None:
-                with torch.no_grad():
-                    self._face_targets = self._kept(torch.cat(self._face_crops(y, faces, jitter=False)))
+            sketch_augs += [self.augment_trans(torch.cat([x, y]))[0].unsqueeze(0) for _ in range(self.num_augs)]
         xs = torch.cat(sketch_augs, dim=0).to(self.device)
         xs_fc, xs_conv = self._encode(xs)
         ys = self.bank.targets(picked)
-        if len(picked) + 1 != main:  # the plain target for every sketch
-            ys = [f[:1].expand(main, *f.shape[1:]) for f in ys]
-        if faces:
-            ys = [torch.cat([a, b.to(a.dtype)]) for a, b in zip(ys, self._face_targets)]
+        if len(picked) + 1 != xs.shape[0]:  # the plain target for every sketch
+            ys = [f[:1].expand(xs.shape[0], *f.shape[1:]) for f in ys]
         metric = self.distance_metrics[self.clip_conv_loss_type]
         out = {}
         for k, layer in enumerate(i for i in self._weighted if i < len(xs_conv)):
@@ -545,19 +486,14 @@ class CLIPConvLoss(torch.nn.Module):
         if self.turbo:
             return self._forward_turbo(x, y, mode)
         sketch_augs, img_augs = [self.normalize_transform(x)], [self.normalize_transform(y)]
-        faces = self._face_count(mode)
         if mode == "train":
-            for _ in range(self.num_augs - faces):
+            for _ in range(self.num_augs):
                 augmented_pair = self.augment_trans(torch.cat([x, y]))
                 sketch_augs.append(augmented_pair[0].unsqueeze(0))
                 if self.augment_both:
                     img_augs.append(augmented_pair[1].unsqueeze(0))
                 else:
                     img_augs.append(img_augs[0])
-        if faces:  # the same crop of sketch and target
-            for crop in self._face_crops(torch.cat([x, y]), faces, jitter=True):
-                sketch_augs.append(crop[:1])
-                img_augs.append(crop[1:])
 
         xs = torch.cat(sketch_augs, dim=0).to(self.device)
         ys = torch.cat(img_augs, dim=0).to(self.device)
@@ -570,7 +506,7 @@ class CLIPConvLoss(torch.nn.Module):
             xs_fc_features, xs_conv_features = self.visual_encoder(xs)
             with torch.no_grad():
                 ys_fc_features, ys_conv_features = self.visual_encoder(ys)
-        sem = getattr(self, "semantic", None)  # (a loss made without __init__ in the tests has none)
+        sem = getattr(self, "semantic", None)
         if sem is not None:
             xs_fc_features = sem(xs)
             with torch.no_grad():

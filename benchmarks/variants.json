@@ -12,19 +12,6 @@
   "base": {
    "set": []
   },
-  "face_crops": {
-   "set": [
-    "face_crops=true"
-   ],
-   "categories": [
-    "portrait"
-   ]
-  },
-  "learn_width": {
-   "set": [
-    "learn_width=true"
-   ]
-  },
   "strokes8": {
    "set": [
     "num_paths=8"

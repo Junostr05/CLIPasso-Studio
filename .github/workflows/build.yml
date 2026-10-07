@@ -177,6 +177,19 @@ jobs:
           restore-keys: models-v2-
       - name: Download models
         run: python tools/fetch_models.py
+      - name: The test that hung, again and again (diagnosis – [diag] in the commit message)
+        if: contains(github.event.head_commit.message, '[diag]')
+        continue-on-error: true
+        env:
+          QT_QPA_PLATFORM: offscreen
+        shell: pwsh
+        run: |
+          Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-List
+          python -c "import torch; print(torch.__version__, torch.get_num_threads(), torch.backends.mkldnn.is_available())"
+          for ($i = 1; $i -le 12; $i++) {
+            python -m pytest -q -p no:cacheprovider tests/test_turbo.py::test_controlsketch_turbo -o faulthandler_timeout=90 -o timeout=150 --durations=1
+            Write-Output "run ${i}: exit code $LASTEXITCODE"
+          }
       - name: Unit tests
         env:
           QT_QPA_PLATFORM: offscreen

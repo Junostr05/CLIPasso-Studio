@@ -95,19 +95,6 @@ class ParamField(QWidget):
         self.warning = label("", "faint", wrap=True)
         self.warning.setVisible(False)
         lay.addWidget(self.warning)
-        # a recommended value (the number of strokes for the photo's detail): text and "Apply"
-        self.recommended = None
-        self.note_box = QWidget()
-        nl = QHBoxLayout(self.note_box)
-        nl.setContentsMargins(0, 0, 0, 0)
-        nl.setSpacing(6)
-        self.note = label("", "faint", wrap=True)
-        self.note_btn = button("", None, "ghost", size="sm")
-        self.note_btn.clicked.connect(self._apply_recommended)
-        nl.addWidget(self.note, 1)
-        nl.addWidget(self.note_btn)
-        self.note_box.setVisible(False)
-        lay.addWidget(self.note_box)
         self.retranslate()
         self._sync_reset()
 
@@ -346,8 +333,6 @@ class ParamField(QWidget):
         changed = self._value != self.start
         self.reset_btn.setVisible(changed)
         self.title.setStyleSheet(f"color: {theme.current().accent_text};" if changed else "")
-        if hasattr(self, "note_btn"):
-            self._sync_recommendation()
 
     def set_enabled_state(self, enabled: bool):
         for w in self.findChildren(QWidget):
@@ -358,20 +343,6 @@ class ParamField(QWidget):
     def set_warning(self, text: str | None):
         self.warning.setVisible(bool(text))
         self.warning.setText(text or "")
-
-    def set_recommendation(self, value, text: str | None):
-        """Show a recommended value (None: none) with "Apply" while the field has another value."""
-        self.recommended = value
-        self.note.setText(text or "")
-        self.note_box.setVisible(value is not None)
-        self._sync_recommendation()
-
-    def _sync_recommendation(self):
-        self.note_btn.setVisible(self.recommended is not None and self.value() != self.recommended)
-
-    def _apply_recommended(self):
-        if self.recommended is not None:
-            self.set_value(self.recommended, emit=True)
 
     def _t(self, suffix: str) -> str:
         return tr(param_text_key(self.method, self.param.key, suffix))
@@ -389,8 +360,6 @@ class ParamField(QWidget):
         self.title.setToolTip(self.info.toolTip())
         self.reset_btn.setIcon(icons.icon("rotate-ccw", theme.current().muted))
         self.reset_btn.setToolTip(tr("ui.reset_default", value=str(self.start)))
-        self.note_btn.setText(tr("ui.recommend.apply"))
-        self.note_btn.setToolTip(tr("ui.recommend.apply_tip"))
         if p.kind == "choice":
             for i in range(self.combo.count()):
                 self.combo.setItemText(i, _choice_text(p, self.combo.itemData(i), self.method))
@@ -815,12 +784,6 @@ class ParamPanel(QWidget):
                 self.preset_hint.setText(tr(key))
                 return
         self.preset_hint.setText("")
-
-    def set_recommendation(self, method: str, key: str, value, text: str | None) -> None:
-        """A recommended value for a field of a method (None: none) – e.g. the strokes for the photo's detail."""
-        page = self.pages.get(method)
-        if page is not None and key in page.fields:
-            page.fields[key].set_recommendation(value, text)
 
     def missing_models(self) -> list[str]:
         return methods_ui.missing_models(self._settings)

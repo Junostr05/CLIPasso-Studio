@@ -119,8 +119,6 @@ PARAMS: tuple[Param, ...] = (
     Param("one_line_segments", 48, "int", "strokes", minimum=8, maximum=128, step=8, advanced=False,
           enabled_if=_on("one_line")),
     Param("width", 1.5, "float", "strokes", cli="width", minimum=0.1, maximum=20.0, step=0.1, decimals=2),
-    # not in the original (3.7): every stroke learns its own width, within 0.5–2.5 × the set width
-    Param("learn_width", False, "bool", "strokes"),
     SKETCH_GUIDE,
     Param("num_segments", 1, "int", "strokes", cli="num_segments", minimum=1, maximum=16, enabled_if=_off("one_line")),
     Param("control_points_per_seg", 4, "choice", "strokes", cli="control_points_per_seg", choices=(2, 3, 4),
@@ -178,8 +176,6 @@ PARAMS: tuple[Param, ...] = (
     Param("augemntations", "affine", "flags", "augment", cli="augemntations", choices=("affine", "noise")),
     Param("num_aug_clip", 4, "int", "augment", cli="num_aug_clip", minimum=0, maximum=32),
     Param("augment_both", True, "bool", "augment", cli="augment_both"),
-    # portraits (3.7): two of the augmentations are crops around the face BlazeFace finds (none found: as before)
-    Param("face_crops", False, "bool", "augment"),
     Param("aug_scale_min", 0.8, "float", "augment", cli="aug_scale_min", minimum=0.1, maximum=1.0, step=0.05,
           decimals=2),
     Param("noise_thresh", 0.5, "float", "augment", cli="noise_thresh", minimum=0.0, maximum=1.0, step=0.05,

@@ -22,12 +22,6 @@ from torchvision import transforms
 from . import imaging, nets, renderer, svg_io
 from .clip_ import clip
 
-# "Learn the stroke width" (3.7): every stroke's width is optimised too, within these factors of the set width,
-# pulled back towards it a little (the mean squared relative change, weighted) so it does not run away
-WIDTH_RANGE = (0.5, 2.5)
-WIDTH_LR = 0.02  # px per step (Adam)
-WIDTH_REG = 0.05
-
 
 class Painter(torch.nn.Module):
     def __init__(self, args, num_strokes=4, num_segments=4, imsize=224, device=None, target_im=None, mask=None,
@@ -253,29 +247,6 @@ class Painter(torch.nn.Module):
                 group.stroke_color.requires_grad = True
                 self.color_vars.append(group.stroke_color)
         return self.color_vars
-
-    def width_parameters(self) -> list:
-        """The widths of the strokes being optimised, as leaf tensors (``learn_width``)."""
-        self.width_vars = []
-        for i, path in enumerate(self.shapes):
-            if self.optimize_flag[i] and not getattr(path, "fixed", False):
-                path.stroke_width = path.stroke_width.detach().clone().float().to(self.device).requires_grad_(True)
-                self.width_vars.append(path.stroke_width)
-        return self.width_vars
-
-    def clamp_widths(self) -> None:
-        lo, hi = WIDTH_RANGE[0] * float(self.width), WIDTH_RANGE[1] * float(self.width)
-        with torch.no_grad():
-            for w in getattr(self, "width_vars", []):
-                w.clamp_(lo, hi)
-
-    def width_penalty(self) -> torch.Tensor:
-        """The pull of the learnt widths back towards the set width."""
-        widths = getattr(self, "width_vars", [])
-        if not widths:
-            return torch.zeros((), device=self.device)
-        w = torch.stack([v.reshape(()) for v in widths])
-        return WIDTH_REG * ((w / float(self.width) - 1.0) ** 2).mean()
 
     def get_color_parameters(self):
         return self.color_vars
@@ -521,14 +492,11 @@ class PainterOptimizer:
         self.color_lr = args.color_lr
         self.args = args
         self.optim_color = args.force_sparse
-        self.optim_width = bool(getattr(args, "learn_width", False))
 
     def init_optimizers(self):
         self.points_optim = torch.optim.Adam(self.renderer.parameters(), lr=self.points_lr)
         if self.optim_color:
             self.color_optim = torch.optim.Adam(self.renderer.set_color_parameters(), lr=self.color_lr)
-        if self.optim_width:
-            self.width_optim = torch.optim.Adam(self.renderer.width_parameters(), lr=WIDTH_LR)
 
     def update_lr(self, counter):
         new_lr = get_epoch_lr(counter, self.args)
@@ -539,8 +507,6 @@ class PainterOptimizer:
         self.points_optim.zero_grad()
         if self.optim_color:
             self.color_optim.zero_grad()
-        if self.optim_width:
-            self.width_optim.zero_grad()
 
     def step_(self):
         self.points_optim.step()
@@ -548,9 +514,6 @@ class PainterOptimizer:
             self.renderer.project_hatch()
         if self.optim_color:
             self.color_optim.step()
-        if self.optim_width:
-            self.width_optim.step()
-            self.renderer.clamp_widths()
 
     def get_lr(self):
         return self.points_optim.param_groups[0]['lr']

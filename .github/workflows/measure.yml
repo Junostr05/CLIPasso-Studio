@@ -3,7 +3,8 @@ name: Measure variants
 # The quality of setting variants against the defaults, graded by the independent judge (tools/benchmark.py
 # --suite, tools/judge.py): every variant of benchmarks/variants.json on the pictures of its categories – one job per
 # variant and category, in parallel – then every variant compared with "base" (or its "against"), picture by
-# picture. For pushes whose message contains [measure].
+# picture. For pushes whose message contains [measure] – or [measure: a b], only the variants a and b (and those they
+# are compared with).
 on:
   push:
     branches: ["**"]
@@ -14,7 +15,7 @@ permissions:
 
 # (only a new measurement cancels a running one – a push without [measure] has a group of its own)
 concurrency:
-  group: measure-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure]') }}
+  group: measure-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure') }}
   cancel-in-progress: true
 
 env:
@@ -23,7 +24,7 @@ env:
 jobs:
   plan:
     name: Plan
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[measure')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -32,11 +33,19 @@ jobs:
       - uses: actions/checkout@v4
       - id: plan
         shell: python
+        env:
+          MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          import json, os
+          import json, os, re
           spec = json.load(open("benchmarks/variants.json", encoding="utf-8"))
+          names = list(spec["variants"])
+          chosen = re.search(r"\[measure:\s*([^\]]+)\]", os.environ.get("MESSAGE", ""))
+          if chosen:  # only these (and what they are compared with)
+              wanted = [n for n in re.split(r"[\s,]+", chosen.group(1).strip()) if n in spec["variants"]]
+              keep = set(wanted) | {spec["variants"][n].get("against", "base") for n in wanted}
+              names = [n for n in names if n in keep]
           jobs = [{"variant": name, "category": cat}
-                  for name, v in spec["variants"].items() for cat in v.get("categories", spec["categories"])]
+                  for name in names for cat in spec["variants"][name].get("categories", spec["categories"])]
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write("matrix=" + json.dumps(jobs) + "\n")
 
@@ -44,7 +53,7 @@ jobs:
     name: ${{ matrix.variant }} · ${{ matrix.category }}
     needs: plan
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 330  # (the larger semantic models: about 20 minutes per sketch on the CPU)
     strategy:
       fail-fast: false
       matrix:
@@ -114,16 +123,18 @@ jobs:
       - name: Compare
         shell: python
         run: |
-          import json, os, subprocess, sys
+          import glob, json, os, subprocess, sys
           spec = json.load(open("benchmarks/variants.json", encoding="utf-8"))
           status = 0
+          done = lambda name: bool(glob.glob(f"measure/{name}/**/suite_*.json", recursive=True))  # noqa: E731
           for name, v in spec["variants"].items():
               against = v.get("against", "base")
-              if name != "base" and os.path.isdir(f"measure/{name}") and os.path.isdir(f"measure/{against}"):
+              if name != "base" and done(name) and done(against):
                   status |= subprocess.call([sys.executable, "tools/benchmark.py", "--compare", f"measure/{against}",
                                              f"measure/{name}", "--summary", os.environ["GITHUB_STEP_SUMMARY"]])
           sys.exit(status)
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: measure
           path: measure
