@@ -277,6 +277,7 @@ class MainWindow(QMainWindow):
         self.phone.api.gallery = self.gallery
         self.phone.api.compare = self.compare
         self.phone.api.models_page = self.models
+        self.phone.api.queue_page = self.queue
         self.phone.toast.connect(self.toast.show_message)
         self.settings.phone_card.set_link(self.phone)
         remote_update.updater().window = self  # (an update from the phone closes this window to install)

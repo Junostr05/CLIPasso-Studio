@@ -28,6 +28,23 @@ from ..widgets.common import Banner, EmptyState, SegmentedControl, button, label
 from .other_pages import _page_header, job_method, move_to_trash
 
 SORTS = ("newest", "oldest", "score", "duration", "strokes", "name")
+
+
+def sort_items(items: list, sort: str) -> list:
+    """The gallery's order (``SORTS``), in place – also the phone's."""
+    if sort == "oldest":
+        items.sort(key=lambda it: it.created)
+    elif sort == "score":
+        items.sort(key=lambda it: (it.score is not None, it.score or 0.0), reverse=True)
+    elif sort == "duration":
+        items.sort(key=lambda it: it.seconds, reverse=True)
+    elif sort == "strokes":
+        items.sort(key=lambda it: it.strokes)
+    elif sort == "name":
+        items.sort(key=lambda it: it.name.lower())
+    else:
+        items.sort(key=lambda it: it.created, reverse=True)
+    return items
 TILE = QSize(212, 292)
 THUMB = 188
 ITEM_ROLE = Qt.UserRole + 1
@@ -743,19 +760,7 @@ class GalleryPage(QWidget):
                  if it.matches(words) and (wanted == "all" or it.method == wanted)
                  and (not self.fav_btn.isChecked() or it.favourite) and (not tag or tag in it.tags)
                  and (not self.album or self.album in it.albums)]
-        sort = SORTS[max(self.sort.currentIndex(), 0)]
-        if sort == "newest":
-            items.sort(key=lambda it: it.created, reverse=True)
-        elif sort == "oldest":
-            items.sort(key=lambda it: it.created)
-        elif sort == "score":
-            items.sort(key=lambda it: (it.score is not None, it.score or 0.0), reverse=True)
-        elif sort == "duration":
-            items.sort(key=lambda it: it.seconds, reverse=True)
-        elif sort == "strokes":
-            items.sort(key=lambda it: it.strokes)
-        else:
-            items.sort(key=lambda it: it.name.lower())
+        sort_items(items, SORTS[max(self.sort.currentIndex(), 0)])
         self.model.set_items(items)
         for row, it in enumerate(items):
             if it.job_dir in selected:

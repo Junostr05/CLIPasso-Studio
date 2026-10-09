@@ -76,6 +76,7 @@ class PhoneApi:
         self.gallery = None  # the gallery page (deleting goes its way), set by the main window
         self.compare = None  # the compare page (its jobs and results), set by the main window
         self.models_page = None  # refreshed when the phone had models downloaded
+        self.queue_page = None  # its "start by itself" switch and what happens when the queue is done
         self._download: dict | None = None  # models downloaded on the phone's request
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
@@ -333,17 +334,20 @@ class PhoneApi:
         ``method``, ``album`` and ``fav``; with the albums and methods to filter by."""
         from . import albums
 
+        from .pages.gallery import SORTS, sort_items
+
         items = self._all_results()
         q = str(data.get("q") or "").strip().lower()
         method, album = str(data.get("method") or ""), str(data.get("album") or "")
+        tag = str(data.get("tag") or "")
         fav = str(data.get("fav") or "") in ("1", "true")
 
         def keep(it) -> bool:
             return ((not method or it.method == method) and (not fav or it.favourite)
-                    and (not album or album in it.albums)
+                    and (not album or album in it.albums) and (not tag or tag in it.tags)
                     and (not q or q in " ".join([it.name, it.notes, *it.tags]).lower()))
 
-        shown = [it for it in items if keep(it)]
+        shown = sort_items([it for it in items if keep(it)], str(data.get("sort") or "newest"))
         try:
             offset = max(0, int(data.get("offset") or 0))
             limit = min(100, max(1, int(data.get("limit") or RESULTS_MAX)))
@@ -353,9 +357,14 @@ class PhoneApi:
         for k, it in enumerate(shown[offset:offset + limit]):
             out.append({"i": offset + k, "name": it.name, "method": methods_ui.name(it.method), "created": it.created,
                         "method_key": it.method, "score": round(it.score, 1) if it.score is not None else None,
-                        "fav": it.favourite, "albums": it.albums, "dir": os.path.basename(it.job_dir)})
+                        "fav": it.favourite, "albums": it.albums, "dir": os.path.basename(it.job_dir),
+                        "title": str(it.summary.get("title") or ""), "tags": it.tags, "notes": it.notes,
+                        "can_continue": it.can_continue and os.path.normcase(os.path.abspath(it.job_dir))
+                        not in self.controller.active_dirs()})
         return {"results": out, "total": len(shown), "offset": offset,
                 "albums": albums.names([it.summary for it in items]),
+                "tags": sorted({t for it in items for t in it.tags}, key=str.lower),
+                "sorts": [{"key": k, "name": tr(f"ui.gallery.sort_{k}")} for k in SORTS],
                 "methods": [{"key": m, "name": methods_ui.name(m)} for m in schema.METHODS]}
 
     @staticmethod
@@ -376,13 +385,129 @@ class PhoneApi:
             self.gallery.refresh()
         return {"ok": True}
 
+    # ------------------------------------------------------------------ the gallery: titles, tags, albums (3.8)
+    def _gallery_changed(self, job_dirs=()) -> None:
+        self._cache = None
+        if self.gallery is not None:
+            self.gallery.refresh()
+
+    def do_info(self, data: dict) -> dict:
+        """A result's title, tags and notes (as the gallery's "Edit info")."""
+        self._not_moving("output")
+        it = self._result({"dir": data.get("dir")})
+        tags = data.get("tags")
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",")]
+        tags = [str(t).strip()[:40] for t in (tags or []) if str(t).strip()][:30]
+        try:
+            jobs.write_meta(it.job_dir, title=str(data.get("title") or "")[:120], tags=tags,
+                            notes=str(data.get("notes") or "")[:4000])
+        except OSError as exc:
+            raise PhoneError(str(exc)) from None
+        self._gallery_changed()
+        return {"ok": True}
+
+    def do_album(self, data: dict) -> dict:
+        """Albums from the phone: ``op`` new (``name``, optionally ``dirs``), add / remove (``dirs`` to / from
+        ``name``), rename (``name`` → ``new``), delete (``name``; the results stay)."""
+        from . import albums
+
+        self._not_moving("output")
+        op, name = data.get("op"), albums.clean(str(data.get("name") or ""))
+        if not name:
+            raise PhoneError(tr("ui.phone.page.album_name"))
+        dirs = [self._result({"dir": d}).job_dir for d in (data.get("dirs") or [])[:500]]
+        members = [it.job_dir for it in self._all_results() if name in it.albums]
+        try:
+            if op == "new":
+                if dirs:
+                    albums.add(dirs, name)
+                else:
+                    albums.create(name)
+            elif op == "add":
+                albums.add(dirs, name)
+            elif op == "remove":
+                albums.remove(dirs, name)
+            elif op == "rename":
+                name = albums.rename(members, name, str(data.get("new") or ""))
+            elif op == "delete":
+                albums.delete(members, name)
+            else:
+                raise PhoneError("unknown album action")
+        except OSError as exc:
+            raise PhoneError(str(exc)) from None
+        self._gallery_changed()
+        return {"ok": True, "name": name}
+
+    def do_continue_result(self, data: dict) -> dict:
+        """An interrupted or cancelled job of the gallery goes on (its finished sketches stay)."""
+        it = self._result({"dir": data.get("dir")})
+        if self.controller.continue_job(it.job_dir) is None:
+            raise PhoneError(tr("ui.resume.nothing"))
+        return {"ok": True}
+
+    # ------------------------------------------------------------------ the queue (3.8: details, auto start, …)
     def get_queue(self, data: dict) -> dict:
+        from . import power
+        from .widgets.param_panel import param_text_key
+
         out = []
         for j in self.controller.jobs:
+            method = schema.method_of(j.settings)
+            defaults = schema.default_settings(method)
+            changes = []
+            for key in schema.changed_keys(j.settings):
+                value, default = j.settings.get(key), defaults.get(key)
+                if isinstance(value, bool):
+                    value, default = tr("ui.on" if value else "ui.off"), tr("ui.on" if default else "ui.off")
+                changes.append({"name": tr(param_text_key(method, key, "label")), "value": str(value),
+                                "default": str(default)})
             out.append({"id": j.id, "name": j.name, "status": j.status,
                         "method": methods_ui.name(j.settings.get("method", "clipasso")),
-                        "progress": round(j.progress, 3)})
-        return {"jobs": out}
+                        "progress": round(j.progress, 3), "changes": changes,
+                        "message": j.message if j.status == "failed" else "",
+                        "can_load": os.path.isfile(j.target)})
+        queue = self.queue_page
+        remaining = self.controller.remaining_seconds() if any(j.status in ("queued", "running", "paused")
+                                                               for j in self.controller.jobs) else 0
+        return {"jobs": out, "auto_start": bool(self.controller.auto_start),
+                "remaining": imaging_eta(remaining) if remaining else "",
+                "done_action": queue.done_action() if queue is not None else "nothing",
+                "done_actions": [{"key": k, "name": tr(f"ui.queue.done_{k}")} for k in power.ACTIONS]
+                if queue is not None and power.available() else []}
+
+    def do_queue_options(self, data: dict) -> dict:
+        """Start the next job by itself or not, and what the PC does when the queue is done (sleep, shut down)."""
+        from . import power
+
+        queue = self.queue_page
+        if "auto_start" in data:
+            on = bool(data["auto_start"])
+            if queue is not None:
+                queue.auto.setChecked(on)
+            self.controller.auto_start = on
+        if data.get("done_action") in power.ACTIONS and queue is not None:
+            queue.set_done_action(data["done_action"])
+        return {"ok": True}
+
+    def do_run_next(self, data: dict) -> dict:
+        """A waiting job to the front: it starts next."""
+        job = self._job(data)
+        if job.status != "queued":
+            raise PhoneError(tr("ui.phone.page.list_changed"))
+        running = sum(1 for j in self.controller.jobs if j.status in ("running", "paused")
+                      and self.controller.jobs.index(j) < self.controller.jobs.index(job))
+        self.controller.move_to(job.id, running)
+        return {"ok": True}
+
+    def do_load_job(self, data: dict) -> dict:
+        """A queued job's picture and settings in the studio (to look at or change them)."""
+        job = self._job(data)
+        if not os.path.isfile(job.target):
+            raise PhoneError(tr("ui.phone.page.no_picture"))
+        self.studio.set_image(job.target)
+        self.studio.params.set_settings(dict(job.settings))
+        return {"ok": True}
 
     def _job(self, data: dict):
         try:

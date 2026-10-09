@@ -255,6 +255,15 @@
         <select id="filter-album"></select>
         <button id="filter-fav" class="small fav-filter">☆</button>
       </div>
+      <div class="row filters">
+        <select id="sort"></select>
+        <select id="filter-tag"></select>
+      </div>
+      <div class="row wrap">
+        <button id="album-new" class="small" data-t="album_new"></button>
+        <button id="album-rename" class="small" data-t="album_rename" hidden></button>
+        <button id="album-delete" class="small" data-t="album_delete" hidden></button>
+      </div>
       <div id="results-count" class="muted small-text"></div>
       <div id="results" class="results"></div>
       <button id="more" class="wide" data-t="more" hidden></button>
@@ -269,6 +278,11 @@
       <label class="btn wide" for="many"><span data-t="add_many"></span>
         <input id="many" type="file" accept="image/*" multiple hidden></label>
       <div id="many-msg" class="muted small-text"></div>
+      <div class="row wrap">
+        <label class="check grow"><input id="auto-start" type="checkbox"><span data-t="auto_start"></span></label>
+        <select id="done-action" class="done-action" hidden></select>
+      </div>
+      <div id="queue-total" class="muted small-text"></div>
       <div id="jobs"></div>
     </div>
   </section>
@@ -354,6 +368,32 @@
     <button id="viewer-fav" class="small"></button>
     <button id="viewer-delete" class="small">🗑</button>
   </div>
+  <div id="viewer-tags" class="muted small-text"></div>
+  <div class="row wrap">
+    <button id="viewer-info-edit" class="small" data-t="info_edit"></button>
+    <select id="viewer-album" class="done-action"></select>
+    <button id="viewer-continue" class="small" data-t="continue" hidden></button>
+    <button id="viewer-pair" class="small"></button>
+    <button id="viewer-show" class="small" data-t="slideshow"></button>
+  </div>
+  <form id="info-form" class="info-form" hidden autocomplete="off">
+    <input id="info-title" type="text" maxlength="120">
+    <input id="info-tags" type="text" maxlength="400">
+    <textarea id="info-notes" rows="3" maxlength="4000"></textarea>
+    <div class="row"><button class="primary" type="submit" data-t="save"></button>
+      <button id="info-cancel" type="button" data-t="cancel"></button></div>
+  </form>
+</div>
+
+<!-- ========================================================== two results with a divider -->
+<div id="pair" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="pair_title"></b>
+    <button id="pair-close" class="small" data-t="close"></button>
+  </div>
+  <div class="preview split pair"><img id="pair-a" alt=""><img id="pair-b" alt=""></div>
+  <input id="pair-split" class="split-range" type="range" min="0" max="100" value="50">
+  <div class="row between muted small-text"><span id="pair-a-name"></span><span id="pair-b-name"></span></div>
 </div>
 
 <!-- ========================================================== crop / turn the picture -->

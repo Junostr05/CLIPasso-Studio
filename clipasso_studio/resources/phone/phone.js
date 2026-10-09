@@ -1056,7 +1056,8 @@ async function pollExport(id, misses) {
 
 // ------------------------------------------------------------------ gallery and queue
 // the gallery: every result, searched and filtered, page by page; a result large (swipe to the next one)
-const G = {items: [], total: 0, q: "", method: "", album: "", fav: false, at: -1, busy: false};
+const G = {items: [], total: 0, q: "", method: "", album: "", tag: "", sort: "newest", fav: false, at: -1,
+           busy: false, albums: [], pair: null};
 $("search").placeholder = T.search;
 $("filter-method").title = T.filter_method;
 $("filter-album").title = T.filter_album;
@@ -1069,6 +1070,27 @@ $("search").addEventListener("input", () => {
 $("filter-method").onchange = (e) => { G.method = e.target.value; loadResults(); };
 $("filter-album").onchange = (e) => { G.album = e.target.value; loadResults(); };
 $("filter-fav").onclick = () => { G.fav = !G.fav; loadResults(); };
+$("sort").onchange = (e) => { G.sort = e.target.value; loadResults(); };
+$("filter-tag").onchange = (e) => { G.tag = e.target.value; loadResults(); };
+
+// albums: a new one, renamed, deleted (the results stay)
+$("album-new").onclick = async () => {
+  const name = (prompt(T.album_name_ask) || "").trim();
+  if (!name) return;
+  const a = await act("album", {op: "new", name});
+  if (a.ok) { G.album = a.name; loadResults(); }
+};
+$("album-rename").onclick = async () => {
+  const name = (prompt(T.album_name_ask, G.album) || "").trim();
+  if (!name || name === G.album) return;
+  const a = await act("album", {op: "rename", name: G.album, new: name});
+  if (a.ok) { G.album = a.name; loadResults(); }
+};
+$("album-delete").onclick = async () => {
+  if (!confirm(t("album_delete_ask", {name: G.album}))) return;
+  const a = await act("album", {op: "delete", name: G.album});
+  if (a.ok) { G.album = ""; loadResults(); }
+};
 $("more").onclick = () => loadResults(true);
 
 function fillSelect(sel, items, all, current) {
@@ -1085,8 +1107,8 @@ function fillSelect(sel, items, all, current) {
 async function loadResults(more) {
   if (G.busy) return;
   G.busy = true;
-  const q = new URLSearchParams({q: G.q, method: G.method, album: G.album, fav: G.fav ? "1" : "",
-                                 offset: more ? G.items.length : 0});
+  const q = new URLSearchParams({q: G.q, method: G.method, album: G.album, fav: G.fav ? "1" : "", tag: G.tag,
+                                 sort: G.sort, offset: more ? G.items.length : 0});
   const list = await getJSON("/api/get/results?" + q).catch(() => null);
   G.busy = false;
   if (!list || list.ok === false) return;
@@ -1094,6 +1116,14 @@ async function loadResults(more) {
   G.total = list.total;
   fillSelect($("filter-method"), list.methods, T.all_methods, G.method);
   fillSelect($("filter-album"), list.albums.map((a) => ({key: a, name: a})), T.all_albums, G.album);
+  fillSelect($("filter-tag"), (list.tags || []).map((x) => ({key: x, name: x})), T.all_tags, G.tag);
+  if (list.sorts) {
+    fillSelect($("sort"), list.sorts, "", G.sort);
+    if ($("sort").firstChild && !$("sort").firstChild.value) $("sort").firstChild.remove();  // (no "all" here)
+    $("sort").value = G.sort;
+  }
+  G.albums = list.albums;
+  $("album-rename").hidden = $("album-delete").hidden = !G.album;
   $("filter-fav").textContent = G.fav ? "★" : "☆";
   $("filter-fav").classList.toggle("on", G.fav);
   renderResults();
@@ -1147,8 +1177,86 @@ function renderViewer() {
   }
   $("viewer-fav").textContent = r.fav ? "★" : "☆";
   $("viewer-fav").classList.toggle("on", r.fav);
+  $("viewer-tags").textContent = [(r.tags || []).map((x) => "#" + x).join(" "), r.notes || ""].filter(Boolean).join(" · ");
+  $("viewer-continue").hidden = !r.can_continue;
+  const albumSel = $("viewer-album");
+  albumSel.replaceChildren(el("option", {value: "", text: T.album_add}),
+    ...G.albums.map((a) => el("option", {value: a, text: ((r.albums || []).includes(a) ? "✓ " : "") + a})),
+    el("option", {value: "+", text: T.album_new_option}));
+  albumSel.value = "";
+  $("viewer-pair").textContent = G.pair && G.pair.dir !== r.dir ? t("pair_with", {name: G.pair.name}) : T.pair_remember;
+  if (!$("info-form").hidden && $("info-form").dataset.dir !== r.dir) $("info-form").hidden = true;
 }
-function closeViewer() { $("viewer").hidden = true; G.at = -1; }
+
+// a result's title, tags and notes
+$("info-title").placeholder = T.info_title;
+$("info-tags").placeholder = T.info_tags;
+$("info-notes").placeholder = T.info_notes;
+$("viewer-info-edit").onclick = () => {
+  const r = G.items[G.at];
+  if (!r) return;
+  $("info-form").dataset.dir = r.dir;
+  $("info-title").value = r.title || "";
+  $("info-tags").value = (r.tags || []).join(", ");
+  $("info-notes").value = r.notes || "";
+  $("info-form").hidden = false;
+};
+$("info-cancel").onclick = () => { $("info-form").hidden = true; };
+$("info-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const r = G.items[G.at];
+  if (!r) return;
+  const a = await act("info", {dir: r.dir, title: $("info-title").value, tags: $("info-tags").value,
+                               notes: $("info-notes").value});
+  if (a.ok) { $("info-form").hidden = true; toast(T.saved); await loadResults(); renderViewer(); }
+});
+// into an album, or out of it (✓), or a new one
+$("viewer-album").onchange = async (e) => {
+  const r = G.items[G.at];
+  let name = e.target.value;
+  if (!r || !name) return;
+  if (name === "+") name = (prompt(T.album_name_ask) || "").trim();
+  if (!name) { renderViewer(); return; }
+  const inside = (r.albums || []).includes(name);
+  const a = await act("album", {op: inside ? "remove" : (G.albums.includes(name) ? "add" : "new"), name, dirs: [r.dir]});
+  if (a.ok) toast(t(inside ? "album_removed" : "album_added", {name}));
+  await loadResults();
+  renderViewer();
+};
+$("viewer-continue").onclick = async () => {
+  const r = G.items[G.at];
+  if (!r) return;
+  const a = await act("continue_result", {dir: r.dir});
+  if (a.ok) { toast(T.continued); closeViewer(); showTab("queue"); }
+};
+// two results with a divider: the first one is remembered, the second one compared with it
+$("viewer-pair").onclick = () => {
+  const r = G.items[G.at];
+  if (!r) return;
+  if (!G.pair || G.pair.dir === r.dir) { G.pair = {dir: r.dir, name: r.name}; toast(T.pair_remembered); renderViewer(); return; }
+  $("pair-a").src = `/api/file/result?d=${encodeURIComponent(G.pair.dir)}`;
+  $("pair-b").src = `/api/file/result?d=${encodeURIComponent(r.dir)}`;
+  $("pair-a-name").textContent = "◀ " + G.pair.name;
+  $("pair-b-name").textContent = r.name + " ▶";
+  $("pair-split").value = 50;
+  $("pair-b").style.clipPath = "inset(0 0 0 50%)";
+  $("pair").hidden = false;
+};
+$("pair-split").addEventListener("input", () => { $("pair-b").style.clipPath = `inset(0 0 0 ${$("pair-split").value}%)`; });
+$("pair-close").onclick = () => { $("pair").hidden = true; };
+// a slideshow of the shown results (3 s each)
+let show = 0;
+function stopShow() { clearInterval(show); show = 0; $("viewer-show").textContent = T.slideshow; }
+$("viewer-show").onclick = () => {
+  if (show) { stopShow(); return; }
+  $("viewer-show").textContent = T.slideshow_stop;
+  show = setInterval(async () => {
+    if ($("viewer").hidden) { stopShow(); return; }
+    if (G.at + 1 >= G.total) { stopShow(); return; }
+    await stepViewer(1);
+  }, 3000);
+};
+function closeViewer() { $("viewer").hidden = true; G.at = -1; stopShow(); $("info-form").hidden = true; }
 async function stepViewer(d) {
   const k = G.at + d;
   if (k >= G.items.length && G.items.length < G.total) await loadResults(true);
@@ -1167,14 +1275,26 @@ $("viewer-open").onclick = async () => {
 };
 
 let dragging = null;  // (a waiting job being dragged: the list is not rebuilt meanwhile)
+let openJob = null;   // the job whose details are open
+$("auto-start").onchange = (e) => act("queue_options", {auto_start: e.target.checked});
+$("done-action").onchange = (e) => act("queue_options", {done_action: e.target.value});
 async function loadQueue() {
   if (dragging) return;
   const box = $("jobs");
   const list = await getJSON("/api/get/queue").catch(() => ({jobs: []}));
   if (dragging) return;
   const jobs = list.jobs || [];
+  if (document.activeElement !== $("auto-start")) $("auto-start").checked = list.auto_start !== false;
+  const done = list.done_actions || [];
+  $("done-action").hidden = !done.length;
+  if (done.length && document.activeElement !== $("done-action")) {
+    fillSelect($("done-action"), done.map((d) => ({key: d.key, name: T.done_prefix + d.name})), "", list.done_action);
+    if ($("done-action").firstChild && !$("done-action").firstChild.value) $("done-action").firstChild.remove();
+    $("done-action").value = list.done_action;
+  }
+  $("queue-total").textContent = list.remaining ? t("queue_total", {time: list.remaining}) : "";
   // only the bars move while a job runs: the rows stay (a tap on a button that is rebuilt meanwhile is lost)
-  const sig = JSON.stringify(jobs.map((j) => [j.id, j.name, j.status, j.method]));
+  const sig = JSON.stringify(jobs.map((j) => [j.id, j.name, j.status, j.method, j.changes.length])) + openJob;
   if (box.dataset.sig === sig) {
     for (const j of jobs) {
       const fill = box.querySelector(`.job[data-id="${j.id}"] .bar > div`);
@@ -1203,10 +1323,22 @@ async function loadQueue() {
       buttons.push(el("button", {class: "small", text: T.retry, onclick: () => act("retry", {id: j.id}).then(loadQueue)}));
     }
     const handle = j.status === "queued" ? el("span", {class: "handle", title: T.drag, "aria-label": T.drag, text: "☰"}) : null;
-    const row = el("div", {class: "job", "data-id": j.id, "data-index": index}, handle,
-      el("div", {class: "info"}, el("b", {text: j.name}),
-         el("span", {class: "muted", text: j.method + " · " + (T["status_" + j.status] || j.status)}), bar),
-      ...buttons);
+    const details = openJob === j.id ? el("div", {class: "job-details"},
+      el("b", {text: T.changed_settings}),
+      j.changes.length ? el("ul", {}, ...j.changes.map((c) => el("li", {text: `${c.name}: ${c.value} (${T.default_was} ${c.default})`})))
+                       : el("div", {class: "muted", text: T.all_defaults}),
+      j.message ? el("div", {class: "warn", text: j.message}) : null,
+      el("div", {class: "row wrap"},
+         j.can_load ? el("button", {class: "small", text: T.load_in_studio, onclick: async () => {
+           const a = await act("load_job", {id: j.id});
+           if (a.ok) showTab("studio");
+         }}) : null,
+         j.status === "queued" ? el("button", {class: "small", text: T.run_next,
+                                               onclick: () => act("run_next", {id: j.id}).then(loadQueue)}) : null)) : null;
+    const info = el("div", {class: "info", onclick: () => { openJob = openJob === j.id ? null : j.id; loadQueue(); }},
+      el("b", {text: j.name}),
+      el("span", {class: "muted", text: j.method + " · " + (T["status_" + j.status] || j.status)}), bar);
+    const row = el("div", {class: "job", "data-id": j.id, "data-index": index}, handle, info, ...buttons, details);
     if (handle) dragRow(handle, row);
     box.append(row);
   });

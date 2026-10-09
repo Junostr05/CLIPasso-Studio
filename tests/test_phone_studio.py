@@ -227,3 +227,73 @@ def test_touching_up_the_mask_on_the_phone(window, tmp_path, monkeypatch):
     assert call("do_mask_edit", {"op": "melt"})["ok"] is False
     assert call("do_mask_save", {})["ok"] and saved and saved[0].mean() > 0.25 and previews
     assert call("do_mask_edit", {"op": "undo"})["ok"] is False  # (saved: the session is over)
+
+
+def test_gallery_info_albums_and_continue(window, tmp_path, monkeypatch):
+    """Titles, tags and notes, sorting and the tag filter, albums (new, add, remove, rename, delete) and continuing an
+    interrupted result – from the phone's gallery."""
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui.app_settings import app_settings
+    from tests.helpers import fake_job
+
+    out = tmp_path / "out"
+    out.mkdir()
+    monkeypatch.setitem(app_settings().data, "output_dir", str(out))
+    api, call = window.phone.api, window.phone.api.handle
+    api._cache = None
+    fake_job(str(out), "camel", str(tmp_path / "camel.png"), 31.0, created="2026-10-01 10:00:00")
+    fake_job(str(out), "zebra", str(tmp_path / "zebra.png"), 25.0, created="2026-10-02 10:00:00")
+    res = call("get_results", {})
+    assert [r["dir"] for r in res["results"]] == ["zebra", "camel"] and {s["key"] for s in res["sorts"]} >= {"name"}
+    assert [r["dir"] for r in call("get_results", {"sort": "score"})["results"]] == ["camel", "zebra"]
+    assert [r["dir"] for r in call("get_results", {"sort": "name"})["results"]] == ["camel", "zebra"]
+    # title, tags, notes
+    assert call("do_info", {"dir": "camel", "title": "Kamel", "tags": "tier, wüste", "notes": "erstes"})["ok"]
+    meta = jobs.read_meta(str(out / "camel"))
+    assert meta["title"] == "Kamel" and meta["tags"] == ["tier", "wüste"] and meta["notes"] == "erstes"
+    res = call("get_results", {"tag": "tier"})
+    assert [r["dir"] for r in res["results"]] == ["camel"] and res["results"][0]["title"] == "Kamel"
+    assert "tier" in res["tags"]
+    assert call("do_info", {"dir": "nope"})["ok"] is False
+    # albums
+    assert call("do_album", {"op": "new", "name": "Tiere", "dirs": ["camel", "zebra"]})["ok"]
+    assert len(call("get_results", {"album": "Tiere"})["results"]) == 2
+    assert call("do_album", {"op": "remove", "name": "Tiere", "dirs": ["zebra"]})["ok"]
+    assert [r["dir"] for r in call("get_results", {"album": "Tiere"})["results"]] == ["camel"]
+    assert call("do_album", {"op": "rename", "name": "Tiere", "new": "Zoo"})["name"] == "Zoo"
+    assert "Zoo" in call("get_results", {})["albums"]
+    assert call("do_album", {"op": "delete", "name": "Zoo"})["ok"]
+    assert call("get_results", {"album": "Zoo"})["results"] == []
+    assert call("do_album", {"op": "new", "name": "  "})["ok"] is False
+    assert call("do_album", {"op": "burn", "name": "x"})["ok"] is False
+    # an interrupted result goes on
+    monkeypatch.setattr(window.controller, "continue_job", lambda d: object() if d.endswith("camel") else None)
+    assert call("do_continue_result", {"dir": "camel"})["ok"]
+    assert call("do_continue_result", {"dir": "zebra"})["ok"] is False
+
+
+def test_queue_details_options_and_load(window, tmp_path, monkeypatch):
+    from PIL import Image
+
+    from clipasso_studio import settings_schema as schema
+
+    photo = tmp_path / "owl.png"
+    Image.new("RGB", (64, 64), "white").save(photo)
+    c, call = window.controller, window.phone.api.handle
+    c.jobs.clear()
+    first = c.enqueue(str(photo), schema.default_settings("clipasso"), start=False)
+    second = c.enqueue(str(photo), {**schema.default_settings("swiftsketch"), "num_sketches": 3}, start=False)
+    try:
+        q = call("get_queue", {})
+        assert [j["id"] for j in q["jobs"]] == [first.id, second.id] and q["jobs"][0]["can_load"]
+        changes = q["jobs"][1]["changes"]
+        assert any(ch["value"] == "3" for ch in changes) and q["remaining"]
+        assert call("do_run_next", {"id": second.id})["ok"] and c.jobs[0] is second
+        assert call("do_queue_options", {"auto_start": False})["ok"] and not c.auto_start
+        assert not window.queue.auto.isChecked() and call("get_queue", {})["auto_start"] is False
+        call("do_queue_options", {"auto_start": True})
+        assert call("do_load_job", {"id": second.id})["ok"]
+        assert window.studio.params.method() == "swiftsketch" and window.studio.params.settings()["num_sketches"] == 3
+        assert window.studio.image_path == str(photo)
+    finally:
+        c.jobs.clear()
