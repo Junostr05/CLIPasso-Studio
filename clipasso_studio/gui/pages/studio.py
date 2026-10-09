@@ -8,7 +8,7 @@ import shutil
 import sys
 import time
 
-from PySide6.QtCore import QRectF, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QRectF, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox,
                                QProgressBar, QScrollArea, QSplitter, QToolButton, QVBoxLayout, QWidget)
@@ -22,7 +22,8 @@ from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SheetView, SketchCanvas, load_pixmap)
-from ..widgets.common import Banner, Card, SegmentedControl, ToggleSwitch, WrapRow, button, label, tool_button
+from ..widgets.common import (Banner, Card, ElidedLabel, SegmentedControl, ToggleSwitch, WrapRow, button, label,
+                              tool_button)
 from ..widgets.edit_bar import EditBar, importance_command
 from ..widgets.hint_box import HintBox
 from ..widgets.method_picker import MethodPicker
@@ -33,6 +34,9 @@ def _pixmap_from_png(data: bytes) -> QPixmap:
     pm = QPixmap()
     pm.loadFromData(data, "PNG")
     return pm
+
+
+STATS_SPACING, STATS_SPACING_NARROW = 28, 12  # px between the numbers below the progress bar
 
 
 class StatTile(QWidget):
@@ -492,7 +496,7 @@ class StudioPage(QWidget):
         self.sheet.setVisible(False)
         center.body.addWidget(self.sheet, 1)
 
-        self.status = label("", "h3")
+        self.status = ElidedLabel("", "h3")  # (a long file name ends in "…", not in the middle of a word)
         status_row = QHBoxLayout()
         status_row.addWidget(self.status, 1)
         status_row.addWidget(self.estimate_holder())
@@ -502,13 +506,17 @@ class StudioPage(QWidget):
         self.progress.setTextVisible(False)
         self.progress.setFixedHeight(8)
         center.body.addWidget(self.progress)
-        stats = QHBoxLayout()
-        stats.setSpacing(28)
+        self.stats_row = QWidget()  # (narrow: closer together, then without the current loss and the time so far)
+        self.stats_row.setMinimumWidth(0)
+        self.stats_layout = QHBoxLayout(self.stats_row)
+        self.stats_layout.setContentsMargins(0, 0, 0, 0)
+        self.stats_layout.setSpacing(STATS_SPACING)
         self.stat_iter, self.stat_loss, self.stat_best, self.stat_time, self.stat_eta = (StatTile() for _ in range(5))
         for t in (self.stat_iter, self.stat_loss, self.stat_best, self.stat_time, self.stat_eta):
-            stats.addWidget(t)
-        stats.addStretch(1)
-        center.body.addLayout(stats)
+            self.stats_layout.addWidget(t)
+        self.stats_layout.addStretch(1)
+        self.stats_row.installEventFilter(self)
+        center.body.addWidget(self.stats_row)
         self.chart = LossChart()
         self.chart.setFixedHeight(74)
         center.body.addWidget(self.chart)
@@ -538,6 +546,7 @@ class StudioPage(QWidget):
         self.queue_btn.clicked.connect(self.add_to_queue)
         self.queue_btn.setToolTip("")
         run, more = QWidget(), QWidget()  # (the queue button to a second line when the canvas is narrow)
+        self.action_run = run
         rl = QHBoxLayout(run)
         rl.setContentsMargins(0, 0, 0, 0)
         for b in (self.start_btn, self.pause_btn, self.cancel_btn):
@@ -548,6 +557,7 @@ class StudioPage(QWidget):
         ml.addStretch(1)
         ml.addWidget(self.queue_btn)
         self.action_row = WrapRow(run, more)
+        self.action_row.installEventFilter(self)  # (too narrow even alone: Pause and Cancel as icons, see _fit_actions)
         actions.addWidget(self.action_row, 1)
         center.body.addLayout(actions)
         splitter.addWidget(center)
@@ -836,9 +846,13 @@ class StudioPage(QWidget):
                 item.widget().setParent(None)
         self.history_jobs = [d for d, _ in found]
         shown = os.path.normcase(os.path.abspath(self.view_dir)) if self.view_dir else ""
+        tallest = 90
         for job_dir, summary in found:
-            self.history_layout.insertWidget(self.history_layout.count() - 1,
-                                             self._history_button(job_dir, summary, shown))
+            tile = self._history_button(job_dir, summary, shown)
+            tallest = max(tallest, tile.height())
+            self.history_layout.insertWidget(self.history_layout.count() - 1, tile)
+        # the tiles and, below them, room for the scroll bar of many jobs
+        self.history_scroll.setFixedHeight(tallest + self.history_scroll.horizontalScrollBar().sizeHint().height())
         self.history_title.setText(tr("ui.history.title", n=len(found)))
         for w in (self.history_title, self.history_scroll):
             w.setVisible(bool(found))
@@ -852,7 +866,6 @@ class StudioPage(QWidget):
         b.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         b.setCheckable(True)
         b.setChecked(os.path.normcase(os.path.abspath(job_dir)) == shown)
-        b.setFixedSize(84, 90)
         b.setIconSize(QSize(64, 56))
         b.setCursor(Qt.PointingHandCursor)
         sketch = jobs.best_sketch(summary)
@@ -872,6 +885,7 @@ class StudioPage(QWidget):
             p.end()
         b.setIcon(QIcon(pm))
         b.setText(f"{methods_ui.name(method)[:11]}\n{str(summary.get('created', ''))[5:10]}")
+        b.setFixedSize(84, max(90, b.sizeHint().height()))  # (the two lines under the sketch are not cut)
         score = summary.get("clip_score")
         secs = summary.get("seconds") or 0
         b.setToolTip(tr("ui.history.tip", method=methods_ui.name(method), date=str(summary.get("created", ""))[:16],
@@ -1966,11 +1980,12 @@ class StudioPage(QWidget):
         self.start_btn.setEnabled(bool(self.image_path))
         paused = bool(job and job.status == "paused")
         p = theme.current()
-        self.pause_btn.setText(tr("ui.resume") if paused else tr("ui.pause"))
+        self.pause_btn.setProperty("full_text", tr("ui.resume") if paused else tr("ui.pause"))
         self.pause_btn.setIcon(icons.icon("play" if paused else "pause", p.text))
         self.start_btn.setText(tr("ui.start_queue") if busy else tr("ui.start"))
         self.start_btn.setIcon(icons.icon("list-plus" if busy else "play", p.on_accent))
         self.queue_btn.setVisible(not busy)
+        self._fit_actions()
         has_result = self._selected_run() is not None
         for b in self.export_btns.values():
             b.setEnabled(has_result)
@@ -2155,13 +2170,59 @@ class StudioPage(QWidget):
         self._fit_left_column()
         self.stat_time.caption.setText(tr("ui.stat.elapsed"))
         self.stat_eta.caption.setText(tr("ui.stat.eta"))
-        self.cancel_btn.setText(tr("ui.cancel"))
+        self.cancel_btn.setProperty("full_text", tr("ui.cancel"))
         self.queue_btn.setText(tr("ui.add_to_queue"))
         key, fmt = self._status_key
         self.status.setText(tr(key, **fmt))
         self._update_estimate()
         self._update_banner()
         self._update_buttons()
+
+    def eventFilter(self, obj, event):  # noqa: N802
+        if event.type() == QEvent.Resize and obj is self.action_row:
+            self._fit_actions()
+        elif event.type() in (QEvent.Resize, QEvent.LayoutRequest) and obj is self.stats_row:
+            self._fit_stats()  # (also when a number grows during a run)
+        return super().eventFilter(obj, event)
+
+    def _fit_actions(self):
+        """Pause and Cancel show only their icons when Start, Pause and Cancel do not fit side by side (a narrow
+        canvas, long German words); their names stay as tooltip and screen-reader name."""
+        if getattr(self, "_fitting", False) or not hasattr(self, "action_run"):
+            return
+        self._fitting = True
+        try:
+            small = (self.pause_btn, self.cancel_btn)
+            for b in small:
+                b.setText(b.property("full_text") or "")
+            compact = self.action_run.sizeHint().width() > self.action_row.width() > 0
+            for b in small:
+                name = b.property("full_text") or ""
+                b.setAccessibleName(name)
+                b.setToolTip(name if compact else "")
+                if compact:
+                    b.setText("")
+        finally:
+            self._fitting = False
+
+    def _fit_stats(self):
+        """The numbers below the progress bar in a narrow canvas: closer together, then without the current loss
+        (the best one stays) and the time so far (the time left stays)."""
+        tiles = (self.stat_iter, self.stat_loss, self.stat_best, self.stat_time, self.stat_eta)
+        width = self.stats_row.width()
+
+        def needed(shown, spacing):
+            return sum(t.sizeHint().width() for t in shown) + spacing * (len(shown) - 1)
+
+        shown, spacing = list(tiles), STATS_SPACING
+        if needed(shown, spacing) > width:
+            spacing = STATS_SPACING_NARROW
+        for drop in (self.stat_loss, self.stat_time):
+            if needed(shown, spacing) > width:
+                shown.remove(drop)
+        self.stats_layout.setSpacing(spacing)
+        for t in tiles:
+            t.setVisible(t in shown)
 
     def estimate_holder(self) -> QWidget:
         self.estimate = label("", "faint")

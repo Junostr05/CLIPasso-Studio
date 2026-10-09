@@ -18,6 +18,39 @@ def label(text: str = "", role: str | None = None, wrap: bool = False) -> QLabel
     return lbl
 
 
+class ElidedLabel(QLabel):
+    """One line that ends in "…" when it does not fit (a status line, a name); the whole text is then its tooltip.
+    Screen readers get the whole text (``text()``)."""
+
+    def __init__(self, text: str = "", role: str | None = None, parent=None):
+        super().__init__(text, parent)
+        if role:
+            self.setProperty("role", role)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, super().minimumSizeHint().height())
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        super().setText(text)
+        self._update_tip()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._update_tip()
+
+    def _shown(self) -> str:
+        return self.fontMetrics().elidedText(self.text(), Qt.ElideRight, max(0, self.contentsRect().width()))
+
+    def _update_tip(self) -> None:
+        self.setToolTip(self.text() if self.text() and self._shown() != self.text() else "")
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        self.style().drawItemText(p, self.contentsRect(), int(self.alignment()), self.palette(), self.isEnabled(),
+                                  self._shown(), self.foregroundRole())
+
+
 def set_role(widget: QWidget, role: str) -> None:
     widget.setProperty("role", role)
     widget.style().unpolish(widget)

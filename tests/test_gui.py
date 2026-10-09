@@ -1632,6 +1632,11 @@ def test_earlier_jobs_of_the_picture(window, tmp_path):
     studio.refresh_history()
     assert studio.history_jobs == [b, a, c] and studio.history_scroll.isVisibleTo(studio)
     assert "(3)" in studio.history_title.text()
+    for i in range(3):  # 4.0: the two lines under each sketch are not cut at the bottom
+        tile = studio.history_layout.itemAt(i).widget()
+        assert tile.height() >= tile.sizeHint().height()
+        assert studio.history_scroll.height() - studio.history_scroll.horizontalScrollBar().sizeHint().height() \
+            >= tile.height()
     first = studio.history_layout.itemAt(0).widget()
     first.click()
     assert os.path.normpath(studio.view_dir) == os.path.normpath(b)
@@ -1914,6 +1919,57 @@ def test_empty_pages_say_what_to_do(window, monkeypatch):
         window.compare)
     window.compare.empty.button.click()
     assert window.stack.currentWidget() is window.studio
+
+
+def test_nothing_in_the_studio_centre_is_cut_in_a_small_window(window):
+    """4.0: at the smallest window, in German, nothing in the middle of the studio is cut off: Start, Pause and
+    Cancel show their whole text – or, when the three do not fit side by side, Pause and Cancel only their icon with
+    the name as tooltip and screen-reader name; the numbers below the progress bar fit; a long status line ends
+    in "…" with the whole text as tooltip (they were cut in the middle of a word)."""
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.i18n import i18n
+    from clipasso_studio.gui.main_window import MIN_WIDTH
+
+    window.show_page("studio")
+    size = window.size()
+    st = window.studio
+    try:
+        i18n.set_language("de")
+        window.resize(MIN_WIDTH, 760)
+        st.stat_iter.value.setText("2001/2001")
+        st.stat_loss.value.setText("0.2000")
+        st.stat_best.value.setText("0.2000")
+        st.stat_time.value.setText("1:40:48")
+        st.stat_eta.value.setText("0:00")
+        st.status.setText("Ergebnis geladen: ein_sehr_langer_bildname_mit_clipasso_ergebnis")
+        for _ in range(5):
+            QApplication.processEvents()
+
+        def inside(w, outer):
+            left = w.mapTo(outer, w.rect().topLeft()).x()
+            return left >= 0 and left + w.width() <= outer.width()
+
+        for b in (st.start_btn, st.pause_btn, st.cancel_btn):
+            assert b.isVisible() and b.width() >= b.sizeHint().width(), b.text()  # (the whole text or the icon)
+            assert inside(b, st.center_card), b.accessibleName()
+        for b in (st.pause_btn, st.cancel_btn):
+            assert b.accessibleName() and (b.text() or b.toolTip() == b.accessibleName())
+        assert st.start_btn.text()  # (the main action keeps its words)
+        for t in (st.stat_iter, st.stat_loss, st.stat_best, st.stat_time, st.stat_eta):
+            if t.isVisible():
+                assert t.width() >= t.sizeHint().width() and inside(t, st.center_card), t.caption.text()
+        assert st.stat_eta.isVisible() and st.stat_best.isVisible()  # (the time left and the best value stay)
+        assert inside(st.status, st.center_card) and st.status.toolTip() == st.status.text()
+        window.resize(1480, 920)
+        for _ in range(5):
+            QApplication.processEvents()
+        assert st.pause_btn.text() and st.cancel_btn.text() and st.stat_loss.isVisible()  # (room: all of it again)
+        st.status.setText("Ergebnis geladen: rose_clipasso")
+        assert not st.status.toolTip()  # (it fits: no tooltip)
+    finally:
+        window.resize(size)
+        i18n.set_language("de")
 
 
 def test_studio_columns_fit_a_small_window(window):
