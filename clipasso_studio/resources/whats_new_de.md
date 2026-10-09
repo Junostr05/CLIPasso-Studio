@@ -1,5 +1,6 @@
 ## Neu in 3.8: Fernsteuerung 2.0
 
+- **3.8.1 – Korrekturen:** Die experimentelle Skizzen-Verbesserung (Schraffur) bricht nicht mehr mit „No module named 'scipy'“ ab. Findet die Grafikkarte für eine Berechnung keinen Weg („FIND was unable to find an engine …“, z. B. GTX 1060), rechnet der Auftrag mit einem einfacheren Weg weiter statt abzubrechen – fertige Skizzen bleiben. Dazu bessere Kontraste, nichts Abgeschnittenes im kleinen Fenster und klarere Ansagen für Bildschirmleser auf dem Handy.
 - **Update vom Handy:** Im neuen Bereich *App* der Handy-Seite: *Nach Updates suchen* und *Herunterladen & installieren*. Nach der 6-stelligen PIN lädt die App das Update, hält einen laufenden Auftrag an, installiert, startet neu und rechnet danach weiter – die Seite verbindet sich von selbst wieder. Bei einer Installation für alle Benutzer wird vom Handy nur geladen, installiert wird mit einem Klick am PC.
 - **Fast das Studio am Computer oder Tablet:** Auf einem breiten Bildschirm im Querformat zeigt die Seite das Studio in drei Spalten mit einer Leiste links – wie am PC, mit Tastenkürzeln. Unter *App → Ansicht* wählbar: automatisch, Handy oder Studio.
 - **Skizze bearbeiten am Handy:** Radierer, Stift, Rückgängig/Wiederholen, Original, *Vereinfachen*, Zwischenstände, Zeitraffer, *Mit CLIPasso weiterrechnen* und eine Matrix-Zelle neu rechnen.

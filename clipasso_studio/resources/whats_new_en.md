@@ -1,5 +1,6 @@
 ## New in 3.8: the phone remote 2.0
 
+- **3.8.1 – fixes:** the experimental sketch improvement (hatching) no longer ends with “No module named 'scipy'”. When the graphics card finds no way for a computation (“FIND was unable to find an engine …”, e.g. a GTX 1060), the job goes on with a simpler way instead of ending – finished sketches are kept. Also better contrast, nothing cut off in a small window, and clearer screen-reader announcements on the phone.
 - **Update from the phone:** in the new *App* area of the phone page: *Check for updates* and *Download & install*. After the 6-digit PIN, the app downloads the update, stops a running job, installs, starts again and goes on computing – the page connects again by itself. For an installation for all users the phone only downloads; installing takes one click on the PC.
 - **Almost the studio on a computer or tablet:** on a wide screen held across, the page shows the studio in three columns with a bar on the left – as on the PC, with keyboard shortcuts. *App → View*: automatic, phone or studio.
 - **Editing the sketch on the phone:** eraser, pen, undo/redo, original, *Simplify*, saved steps, time lapse, *Continue with CLIPasso* and computing a matrix cell again.

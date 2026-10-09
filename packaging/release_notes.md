@@ -1,3 +1,10 @@
+## CLIPasso Studio 3.8.1 – fixes: the experimental sketch improvement, older graphics cards
+
+- **Experimental sketch improvement:** switched on (Settings, at the bottom), a CLIPasso or SceneSketch job ended at once with “No module named 'scipy'” – its edge and hatching maps used a library the app does not include. The app computes them itself now (the same maps); a new test makes sure the app imports nothing its build leaves out.
+- **“FIND was unable to find an engine to execute this computation”** (seen on a GTX 1060): when cuDNN finds no way to run a convolution – typically when the graphics memory is nearly full while it tries its algorithms – the job no longer ends. It goes on with a simpler way: first without cuDNN's search for the fastest algorithm, then, if needed, without cuDNN (a little slower). Finished sketches are kept, the others continue from their checkpoints, and a note in the studio says so.
+- From the review for 4.0: nothing in the studio's centre is cut off in a small window any more (status line, buttons, numbers, earlier jobs); the text colours of the studio and the phone page meet the WCAG AA contrast (hints on the paper, the red button under the mouse, the dark phone page); on the phone, screen readers hear which tab and which option is chosen, and every slider and help button has a name.
+- **Small update:** an app on 3.8.0 downloads only the files that changed (`…-Patch-from-3.8.0.exe` / `…-Portable-Patch-from-3.8.0.zip`).
+
 ## CLIPasso Studio 3.8 – the phone remote: almost the whole studio
 
 **Update from the phone**
