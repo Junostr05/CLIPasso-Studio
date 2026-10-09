@@ -328,6 +328,8 @@
  "ui.export_tip": "Export settings as JSON",
  "ui.warn.cuda_unavailable": "No usable NVIDIA GPU found (CUDA not available) – computing on the CPU.",
  "ui.warn.gpu_unsupported": "This graphics card is not supported by this PyTorch build – computing on the CPU.",
+ "ui.warn.cudnn_no_benchmark": "The graphics card found no suitable way for a computation step (cuDNN). It goes on with a simpler one – finished sketches are kept.",
+ "ui.warn.cudnn_off": "The graphics card could not run a computation step with cuDNN. It goes on without cuDNN – a little slower, finished sketches are kept.",
  "ui.queue.pending": "{n} job(s) waiting",
  "nav.compare": "Compare",
  "method.clipasso.tagline": "Optimises strokes with CLIP – the classic, highly configurable",

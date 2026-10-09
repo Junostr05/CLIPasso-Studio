@@ -58,6 +58,68 @@ def test_lock_files_match_the_requirements():
                 assert lock[pkg].split("+")[0] == ver, (ed, pkg, lock[pkg], ver)
 
 
+def _imports() -> list[tuple[str, int, str, bool]]:
+    """Every absolute import of the app's modules: (file, line, module, optional – in a try that catches the
+    ImportError)."""
+    import ast
+
+    catches = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
+    out = []
+    for path in sorted((ROOT / "clipasso_studio").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module] + [f"{node.module}.{a.name}" for a in node.names]
+            else:
+                continue
+            optional, p = False, parents.get(node)
+            while p is not None and not optional:
+                if isinstance(p, ast.Try):
+                    for h in p.handlers:
+                        types = h.type.elts if isinstance(h.type, ast.Tuple) else [h.type]
+                        optional |= h.type is None or any(getattr(t, "id", "") in catches for t in types)
+                p = parents.get(p)
+            out += [(path.relative_to(ROOT).as_posix(), node.lineno, n, optional) for n in names]
+    return out
+
+
+def test_the_app_imports_only_what_the_build_contains():
+    """3.8.1: the experimental sketch improvement imported scipy – installed for the tests, left out of the build
+    (ModuleNotFoundError in the app). Every import of the app is the standard library, the app, or a locked
+    requirement; none is one the spec excludes (an optional import in a try that catches the ImportError may)."""
+    import ast
+    import sys
+    from importlib.metadata import packages_distributions
+
+    spec = (ROOT / "packaging" / "clipasso_studio.spec").read_text(encoding="utf-8")
+    excludes = ast.literal_eval(re.search(r"^excludes = (\[.*?\n\])", spec, re.S | re.M).group(1))
+    assert "scipy" in excludes and "matplotlib" in excludes
+    norm = lambda name: re.sub(r"[-_.]+", "-", name).lower()  # noqa: E731
+    dists = {ed: {norm(m.group(1)) for m in re.finditer(r"^([A-Za-z0-9_.\-]+)==",
+                                                         (ROOT / "requirements" / f"lock-{ed}.txt")
+                                                         .read_text(encoding="utf-8"), re.M)}
+             for ed in ("cpu", "gpu")}
+    of = packages_distributions()
+    imports = _imports()
+    assert len(imports) > 500 and any(n == "torch" for _, _, n, _ in imports)
+    wrong = []
+    for path, line, name, optional in imports:
+        if optional:
+            continue
+        if any(name == e or name.startswith(e + ".") for e in excludes):
+            wrong.append(f"{path}:{line} {name} (excluded from the build)")
+        top = name.split(".")[0]
+        if top in sys.stdlib_module_names or top == "clipasso_studio":
+            continue
+        for ed, locked in dists.items():
+            if not {norm(d) for d in of.get(top, [])} & locked:
+                wrong.append(f"{path}:{line} {name} (not in lock-{ed}.txt)")
+    assert wrong == []
+
+
 def test_installer_matches_the_app():
     """The uninstaller finds the app data and the files the app writes for it; both editions can be
     installed side by side (own shortcut names); an update removes the libraries of the old version."""

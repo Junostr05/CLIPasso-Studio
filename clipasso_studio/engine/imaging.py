@@ -79,6 +79,37 @@ def gaussian_filter(im: np.ndarray, sigma: float) -> np.ndarray:
     return t[0, 0].numpy()
 
 
+def sobel(im: np.ndarray, axis: int) -> np.ndarray:
+    """Equivalent of ``scipy.ndimage.sobel(im, axis)`` for 2D arrays: the difference [-1, 0, 1] along ``axis``,
+    smoothed with [1, 2, 1] across it (the edges mirrored, scipy's mode 'reflect')."""
+    im = np.asarray(im)
+    p = np.pad(im, [(1, 1) if a == axis else (0, 0) for a in (0, 1)], mode="symmetric")
+    d = p[:, 2:] - p[:, :-2] if axis == 1 else p[2:] - p[:-2]
+    p = np.pad(d, [(0, 0) if a == axis else (1, 1) for a in (0, 1)], mode="symmetric")
+    return p[:-2] + 2 * p[1:-1] + p[2:] if axis == 1 else p[:, :-2] + 2 * p[:, 1:-1] + p[:, 2:]
+
+
+def distance_transform_edt(im: np.ndarray) -> np.ndarray:
+    """Equivalent of ``scipy.ndimage.distance_transform_edt(im)`` for 2D arrays: every non-zero pixel's exact
+    Euclidean distance to the nearest zero pixel (0 on the zero pixels; needs at least one zero pixel)."""
+    fg = np.asarray(im).astype(bool)
+    h, w = fg.shape
+    # 1. along the columns: the distance to the nearest zero pixel above or below
+    col = np.where(fg, float(h + w), 0.0)
+    for y in range(1, h):
+        col[y] = np.minimum(col[y], col[y - 1] + 1)
+    for y in range(h - 2, -1, -1):
+        col[y] = np.minimum(col[y], col[y + 1] + 1)
+    # 2. along the rows: the nearest of these in any column, d² = col[k]² + (x - k)²
+    sq = col ** 2
+    offsets = (np.arange(w)[:, None] - np.arange(w)[None, :]).astype(np.float64) ** 2  # [x, k]
+    out = np.empty((h, w))
+    rows = max(1, 4_000_000 // (w * w))
+    for y in range(0, h, rows):
+        out[y:y + rows] = (sq[y:y + rows, None, :] + offsets[None]).min(axis=2)
+    return np.sqrt(out)
+
+
 def rgb2gray(im: np.ndarray) -> np.ndarray:
     """Same luminance weights as ``skimage.color.rgb2gray``."""
     return im[..., 0] * 0.2125 + im[..., 1] * 0.7154 + im[..., 2] * 0.0721

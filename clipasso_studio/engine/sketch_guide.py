@@ -84,27 +84,27 @@ class Guide:
     def __init__(self, target: torch.Tensor, mask=None):
         """``target`` [1,3,H,W] in 0..1: the picture on the canvas the strokes live on (pixel coordinates);
         ``mask`` [H,W] (optional): hatching only inside it."""
-        from scipy import ndimage
+        from .imaging import distance_transform_edt, gaussian_filter, sobel  # (no scipy: the app build has none)
 
         gray = _gray(target)
         self.height, self.width = gray.shape
         side = float(min(self.height, self.width))
-        g = ndimage.gaussian_filter(gray, BLUR)
-        gx, gy = ndimage.sobel(g, axis=1) / 4.0, ndimage.sobel(g, axis=0) / 4.0  # (a black-white step: 1)
+        g = gaussian_filter(gray, BLUR)
+        gx, gy = sobel(g, axis=1) / 4.0, sobel(g, axis=0) / 4.0  # (a black-white step: 1)
         mag = np.hypot(gx, gy)
         edges = mag > EDGE
         self.has_edges = bool(edges.any())
-        dist = ndimage.distance_transform_edt(~edges) if self.has_edges else np.full(gray.shape, side)
+        dist = distance_transform_edt(~edges) if self.has_edges else np.full(gray.shape, side)
         reach = EDGE_REACH * side
         # the edges' direction: the structure tensor's main axis is across the edge, the edge runs at right angles
-        jxx = ndimage.gaussian_filter(gx * gx, TENSOR_BLUR)
-        jxy = ndimage.gaussian_filter(gx * gy, TENSOR_BLUR)
-        jyy = ndimage.gaussian_filter(gy * gy, TENSOR_BLUR)
+        jxx = gaussian_filter(gx * gx, TENSOR_BLUR)
+        jxy = gaussian_filter(gx * gy, TENSOR_BLUR)
+        jyy = gaussian_filter(gy * gy, TENSOR_BLUR)
         diff = jxx - jyy
         r = np.sqrt(diff ** 2 + 4 * jxy ** 2) + 1e-12
         cos2, sin2 = -diff / r, -2 * jxy / r  # of the edge's tangent
         coherence = r / (jxx + jyy + 1e-12)
-        strength = np.clip(ndimage.gaussian_filter(mag, TENSOR_BLUR) / EDGE, 0.0, 1.0)
+        strength = np.clip(gaussian_filter(mag, TENSOR_BLUR) / EDGE, 0.0, 1.0)
         # the hatch region: dark, a little away from the edges (inside the mask)
         region = (g < DARK) & (dist > EDGE_CLEAR * side)
         if mask is not None:
@@ -114,7 +114,7 @@ class Guide:
         self.region = region
         self.darkness = np.clip((DARK - g) / DARK, 0.0, 1.0)
         self.dark_share = float(region.mean())
-        dark_soft = ndimage.gaussian_filter(region.astype(np.float32), 1.5)
+        dark_soft = gaussian_filter(region.astype(np.float32), 1.5)
         maps = np.stack([np.minimum(dist / reach, 1.0), cos2, sin2, strength * coherence, dark_soft])
         self.maps = torch.from_numpy(maps.astype(np.float32))[None]  # [1, 5, H, W]
         self.length = HATCH_LENGTH * side

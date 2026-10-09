@@ -41,6 +41,20 @@ def test_edges_and_the_dark_area():
     assert 0 < n <= int(32 * sg.MAX_HATCH_EXTRA)
 
 
+def test_the_guide_works_without_scipy(monkeypatch):
+    """3.8.1: the app build has no scipy – switching the experimental sketch on ended the job with
+    "ModuleNotFoundError: No module named 'scipy'"."""
+    import sys
+
+    for name in [m for m in sys.modules if m == "scipy" or m.startswith("scipy.")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(sys.modules, "scipy", None)  # (import scipy raises ImportError)
+    g = sg.Guide(_half_dark())
+    assert g.has_edges and 0.3 < g.dark_share < 0.5
+    dist = g.maps[0, 0]  # the distance to the edge (in units of the reach): 0 at the edge in the middle
+    assert float(dist[:, 110:114].min()) == 0.0 and float(dist[:, :60].min()) == 1.0
+
+
 def test_a_stroke_along_the_edge_costs_less_than_across_or_beside_it():
     g = sg.Guide(_half_dark())
     along = g.loss(_line((112, 112), (0, 1)), [sg.EDGE_ROLE], 3)

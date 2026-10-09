@@ -203,6 +203,25 @@ def _selftest_resume(out_dir: str) -> dict:
     return {"ok": ok}
 
 
+def _selftest_sketch_guide(out_dir: str) -> dict:
+    """The experimental sketch improvement (edges and hatching) runs in the packaged app – in 3.8.0 it needed scipy,
+    which the build leaves out."""
+    from . import paths
+    from .engine import pipeline
+
+    settings = {"num_iter": 3, "num_sketches": 1, "num_paths": 8, "save_interval": 1, "eval_interval": 1,
+                "sketch_guide": True}
+    try:
+        done = pipeline.run_job(settings, str(paths.resource("samples", "camel.png")),
+                                os.path.join(out_dir, "sketch_guide"))
+        ok = done["runs"][0]["status"] == "done" and os.path.isfile(done["best_svg"])
+    except Exception as exc:  # reported, not raised: the other results still count
+        print(f"selftest: sketch_guide ERROR {exc!r}", flush=True)
+        ok = False
+    print(f"selftest: sketch_guide ok={ok}", flush=True)
+    return {"ok": ok}
+
+
 def _selftest_inputs(out_dir: str) -> dict:
     """The packaged app opens HEIC and AVIF photos (pi-heif, Pillow) and has Qt Multimedia for the webcam."""
     try:
@@ -276,6 +295,7 @@ def selftest(out_dir: str | None = None) -> int:
     print("selftest: clipasso " + json.dumps(report), flush=True)
     methods = _selftest_diffusion_methods(out_dir)
     methods["resume"] = _selftest_resume(out_dir)
+    methods["sketch_guide"] = _selftest_sketch_guide(out_dir)
     methods["mask"] = _selftest_mask(out_dir)
     methods["warm"] = _selftest_warm(out_dir)
     if gpu_runtime.active() or os.environ.get(gpu_runtime.ENV):

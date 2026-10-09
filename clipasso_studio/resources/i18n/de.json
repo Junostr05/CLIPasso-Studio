@@ -328,6 +328,8 @@
  "ui.export_tip": "Einstellungen als JSON exportieren",
  "ui.warn.cuda_unavailable": "Keine nutzbare NVIDIA-GPU gefunden (CUDA nicht verfügbar) – es wird auf der CPU gerechnet.",
  "ui.warn.gpu_unsupported": "Die Grafikkarte wird von diesem PyTorch-Build nicht unterstützt – es wird auf der CPU gerechnet.",
+ "ui.warn.cudnn_no_benchmark": "Die Grafikkarte fand für einen Rechenschritt keinen passenden Weg (cuDNN). Es geht mit einem einfacheren weiter – fertige Skizzen bleiben.",
+ "ui.warn.cudnn_off": "Die Grafikkarte konnte einen Rechenschritt mit cuDNN nicht ausführen. Es geht ohne cuDNN weiter – etwas langsamer, fertige Skizzen bleiben.",
  "ui.queue.pending": "{n} Auftrag/Aufträge wartend",
  "nav.compare": "Vergleich",
  "method.clipasso.tagline": "Optimiert Striche mit CLIP – klassisch, sehr anpassbar",

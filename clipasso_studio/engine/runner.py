@@ -115,16 +115,87 @@ def is_out_of_memory(exc: BaseException) -> bool:
                                    "cudnn_status_alloc_failed", "failed to allocate"))
 
 
+def is_cudnn_engine_error(exc: BaseException) -> bool:
+    """cuDNN found no way to run a convolution ("FIND / GET was unable to find an engine to execute this
+    computation"): seen on a GTX 1060 – e.g. when too little graphics memory is left for the work space of the
+    algorithms cuDNN tries while it looks for the fastest one (``cudnn.benchmark``)."""
+    return isinstance(exc, RuntimeError) and "unable to find an engine" in str(exc)
+
+
+def cudnn_step_back() -> str | None:
+    """One step to a simpler way of computing the convolutions in this process: first without the search for the
+    fastest algorithm, then without cuDNN (PyTorch's own CUDA convolutions, slower). The warning's code, or None
+    when there is no step left."""
+    import torch
+
+    if torch.backends.cudnn.benchmark:
+        torch.backends.cudnn.benchmark = False
+        return "cudnn_no_benchmark"
+    if torch.backends.cudnn.enabled:
+        torch.backends.cudnn.enabled = False
+        return "cudnn_off"
+    return None
+
+
+class _SeedsDone:
+    """Passes the events on and notes the sketches that are finished (for a run again after a cuDNN error)."""
+
+    def __init__(self, reporter):
+        self.reporter = reporter
+        self.seeds: set[int] = set()
+
+    def event(self, kind, **data):
+        if kind == "seed_done" and data.get("seed") is not None:
+            self.seeds.add(int(data["seed"]))
+        self.reporter.event(kind, **data)
+
+
+def _run_job(reporter, settings, target, output_root, job_dir, seeds, finish, control, resume):
+    """``pipeline.run_job`` – and when cuDNN finds no way to run a convolution, again with a simpler way
+    (:func:`cudnn_step_back`): the sketches finished before are kept, the others continue (from their checkpoints)."""
+    import gc
+
+    import torch
+
+    from .. import settings_schema as schema
+    from . import pipeline
+
+    done = _SeedsDone(reporter)
+    while True:
+        try:
+            result = pipeline.run_job(settings, target, output_root, done, control, job_dir=job_dir, seeds=seeds,
+                                      finish=finish, resume=resume)
+            break
+        except RuntimeError as exc:
+            step = cudnn_step_back() if is_cudnn_engine_error(exc) else None
+            if step is None:
+                raise
+            text = f"{exc} – again with " + ("cudnn.benchmark off" if step == "cudnn_no_benchmark" else "cuDNN off")
+        # (outside the except block: the failed run's tensors, held by the traceback, can go)
+        reporter.event("warning", code=step, message=text)
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        if done.seeds:
+            all_seeds = seeds if seeds is not None else jobs.job_seeds(schema.normalize(settings))
+            seeds = [s for s in all_seeds if s not in done.seeds]
+            resume = resume or finish  # (the job's summary covers the sketches finished before)
+    if finish:
+        return result
+    saved = jobs.saved_results(job_dir) if done.seeds and job_dir else {}
+    earlier = [saved[s] for s in sorted(done.seeds) if s in saved and s not in {r.seed for r in result}]
+    return earlier + list(result)
+
+
 def _run_one(reporter, settings, target, output_root, job_dir, seeds, finish, stop_event, pause_event,
              resume) -> bool:
     """Run (the seeds of) a job in this worker; False after an unexpected exception."""
     try:
-        from . import pipeline
         from .model_store import ModelMissingError
 
         try:
-            result = pipeline.run_job(settings, target, output_root, reporter, _EventControl(stop_event, pause_event),
-                                      job_dir=job_dir, seeds=seeds, finish=finish, resume=resume)
+            result = _run_job(reporter, settings, target, output_root, job_dir, seeds, finish,
+                              _EventControl(stop_event, pause_event), resume)
             if not finish:
                 reporter.event("worker_results", results=[r.__dict__ for r in result])
         except ModelMissingError as exc:
