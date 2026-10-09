@@ -374,11 +374,18 @@ jobs:
             }
             throw "the app did not start again after $what"
           }
-          $p = Start-Process "build\ptest-wrong\CLIPassoStudio-CPU-Patch-from-0.0.1.exe" -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/UPDATE" -Wait -PassThru
-          if ($p.ExitCode -eq 0) { throw "a patch for another version was installed (/UPDATE)" }
+          # (not Start-Process -Wait: that also waits for the processes the setup starts – the app, which stays open)
+          function Run-Update([string]$exe) {
+            $p = Start-Process $exe -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/UPDATE" -PassThru
+            $null = $p.Handle  # (keeps the exit code readable)
+            if (-not $p.WaitForExit(600000)) { throw "the setup $exe did not end" }
+            return $p.ExitCode
+          }
+          $code = Run-Update "build\ptest-wrong\CLIPassoStudio-CPU-Patch-from-0.0.1.exe"
+          if ($code -eq 0) { throw "a patch for another version was installed (/UPDATE)" }
           Wait-App "a refused update"
-          $p = Start-Process "build\ptest-out\CLIPassoStudio-CPU-Patch-from-$version.exe" -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/UPDATE" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "the patch with /UPDATE failed: $($p.ExitCode)" }
+          $code = Run-Update "build\ptest-out\CLIPassoStudio-CPU-Patch-from-$version.exe"
+          if ($code -ne 0) { throw "the patch with /UPDATE failed: $code" }
           Wait-App "an update"
           $p = Start-Process "$inst\CLIPassoStudio.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_patched" -Wait -PassThru -NoNewWindow
           Get-Content "$env:RUNNER_TEMP\selftest_patched\selftest.json" -ErrorAction SilentlyContinue
