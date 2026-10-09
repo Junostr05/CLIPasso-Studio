@@ -1,4 +1,15 @@
-## Neu in 3.7: Modelle & Qualität
+## Neu in 3.8: Fernsteuerung 2.0
+
+- **Update vom Handy:** Im neuen Bereich *App* der Handy-Seite: *Nach Updates suchen* und *Herunterladen & installieren*. Nach der 6-stelligen PIN lädt die App das Update, hält einen laufenden Auftrag an, installiert, startet neu und rechnet danach weiter – die Seite verbindet sich von selbst wieder. Bei einer Installation für alle Benutzer wird vom Handy nur geladen, installiert wird mit einem Klick am PC.
+- **Fast das Studio am Computer oder Tablet:** Auf einem breiten Bildschirm im Querformat zeigt die Seite das Studio in drei Spalten mit einer Leiste links – wie am PC, mit Tastenkürzeln. Unter *App → Ansicht* wählbar: automatisch, Handy oder Studio.
+- **Skizze bearbeiten am Handy:** Radierer, Stift, Rückgängig/Wiederholen, Original, *Vereinfachen*, Zwischenstände, Zeitraffer, *Mit CLIPasso weiterrechnen* und eine Matrix-Zelle neu rechnen.
+- **Ansichten:** Foto und Skizze mit Trennschieber, Aufmerksamkeit, Maske, Bedingung, *Alle* (die beste wählen), frühere Aufträge desselben Fotos, Hinweise zum Foto, die Maske bearbeiten, Papierfarbe und Vignette.
+- **Galerie & Warteschlange:** sortieren, Schlagworte, Titel und Notizen, Alben, zwei Ergebnisse vergleichen, Diashow, weiterrechnen; automatischer Start, was nach der Warteschlange passiert, Restzeit, Auftragsdetails, *Ins Studio laden*, *Als Nächstes*.
+- **Modelle & Einstellungen am Handy:** alle Modelle laden oder löschen, die Modelle des Studios wechseln, einige Einstellungen der App (Sprache, experimentelle Skizzen-Verbesserung, Update-Suche, wach halten, Modelle geladen halten, Benachrichtigungen) und die Farben der Seite.
+
+---
+
+**Neu in 3.7: Modelle & Qualität**
 
 - **Die Modelle des Studios im Blick:** Auf der Seite *Modelle* zeigt eine Karte oben, welche Modelle die aktuellen Einstellungen des Studios nutzen – nach Aufgabe sortiert (Maske, Form, Bedeutung, Startpunkte, Bedingung, Bewertung). Dort lässt sich jedes auch wechseln; das Studio zieht mit, und umgekehrt.
 - **SceneSketch:** eine eigene *Strichzahl fürs Objekt* (mehr Details im Objekt, ohne den Hintergrund zu verdichten), nur die gewünschten *Stufen* rechnen (z. B. 4 und 8 statt 1 bis 8 – spart viel Zeit) und per Rechtsklick *eine Zelle der Matrix neu rechnen*.

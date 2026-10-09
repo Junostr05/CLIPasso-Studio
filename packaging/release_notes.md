@@ -1,3 +1,39 @@
+## CLIPasso Studio 3.8 – the phone remote: almost the whole studio
+
+**Update from the phone**
+- The new *App* area of the phone page: *Check for updates*, what is new in it, and *Download & install*. After the 6-digit PIN once more, the app downloads and checks the update, stops a running job, installs, starts again – and goes on with the job and the queue where they were. The page shows the progress, waits while the app restarts, connects again by itself and loads the new version's page.
+- When an update cannot be installed, the app still comes back (with the version that is there) and the phone says so.
+- An installation for all users of the PC needs an administrator on the PC: from the phone the update is then only downloaded, and the PC's update bar installs it with one click.
+
+**The studio on a computer or a tablet**
+- On a wide screen held across (from about 1024 px), the page looks almost like the studio on the PC: the areas in a bar on the left, the studio in three columns – the picture and the result on the left, the method and the large sketch in the middle, presets and parameters on the right. Keys: Space pauses / goes on, ←/→ the previous / next sketch, F full screen, Ctrl+Z / Ctrl+Y undo and redo edits.
+- *App → View*: automatic, phone or studio – kept by the browser.
+
+**Editing the sketch on the phone** (as in the studio on the PC)
+- Eraser (swipe over strokes), pen (strokes of your own that stay when CLIPasso continues), undo, redo, back to the original, and *Continue with CLIPasso*.
+- *Simplify* with its slider, the saved steps (one of them as the result) and the time lapse at 0.5–4×.
+- SceneSketch: compute one cell of the matrix again.
+
+**Views and the picture**
+- The views of a job: photo and sketch with a divider, the attention map, the mask, the condition (ControlSketch), and *All* – every sketch of the job side by side, one of them chosen as the result.
+- The earlier jobs of the same photo, the hints about the photo (with *Crop* / *Check mask* and *don't show again*), and touching up the mask: tap a part to remove it (or add it), paint, magic wand – the same steps as the PC's mask editor.
+- The paper's colour and vignette.
+
+**Gallery and queue**
+- Gallery: sort, filter by tag, title, tags and notes, albums (new, add, remove, rename, delete), two results compared with a divider, a slideshow, and *Continue* for an interrupted job.
+- Queue: start the next job by itself or not, what the PC does when the queue is done, the time left, the settings a job changed, *Load into the studio* and *Run next*.
+
+**Models and the app's settings**
+- *App → Models*: every model by group with its size and what it is for – download it or delete it – and the models the studio's settings choose, by task, changed from there.
+- Some of the app's settings: language, the experimental sketch improvement, the update check, keep awake, keep models loaded, notifications. Folders, backups, the phone's access and Telegram stay with the PC. The page's own colours: as the browser, as the app, light or dark.
+
+**Behind the scenes**
+- After an update from within the app, the installer starts the app again as the user who ran it – also when the update was refused; checked on Windows in the CI.
+- New browser tests: the studio layout at 1440×900 and on a tablet, drawing on the sketch, and connecting again after a restart with a new version.
+
+**Small update**
+- An app on 3.7.0 downloads only the files that changed (`…-Patch-from-3.7.0.exe` / `…-Portable-Patch-from-3.7.0.zip`).
+
 ## CLIPasso Studio 3.7 – models and quality
 
 **The studio's models in view**

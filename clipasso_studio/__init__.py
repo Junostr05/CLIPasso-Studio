@@ -1,5 +1,5 @@
 """CLIPasso Studio – desktop app for vector sketching from photos (CLIPasso, SwiftSketch, ControlSketch)."""
 
-__version__ = "3.7.0"
+__version__ = "3.8.0"
 APP_NAME = "CLIPasso Studio"
 APP_ID = "CLIPassoStudio"

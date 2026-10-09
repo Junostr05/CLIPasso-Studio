@@ -1,4 +1,15 @@
-## New in 3.7: models & quality
+## New in 3.8: the phone remote 2.0
+
+- **Update from the phone:** in the new *App* area of the phone page: *Check for updates* and *Download & install*. After the 6-digit PIN, the app downloads the update, stops a running job, installs, starts again and goes on computing – the page connects again by itself. For an installation for all users the phone only downloads; installing takes one click on the PC.
+- **Almost the studio on a computer or tablet:** on a wide screen held across, the page shows the studio in three columns with a bar on the left – as on the PC, with keyboard shortcuts. *App → View*: automatic, phone or studio.
+- **Editing the sketch on the phone:** eraser, pen, undo/redo, original, *Simplify*, saved steps, time lapse, *Continue with CLIPasso* and computing a matrix cell again.
+- **Views:** photo and sketch with a divider, attention, mask, condition, *All* (choose the best), earlier jobs of the same photo, hints about the photo, touching up the mask, paper colour and vignette.
+- **Gallery & queue:** sort, tags, title and notes, albums, compare two results, slideshow, continue; start by itself, what happens when the queue is done, time left, a job's details, *Load into the studio*, *Run next*.
+- **Models & settings on the phone:** download or delete any model, change the studio's models, some of the app's settings (language, experimental sketch improvement, update check, keep awake, keep models loaded, notifications) and the page's colours.
+
+---
+
+**New in 3.7: models & quality**
 
 - **The studio's models in view:** on the *Models* page, a card at the top shows which models the studio's current settings use – sorted by task (mask, shape, meaning, starting points, condition, scoring). Each can be changed there, too; the studio follows, and the other way round.
 - **SceneSketch:** the *object's own number of strokes* (more detail in the object without making the background denser), compute only the *levels* you want (e.g. 4 and 8 instead of 1 to 8 – saves much time) and *compute one cell of the matrix again* with a right click.
