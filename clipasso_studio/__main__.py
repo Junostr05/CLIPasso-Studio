@@ -5,6 +5,7 @@
     CLIPassoStudio.exe --selftest   short end-to-end runs of all methods used by the build pipeline
     CLIPassoStudio.exe --gpu-runtime-install ROOT    download + unpack the PyTorch for older GPUs (CI)
     CLIPassoStudio.exe --gpu-runtime-check OUT.json  which PyTorch this process loads (CI)
+    CLIPassoStudio.exe --bf16-check  do bfloat16 layers run on this CPU? (asked by a ControlSketch worker)
 """
 
 from __future__ import annotations
@@ -358,8 +359,14 @@ def _gpu_runtime_tool(argv: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if "--cli" in argv or "--selftest" in argv or any(a.startswith("--gpu-runtime-") for a in argv):
+    if ("--cli" in argv or "--selftest" in argv or "--bf16-check" in argv
+            or any(a.startswith("--gpu-runtime-") for a in argv)):
         _close_splash()
+    if "--bf16-check" in argv:  # (ControlSketch turbo on a CPU: does bfloat16 run here? asked by its worker)
+        _ensure_streams("bf16-check.log")
+        from .engine.methods.controlsketch import sds
+
+        return sds.bf16_check()
     if "--gpu-runtime-install" in argv or "--gpu-runtime-check" in argv:
         return _gpu_runtime_tool(argv)
     if "--cli" in argv:

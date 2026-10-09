@@ -177,6 +177,16 @@ jobs:
           restore-keys: models-v2-
       - name: Download models
         run: python tools/fetch_models.py
+      # the runners differ in their CPUs: on one of them a bfloat16 Linear ended the tests with an illegal
+      # instruction (0xC000001D) – which CPU, what PyTorch thinks it has, and the app's own check (never fails)
+      - name: CPU and bfloat16
+        shell: pwsh
+        run: |
+          (Get-CimInstance Win32_Processor).Name
+          python -c "import torch; c = torch.cpu; print('torch', torch.__version__, torch.backends.cpu.get_cpu_capability(), 'avx512_bf16', c._is_avx512_bf16_supported(), 'amx', c._is_amx_tile_supported(), 'mkldnn_bf16', torch.ops.mkldnn._is_mkldnn_bf16_supported())"
+          python -X faulthandler -m clipasso_studio --bf16-check
+          "bfloat16 check: exit code $LASTEXITCODE"
+          exit 0
       - name: Unit tests
         env:
           QT_QPA_PLATFORM: offscreen

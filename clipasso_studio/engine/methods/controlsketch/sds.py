@@ -11,7 +11,11 @@ UNet and ControlNet run in bfloat16 (about 2x).
 
 from __future__ import annotations
 
+import functools
 import json
+import os
+import subprocess
+import sys
 
 import torch
 
@@ -126,12 +130,62 @@ def load_taesd(device):
     return vae.to(device)
 
 
+BF16_CHECK_FLAG = "--bf16-check"
+BF16_OK = "bf16 ok"
+BF16_CHECK_TIMEOUT_S = 180
+
+
 def cpu_bf16_fast() -> bool:
-    """Does this CPU compute bfloat16 natively (AVX512-BF16 or AMX)? Otherwise bfloat16 is slower."""
+    """Does this CPU compute bfloat16 natively (AVX512-BF16 or AMX) – and does it really run here? Otherwise
+    bfloat16 is slower, or ends the process (see :func:`bf16_runs`)."""
+    return cpu_claims_bf16() and bf16_runs()
+
+
+def cpu_claims_bf16() -> bool:
     try:
         return bool(torch.cpu._is_avx512_bf16_supported() or torch.cpu._is_amx_tile_supported())
     except Exception:
         return False
+
+
+def bf16_check_command() -> list[str]:
+    if getattr(sys, "frozen", False):
+        return [sys.executable, BF16_CHECK_FLAG]
+    return [sys.executable, "-m", "clipasso_studio", BF16_CHECK_FLAG]
+
+
+@functools.lru_cache(maxsize=1)
+def bf16_runs() -> bool:
+    """The layers of the UNet once in bfloat16 – in a process of their own (:func:`bf16_check`): on a Windows
+    machine a bfloat16 Linear ended the whole process with an illegal instruction (0xC000001D); here that is
+    only a "no", and the sketch is drawn in float32."""
+    env = {**os.environ, "PYINSTALLER_SUPPRESS_SPLASH_SCREEN": "1"}
+    if not getattr(sys, "frozen", False):  # (run from the sources: the package wherever the working folder is)
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir] * 4))
+        env["PYTHONPATH"] = os.pathsep.join(p for p in (root, env.get("PYTHONPATH", "")) if p)
+    try:
+        done = subprocess.run(bf16_check_command(), capture_output=True, text=True, timeout=BF16_CHECK_TIMEOUT_S,
+                              env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return done.returncode == 0  # (a windowed exe has no stdout: the exit code is the answer)
+
+
+def bf16_check() -> int:
+    """``--bf16-check``: what the SDS loss runs in bfloat16 – small and SD-sized linear layers, a convolution
+    after a group norm, attention – once; 0 (and :data:`BF16_OK`) when the results are finite."""
+    import torch.nn.functional as F
+
+    torch.manual_seed(0)
+    with torch.no_grad(), torch.autocast("cpu", dtype=torch.bfloat16):
+        outs = [torch.nn.Linear(32, 128)(torch.randn(2, 32)), torch.nn.Linear(320, 1280)(torch.randn(2, 64, 320)),
+                torch.nn.Conv2d(64, 64, 3, padding=1)(torch.nn.GroupNorm(8, 64)(torch.randn(1, 64, 32, 32))),
+                F.scaled_dot_product_attention(*[torch.randn(2, 8, 64, 40)] * 3),
+                torch.randn(2, 77, 768) @ torch.randn(768, 320)]
+    if all(bool(torch.isfinite(o.float()).all()) for o in outs):
+        print(BF16_OK, flush=True)
+        return 0
+    return 1
 
 
 def embed_text(tokenizer, text_encoder, caption: str, device) -> tuple[torch.Tensor, torch.Tensor]:

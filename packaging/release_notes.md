@@ -29,6 +29,7 @@
 
 **Behind the scenes**
 - After an update from within the app, the installer starts the app again as the user who ran it – also when the update was refused; checked on Windows in the CI.
+- ControlSketch in turbo mode on a CPU with bfloat16 (AVX512-BF16 / AMX): before the first sketch, the app runs the layers once in bfloat16 in a process of its own. Where that ends with an illegal instruction – seen on a Windows machine in the CI – the sketch is drawn in float32 instead of the job failing.
 - New browser tests: the studio layout at 1440×900 and on a tablet, drawing on the sketch, and connecting again after a restart with a new version.
 
 **Small update**

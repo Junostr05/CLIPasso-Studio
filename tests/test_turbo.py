@@ -273,7 +273,10 @@ def test_controlsketch_turbo(monkeypatch, tmp_path):
 
     monkeypatch.setattr(sds, "load_sd15", tiny_sd15_loader)
     monkeypatch.setattr(sds, "load_taesd", tiny_taesd)
-    monkeypatch.setattr(sds, "cpu_bf16_fast", lambda: True)
+    # as on a CPU with bfloat16 – whether it really runs is asked in a process of its own (on a Windows CI runner
+    # a bfloat16 Linear ended the process with an illegal instruction: then the sketch is drawn in float32)
+    monkeypatch.setattr(sds, "cpu_claims_bf16", lambda: True)
+    bf16 = sds.bf16_runs()
     monkeypatch.setattr(sds.ControlSDSLoss, "__init__", spy)
     controlsketch.release_models()
     settings = {**schema.default_settings("controlsketch"), "num_iter": 2, "save_interval": 1, "num_strokes": 6,
@@ -281,7 +284,7 @@ def test_controlsketch_turbo(monkeypatch, tmp_path):
     assert "taesd" in controlsketch.required_models(settings)
     assert "taesd" not in controlsketch.required_models({**settings, "turbo": False})
     summary = pipeline.run_job(settings, CAMEL, str(tmp_path))
-    assert used == {"vae": "AutoencoderTiny", "bf16": True}
+    assert used == {"vae": "AutoencoderTiny", "bf16": bf16}
     run_dir = summary["runs"][0]["run_dir"]
     cfg = json.loads(open(os.path.join(run_dir, "config.json")).read())
     assert cfg["canvas"] == 384 and cfg["settings"]["render_size"] == 512 and cfg["status"] == "done"
@@ -298,7 +301,38 @@ def test_controlsketch_turbo(monkeypatch, tmp_path):
     x = torch.rand(1, 3, 64, 64, requires_grad=True)
     unet, controlnet, _, _, _, alphas = tiny_sd15_loader("canny", "cpu")
     loss = sds.ControlSDSLoss(unet, controlnet, vae, torch.zeros(1, 77, 32), torch.zeros(1, 77, 32),
-                              torch.rand(1, 3, 64, 64), alphas, bf16=True)
+                              torch.rand(1, 3, 64, 64), alphas, bf16=bf16)
     assert loss.scaling == 1.0
     loss(x).backward()
     assert x.grad is not None and torch.isfinite(x.grad).all()
+
+
+def test_bfloat16_only_where_it_runs(monkeypatch):
+    """ControlSketch turbo uses bfloat16 only on a CPU that has it and where a process of its own ran the layers
+    in bfloat16 – a process that ends (an illegal instruction) or fails means float32."""
+    import sys
+
+    from clipasso_studio.engine.methods.controlsketch import sds
+
+    assert sds.bf16_check_command()[-1] == sds.BF16_CHECK_FLAG
+    calls = []
+
+    def check(code: str):
+        def command():
+            calls.append(code)
+            return [sys.executable, "-c", code]
+
+        sds.bf16_runs.cache_clear()
+        monkeypatch.setattr(sds, "bf16_check_command", command)
+
+    monkeypatch.setattr(sds, "cpu_claims_bf16", lambda: False)
+    check("pass")
+    assert not sds.cpu_bf16_fast() and calls == []  # (no process when the CPU has no bfloat16)
+    monkeypatch.setattr(sds, "cpu_claims_bf16", lambda: True)
+    assert sds.cpu_bf16_fast() and len(calls) == 1
+    assert sds.cpu_bf16_fast() and len(calls) == 1  # (asked once per process)
+    check("import os; os._exit(3)")  # like the illegal instruction: the process ends without a word
+    assert not sds.cpu_bf16_fast()
+    check("import sys; sys.exit(1)")  # (not finite, or the check could not start)
+    assert not sds.cpu_bf16_fast()
+    sds.bf16_runs.cache_clear()
