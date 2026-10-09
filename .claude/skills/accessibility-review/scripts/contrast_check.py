@@ -42,19 +42,22 @@ def contrast(a: str, b: str) -> float:
 
 def palettes() -> dict[str, dict[str, str]]:
     tree = ast.parse(THEME.read_text(encoding="utf-8"))
-    out = {}
+    out, defaults = {}, {}
     for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == "Palette":  # fields with a default (on_status, on_paper)
+            defaults = {f.target.id: f.value.value for f in node.body
+                        if isinstance(f, ast.AnnAssign) and isinstance(f.value, ast.Constant)}
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and \
                 getattr(node.value.func, "id", "") == "Palette":
-            out[node.targets[0].id] = {kw.arg: kw.value.value for kw in node.value.keywords
-                                       if isinstance(kw.value, ast.Constant)}
+            out[node.targets[0].id] = {**defaults, **{kw.arg: kw.value.value for kw in node.value.keywords
+                                                      if isinstance(kw.value, ast.Constant)}}
     return out
 
 
 def phone_vars() -> dict[str, dict[str, str]]:
     css = PHONE_CSS.read_text(encoding="utf-8")
     light = dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{3,6})\s*;", re.search(r":root\s*\{([^}]*)\}", css).group(1)))
-    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}", css)
+    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css)
     dark = {**light, **dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{3,6})\s*;", m.group(1) if m else ""))}
     return {"light": light, "dark": dark}
 
@@ -74,7 +77,8 @@ def studio_pairs(p: dict[str, str]) -> list[tuple[str, str, str, float]]:
             ("text: on_accent on accent_hover", p["on_accent"], p["accent_hover"], TEXT),
             ("text: on_status on success (badge)", p["on_status"], p["success"], TEXT),
             ("text: on_status on warning (badge)", p["on_status"], p["warning"], TEXT),
-            ("text: danger hover – white on danger", "#FFFFFF", p["danger"], TEXT)]
+            ("text: danger hover – on_status on danger", p["on_status"], p["danger"], TEXT),
+            ("text: on_paper (hints on the empty canvas) on paper", p["on_paper"], p["paper"], TEXT)]
     # 1.4.11: what makes a control visible – its boundary or fill against what is around it
     for bg in ("bg", "surface"):
         out.append((f"ui: input/button border (border) on {bg}", p["border"], p[bg], UI))
@@ -97,7 +101,10 @@ def phone_pairs(v: dict[str, str]) -> list[tuple[str, str, str, float]]:
             if fg in v and bg in v:
                 out.append((f"text: --{fg} on --{bg}", v[fg], v[bg], TEXT))
     out += [("text: --on-accent on --accent (primary button)", v["on-accent"], v["accent"], TEXT),
-            ("text: --accent as text (.phase) on --card", v["accent"], v["card"], TEXT),
+            ("text: --accent-text (.phase, the chosen tab) on --card", v.get("accent-text", v["accent"]), v["card"],
+             TEXT),
+            ("text: --accent-text on --bg", v.get("accent-text", v["accent"]), v["bg"], TEXT),
+            ("text: --on-paper (hints on the white paper) on #fff", v.get("on-paper", v["muted"]), "#FFFFFF", TEXT),
             ("text: --warn-text on --warn", v["warn-text"], v["warn"], TEXT),
             ("text: toast – #fff on #222", "#FFFFFF", "#222222", TEXT),
             ("ui: --line (control border) on --card", v["line"], v["card"], UI),

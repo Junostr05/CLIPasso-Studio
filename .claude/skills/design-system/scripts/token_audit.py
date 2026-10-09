@@ -126,7 +126,7 @@ def read_phone_css() -> dict[str, dict[str, str]]:
     blocks = {"light": "", "dark": ""}
     m = re.search(r":root\s*\{([^}]*)\}", css)
     blocks["light"] = m.group(1) if m else ""
-    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}", css)
+    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css)
     blocks["dark"] = m.group(1) if m else ""
     out = {k: dict(re.findall(r"--([\w-]+):\s*([^;]+);", v)) for k, v in blocks.items()}
     out["dark"] = {**out["light"], **out["dark"]}  # (the dark block only overrides)

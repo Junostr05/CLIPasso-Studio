@@ -16,7 +16,13 @@ when they disagree – then fix this file too.
 | Tests | `tests/test_gui.py`, `test_theme_contrast.py`, `test_wrap_row.py` … | `tests/e2e/test_phone_page.py` (Playwright + Chromium), `test_phone*.py` |
 
 The two palettes are separate on purpose (web vs desktop) but must read as one app – same accent family, same
-text colours. `token_audit.py` lists where they drift.
+text colours. `token_audit.py` lists where they drift. On the phone, `--accent` is the fill (white text on it),
+`--accent-text` the accent as text, `--on-paper` text on the white sketch paper; `test_theme_contrast.py` checks the
+phone's text pairs too.
+
+Phone page semantics: a chosen tab / segment / toggle is set with `setOn(el, on)` in `phone.js` (the class `on` plus
+`aria-selected` for tabs, `aria-pressed` otherwise); a control without visible text gets its name from
+`data-label="<text name>"` (or `aria-labelledby`); glyphs inside buttons sit in `<span aria-hidden="true">`.
 
 ## Tokens (desktop)
 
@@ -31,7 +37,8 @@ text colours. `token_audit.py` lists where they drift.
 | `accent`, `accent_hover`, `accent_soft` | primary buttons, focus, checked → pressed → selected backgrounds, badges |
 | `accent_text` | the accent used as text or icon on surfaces (links, "changed" parameter titles) |
 | `on_accent` | text on `accent` |
-| `success`, `warning`, `danger` + `on_status` | states, badges (text on success/warning) |
+| `success`, `warning`, `danger` + `on_status` | states, badges (text on success/warning, a danger button's hover) |
+| `on_paper` | hints painted on the white sketch paper (empty canvas) – the same in both themes |
 | `paper`, `ink` | the sketch itself: white paper, black strokes – not interface chrome |
 
 **Spacing** – `SPACE_XS/S/M/L/XL` = 4 / 8 / 12 / 16 / 24 px. Pages use `theme.page_layout(layout)`
@@ -56,6 +63,7 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 | Helper | What | Styling hook |
 |---|---|---|
 | `label(text, role, wrap)` | any text | `role` property |
+| `ElidedLabel(text, role)` | one line that ends in "…" when it does not fit; the whole text becomes the tooltip (status lines, names) | `role` property |
 | `button(text, icon, variant, size)` | push button; variants `primary`, `danger`, `ghost`; sizes `sm`, `lg` | `variant`, `size` properties |
 | `tool_button(icon, tooltip, size, checkable)` | icon-only button – **always pass a tooltip** (it is the screen-reader name) | QToolButton |
 | `Card(flat=…)` | panel | `#Card`, `#CardFlat` |
@@ -106,6 +114,8 @@ colours read at construction are fine – except while a job runs (then only the
 | Pages use the spacing tokens | `test_gui.py::test_pages_use_the_spacing_tokens` |
 | Empty pages explain the next step | `test_gui.py::test_empty_pages_say_what_to_do` |
 | Columns fit the smallest window | `test_gui.py::test_studio_columns_fit_a_small_window` |
+| Nothing in the studio's centre is cut at the smallest window (German) | `test_gui.py::test_nothing_in_the_studio_centre_is_cut_in_a_small_window` |
+| Phone: chosen states, names of sliders and "?", tick boxes ≥ 24 px | `tests/e2e/test_phone_page.py::test_screen_readers_hear_what_is_chosen` |
 | View tabs and tools never overlap | `tests/test_wrap_row.py` |
 
 New colours, buttons, pages or rows must keep these green – extend the test when you add a new kind of thing

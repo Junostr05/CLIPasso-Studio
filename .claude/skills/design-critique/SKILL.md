@@ -87,7 +87,6 @@ Variants seen: dark/light × en/de, 1480 × 920 and 1200 × 760
 ## Known pressure points
 
 - The studio at 1200 × 760 in German: the centre column (model banner, canvas, status row, start bar).
-- Painted placeholders on the white sketch paper (canvas) use colours made for dark surfaces.
 - The phone page's own palette (`phone.css`) drifts from the studio's – compare side by side.
 - Six SceneSketch views compete for the tab row (`WrapRow` + compact `SegmentedControl`).
 Re-check these after any change nearby; remove an item here once it is fixed for good.
