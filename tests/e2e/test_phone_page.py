@@ -38,6 +38,36 @@ def test_every_tab_fits_the_phone(signed_in):
     assert signed_in.errors == []
 
 
+def test_screen_readers_hear_what_is_chosen(signed_in):
+    """4.0: the tabs say which one is selected (aria-selected), the method and preset buttons which one is on
+    (aria-pressed), the sliders and the "?" buttons have names, the favourite filter a word instead of "☆", and the
+    tick boxes are at least 24 px (WCAG 2.5.8)."""
+    ph = signed_in
+    page = ph.page
+    assert page.get_attribute("#tabs", "role") == "tablist"
+    selected = page.evaluate("[...document.querySelectorAll('#tabs button')].map(b => b.getAttribute('aria-selected'))")
+    assert selected == ["true", "false", "false", "false", "false"]
+    ph.tab("gallery")
+    assert page.get_attribute("#tabs button[data-tab=gallery]", "aria-selected") == "true"
+    assert page.get_attribute("#tabs button[data-tab=studio]", "aria-selected") == "false"
+    assert page.get_attribute("#filter-fav", "aria-label")
+    ph.tab("studio")
+    pressed = page.evaluate(
+        "[...document.querySelectorAll('#methods button')].map(b => b.getAttribute('aria-pressed'))")
+    assert pressed.count("true") == 1 and set(pressed) <= {"true", "false"}
+    assert page.get_attribute("#presets button.on", "aria-pressed") == "true"
+    unnamed = page.evaluate("""[...document.querySelectorAll('input[type=range]')].filter(r =>
+        !r.getAttribute('aria-label') && !r.getAttribute('aria-labelledby')
+        && !(r.id && document.querySelector('label[for="' + r.id + '"]'))).map(r => r.id || r.className)""")
+    assert unnamed == []
+    assert page.evaluate("[...document.querySelectorAll('.help-btn')].every(b => b.getAttribute('aria-label'))")
+    small = page.evaluate("""[...document.querySelectorAll('input[type=checkbox]')].filter(c => c.offsetParent)
+        .filter(c => c.getBoundingClientRect().width < 23.5 || c.getBoundingClientRect().height < 23.5)
+        .map(c => c.id)""")
+    assert small == []
+    assert ph.errors == []
+
+
 def test_own_preset_made_on_the_phone(signed_in):
     page = signed_in.page
     page.click("#methods button >> nth=0")

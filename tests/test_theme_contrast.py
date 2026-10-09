@@ -35,6 +35,8 @@ def pairs(p: theme.Palette) -> list[tuple[str, str, str]]:
             ("on_accent on accent_hover (primary button, hover)", p.on_accent, p.accent_hover),
             ("on_status on success (badge)", p.on_status, p.success),
             ("on_status on warning (badge)", p.on_status, p.warning),
+            ("on_status on danger (a danger button, hover)", p.on_status, p.danger),
+            ("on_paper on paper (hints on the empty canvas)", p.on_paper, p.paper),
             ("ink on paper (the sketch)", p.ink, p.paper)]
     return out
 
@@ -48,3 +50,29 @@ def test_every_text_colour_meets_wcag_aa(palette):
 def test_the_contrast_formula():
     assert round(contrast("#000000", "#FFFFFF"), 1) == 21.0
     assert contrast("#777777", "#777777") == 1.0
+
+
+def _phone_palettes() -> dict[str, dict[str, str]]:
+    """The phone page's colours (phone.css): light from :root, dark from the prefers-color-scheme block."""
+    import re
+    from pathlib import Path
+
+    css = (Path(theme.__file__).parent.parent / "resources" / "phone" / "phone.css").read_text(encoding="utf-8")
+    pick = lambda block: dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{6})\s*;", block))  # noqa: E731
+    light = pick(re.search(r":root\s*\{([^}]*)\}", css).group(1))
+    dark = {**light, **pick(re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css).group(1))}
+    return {"light": light, "dark": dark}
+
+
+@pytest.mark.parametrize("name", ["light", "dark"])
+def test_phone_page_text_colours_meet_wcag_aa(name):
+    """4.0: the phone page's text colours meet AA as well – white on the accent of the buttons, the accent as text,
+    the muted text, the hints on the white paper (the dark page's buttons had 3.2:1)."""
+    v = _phone_palettes()[name]
+    pairs_ = [(f"{fg} on {bg}", v[fg], v[bg]) for fg in ("text", "muted") for bg in ("bg", "card", "field")]
+    pairs_ += [(f"accent-text on {bg}", v["accent-text"], v[bg]) for bg in ("bg", "card")]
+    pairs_ += [("on-accent on accent (buttons)", v["on-accent"], v["accent"]),
+               ("on-paper on white paper", v["on-paper"], "#FFFFFF"),
+               ("warn-text on warn", v["warn-text"], v["warn"])]
+    low = [f"{what}: {contrast(fg, bg):.2f}" for what, fg, bg in pairs_ if contrast(fg, bg) < AA]
+    assert low == []

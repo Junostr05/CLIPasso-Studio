@@ -156,7 +156,7 @@
         <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
         <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
       <div id="compare-view" class="preview split" hidden><img id="split-photo" alt=""><img id="split-sketch" alt=""></div>
-      <input id="split" class="split-range" type="range" min="0" max="100" value="50" hidden>
+      <input id="split" class="split-range" type="range" min="0" max="100" value="50" data-label="split" hidden>
       <div id="plain-view" class="preview" hidden><img id="plain-img" alt=""></div>
       <div id="all-view" class="sheet-grid" hidden></div>
       <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
@@ -190,7 +190,7 @@
         <div id="edit-hint" class="muted small-text"></div>
         <div id="edit-panel" class="edit-panel" hidden>
           <div class="row between"><b id="edit-panel-title"></b><span id="edit-panel-value" class="muted"></span></div>
-          <input id="edit-slider" type="range" min="0" max="0" value="0">
+          <input id="edit-slider" type="range" min="0" max="0" value="0" aria-labelledby="edit-panel-title">
           <div id="edit-panel-note" class="muted small-text"></div>
           <div class="row"><button id="edit-apply" class="primary"></button><button id="edit-close" data-t="close"></button></div>
         </div>
@@ -342,12 +342,12 @@
   </section>
 </main>
 
-<nav id="tabs">
-  <button data-tab="studio" class="on"><span>✎</span><span data-t="tab_studio"></span></button>
-  <button data-tab="sketch"><span>◐</span><span data-t="tab_sketch"></span></button>
-  <button data-tab="gallery"><span>▦</span><span data-t="tab_gallery"></span></button>
-  <button data-tab="queue"><span>☰</span><span data-t="tab_queue"></span></button>
-  <button data-tab="app"><span>⚙</span><span data-t="tab_app"></span></button>
+<nav id="tabs" role="tablist">
+  <button data-tab="studio" class="on" role="tab" aria-selected="true"><span aria-hidden="true">✎</span><span data-t="tab_studio"></span></button>
+  <button data-tab="sketch" role="tab" aria-selected="false"><span aria-hidden="true">◐</span><span data-t="tab_sketch"></span></button>
+  <button data-tab="gallery" role="tab" aria-selected="false"><span aria-hidden="true">▦</span><span data-t="tab_gallery"></span></button>
+  <button data-tab="queue" role="tab" aria-selected="false"><span aria-hidden="true">☰</span><span data-t="tab_queue"></span></button>
+  <button data-tab="app" role="tab" aria-selected="false"><span aria-hidden="true">⚙</span><span data-t="tab_app"></span></button>
 </nav>
 
 <!-- ========================================================== detail brush -->
@@ -363,7 +363,7 @@
     <button data-tool="128" data-t="tool_normal"></button>
     <button data-tool="0" data-t="tool_less"></button>
   </div>
-  <div class="row"><span class="muted" data-t="brush_size"></span><input id="brush" type="range" min="2" max="40" value="8"></div>
+  <div class="row"><span id="brush-label" class="muted" data-t="brush_size"></span><input id="brush" type="range" min="2" max="40" value="8" aria-labelledby="brush-label"></div>
   <div class="row wrap">
     <button id="paint-face" data-t="face"></button>
     <button id="paint-undo" data-t="undo"></button>
@@ -411,7 +411,7 @@
     <button id="pair-close" class="small" data-t="close"></button>
   </div>
   <div class="preview split pair"><img id="pair-a" alt=""><img id="pair-b" alt=""></div>
-  <input id="pair-split" class="split-range" type="range" min="0" max="100" value="50">
+  <input id="pair-split" class="split-range" type="range" min="0" max="100" value="50" data-label="split">
   <div class="row between muted small-text"><span id="pair-a-name"></span><span id="pair-b-name"></span></div>
 </div>
 
@@ -467,7 +467,7 @@
     <button data-tool="add" data-t="mask_tool_add"></button>
     <button data-tool="erase" data-t="mask_tool_erase"></button>
   </div>
-  <div class="row"><span class="muted" data-t="brush_size"></span><input id="mask-brush" type="range" min="1" max="20" value="5"></div>
+  <div class="row"><span id="mask-brush-label" class="muted" data-t="brush_size"></span><input id="mask-brush" type="range" min="1" max="20" value="5" aria-labelledby="mask-brush-label"></div>
   <div class="row wrap">
     <button id="mask-undo" class="small" aria-label="undo">↶</button>
     <button id="mask-redo" class="small" aria-label="redo">↷</button>

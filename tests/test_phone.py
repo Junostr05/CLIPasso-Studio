@@ -376,8 +376,8 @@ def test_page_texts_exist():
 
     html = "".join(paths.resource("phone", n).read_text(encoding="utf-8") for n in ("index.html", "login.html"))
     js = "".join(paths.resource("phone", n).read_text(encoding="utf-8") for n in ("phone.js", "login.js"))
-    used = set(re.findall(r'data-t="([a-z_]+)"', html)) | set(re.findall(r"\bT\.([a-z_]+)", js)) \
-        | set(re.findall(r'\bt\("([a-z_]+)"', js))
+    used = set(re.findall(r'data-(?:t|label)="([a-z_]+)"', html)) | set(re.findall(r"\bT\.([a-z_]+)", js)) \
+        | set(re.findall(r'\bt\("([a-z_]+)"', js))  # (data-label: the name of a control without visible text)
     extra = {"detail_title", "detail_hint", "tool_more", "tool_normal", "tool_less", "face", "rate_up", "rate_down",
              "preset_applied", "x_stroke", "x_width", "x_style", "x_background", "x_paper", "x_vignette", "x_frame",
              "x_margin", "x_size", "x_width_cm", "x_mode", "x_length", "x_hold",  # (the app's other texts, phone.py)

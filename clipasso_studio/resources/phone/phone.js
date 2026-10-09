@@ -25,6 +25,12 @@ function el(tag, attrs, ...children) {
   return e;
 }
 
+// a choice that is on: the class (its look) and, for screen readers, aria-selected (a tab) or aria-pressed
+function setOn(e, on) {
+  e.classList.toggle("on", on);
+  e.setAttribute(e.getAttribute("role") === "tab" ? "aria-selected" : "aria-pressed", on ? "true" : "false");
+}
+
 // ------------------------------------------------------------------ talking to the app
 function signedOut(r, data) {
   // the sign-in is gone (a new access code on the PC): load the page again – it asks for the PIN
@@ -61,13 +67,14 @@ function toast(text) {
 
 // ------------------------------------------------------------------ texts and tabs
 for (const node of document.querySelectorAll("[data-t]")) node.textContent = t(node.dataset.t);
+for (const node of document.querySelectorAll("[data-label]")) node.setAttribute("aria-label", t(node.dataset.label));
 
 let tab = "studio";
 let desk = false;  // the studio layout of a wide screen (three columns): studio and sketch are one
 function showTab(name) {
   if (desk && name === "sketch") name = "studio";
   tab = name;
-  for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("on", b.dataset.tab === name);
+  for (const b of document.querySelectorAll("#tabs button")) setOn(b, b.dataset.tab === name);
   for (const s of document.querySelectorAll("section.tab")) s.hidden = s.id !== "tab-" + name;
   $("desk").hidden = !(desk && name === "studio");
   if (desk && name === "studio") $("tab-studio").hidden = true;
@@ -268,7 +275,7 @@ $("mask-tools").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tool]");
   if (!b) return;
   maskTool = b.dataset.tool;
-  for (const x of $("mask-tools").children) x.classList.toggle("on", x === b);
+  for (const x of $("mask-tools").children) setOn(x, x === b);
 });
 $("mask-undo").onclick = () => maskEdit({op: "undo"});
 $("mask-redo").onclick = () => maskEdit({op: "redo"});
@@ -359,7 +366,8 @@ function renderMethods() {
     box.dataset.sig = JSON.stringify(S.methods) + S.method;
     box.replaceChildren();
     for (const m of S.methods) {
-      box.append(el("button", {class: m.key === S.method ? "on" : "", onclick: () => act("method", {method: m.key})},
+      box.append(el("button", {class: m.key === S.method ? "on" : "", "aria-pressed": String(m.key === S.method),
+                                onclick: () => act("method", {method: m.key})},
                     el("span", {text: m.name}), m.missing ? el("small", {text: T.missing_badge}) : null));
     }
   }
@@ -462,7 +470,7 @@ async function renderParams() {
     for (const p of sc.presets) seg.append(el("button", {"data-preset": p.key, text: p.label,
                                                          onclick: () => act("preset", {preset: p.key})}));
   }
-  for (const b of $("presets").children) b.classList.toggle("on", b.dataset.preset === S.preset);
+  for (const b of $("presets").children) setOn(b, b.dataset.preset === S.preset);
   syncParams();
 }
 
@@ -487,7 +495,11 @@ function buildField(p) {
   const id = "p-" + p.key;
   const help = el("div", {class: "help", text: p.help, hidden: true});
   const head = el("div", {class: "head"}, el("label", {for: id, text: p.label}),
-                  p.help ? el("button", {class: "help-btn", text: "?", onclick: () => { help.hidden = !help.hidden; }}) : null);
+                  p.help ? el("button", {class: "help-btn", text: "?", "aria-label": t("help_about", {name: p.label}),
+                                         "aria-expanded": "false", onclick: (e) => {
+                    help.hidden = !help.hidden;
+                    e.currentTarget.setAttribute("aria-expanded", String(!help.hidden));
+                  }}) : null);
   const field = el("div", {class: "field", "data-key": p.key, "data-kind": p.kind}, head, help);
   let ctl;
   if (p.kind === "bool") {
@@ -500,7 +512,7 @@ function buildField(p) {
                              onchange: (e) => send(p.key, e.target.value)});
     const row = el("div", {class: "ctl"});
     if (p.min !== null && p.max !== null && p.max > p.min) {
-      const range = el("input", {type: "range", min: p.min, max: p.max, step,
+      const range = el("input", {type: "range", min: p.min, max: p.max, step, "aria-label": p.label,
                                  oninput: (e) => { num.value = e.target.value; },
                                  onchange: (e) => send(p.key, e.target.value)});
       row.append(range);
@@ -627,7 +639,7 @@ $("tools").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tool]");
   if (!b) return;
   P.tool = Number(b.dataset.tool);
-  for (const x of $("tools").children) x.classList.toggle("on", x === b);
+  for (const x of $("tools").children) setOn(x, x === b);
 });
 $("brush").oninput = (e) => { if (P.photo) P.brush = Number(e.target.value) / 100 * Math.max(P.canvas.width, P.canvas.height) / 2; };
 
@@ -764,7 +776,7 @@ function renderScene() {
   const sc = S && S.scene;
   if (!sc) sceneView = "sketch";
   $("scene-views").hidden = !sc;
-  for (const b of $("scene-views").children) b.classList.toggle("on", b.dataset.view === sceneView);
+  for (const b of $("scene-views").children) setOn(b, b.dataset.view === sceneView);
   $("sketch-box").hidden = sceneView !== "sketch";
   $("background-box").hidden = sceneView !== "background";
   $("matrix-box").hidden = sceneView !== "matrix";
@@ -773,7 +785,7 @@ function renderScene() {
   const layered = !!(sc && sc.layered);
   if (!layered) layerPart = "all";
   $("layer-switch").hidden = !layered || sceneView !== "sketch";
-  for (const b of $("layer-switch").children) b.classList.toggle("on", b.dataset.part === layerPart);
+  for (const b of $("layer-switch").children) setOn(b, b.dataset.part === layerPart);
   if (!sc) return;
   if (sceneView === "background") {
     $("no-bg").hidden = sc.background;
@@ -834,7 +846,7 @@ function renderViews() {
   const on = !(S && S.scene) && S && S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
   if (!on || !has(view)) view = "sketch";
   $("views").hidden = !on || !["compare", "attention", "mask", "condition", "all"].some(has);
-  for (const b of $("views").children) { b.hidden = !has(b.dataset.v); b.classList.toggle("on", b.dataset.v === view); }
+  for (const b of $("views").children) { b.hidden = !has(b.dataset.v); setOn(b, b.dataset.v === view); }
   if (!on) { for (const id of ["compare-view", "split", "plain-view", "all-view"]) $(id).hidden = true; return; }
   $("sketch-box").hidden = view !== "sketch";
   $("compare-view").hidden = $("split").hidden = view !== "compare";
@@ -892,8 +904,8 @@ function renderSketch() {
   const stats = $("stats");
   stats.replaceChildren(...S.stats.map((x) => el("div", {}, el("b", {text: x.value}), el("span", {text: x.label}))));
   $("rate-card").hidden = !S.can_rate;
-  $("up").classList.toggle("on", S.rating === 1);
-  $("down").classList.toggle("on", S.rating === -1);
+  setOn($("up"), S.rating === 1);
+  setOn($("down"), S.rating === -1);
   $("taste").textContent = t("taste", {up: S.taste.up, down: S.taste.down, need: S.taste.need});
   if (document.activeElement !== $("style")) $("style").value = S.style;
   if (document.activeElement !== $("paper")) $("paper").value = S.paper;
@@ -938,7 +950,7 @@ function exportFormat() { return X.info.formats.find((x) => x.fmt === X.fmt); }
 function buildExport() {
   const f = exportFormat();
   $("formats").replaceChildren(...X.info.formats.map((x) => el("button", {
-    class: x.fmt === X.fmt ? "on" : "", title: x.desc, text: x.title,
+    class: x.fmt === X.fmt ? "on" : "", "aria-pressed": String(x.fmt === X.fmt), title: x.desc, text: x.title,
     onclick: () => { X.fmt = x.fmt; buildExport(); }})));
   $("fmt-desc").textContent = f.desc;
   $("export-go").textContent = t("export_go", {fmt: f.title});
@@ -959,7 +971,7 @@ function buildExport() {
   const out = [];
   if (a.mode) {
     out.push(field(T.x_mode, true, el("div", {class: "seg"}, ...["process", "strokes"].map((m) => el("button", {
-      class: o.mode === m ? "on" : "", text: T["x_mode_" + m], onclick: () => {
+      class: o.mode === m ? "on" : "", "aria-pressed": String(o.mode === m), text: T["x_mode_" + m], onclick: () => {
         o.mode = m;  // (the length follows, as in the dialog)
         o.length = m === "strokes" ? X.info.sketch.draw_length : X.info.sketch.process_length;
         buildExport();
@@ -1064,6 +1076,7 @@ $("search").placeholder = T.search;
 $("filter-method").title = T.filter_method;
 $("filter-album").title = T.filter_album;
 $("filter-fav").title = T.filter_fav;
+$("filter-fav").setAttribute("aria-label", T.filter_fav || "");  // (its text is only ☆ / ★)
 let searchTimer = 0;
 $("search").addEventListener("input", () => {
   clearTimeout(searchTimer);
@@ -1127,7 +1140,7 @@ async function loadResults(more) {
   G.albums = list.albums;
   $("album-rename").hidden = $("album-delete").hidden = !G.album;
   $("filter-fav").textContent = G.fav ? "★" : "☆";
-  $("filter-fav").classList.toggle("on", G.fav);
+  setOn($("filter-fav"), G.fav);
   renderResults();
 }
 
@@ -1178,7 +1191,7 @@ function renderViewer() {
     if (viewerZoom) viewerZoom.reset();
   }
   $("viewer-fav").textContent = r.fav ? "★" : "☆";
-  $("viewer-fav").classList.toggle("on", r.fav);
+  setOn($("viewer-fav"), r.fav);
   $("viewer-tags").textContent = [(r.tags || []).map((x) => "#" + x).join(" "), r.notes || ""].filter(Boolean).join(" · ");
   $("viewer-continue").hidden = !r.can_continue;
   const albumSel = $("viewer-album");
@@ -1646,8 +1659,8 @@ function renderEdit() {
 
 function setTool(name) {
   tool = name;
-  $("tool-erase").classList.toggle("on", tool === "erase");
-  $("tool-pen").classList.toggle("on", tool === "pen");
+  setOn($("tool-erase"), tool === "erase");
+  setOn($("tool-pen"), tool === "pen");
   $("edit-canvas").hidden = !tool;
   $("edit-hint").textContent = tool === "erase" ? T.edit_hint_erase : (tool === "pen" ? T.edit_hint_pen : "");
   if (tool) { sketchZoom.reset(); closePanel(true); stopLapse(true); }
@@ -1788,7 +1801,7 @@ async function playLapse() {
   for (const src of frames) new Image().src = src;  // (loaded ahead)
   const speed = Number($("lapse-speed").value) || 1;
   lapse = {i: 0, timer: 0};
-  $("play-lapse").classList.add("on");
+  setOn($("play-lapse"), true);
   const step = () => {
     if (!lapse) return;
     if (lapse.i >= frames.length) { stopLapse(true); return; }
@@ -1801,7 +1814,7 @@ function stopLapse(show) {
   if (!lapse) return;
   clearTimeout(lapse.timer);
   lapse = null;
-  $("play-lapse").classList.remove("on");
+  setOn($("play-lapse"), false);
   if (show) { lastSeen.sketch = ""; renderSketch(); }
 }
 $("play-lapse").onclick = playLapse;
@@ -1839,7 +1852,7 @@ function setLayoutChoice(value) {
 
 function applyLayout() {
   const choice = layoutChoice();
-  for (const b of document.querySelectorAll("#layout button")) b.classList.toggle("on", b.dataset.layout === choice);
+  for (const b of document.querySelectorAll("#layout button")) setOn(b, b.dataset.layout === choice);
   const want = choice === "studio" || (choice === "auto" && !!wide && wide.matches);
   if (want === desk) return;
   desk = want;
@@ -1901,7 +1914,7 @@ function applyTheme() {
   if (theme === "system" || theme === "auto") theme = "";
   if (theme) document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
-  for (const b of $("page-theme").children) b.classList.toggle("on", b.dataset.theme === choice);
+  for (const b of $("page-theme").children) setOn(b, b.dataset.theme === choice);
 }
 $("page-theme").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-theme]");

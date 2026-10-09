@@ -331,14 +331,14 @@ class SketchCanvas(QWidget):
                 p.drawPolyline(self._drawing)
         else:
             p.setClipping(False)
-            p.setPen(QColor("#9AA3B4"))
+            p.setPen(QColor(pal.on_paper))
             size = int(min(42, rect.width() * 0.22))
             if self.placeholder and rect.width() > 200:
-                icon = icons.pixmap("brush", "#B8BECC", size)
+                icon = icons.pixmap("brush", pal.on_paper, size)
                 p.drawPixmap(int(rect.center().x() - size / 2), int(rect.center().y() - 40), icon)
                 p.drawText(rect.adjusted(20, 40, -20, 0), Qt.AlignCenter | Qt.TextWordWrap, self.placeholder)
             else:
-                icon = icons.pixmap("hourglass", "#C9CED8", size)
+                icon = icons.pixmap("hourglass", pal.on_paper, size)
                 p.drawPixmap(int(rect.center().x() - size / 2), int(rect.center().y() - size / 2), icon)
         p.end()
 

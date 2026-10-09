@@ -1,15 +1,19 @@
 :root {
-  --bg: #f4f5f7; --card: #ffffff; --text: #1d2129; --muted: #6b7280; --accent: #6d5efc; --on-accent: #ffffff;
+  --bg: #f4f5f7; --card: #ffffff; --text: #1d2129; --muted: #5a6375; --accent: #6d5efc; --on-accent: #ffffff;
   --line: #e3e5ea; --field: #f7f8fa; --warn: #fff4e5; --warn-text: #8a4b00; --more: #ff8c00; --less: #2878ff;
+  --accent-text: #4f46e5;  /* the accent as text (the fill colour --accent is for white text on it) */
+  --on-paper: #5a6375;  /* hints on the white sketch paper, the same in both themes */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]) {
-    --bg: #14161b; --card: #1d2027; --text: #e8e9ed; --muted: #9aa0ab; --accent: #8b7fff; --on-accent: #ffffff;
+    --bg: #14161b; --card: #1d2027; --text: #e8e9ed; --muted: #9aa0ab; --accent: #6164f1; --on-accent: #ffffff;
+    --accent-text: #8b7fff;
     --line: #2b2f38; --field: #161920; --warn: #3a2a12; --warn-text: #ffcf8a;
   }
 }
 :root[data-theme=dark] {  /* (chosen on the page: dark whatever the browser says) */
-  --bg: #14161b; --card: #1d2027; --text: #e8e9ed; --muted: #9aa0ab; --accent: #8b7fff; --on-accent: #ffffff;
+  --bg: #14161b; --card: #1d2027; --text: #e8e9ed; --muted: #9aa0ab; --accent: #6164f1; --on-accent: #ffffff;
+    --accent-text: #8b7fff;
   --line: #2b2f38; --field: #161920; --warn: #3a2a12; --warn-text: #ffcf8a; color-scheme: dark;
 }
 :root[data-theme=light] { color-scheme: light; }
@@ -58,7 +62,7 @@ input.num { width: 90px; flex: 0 0 90px; }
 .warn { background: var(--warn); color: var(--warn-text); border-radius: 10px; padding: 10px 12px; margin-top: 10px;
   font-size: 14px; }
 label.check { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; font-size: 15px; }
-input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex: 0 0 auto; }
+input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--accent); flex: 0 0 auto; }
 input[type=range] { flex: 1; accent-color: var(--accent); }
 
 /* picture */
@@ -131,7 +135,7 @@ button.thumb { font-size: 26px; }
 #tabs button { flex: 1; flex-direction: column; border: 0; background: transparent; min-height: 56px; padding: 4px;
   font-size: 12px; color: var(--muted); gap: 2px; }
 #tabs button span:first-child { font-size: 20px; }
-#tabs button.on { color: var(--accent); background: transparent; }
+#tabs button.on { color: var(--accent-text); background: transparent; }
 
 /* detail brush */
 .sheet { position: fixed; inset: 0; z-index: 10; background: var(--bg); padding: 12px; overflow-y: auto;
@@ -176,7 +180,7 @@ input[type=color]:disabled { opacity: .35; }
 .seg.views, .seg.layers { margin: 8px 0 4px; }
 .seg.views button, .seg.layers button { min-height: 36px; padding: 6px 8px; font-size: 14px; }
 .seg.layers button { flex: 1 1 auto; white-space: nowrap; padding: 6px; font-size: 13px; }
-.phase { font-size: 14px; color: var(--accent); margin: 4px 0 2px; }
+.phase { font-size: 14px; color: var(--accent-text); margin: 4px 0 2px; }
 .matrix-box { margin-top: 6px; }
 .axis-x { font-size: 12px; color: var(--muted); text-align: center; margin: 2px 0 4px 26px; }
 .matrix-wrap { display: flex; gap: 4px; }
@@ -227,7 +231,7 @@ details.compare[open] > summary::after { content: "▴"; }
 #pull { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; background: var(--card);
   border: 1px solid var(--line); border-radius: 20px; width: 40px; height: 40px; display: flex; align-items: center;
   justify-content: center; font-size: 20px; color: var(--muted); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
-#pull.ready { color: var(--accent); border-color: var(--accent); }
+#pull.ready { color: var(--accent-text); border-color: var(--accent); }
 html, body { overscroll-behavior-y: contain; }
 /* sign in with the PIN */
 body.login { padding-bottom: 0; }
@@ -333,3 +337,4 @@ select.done-action { width: auto; flex: 1 1 140px; min-height: 34px; padding: 4p
 .badge.exp { color: var(--warn-text); background: var(--warn); }
 .role-row { padding: 8px 0; border-top: 1px solid var(--line); }
 .role-row select { margin-top: 4px; }
+#no-sketch { color: var(--on-paper); }  /* (on the white paper in both themes) */

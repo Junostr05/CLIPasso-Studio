@@ -34,7 +34,8 @@ class Palette:
     paper: str
     ink: str
     accent_text: str = ""  # the accent as text or icon on the surfaces (accent_hover is a button background)
-    on_status: str = "#111111"  # text on the success / warning colours (badges)
+    on_status: str = "#111111"  # text on the success / warning / danger colours (badges, a danger button's hover)
+    on_paper: str = "#5A6375"  # hints painted on the white sketch paper (the paper is white in both themes)
 
 
 DARK = Palette(
@@ -139,6 +140,7 @@ QLabel[role="h2"] {{ font-size: 15px; font-weight: 600; }}
 QLabel[role="h3"] {{ font-size: 13px; font-weight: 600; }}
 QLabel[role="muted"] {{ color: {p.muted}; }}
 QLabel[role="faint"] {{ color: {p.faint}; font-size: 12px; }}
+QLabel#Byline {{ font-size: 11px; }}
 QLabel[role="stat"] {{ font-size: 20px; font-weight: 700; }}
 QLabel[role="mono"] {{ font-family: "Consolas", "DejaVu Sans Mono", monospace; color: {p.muted}; }}
 QLabel[role="badge"] {{
@@ -176,7 +178,7 @@ QPushButton[variant="primary"] {{
 QPushButton[variant="primary"]:hover {{ background: {p.accent_hover}; border-color: {p.accent_hover}; }}
 QPushButton[variant="primary"]:disabled {{ background: {p.surface3}; border-color: {p.surface3}; color: {p.faint}; }}
 QPushButton[variant="danger"] {{ background: transparent; border: 1px solid {p.danger}; color: {p.danger}; }}
-QPushButton[variant="danger"]:hover {{ background: {p.danger}; color: white; }}
+QPushButton[variant="danger"]:hover {{ background: {p.danger}; color: {p.on_status}; }}
 QPushButton[variant="danger"]:disabled {{ border-color: {p.border}; color: {p.faint}; background: transparent; }}
 QPushButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
 QPushButton[variant="ghost"]:hover {{ background: {p.surface2}; border-color: {p.border}; }}

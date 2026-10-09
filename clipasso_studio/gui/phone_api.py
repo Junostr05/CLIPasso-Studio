@@ -1000,7 +1000,7 @@ class PhoneApi:
         from .remote_update import updater
 
         if not data.get("_pin_ok"):
-            raise PhoneError(tr("ui.phone.page.pin_wrong"))
+            raise PhoneError(tr("ui.phone.page.update_pin_wrong"))
         u = updater()
         if u.busy():
             raise PhoneError(tr("ui.remote_update.busy"))

@@ -168,7 +168,6 @@ class MainWindow(QMainWindow):
         self.byline = label("By: Junostr05", "faint")  # app idea, GUI vision and UI/UX direction
         self.byline.setObjectName("Byline")
         self.byline.setAlignment(Qt.AlignCenter)
-        self.byline.setStyleSheet("font-size: 9px;")
         sv.addWidget(self.byline)
         sv.addSpacing(12)
         self.nav_group = QButtonGroup(self)
