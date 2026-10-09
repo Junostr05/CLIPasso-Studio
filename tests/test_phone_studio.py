@@ -297,3 +297,57 @@ def test_queue_details_options_and_load(window, tmp_path, monkeypatch):
         assert window.studio.image_path == str(photo)
     finally:
         c.jobs.clear()
+
+
+def test_models_and_the_apps_settings_from_the_phone(window, monkeypatch):
+    """Every model by group, the studio's models by task (changed from the phone), deleting one, and the app's
+    settings the phone may change – nothing about folders, the phone or Telegram."""
+    from clipasso_studio.engine import model_store
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.i18n import i18n
+
+    call = window.phone.api.handle
+    assert call("do_method", {"method": "clipasso"})["ok"]
+    m = call("get_models", {})
+    assert m["ok"] and [g["key"] for g in m["groups"]][0] == "bundled"
+    keys = {x["key"] for g in m["groups"] for x in g["models"]}
+    assert "semantic:openclip-b16" in keys
+    exp = next(x for g in m["groups"] for x in g["models"] if x["key"] == "semantic:openclip-b16")
+    assert exp["experimental"] and not exp["bundled"]
+    roles = {r["key"]: r for r in m["roles"]}
+    assert {"mask_model", "clip_model_name", "semantic_model"} <= set(roles)
+    sem = roles["semantic_model"]
+    assert [c["value"] for c in sem["choices"]][0] == "clip"
+    assert next(c for c in sem["choices"] if c["value"] == "siglip_b16")["experimental"]
+    assert call("do_set", {"key": "semantic_model", "value": "siglip_b16"})["ok"]
+    assert {r["key"]: r for r in call("get_models", {})["roles"]}["semantic_model"]["value"] == "siglip_b16"
+    call("do_set", {"key": "semantic_model", "value": "clip"})
+    # deleting: never a bundled model; a downloaded one goes (the worker lets go of it first)
+    bundled = next(x["key"] for x in m["groups"][0]["models"])
+    assert call("do_remove_model", {"key": bundled})["ok"] is False
+    removed, released = [], []
+    monkeypatch.setattr(model_store, "find", lambda key: "/x" if key == "lama" else None)
+    monkeypatch.setattr(model_store, "uninstall", removed.append)
+    monkeypatch.setattr(window.controller, "release_worker", lambda: released.append(True))
+    assert call("do_remove_model", {"key": "lama"})["ok"] and removed == ["lama"] and released
+    assert call("do_remove_model", {"key": "nope"})["ok"] is False
+    # the app's settings: only the allowed ones, through the settings page (with all its effects)
+    st = call("get_app_settings", {})
+    keys = [x["key"] for x in st["settings"]]
+    assert keys[0] == "language" and "keep_models_loaded" in keys and "experimental_sketch" in keys
+    assert not any(k.startswith(("remote", "telegram", "output")) for k in keys)
+    assert all(x["label"] for x in st["settings"])
+    on = app_settings().get("experimental_sketch")
+    assert call("do_app_setting", {"key": "experimental_sketch", "value": not on})["ok"]
+    assert app_settings().get("experimental_sketch") is (not on) and window.settings.sketch_switch.isChecked() is not on
+    call("do_app_setting", {"key": "experimental_sketch", "value": on})
+    assert call("do_app_setting", {"key": "remote_on", "value": False})["ok"] is False
+    assert call("do_app_setting", {"key": "output_dir", "value": "/"})["ok"] is False
+    before = i18n.lang
+    other = "en" if before == "de" else "de"
+    try:
+        assert call("do_app_setting", {"key": "language", "value": other})["ok"]
+        assert i18n.lang == other and call("get_studio", {})["lang"] == other  # (the page loads again)
+    finally:
+        call("do_app_setting", {"key": "language", "value": "auto"})
+    assert call("do_app_setting", {"key": "language", "value": "xx"})["ok"] is False

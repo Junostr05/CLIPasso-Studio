@@ -26,6 +26,11 @@ ERASE_REACH = 0.02  # the eraser on the phone: this far (of the sketch's width) 
 EDIT_POINTS = 2000  # at most this many points of one stroke of the pen / the eraser
 VIEWS = ("compare", "attention", "mask", "condition")  # the views of the studio's canvas besides the sketch
 VIEW_SIDE = 900
+MODEL_GROUPS = ("bundled", "masking", "clipasso", "experimental", "swiftsketch", "controlsketch", "scenesketch")
+# the app's settings the phone may change (nothing about folders, backups, the GPU runtime, the phone or Telegram):
+# key -> the settings page's widget (switching it there has every effect switching it on the PC has)
+APP_SETTINGS = {"language": "lang", "experimental_sketch": "sketch_switch", "check_updates": "updates",
+                "keep_awake": "awake", "keep_models_loaded": "warm", "notify": "notify"}
 
 
 class PhoneError(Exception):
@@ -56,6 +61,12 @@ def _file(data: bytes, ctype: str, name: str = "") -> dict:
     return {"_bytes": data, "_type": ctype, "_name": name}
 
 
+def _param_label_key(method: str, key: str) -> str:
+    from .widgets.param_panel import param_text_key
+
+    return param_text_key(method, key, "label")
+
+
 def _choice_label(method: str, param: schema.Param, value) -> str:
     from .widgets.param_panel import param_text_key
 
@@ -77,6 +88,7 @@ class PhoneApi:
         self.compare = None  # the compare page (its jobs and results), set by the main window
         self.models_page = None  # refreshed when the phone had models downloaded
         self.queue_page = None  # its "start by itself" switch and what happens when the queue is done
+        self.settings_page = None  # the app's settings the phone may change (APP_SETTINGS)
         self._download: dict | None = None  # models downloaded on the phone's request
         self._detail_key, self._detail_at = None, None
         self._taste_key, self._taste_value = None, None
@@ -121,7 +133,7 @@ class PhoneApi:
                 repr(self._download_state()), s.mask_status.text(), self._update_signature(),
                 repr(self._importance and self._importance["status"]), repr(self._views()),
                 tuple(h.key for h in s.hints()), st.get("canvas_vignette"), st.get("canvas_paper_color"),
-                tuple(s.history_jobs))
+                tuple(s.history_jobs), i18n.lang, st.get("theme"))
 
     def get_studio(self, data: dict) -> dict:
         s = self.studio
@@ -204,6 +216,8 @@ class PhoneApi:
             "history_n": len(s.history_jobs) if s.image_path else 0,
             "paper_color": st.get("canvas_paper_color") or "",
             "version": __version__,  # (a page of an older version loads again: its script and texts)
+            "lang": i18n.lang,  # (a page in another language, too)
+            "theme": st.get("theme", "dark"),
             "update": self._update_signature()[0],
         }
 
@@ -871,6 +885,93 @@ class PhoneApi:
         style, _paper, background = self._look()
         return _file(brush.stylize_svg(restyle_svg(svg, None, 1.0, background), style).encode("utf-8"),
                      "image/svg+xml")
+
+    # ------------------------------------------------------------------ models and the app's settings (3.8)
+    def get_models(self, data: dict) -> dict:
+        """Every model by group (with its size, what it is for, whether it is there) and the models the studio's
+        settings choose, by task – changed from the phone as from the PC's models page."""
+        from . import dialogs, model_roles
+        from .pages.other_pages import MODEL_PURPOSE, model_group
+
+        s = self.studio
+        method, settings = s.params.method(), s.params.settings()
+        used = model_roles.in_use(method, settings)
+        groups = []
+        for group in MODEL_GROUPS:
+            keys = [k for k in model_store.SPECS if model_group(k) == group]
+            if not keys:
+                continue
+            groups.append({"key": group, "name": tr(f"ui.models.group.{group}"),
+                           "models": [{"key": k, "name": dialogs.model_display_name(k),
+                                       "purpose": tr(MODEL_PURPOSE[k]) if k in MODEL_PURPOSE else "",
+                                       "mb": model_store.SPECS[k].stored_size_mb,
+                                       "available": model_store.is_available(k), "used": k in used,
+                                       "bundled": group == "bundled", "experimental": model_roles.experimental(k)}
+                                      for k in keys]})
+        roles = []
+        for r in model_roles.rows(method, settings):
+            param = schema.param(method, r["key"])
+            choices = [{"value": c, "label": _choice_label(method, param, c),
+                        "experimental": any(model_roles.experimental(k)
+                                            for k in model_roles.choice_models(method, r["key"], c, settings))}
+                       for c in (param.choices or ())] if param.kind == "choice" else []
+            roles.append({"category": tr(f"ui.models.role.{r['category']}"), "key": r["key"],
+                          "label": tr(_param_label_key(method, r["key"])), "value": r["value"],
+                          "enabled": r["enabled"], "choices": choices,
+                          "models": [dialogs.model_display_name(k) for k in r["models"]],
+                          "missing": r["missing"], "experimental": r["experimental"]})
+        return {"ok": True, "groups": groups, "method": methods_ui.name(method), "roles": roles,
+                "download": self._download_state()}
+
+    def do_remove_model(self, data: dict) -> dict:
+        """Delete a downloaded model (the phone asked first); a bundled one stays."""
+        from .pages.other_pages import model_group
+
+        key = str(data.get("key", ""))
+        if key not in model_store.SPECS or model_group(key) == "bundled" or not model_store.find(key):
+            raise PhoneError(tr("ui.phone.page.failed"))
+        self._not_moving("models")
+        if self.controller.is_busy():
+            raise PhoneError(tr("ui.phone.page.model_busy"))
+        self.controller.release_worker()  # (a worker with loaded models keeps their files open)
+        model_store.uninstall(key)
+        if self.models_page is not None:
+            self.models_page.refresh()
+        self.studio.params._after_change()
+        return {"ok": True}
+
+    def get_app_settings(self, data: dict) -> dict:
+        page = self.settings_page
+        if page is None:
+            raise PhoneError(tr("ui.phone.page.no_studio"))
+        out = []
+        for key, attr in APP_SETTINGS.items():
+            widget = getattr(page, attr)
+            if key == "language":
+                out.append({"key": key, "label": page.lang_label.text(), "kind": "choice",
+                            "value": widget.currentData(),
+                            "choices": [{"value": widget.itemData(i), "label": widget.itemText(i)}
+                                        for i in range(widget.count())]})
+            else:
+                label_widget = getattr(page, f"{attr}_label", None)
+                text = label_widget.text() if label_widget is not None else tr("ui.settings.experimental.sketch")
+                out.append({"key": key, "label": text, "kind": "bool", "value": widget.isChecked()})
+        return {"ok": True, "settings": out}
+
+    def do_app_setting(self, data: dict) -> dict:
+        """One of the app's settings the phone may change – through the settings page's own control."""
+        page, key = self.settings_page, str(data.get("key", ""))
+        if page is None or key not in APP_SETTINGS:
+            raise PhoneError(tr("ui.phone.page.failed"))
+        widget = getattr(page, APP_SETTINGS[key])
+        if key == "language":
+            index = widget.findData(data.get("value"))
+            if index < 0:
+                raise PhoneError(tr("ui.phone.page.failed"))
+            widget.setCurrentIndex(index)
+        else:
+            widget.setChecked(bool(data.get("value")))
+        return {"ok": True}
 
     # ------------------------------------------------------------------ updating the app from the phone (3.8)
     def _update_signature(self) -> tuple:

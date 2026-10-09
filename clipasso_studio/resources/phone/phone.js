@@ -74,7 +74,7 @@ function showTab(name) {
   if (name === "gallery") loadResults();
   if ((name === "sketch" || (desk && name === "studio")) && S) renderSketch();
   if (name === "queue") loadQueue();
-  if (name === "app") loadUpdate();
+  if (name === "app") { loadUpdate(); loadAppSettings(); loadModels(); }
   window.scrollTo(0, 0);
 }
 for (const b of document.querySelectorAll("#tabs button")) b.onclick = () => showTab(b.dataset.tab);
@@ -119,7 +119,9 @@ async function refresh() {
     const s = await getJSON("/api/get/studio");
     if (s.ok === false) throw new Error(s.error || T.offline);
     if (s.version && CFG.version && s.version !== CFG.version) { reloadForVersion(s.version); return; }
+    if (s.lang && CFG.lang && s.lang !== CFG.lang) { location.reload(); return; }  // (the app's language changed)
     S = s;
+    applyTheme();
     if (s.update === "stopping" || s.update === "restarting") watchRestart();
     await render();
     schedule(document.hidden ? 8000 : (isLive() ? 15000 : (s.busy ? 1500 : 3000)));
@@ -148,7 +150,7 @@ async function render() {
     toast(S.note.text);
   }
   if (tab === "queue") loadQueue();
-  if (tab === "app") loadUpdate();
+  if (tab === "app") { loadUpdate(); loadAppSettings(); loadModels(); }
 }
 
 function renderTop() {
@@ -1887,6 +1889,91 @@ document.addEventListener("keydown", (e) => {
     $("full").click();
   }
 });
+
+// ------------------------------------------------------------------ the app's settings, its models, the page's colours (3.8)
+function pageTheme() {
+  try { return localStorage.getItem("cs_theme") || "auto"; } catch (e) { return "auto"; }
+}
+function applyTheme() {
+  // the browser's light or dark (auto), the app's own choice on the PC, or light / dark for this page
+  const choice = pageTheme();
+  let theme = choice === "app" ? ((S && S.theme) || "system") : choice;
+  if (theme === "system" || theme === "auto") theme = "";
+  if (theme) document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+  for (const b of $("page-theme").children) b.classList.toggle("on", b.dataset.theme === choice);
+}
+$("page-theme").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-theme]");
+  if (!b) return;
+  try { localStorage.setItem("cs_theme", b.dataset.theme); } catch (err) { /* (not kept: private mode) */ }
+  applyTheme();
+});
+applyTheme();
+
+async function loadAppSettings() {
+  const a = await getJSON("/api/get/app_settings").catch(() => null);
+  if (!a || a.ok === false) return;
+  const sig = JSON.stringify(a.settings);
+  if ($("app-settings").dataset.sig === sig) return;
+  $("app-settings").dataset.sig = sig;
+  $("app-settings").replaceChildren(...a.settings.map((x) => {
+    let ctl;
+    if (x.kind === "choice") {
+      ctl = el("select", {onchange: (e) => act("app_setting", {key: x.key, value: e.target.value})},
+               ...x.choices.map((c) => el("option", {value: c.value, text: c.label})));
+      ctl.value = x.value;
+    } else {
+      ctl = el("input", {type: "checkbox", checked: x.value,
+                         onchange: (e) => act("app_setting", {key: x.key, value: e.target.checked})});
+    }
+    return el("label", {class: "set-row"}, el("span", {text: x.label}), ctl);
+  }));
+}
+
+async function loadModels() {
+  const m = await getJSON("/api/get/models").catch(() => null);
+  if (!m || m.ok === false) return;
+  $("studio-models-title").textContent = t("studio_models", {method: m.method});
+  $("studio-models").replaceChildren(...m.roles.map((r) => {
+    let sel = null;
+    if (r.choices.length) {
+      sel = el("select", {disabled: !r.enabled, onchange: (e) => act("set", {key: r.key, value: e.target.value})
+                                                                 .then(loadModels)},
+               ...r.choices.map((c) => el("option", {value: c.value,
+                                                     text: c.label + (c.experimental ? " · " + T.experimental : "")})));
+      sel.value = String(r.value);
+    }
+    return el("div", {class: "role-row"},
+      el("div", {}, el("b", {text: r.category}), el("span", {class: "muted", text: " · " + r.label})), sel,
+      el("div", {class: "muted small-text", text: r.models.join(", ") + (r.enabled ? "" : " · " + T.not_used)}),
+      r.missing.length && r.enabled ? el("button", {class: "small", text: T.download_these,
+        onclick: () => act("download_models", {keys: r.missing}).then(loadModels)}) : null);
+  }));
+  const dl = m.download;
+  $("models-download").hidden = !dl || dl.status !== "running";
+  if (dl && dl.status === "running") {
+    $("models-download").textContent = t("downloading", {name: dl.name, i: dl.index, n: dl.count,
+                                                         pct: Math.round(100 * (dl.total ? dl.done / dl.total : 0))});
+    setTimeout(() => { if (tab === "app") loadModels(); }, 1500);
+  }
+  $("model-list").replaceChildren(...m.groups.map((g) => el("div", {},
+    el("div", {class: "sub", text: g.name}),
+    ...g.models.map((x) => el("div", {class: "model-row"},
+      el("div", {class: "info"},
+         el("b", {}, x.name, x.used ? el("span", {class: "badge", text: T.in_studio}) : null,
+            x.experimental ? el("span", {class: "badge exp", text: T.experimental}) : null),
+         el("span", {class: "muted small-text", text: (x.purpose ? x.purpose + " · " : "") +
+                                                     (x.mb >= 1000 ? (x.mb / 1000).toFixed(1) + " GB" : x.mb + " MB")})),
+      x.bundled ? el("span", {class: "muted small-text", text: T.bundled})
+        : x.available ? el("button", {class: "small", text: T.remove_model, onclick: async () => {
+            if (!confirm(t("remove_model_ask", {name: x.name}))) return;
+            const a = await act("remove_model", {key: x.key});
+            if (a.ok) loadModels();
+          }})
+        : el("button", {class: "small", text: T.download_this,
+                        onclick: () => act("download_models", {keys: [x.key]}).then(loadModels)}))))));
+}
 
 // ------------------------------------------------------------------ the app: version and updates (3.8)
 let U = null;           // the update state (get_update)
