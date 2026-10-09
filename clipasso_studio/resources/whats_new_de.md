@@ -5,7 +5,7 @@
 - **„Vereinfachen“ leichter zu finden:** Der Knopf über der Skizze trägt jetzt seinen Namen, und nach der ersten fertigen Skizze zeigt ein Hinweis einmal, wo er ist.
 - **Experimentelle Skizzen-Verbesserung** (Einstellungen, ganz unten): Bei CLIPasso und SceneSketch folgen die Striche stärker den Kanten, und dunkle Flächen bekommen eine feine, gleichmäßige Schraffur im 45°-Winkel. Gilt für neu gestartete Aufträge.
 - **Gemessen statt geschätzt:** Ein unabhängiger Richter (CLIP ViT-L/14) bewertet jetzt Ähnlichkeit und Erkennbarkeit auf 15 Fotos in vier Kategorien. Was dabei nicht klar besser wurde, kam nicht in 3.7: Gesichts-Ausschnitte für Porträts (machten Gesichter schlechter erkennbar), gelernte Strichbreiten (kein klarer Unterschied) und eine Strichzahl-Empfehlung nach Details im Foto – mehr Striche helfen bei jedem Motiv, am meisten bei schlichten Objekten.
-<!-- semantic models -->
+- **Neuere Bildmodelle für CLIPasso** (Parameter *Semantik-Modell*, experimentell): **OpenCLIP ViT-B/16** machte Skizzen von Objekten, Porträts und Tieren messbar ähnlicher und besser erkennbar, **SigLIP B/16** half nur bei Tieren. Beide bleiben optional, sind in der Modell-Übersicht als *experimentell* markiert und werden nur auf Wunsch geladen; sie rechnen etwa 1,7-mal so lange. Standard bleibt das ursprüngliche CLIP.
 
 ---
 

@@ -5,7 +5,7 @@
 - **"Simplify" easier to find:** the button above the sketch now shows its name, and after the first finished sketch a hint says once where it is.
 - **Experimental sketch improvement** (Settings, at the very bottom): with CLIPasso and SceneSketch the strokes follow the edges more closely, and dark areas get a fine, even hatching at 45°. For newly started jobs.
 - **Measured, not guessed:** an independent judge (CLIP ViT-L/14) now grades likeness and recognisability on 15 photos in four categories. What did not clearly get better did not go into 3.7: face crops for portraits (faces became harder to recognise), learnt stroke widths (no clear difference) and a stroke count recommended from the photo's details – more strokes help with every subject, most of all with plain objects.
-<!-- semantic models -->
+- **Newer image models for CLIPasso** (parameter *Semantic model*, experimental): **OpenCLIP ViT-B/16** made sketches of objects, portraits and animals measurably more similar and easier to recognise, **SigLIP B/16** helped only animals. Both stay optional, are marked *experimental* on the Models page and are downloaded only on request; they take about 1.7 times as long. The default stays the original CLIP.
 
 ---
 

@@ -21,7 +21,7 @@
   - **Face crops for portraits** (planned): recognisability −23 points (± 9). Not in 3.7.
   - **Learnt stroke widths** (planned): no clear difference (likeness +0.9 ± 0.8). Not in 3.7.
   - **A stroke count recommended from the photo's details** (planned): the measurement showed that more strokes help in every category, most of all with plain objects (8 → 16 strokes: likeness +8.7; 16 → 32: +4.4). The idea "few details, few strokes" does not hold – so there is no recommendation; more strokes are the better choice when there is time.
-<!-- semantic models -->
+  - **Newer semantic models for CLIPasso** (*Semantic model*, experimental): **OpenCLIP ViT-B/16** made the sketches more similar and easier to recognise – likeness +2.0 (± 0.6), recognisability +12.6 points (± 4.9); clearly better for objects, portraits and animals, no clear difference for scenes. **SigLIP B/16** helped only animals (likeness +3.9, recognisability +26) and made no clear difference elsewhere. Both stay optional and marked *experimental* on the Models page (with what they were measured to help), are downloaded only on request (172 / 186 MB, only their image part) and take about 1.7 times as long; the default stays the original CLIP.
 
 **Small update**
 - An app on 3.6.0 downloads only the files that changed (`…-Patch-from-3.6.0.exe` / `…-Portable-Patch-from-3.6.0.zip`).
