@@ -180,9 +180,18 @@ jobs:
       - name: Unit tests
         env:
           QT_QPA_PLATFORM: offscreen
+          CLIPASSO_TEST_MEMLOG: ${{ runner.temp }}\test-memory.txt
         # -v: the name of every test before it runs; faulthandler_timeout: the stacks of all threads when a test
-        # takes over 4 minutes (a hanging test is ended by pytest-timeout after 10 – its own dump was lost)
-        run: python -m pytest -v -m "not slow" --durations=20 -o faulthandler_timeout=240
+        # takes over 4 minutes (a hanging test is ended by pytest-timeout after 10 – its own dump was lost);
+        # --capture=sys: what native libraries write to stderr reaches the log (OpenBLAS ends the process with
+        # exit(1) after its message when memory runs out – with fd capture both were lost)
+        run: python -m pytest -v -m "not slow" --durations=20 -o faulthandler_timeout=240 --capture=sys
+      - name: Memory before the last tests
+        if: always()
+        shell: pwsh
+        run: |
+          $log = "${{ runner.temp }}\test-memory.txt"
+          if (Test-Path $log) { Get-Content $log -Tail 25 }
 
   build-windows:
     name: Windows ${{ matrix.edition }}

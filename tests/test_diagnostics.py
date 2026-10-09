@@ -1,6 +1,7 @@
 """Diagnostics and logs: app.log is rotated, a crashed worker leaves its stacks, crash logs name the
 edition / torch / GPU, and the settings copy or save one text with everything a bug report needs."""
 
+import faulthandler
 import os
 import subprocess
 import sys
@@ -51,11 +52,14 @@ def test_old_log_is_moved_into_the_logs_folder(user_data):
 def test_worker_log_is_removed_after_a_clean_end(user_data):
     from clipasso_studio import logs
 
+    was_on = faulthandler.is_enabled()
     f = logs.start_worker_log()
     assert logs.worker_log_path(os.getpid()).exists()
     logs.end_worker_log(f)
     assert not logs.worker_log_path(os.getpid()).exists()
     assert logs.read_worker_log(os.getpid()) == ""
+    # a faulthandler that was on stays on (here: pytest's – a hard crash in a later test still shows its stacks)
+    assert faulthandler.is_enabled() == was_on
 
 
 def test_a_crashed_worker_leaves_its_stacks(user_data):

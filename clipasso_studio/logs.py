@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import faulthandler
 import os
+import sys
 from pathlib import Path
 
 from . import paths
@@ -18,6 +19,7 @@ from . import paths
 MAX_BYTES = 5_000_000
 BACKUPS = 2  # app.log + 2 older files
 KEEP_WORKER_LOGS = 10
+_fault_was_enabled = {"on": False}  # faulthandler was on before start_worker_log (it is put back to stderr)
 
 
 def logs_dir() -> Path:
@@ -130,6 +132,7 @@ def start_worker_log():
     try:
         _prune_worker_logs()
         f = open(worker_log_path(os.getpid()), "w", encoding="utf-8")  # noqa: SIM115 - for faulthandler
+        _fault_was_enabled["on"] = faulthandler.is_enabled()
         faulthandler.enable(f, all_threads=True)
         return f
     except (OSError, RuntimeError, ValueError):
@@ -137,14 +140,16 @@ def start_worker_log():
 
 
 def end_worker_log(f) -> None:
-    """A clean end: no crash to keep."""
+    """A clean end: no crash to keep (a faulthandler that was on before writes to stderr again – e.g. in a test)."""
     if f is None:
         return
     try:
         faulthandler.disable()
+        if _fault_was_enabled["on"] and sys.__stderr__ is not None:
+            faulthandler.enable(sys.__stderr__, all_threads=True)
         f.close()
         os.remove(f.name)
-    except (OSError, ValueError):
+    except (OSError, ValueError, RuntimeError):
         pass
 
 

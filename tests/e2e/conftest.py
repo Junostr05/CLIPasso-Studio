@@ -144,11 +144,20 @@ class Phone:
 
     def wait_js(self, expression: str, seconds: float = 10.0):
         """Wait until the expression is true in the page (asked from outside: the page's CSP allows no eval, which
-        Playwright's wait_for_function needs)."""
+        Playwright's wait_for_function needs). A page that loads itself again meanwhile (after an update) is asked
+        again once it is there."""
+        from playwright.sync_api import Error
+
         end = time.time() + seconds
         while time.time() < end:
-            if self.page.evaluate(expression):
-                return
+            try:
+                if self.page.evaluate(expression):
+                    return
+            except Error as e:
+                if "context was destroyed" not in str(e) and "navigat" not in str(e):
+                    raise
+                self.page.wait_for_load_state("load", timeout=max(1000, (end - time.time()) * 1000))
+                continue
             self.page.wait_for_timeout(100)
         raise AssertionError(f"not true in time: {expression}")
 
