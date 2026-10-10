@@ -39,12 +39,13 @@ nearest existing text (`copy_check.py --key <prefix>`).
 | sketch | Skizze | one drawing the methods produce (a set of strokes) |
 | stroke | Strich | one Bézier curve of a sketch |
 | result | Ergebnis | a finished job as the gallery shows it (its best sketch, score, settings) |
-| job | Auftrag | one image + settings, in the queue; may draw several sketches |
-| run | Durchlauf | the computation of one sketch (one seed) inside a job |
+| image (the input) | Bild | what the user gives the app – a photo, a drawing, a screenshot; never “photo” / „Foto“ or “picture”, except for taking one with the camera (“Take photo” / „Foto aufnehmen“) and for photographs in general (e.g. “trained on photos”) |
+| job | Auftrag | one image + settings, in the queue; may draw several sketches – what *Cancel* / „Abbrechen“ stops (never „Job“ in German) |
+| run | Durchlauf | the computation of one sketch (one seed) inside a job – rare in the interface |
 | queue | Warteschlange | waiting jobs |
 | gallery | Galerie | all results in the output folder |
 | method | Methode | CLIPasso, SwiftSketch, ControlSketch, SceneSketch |
-| preset · My presets | Preset (also Voreinstellung) · Meine Presets | Fast / Standard / Quality · saved by the user |
+| preset · My presets | Voreinstellung · Meine Voreinstellungen (never „Preset“) | Fast / Standard / Quality · saved by the user |
 | model | Modell | downloaded network weights |
 | mask | Maske | the object cut out of the photo |
 | seed | Seed | random start of a sketch |
@@ -57,14 +58,11 @@ nearest existing text (`copy_check.py --key <prefix>`).
 | graphics card (GPU) | Grafikkarte | say "graphics card" in sentences, GPU in compact labels and badges |
 | processor (CPU) | Prozessor | same rule as GPU |
 
-**Known overlaps to settle** (each needs the user's call before a sweep):
-- *photo / image / picture* – all three are used for the input. Today: "image" in labels and formats
-  (Input image, Recent images), "photo" when talking about its content and quality (hints), "picture" on the
-  phone page and in backup texts.
-- *job / run* – `ui.cancel_run_question` says "job" in English but „Durchlauf“ in German.
-- *Preset / Voreinstellung* – German uses both (the phone page says „Voreinstellung“, own presets say
-  „Preset“).
+**Settled by the user (4.0, October 2026)** – the texts were swept; new texts follow the table:
+- *image*, not photo / picture (DE „Bild“, not „Foto“);
+- *job* = „Auftrag“ (also „Auftrag abbrechen?“), „Durchlauf“ only for one sketch's computation;
+- „Voreinstellung“ / „Meine Voreinstellungen“, not „Preset“.
 - *delete / remove* – delete = gone (to the recycle bin); remove = taken out of a list, the file stays.
   Keep it that way and check new texts against it.
 
-When the user decides one of these, update this table and fix the texts with `copy_check.py --grep`.
+Check a term with `copy_check.py --grep`.

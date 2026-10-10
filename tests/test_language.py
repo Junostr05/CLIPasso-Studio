@@ -91,3 +91,23 @@ def test_error_text_is_translated(qapp):
         assert dialogs.error_text(ValueError("plain")) == "plain"
     finally:
         i18n.set_language(before)
+
+
+def test_the_glossary_words():
+    """4.0: the user settled the words (.claude/skills/ux-copy/reference/voice.md) – the input is the *image*
+    („Bild“; “photo” / „Foto“ only for taking one with the camera and for photographs in general), the thing in the
+    queue is the *job* („Auftrag“, never „Job“), and Fast / Standard / Quality are „Voreinstellungen“ (never
+    „Preset“)."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / "clipasso_studio" / "resources" / "i18n"
+    en = json.loads((root / "en.json").read_text(encoding="utf-8"))
+    de = json.loads((root / "de.json").read_text(encoding="utf-8"))
+    camera = {"ui.phone.page.camera", "ui.webcam.tip", "ui.webcam.title", "ui.webcam.shoot"}
+    photographs = {"param.best_by.help"}  # (LAION's aesthetic score – “trained on photos”)
+    assert [k for k, v in en.items() if re.search(r"\b[Pp]ictures?\b", v)] == []
+    assert {k for k, v in en.items() if re.search(r"\b[Pp]hotos?\b", v)} <= camera | photographs
+    assert {k for k, v in de.items() if "Foto" in v} <= camera | photographs
+    assert [k for k, v in de.items() if re.search(r"Preset|\bJobs?\b", v)] == []
+    assert de["ui.cancel_run"] == "Auftrag abbrechen" and de["ui.phone.page.my_presets"] == "Meine Voreinstellungen"
