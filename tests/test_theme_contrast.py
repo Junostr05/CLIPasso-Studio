@@ -23,14 +23,17 @@ def pairs(p: theme.Palette) -> list[tuple[str, str, str]]:
     """(what, text colour, background) for every pair the app shows."""
     out = []
     for fg in ("text", "muted"):
-        for bg in ("bg", "sidebar", "surface", "surface2", "surface3", "accent_soft"):
+        for bg in ("bg", "chrome", "surface", "surface2", "surface3", "accent_soft"):
             out.append((f"{fg} on {bg}", getattr(p, fg), getattr(p, bg)))
-    for bg in ("bg", "sidebar", "surface", "surface2"):  # small captions ("faint") sit on pages and cards
+    for bg in ("bg", "chrome", "surface", "surface2"):  # small captions and step labels ("faint")
         out.append((f"faint on {bg}", p.faint, getattr(p, bg)))
-    for fg in ("accent_text", "danger", "success", "warning"):  # links, badges, states, errors as text
-        for bg in ("bg", "surface", "surface2"):
+    # links, counts, error text, states and costs as text
+    for fg in ("accent_text", "accent_text_hover", "danger_text", "success", "warning"):
+        for bg in ("bg", "chrome", "surface", "surface2"):
             out.append((f"{fg} on {bg}", getattr(p, fg), getattr(p, bg)))
     out += [("accent_text on accent_soft (badge)", p.accent_text, p.accent_soft),
+            ("accent_text_hover on accent_soft (count badge, pressed tool)", p.accent_text_hover, p.accent_soft),
+            ("on_accent_soft on accent_soft (the chosen method card)", p.on_accent_soft, p.accent_soft),
             ("on_accent on accent (primary button)", p.on_accent, p.accent),
             ("on_accent on accent_hover (primary button, hover)", p.on_accent, p.accent_hover),
             ("on_status on success (badge)", p.on_status, p.success),
@@ -41,9 +44,33 @@ def pairs(p: theme.Palette) -> list[tuple[str, str, str]]:
     return out
 
 
+def ui_pairs(p: theme.Palette) -> list[tuple[str, str, str]]:
+    """(what, part, what is around it) for the parts that make a control or a state visible (WCAG 1.4.11)."""
+    out = []
+    for bg in ("bg", "chrome", "surface", "surface2"):
+        out.append((f"field (text-field border) on {bg}", p.field, getattr(p, bg)))
+    for bg in ("bg", "chrome", "surface", "surface2", "surface3", "accent_soft"):
+        out.append((f"focus ring on {bg}", p.focus, getattr(p, bg)))
+    for bg in ("bg", "chrome", "surface"):
+        out.append((f"accent (chosen card edge, progress) on {bg}", p.accent, getattr(p, bg)))
+        out.append((f"danger (a destructive button's edge) on {bg}", p.danger, getattr(p, bg)))
+        out.append((f"warning (warning banner edge) on {bg}", p.warning, getattr(p, bg)))
+    out.append(("accent progress on its track (surface2)", p.accent, p.surface2))
+    return out
+
+
 @pytest.mark.parametrize("palette", [theme.DARK, theme.LIGHT], ids=lambda p: p.name)
 def test_every_text_colour_meets_wcag_aa(palette):
     low = [f"{what}: {contrast(fg, bg):.2f}" for what, fg, bg in pairs(palette) if contrast(fg, bg) < AA]
+    assert low == []
+
+
+@pytest.mark.parametrize("palette", [theme.DARK, theme.LIGHT], ids=lambda p: p.name)
+def test_the_parts_of_controls_meet_3_to_1(palette):
+    """4.0: text-field borders, the focus ring, chosen edges, the progress and the destructive / warning edges
+    stand out at least 3 : 1 (the 3.8 inputs had 1.1–1.4 : 1). ``control`` (button outlines) is decorative – a
+    button is told by its fill and label – and is not measured."""
+    low = [f"{what}: {contrast(fg, bg):.2f}" for what, fg, bg in ui_pairs(palette) if contrast(fg, bg) < 3.0]
     assert low == []
 
 

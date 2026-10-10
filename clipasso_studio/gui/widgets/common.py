@@ -10,10 +10,18 @@ from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsO
 from .. import icons, theme
 
 
+LABEL_SPACING = 0.66  # px: the 0.06 em letter spacing of the role "label" at 11 px
+
+
 def label(text: str = "", role: str | None = None, wrap: bool = False) -> QLabel:
     lbl = QLabel(text)
     if role:
         lbl.setProperty("role", role)
+    if role == "label":  # 4.0: step labels ("1 · BILD") – capitals and spacing, which a Qt style sheet cannot set
+        font = lbl.font()
+        font.setCapitalization(QFont.AllUppercase)
+        font.setLetterSpacing(QFont.AbsoluteSpacing, LABEL_SPACING)
+        lbl.setFont(font)
     lbl.setWordWrap(wrap)
     return lbl
 
@@ -52,9 +60,17 @@ class ElidedLabel(QLabel):
 
 
 def set_role(widget: QWidget, role: str) -> None:
-    widget.setProperty("role", role)
+    set_prop(widget, "role", role)
+
+
+def set_prop(widget: QWidget, name: str, value) -> None:
+    """A dynamic property the style sheet styles (``role``, ``state``, ``changed`` …), applied at once."""
+    if widget.property(name) == value:
+        return
+    widget.setProperty(name, value)
     widget.style().unpolish(widget)
     widget.style().polish(widget)
+    widget.update()
 
 
 def button(text: str = "", icon_name: str | None = None, variant: str | None = None, size: str | None = None,
@@ -143,25 +159,27 @@ class ToggleSwitch(QAbstractButton):
         p = theme.current()
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        track_off = QColor(p.surface3 if p.name == "dark" else "#C9CFDB")
-        track_on = QColor(p.accent)
         t = self._pos
-        track = QColor(
-            int(track_off.red() + (track_on.red() - track_off.red()) * t),
-            int(track_off.green() + (track_on.green() - track_off.green()) * t),
-            int(track_off.blue() + (track_on.blue() - track_off.blue()) * t),
-        )
+        track = _mix(QColor(p.surface3), QColor(p.accent), t)
+        edge = _mix(QColor(p.field), QColor(p.accent), t)  # 4.0: the off track's edge reaches 3 : 1 (field)
+        knob = _mix(QColor(p.text), QColor(p.on_accent), t)
         if not self.isEnabled():
             track.setAlpha(110)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(track)
-        painter.drawRoundedRect(QRectF(0, 0, self.width(), self.height()), 11, 11)
-        knob = QColor("#FFFFFF")
-        if not self.isEnabled():
+            edge.setAlpha(110)
             knob.setAlpha(170)
+        painter.setPen(edge)
+        painter.setBrush(track)
+        r = theme.RADIUS_LARGE
+        painter.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), r - 0.5, r - 0.5)
+        painter.setPen(Qt.NoPen)
         painter.setBrush(knob)
         x = 3 + t * (self.width() - 22)
         painter.drawEllipse(QRectF(x, 3, 16, 16))
+
+
+def _mix(a: QColor, b: QColor, t: float) -> QColor:
+    return QColor(int(a.red() + (b.red() - a.red()) * t), int(a.green() + (b.green() - a.green()) * t),
+                  int(a.blue() + (b.blue() - a.blue()) * t))
 
 
 class SegmentedControl(QFrame):
@@ -376,11 +394,6 @@ class CollapsibleSection(QWidget):
         self.header.setCursor(Qt.PointingHandCursor)
         self.header.setCheckable(True)
         self.header.setChecked(expanded)
-        p = theme.current()
-        self.header.setStyleSheet(
-            f"QPushButton#SectionHeader {{ text-align: left; background: transparent; border: none;"
-            f" padding: 10px 4px; font-weight: 600; font-size: 13px; }}"
-            f"QPushButton#SectionHeader:hover {{ color: {p.accent_text}; }}")
         self._icon_name = icon_name
         self.set_title(title)
         outer.addWidget(self.header)

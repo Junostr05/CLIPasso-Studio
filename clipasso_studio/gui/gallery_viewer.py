@@ -164,7 +164,7 @@ class ZoomSvgView(QWidget):
     def _paint_paper(self, p: QPainter, r: QRectF):
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(theme.current().paper))
-        p.drawRoundedRect(r, 6, 6)
+        p.drawRoundedRect(r, theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
 
     def paintEvent(self, event):  # noqa: N802
         p = QPainter(self)
@@ -294,7 +294,7 @@ class SplitView(ZoomSvgView):
             box = QRectF(left, max(r.top(), 0.0) + 8, w, h)
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(0, 0, 0, 150))
-            p.drawRoundedRect(box, 6, 6)
+            p.drawRoundedRect(box, theme.RADIUS_SEGMENT, theme.RADIUS_SEGMENT)
             p.setPen(QColor("#FFFFFF"))
             p.drawText(box, Qt.AlignCenter, text)
         p.end()

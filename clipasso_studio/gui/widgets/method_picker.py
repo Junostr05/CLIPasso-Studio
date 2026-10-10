@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from ... import settings_schema as schema
 from .. import icons, methods_ui, theme
 from ..i18n import tr
-from .common import label
+from .common import label, set_role
 
 
 class MethodCard(QFrame):
@@ -58,18 +58,17 @@ class MethodCard(QFrame):
     def refresh_status(self, settings: dict | None = None) -> None:
         settings = settings or schema.default_settings(self.method)
         missing = methods_ui.missing_models(settings)
-        p = theme.current()
         if missing:
             mb = methods_ui.download_mb(missing)
             size = f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
             self.status.setText(tr("ui.method.download_needed", size=size))
-            self.status.setStyleSheet(f"color: {p.warning};")
+            set_role(self.status, "status-warning")
         elif self.method == "controlsketch" and not methods_ui.has_cuda():
             self.status.setText(tr("ui.method.gpu_recommended"))
-            self.status.setStyleSheet(f"color: {p.warning};")
+            set_role(self.status, "status-warning")
         else:
             self.status.setText(tr("ui.method.ready"))
-            self.status.setStyleSheet(f"color: {p.success};")
+            set_role(self.status, "status-success")
 
     def retranslate(self):
         self.tagline.setText(tr(f"method.{self.method}.tagline"))

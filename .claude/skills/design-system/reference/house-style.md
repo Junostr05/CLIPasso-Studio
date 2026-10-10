@@ -30,27 +30,39 @@ Phone page semantics: a chosen tab / segment / toggle is set with `setOn(el, on)
 
 | Token | Role |
 |---|---|
-| `bg`, `sidebar` | window and navigation background |
-| `surface`, `surface2`, `surface3` | cards → inputs/buttons → hover, tooltips, tracks |
-| `border` | 1 px lines of cards, inputs, buttons |
-| `text`, `muted`, `faint` | body → secondary → captions, placeholders, disabled |
-| `accent`, `accent_hover`, `accent_soft` | primary buttons, focus, checked → pressed → selected backgrounds, badges |
-| `accent_text` | the accent used as text or icon on surfaces (links, "changed" parameter titles) |
-| `on_accent` | text on `accent` |
-| `success`, `warning`, `danger` + `on_status` | states, badges (text on success/warning, a danger button's hover) |
+| `bg`, `chrome` | the window / the studio's middle → the header and the job footer (4.0; 3.8: `sidebar`) |
+| `surface`, `surface2`, `surface3` | side columns, cards → buttons, inputs, toolbars, menus → chosen segment, hover, tracks |
+| `border` | 1 px dividers – decorative, never the only edge of an input |
+| `control` | 1 px outline of buttons, segment bars and toolbars (soft: a button is told by fill and label) |
+| `field` | border of text fields, spin boxes, drop-downs, check boxes – ≥ 3 : 1 on surface / surface2 |
+| `text`, `muted`, `faint` | body → secondary → captions, step labels, disabled (`faint` not on surface3 / accent_soft) |
+| `accent`, `accent_hover`, `accent_soft` | the one primary button, progress, chosen edges → hover → chosen backgrounds |
+| `accent_text`, `accent_text_hover` | the accent as text or icon (links, "changed" titles) → under the mouse, counts |
+| `focus` | the keyboard focus ring (= `accent_text`), ≥ 3 : 1 on every surface |
+| `on_accent`, `on_accent_soft` | text on `accent` → secondary text on `accent_soft` (the chosen method card) |
+| `success`, `warning`, `danger`, `danger_text` + `on_status` | states and costs; `danger` is a destructive button's edge, `danger_text` its label and error text; `on_status` on their fills |
 | `on_paper` | hints painted on the white sketch paper (empty canvas) – the same in both themes |
 | `paper`, `ink` | the sketch itself: white paper, black strokes – not interface chrome |
+| `detail_more`, `detail_less` | the detail brush (orange / blue) |
+
+Tests: `tests/test_theme_contrast.py` (text 4.5 : 1, control parts 3 : 1, both themes) and
+`tests/test_design_tokens.py` (no colour, radius or style sheet outside theme.py except the artwork files).
 
 **Spacing** – `SPACE_XS/S/M/L/XL` = 4 / 8 / 12 / 16 / 24 px. Pages use `theme.page_layout(layout)`
-(margins 24/20/24/20, spacing 16 – a test enforces it). Dialogs use 22/20 margins and 14 spacing by habit – not
-a token yet.
+(margins 24/20/24/20, spacing 16 – a test enforces it). 4.0: side columns, header and footer `COLUMN_PADDING` 20;
+dialogs `DIALOG_MARGIN` 24 / `DIALOG_SPACING` 16; `HEADER_HEIGHT` 52, `FOOTER_HEIGHT` 76, `LEFT_COLUMN` 312,
+`RIGHT_COLUMN` 168.
 
 **Type** – font Inter (bundled in `resources/fonts`), 13 px base. Roles via `label(text, role)` /
 `set_role(widget, role)`: `brand` 15/700 · `title` 22/700 · `h2` 15/600 · `h3` 13/600 · `muted` · `faint` 12 ·
-`stat` 20/700 · `mono` · `badge` 11/600 (+ `badge-success`, `badge-warning`). No other sizes.
+`label` 11/600 capitals, 0.06 em (step labels; `label()` sets the font) · `status-success|warning|danger` 12 ·
+`stat` 20/700 · `mono` · `badge` 11/600 (+ `badge-success`, `badge-warning`, `badge-danger`). No other sizes.
+Other looks are properties styled in `theme.stylesheet()`: `variant` (primary, ghost, danger, link), `size`
+(sm, lg), `state` (selected, best), `changed`, `align` – set with `set_prop(widget, name, value)`.
 
-**Radius** – cards 14, method cards 12, flat cards / banners / menus 10, buttons 9 (lg 11, sm 8),
-inputs / tooltips 8, segments 7, badges 9 (pill).
+**Radius** – `theme.RADIUS_*`: 4 progress, check boxes · 7 segment / tab, menu item · 8 buttons, inputs, tools,
+thumbnails, the paper · 9 segment / tab bar, badges · 10 cards, method cards, banners, menus · 11 large buttons,
+the switch · 12 floating toolbars. No shadows: layers are told by surface and a 1 px line.
 
 **Icons** – Lucide (ISC), one SVG per icon in `resources/icons/` (71 so far), tinted at run time:
 `icons.icon(name, colour)`, `icons.pixmap(name, colour, size)`. A new icon: copy the SVG from lucide.dev into

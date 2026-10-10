@@ -21,7 +21,7 @@ from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
 from ..widgets.canvas import IMAGE_FILTER
-from ..widgets.common import Card, EmptyState, SegmentedControl, ToggleSwitch, button, label, tool_button
+from ..widgets.common import Card, EmptyState, SegmentedControl, ToggleSwitch, button, label, set_prop, tool_button
 
 try:
     from .. import _build_info  # generated at build time
@@ -49,7 +49,7 @@ def _scroll(widget: QWidget) -> QScrollArea:
 
 
 def _status_role(status: str) -> str:
-    return {"done": "badge-success", "failed": "badge-warning", "cancelled": "badge-warning"}.get(status, "badge")
+    return {"done": "badge-success", "failed": "badge-danger", "cancelled": "badge-warning"}.get(status, "badge")
 
 
 def scan_jobs(unfinished: bool = False) -> list[tuple[str, dict]]:
@@ -167,8 +167,7 @@ class QueueRow(Card):
             self.controller.cancel()
 
     def set_selected(self, on: bool):
-        color = theme.current().accent if on else theme.current().border
-        self.setStyleSheet(f"QFrame#CardFlat {{ border: {2 if on else 1}px solid {color}; }}")
+        set_prop(self, "state", "selected" if on else "")
 
     def refresh(self):
         j = self.job

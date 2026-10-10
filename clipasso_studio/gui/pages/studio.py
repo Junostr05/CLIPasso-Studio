@@ -321,7 +321,7 @@ class StudioPage(QWidget):
         self.series_btn = button("", "layers", "ghost")
         self.series_btn.clicked.connect(self.abstraction_series)
         for b in (self.folder_btn, self.reuse_btn, self.series_btn):
-            b.setStyleSheet("text-align: left;")
+            b.setProperty("align", "left")
             self.result_card.body.addWidget(b)
         ll.addWidget(self.result_card, 2)
         left_scroll = QScrollArea()
@@ -870,7 +870,7 @@ class StudioPage(QWidget):
         b.setCursor(Qt.PointingHandCursor)
         sketch = jobs.best_sketch(summary)
         pm = QPixmap(64, 56)
-        pm.fill(QColor("white"))
+        pm.fill(QColor(theme.current().paper))
         renderer = None
         try:
             with open(sketch, encoding="utf-8") as f:

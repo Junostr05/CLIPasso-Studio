@@ -12,7 +12,7 @@ from ... import settings_schema as schema
 from ...engine import model_store
 from .. import icons, methods_ui, theme
 from ..i18n import i18n, tr
-from .common import CollapsibleSection, SegmentedControl, ToggleSwitch, button, label, tool_button
+from .common import CollapsibleSection, SegmentedControl, ToggleSwitch, button, label, set_prop, tool_button
 
 GROUP_ICONS = {
     "basics": "sparkles", "image": "image-plus", "strokes": "pen-tool", "init": "scan", "loss": "gauge",
@@ -332,7 +332,7 @@ class ParamField(QWidget):
     def _sync_reset(self):
         changed = self._value != self.start
         self.reset_btn.setVisible(changed)
-        self.title.setStyleSheet(f"color: {theme.current().accent_text};" if changed else "")
+        set_prop(self.title, "changed", "true" if changed else "false")
 
     def set_enabled_state(self, enabled: bool):
         for w in self.findChildren(QWidget):

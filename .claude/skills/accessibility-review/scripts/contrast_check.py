@@ -63,34 +63,35 @@ def phone_vars() -> dict[str, dict[str, str]]:
 
 
 def studio_pairs(p: dict[str, str]) -> list[tuple[str, str, str, float]]:
-    """(what, foreground, background, minimum) – the text pairs of the test plus the non-text ones."""
+    """(what, foreground, background, minimum) – the text pairs of tests/test_theme_contrast.py plus the non-text
+    ones (4.0 palette: chrome, control, field, focus, danger_text …)."""
     out = []
     for fg in ("text", "muted"):
-        for bg in ("bg", "sidebar", "surface", "surface2", "surface3", "accent_soft"):
+        for bg in ("bg", "chrome", "surface", "surface2", "surface3", "accent_soft"):
             out.append((f"text: {fg} on {bg}", p[fg], p[bg], TEXT))
-    for bg in ("bg", "sidebar", "surface", "surface2"):
-        out.append((f"text: faint (captions, placeholders, disabled) on {bg}", p["faint"], p[bg], TEXT))
-    for fg in ("accent_text", "danger", "success", "warning"):
-        for bg in ("bg", "surface", "surface2"):
+    for bg in ("bg", "chrome", "surface", "surface2"):
+        out.append((f"text: faint (captions, step labels, disabled) on {bg}", p["faint"], p[bg], TEXT))
+    for fg in ("accent_text", "accent_text_hover", "danger_text", "success", "warning"):
+        for bg in ("bg", "chrome", "surface", "surface2"):
             out.append((f"text: {fg} on {bg}", p[fg], p[bg], TEXT))
     out += [("text: on_accent on accent (primary button)", p["on_accent"], p["accent"], TEXT),
             ("text: on_accent on accent_hover", p["on_accent"], p["accent_hover"], TEXT),
+            ("text: on_accent_soft on accent_soft (chosen method card)", p["on_accent_soft"], p["accent_soft"], TEXT),
+            ("text: accent_text_hover on accent_soft (count badge)", p["accent_text_hover"], p["accent_soft"], TEXT),
             ("text: on_status on success (badge)", p["on_status"], p["success"], TEXT),
             ("text: on_status on warning (badge)", p["on_status"], p["warning"], TEXT),
             ("text: danger hover – on_status on danger", p["on_status"], p["danger"], TEXT),
             ("text: on_paper (hints on the empty canvas) on paper", p["on_paper"], p["paper"], TEXT)]
     # 1.4.11: what makes a control visible – its boundary or fill against what is around it
-    for bg in ("bg", "surface"):
-        out.append((f"ui: input/button border (border) on {bg}", p["border"], p[bg], UI))
-        out.append((f"ui: input fill (surface2) on {bg}", p["surface2"], p[bg], UI))
-    for bg in ("surface", "surface2"):
-        out.append((f"ui: focus / checked border (accent) on {bg}", p["accent"], p[bg], UI))
-    out += [("ui: slider groove (surface3) on surface", p["surface3"], p["surface"], UI),
-            ("ui: slider filled part (accent) on surface", p["accent"], p["surface"], UI),
-            ("ui: progress chunk (accent) on its track (surface3)", p["accent"], p["surface3"], UI),
-            ("ui: checked nav / segment (accent_soft) on sidebar", p["accent_soft"], p["sidebar"], UI),
-            ("ui: selected method card border (accent) on bg", p["accent"], p["bg"], UI),
-            ("ui: warning banner border (warning) on bg", p["warning"], p["bg"], UI)]
+    for bg in ("bg", "chrome", "surface", "surface2"):
+        out.append((f"ui: text-field border (field) on {bg}", p["field"], p[bg], UI))
+    for bg in ("bg", "chrome", "surface", "surface2", "surface3", "accent_soft"):
+        out.append((f"ui: focus ring (focus) on {bg}", p["focus"], p[bg], UI))
+    for bg in ("bg", "chrome", "surface"):
+        out.append((f"ui: chosen card edge / slider fill (accent) on {bg}", p["accent"], p[bg], UI))
+        out.append((f"ui: destructive button edge (danger) on {bg}", p["danger"], p[bg], UI))
+        out.append((f"ui: warning banner edge (warning) on {bg}", p["warning"], p[bg], UI))
+    out += [("ui: progress chunk (accent) on its track (surface2)", p["accent"], p["surface2"], UI)]
     return out
 
 

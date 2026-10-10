@@ -55,7 +55,7 @@ class ColorButton(QPushButton):
             self.setText(self._color.upper())
         fg = "#000000" if self._color == "transparent" or QColor(self._color).lightness() > 140 else "#FFFFFF"
         self.setStyleSheet(f"QPushButton {{ background: {bg}; color: {fg}; border: 1px solid {p.border};"
-                           f" border-radius: 8px; padding: 6px 12px; font-weight: 600; }}")
+                           f" border-radius: {theme.RADIUS_CONTROL}px; padding: 6px 12px; font-weight: 600; }}")
 
 
 class PaperChoice(QWidget):
@@ -1227,7 +1227,7 @@ class WebcamDialog(QDialog):
         self.view = QLabel()
         self.view.setMinimumSize(512, 384)
         self.view.setAlignment(Qt.AlignCenter)
-        self.view.setStyleSheet(f"background: {theme.current().surface2}; border-radius: 10px;")
+        self.view.setObjectName("WebcamView")
         lay.addWidget(self.view, 1)
         row = QHBoxLayout()
         self.cameras = QComboBox()

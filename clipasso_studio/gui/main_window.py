@@ -811,7 +811,7 @@ class MainWindow(QMainWindow):
         font.setPixelSize(9)
         font.setBold(True)
         painter.setFont(font)
-        painter.setPen(QColor("white"))
+        painter.setPen(QColor(theme.current().on_accent))
         painter.drawText(rect, Qt.AlignCenter, str(count) if count < 10 else "9+")
         painter.end()
         pm.setDevicePixelRatio(dpr)

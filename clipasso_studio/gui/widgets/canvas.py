@@ -10,6 +10,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from .. import icons, theme
+from .common import set_prop
 from ..drop import IMAGE_EXT, dropped_images, has_images  # noqa: F401 (IMAGE_EXT re-exported)
 from ..i18n import tr
 
@@ -286,13 +287,9 @@ class SketchCanvas(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.SmoothPixmapTransform)
         rect = self._paper_rect()
-        # soft shadow + paper
-        for i, alpha in enumerate((18, 12, 6)):
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(0, 0, 0, alpha))
-            p.drawRoundedRect(rect.adjusted(-2 - i * 2, -1 - i, 2 + i * 2, 4 + i * 3), 14, 14)
+        # the paper (4.0: no shadow – layers are told by surface and edge)
         clip = QPainterPath()
-        clip.addRoundedRect(rect, 12, 12)
+        clip.addRoundedRect(rect, theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
         p.setClipPath(clip)
         self._fill_paper(p, rect, pal.paper)
 
@@ -318,7 +315,7 @@ class SketchCanvas(QWidget):
             p.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
             p.setBrush(QColor(pal.accent))
             p.drawEllipse(QPointF(x, rect.center().y()), 9, 9)
-            p.setPen(QPen(QColor("white"), 2))
+            p.setPen(QPen(QColor(pal.on_accent), 2))
             cy = rect.center().y()
             p.drawLine(QPointF(x - 4, cy), QPointF(x - 1, cy - 3))
             p.drawLine(QPointF(x - 4, cy), QPointF(x - 1, cy + 3))
@@ -488,7 +485,7 @@ class SheetView(QWidget):
             r = self.cell_rect(i)
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(pal.paper))
-            p.drawRoundedRect(r, 8, 8)
+            p.drawRoundedRect(r, theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
             renderer = self._renderers.get(item)
             if renderer:
                 p.save()
@@ -499,7 +496,7 @@ class SheetView(QWidget):
                 color = pal.success if item == self.best and item != self.selected else pal.accent
                 p.setPen(QPen(QColor(color), 2.5))
                 p.setBrush(Qt.NoBrush)
-                p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 8, 8)
+                p.drawRoundedRect(r.adjusted(1, 1, -1, -1), theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
             p.setPen(QColor(pal.text if item == self.selected else pal.muted))
             caption = self._captions.get(item, str(item))
             p.drawText(QRectF(r.left(), r.bottom() + 2, r.width(), self._CAPTION - 2), Qt.AlignCenter,
@@ -651,7 +648,7 @@ class MatrixView(QWidget):
                 r = self._cell_rect(c, row)
                 p.setPen(Qt.NoPen)
                 p.setBrush(QColor(pal.paper))
-                p.drawRoundedRect(r, 6, 6)
+                p.drawRoundedRect(r, theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
                 renderer = self._renderers.get(cell)
                 if renderer:
                     p.save()
@@ -662,7 +659,7 @@ class MatrixView(QWidget):
                     color = pal.success if cell == self.best and cell != self.selected else pal.accent
                     p.setPen(QPen(QColor(color), 2))
                     p.setBrush(Qt.NoBrush)
-                    p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 6, 6)
+                    p.drawRoundedRect(r.adjusted(1, 1, -1, -1), theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
         p.end()
 
     def _cell_at(self, pos) -> int | None:
@@ -822,14 +819,15 @@ class ImageDropZone(QFrame):
         p.setPen(QPen(border, 1.5, Qt.SolidLine if self._pix else Qt.DashLine))
         bg = QColor(pal.accent_soft if self._hover else pal.surface2)
         p.setBrush(bg)
-        p.drawRoundedRect(r, 12, 12)
+        p.drawRoundedRect(r, theme.RADIUS_CARD, theme.RADIUS_CARD)
         if self._pix and not self._pix.isNull():
             inner = r.adjusted(10, 10, -10, -10)
             scaled = _fitted(self, self._pix, inner.size().toSize())
             x = inner.left() + (inner.width() - scaled.width()) / 2
             y = inner.top() + (inner.height() - scaled.height()) / 2
             clip = QPainterPath()
-            clip.addRoundedRect(QRectF(x, y, scaled.width(), scaled.height()), 8, 8)
+            r8 = theme.RADIUS_CONTROL
+            clip.addRoundedRect(QRectF(x, y, scaled.width(), scaled.height()), r8, r8)
             p.setClipPath(clip)
             p.drawPixmap(int(x), int(y), scaled)
             if self._overlay is not None and self.show_overlay:
@@ -896,10 +894,7 @@ class SeedThumb(QFrame):
         self._restyle()
 
     def _restyle(self):
-        pal = theme.current()
-        color = pal.success if self._best else (pal.accent if self._selected else pal.border)
-        width = 2 if (self._best or self._selected) else 1
-        self.setStyleSheet(f"QFrame#CardFlat {{ border: {width}px solid {color}; }}")
+        set_prop(self, "state", "best" if self._best else ("selected" if self._selected else ""))
 
     def mouseReleaseEvent(self, e):  # noqa: N802
         self.clicked.emit(self.seed)

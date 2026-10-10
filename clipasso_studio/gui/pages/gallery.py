@@ -256,13 +256,13 @@ class GalleryDelegate(QStyledItemDelegate):
         selected = bool(option.state & QStyle.State_Selected)
         hover = bool(option.state & QStyle.State_MouseOver)
         path = QPainterPath()
-        path.addRoundedRect(QRectF(r), 12, 12)
+        path.addRoundedRect(QRectF(r), theme.RADIUS_CARD, theme.RADIUS_CARD)
         painter.fillPath(path, QColor(pal.surface2 if hover or selected else pal.surface))
         painter.setPen(QPen(QColor(pal.accent if selected else pal.border), 2 if selected else 1))
         painter.drawPath(path)
         # the sketch
         clip = QPainterPath()
-        clip.addRoundedRect(QRectF(thumb), 8, 8)
+        clip.addRoundedRect(QRectF(thumb), theme.RADIUS_CONTROL, theme.RADIUS_CONTROL)
         painter.fillPath(clip, QColor(pal.paper))
         sketch = it.sketch
         if sketch and os.path.isfile(sketch):
@@ -314,7 +314,7 @@ class GalleryDelegate(QStyledItemDelegate):
                 break
             rect = QRectF(x, by, w, 20)
             badge = QPainterPath()
-            badge.addRoundedRect(rect, 6, 6)
+            badge.addRoundedRect(rect, theme.RADIUS_SEGMENT, theme.RADIUS_SEGMENT)
             painter.fillPath(badge, QColor(bg))
             painter.setPen(QColor(fg))
             painter.drawText(rect, Qt.AlignCenter, text)
@@ -322,7 +322,7 @@ class GalleryDelegate(QStyledItemDelegate):
         # continue button and favourite star
         if it.can_continue:
             button_path = QPainterPath()
-            button_path.addRoundedRect(QRectF(cont), 7, 7)
+            button_path.addRoundedRect(QRectF(cont), theme.RADIUS_SEGMENT, theme.RADIUS_SEGMENT)
             painter.fillPath(button_path, QColor(pal.accent))
             painter.setPen(QColor(pal.on_accent))
             painter.drawText(cont, Qt.AlignCenter, tr("ui.continue"))
@@ -368,7 +368,7 @@ class GalleryView(QListView):
         self.verticalScrollBar().setSingleStep(24)
         self.setMouseTracking(True)
         self.setFrameShape(QListView.NoFrame)
-        self.setStyleSheet("QListView { background: transparent; }")
+        self.setObjectName("GalleryView")
         self.doubleClicked.connect(lambda index: self.open_requested.emit(index.row()))
 
     def keyPressEvent(self, e):  # noqa: N802

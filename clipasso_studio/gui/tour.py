@@ -141,11 +141,11 @@ class Tour(QWidget):
         shade.addRect(QRectF(self.rect()))
         target = self.target_rect()
         if not target.isNull():
-            shade.addRoundedRect(QRectF(target), 12, 12)
+            shade.addRoundedRect(QRectF(target), theme.RADIUS_CARD, theme.RADIUS_CARD)
         p.fillPath(shade, QColor(0, 0, 0, 165))
         if not target.isNull():
             p.setPen(QPen(QColor(theme.current().accent), 2))
-            p.drawRoundedRect(QRectF(target), 12, 12)
+            p.drawRoundedRect(QRectF(target), theme.RADIUS_CARD, theme.RADIUS_CARD)
         p.end()
 
     def mousePressEvent(self, e):  # noqa: N802
