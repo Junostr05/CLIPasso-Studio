@@ -1,3 +1,12 @@
+## CLIPasso Studio 4.0.0 beta 1 – a calmer studio (pre-release)
+
+A **pre-release** to try out: 4.0 renews the look of the studio step by step, and every beta brings one more part. Every feature stays. Betas are built for Windows only.
+
+- **Beta versions:** the new switch *Also offer beta versions* (Settings → Behaviour; on the phone under *App*) makes the app offer pre-releases as updates – also *Download & install* from the phone. Switched off (the default), the app offers finished versions only. A beta's small update starts from the beta before it.
+- **The 4.0 colours (direction “calm professional tool”):** dark and light reworked from one set of design tokens. Every text colour reaches at least 4.5 : 1 on its surfaces, the edges of text fields, tick boxes and switches at least 3 : 1 (in 3.8 they were 1.1–1.4 : 1), the keyboard focus colour too. Corners and spacing follow one scale; nothing in the interface uses a colour outside the theme any more (a new test keeps it so).
+- **The same words everywhere:** *image* (the input), *job* (what the queue holds and *Cancel* stops), *preset* (Fast / Standard / Quality and your own) – in German *Bild*, *Auftrag*, *Voreinstellung*.
+- **To get this beta:** download it from this page (installer or portable); 3.8 offers no betas. From here on the switch above brings the next ones.
+
 ## CLIPasso Studio 3.8.1 – fixes: the experimental sketch improvement, older graphics cards
 
 - **Experimental sketch improvement:** switched on (Settings, at the bottom), a CLIPasso or SceneSketch job ended at once with “No module named 'scipy'” – its edge and hatching maps used a library the app does not include. The app computes them itself now (the same maps); a new test makes sure the app imports nothing its build leaves out.

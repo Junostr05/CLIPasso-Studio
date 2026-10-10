@@ -1,7 +1,8 @@
 """Updates: is a newer CLIPasso Studio release available on GitHub – and installing it.
 
-The check only asks the GitHub API for the latest release (no data is sent); pre-releases are
-ignored, and offline or on any error it simply finds nothing. *Install* downloads the files of this
+The check only asks the GitHub API for the latest release (no data is sent); pre-releases (betas) only
+count when "Also offer beta versions" is on – a setting of the Windows app –, and offline or on any error it
+simply finds nothing. *Install* downloads the files of this
 edition (resumable), checks them against the release's SHA256SUMS file and then runs the installer
 silently (installed app; it starts the new version afterwards) or starts the new portable exe.
 """
@@ -21,6 +22,7 @@ from ..engine.errors import UserError
 from ..fileops import ensure_space, folder_size
 
 RELEASES_API = "https://api.github.com/repos/Junostr05/CLIPasso-Studio/releases/latest"
+RELEASES_LIST = "https://api.github.com/repos/Junostr05/CLIPasso-Studio/releases?per_page=30"  # with the betas
 RELEASES_PAGE = "https://github.com/Junostr05/CLIPasso-Studio/releases/latest"
 
 _STAGES = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "rc": 2}  # a final release ranks above all of them
@@ -40,23 +42,53 @@ def is_newer(latest: str, current: str = __version__) -> bool:
     return parse_version(latest) > parse_version(current)
 
 
-def latest_release(url: str = RELEASES_API, timeout: float = 5.0) -> dict | None:
-    req = urllib.request.Request(url, headers={"User-Agent": "CLIPassoStudio",
-                                               "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.load(resp)
-    if not isinstance(data, dict) or data.get("draft") or data.get("prerelease") or not data.get("tag_name"):
+def beta_allowed() -> bool:
+    """Betas are built for Windows only (there is no other build): elsewhere the app offers none."""
+    return sys.platform == "win32"
+
+
+def beta_channel() -> bool:
+    """Whether betas are offered: the setting "Also offer beta versions" (PC or phone), on Windows."""
+    from .app_settings import app_settings
+
+    return beta_allowed() and bool(app_settings().get("beta_updates"))
+
+
+def _release(data, betas: bool) -> dict | None:
+    if not isinstance(data, dict) or data.get("draft") or not data.get("tag_name"):
+        return None
+    if data.get("prerelease") and not betas:
         return None
     assets = [{"name": a.get("name", ""), "url": a.get("browser_download_url", ""), "size": int(a.get("size") or 0)}
               for a in data.get("assets") or [] if isinstance(a, dict)]
     return {"tag": data["tag_name"], "url": data.get("html_url") or RELEASES_PAGE, "name": data.get("name") or "",
-            "body": str(data.get("body") or ""), "assets": assets}
+            "body": str(data.get("body") or ""), "assets": assets, "prerelease": bool(data.get("prerelease"))}
 
 
-def check(progress=None, url: str = RELEASES_API, current: str = __version__) -> str:
-    """For ``run_in_thread``: the newer release as JSON, or "" (up to date, offline, error)."""
+def latest_release(url: str = RELEASES_API, timeout: float = 5.0, betas: bool = False) -> dict | None:
+    """The newest release: the latest final one, or with ``betas`` the newest of all (a list of releases;
+    4.0.0 ranks above 4.0.0b3)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "CLIPassoStudio",
+                                               "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = json.load(resp)
+    if not betas:
+        return _release(data, False)
+    found = [r for r in (_release(d, True) for d in (data if isinstance(data, list) else [data])) if r]
+    return max(found, key=lambda r: parse_version(r["tag"]), default=None)
+
+
+def _channel(url: str | None, betas: bool | None) -> tuple[str, bool]:
+    betas = beta_channel() if betas is None else betas
+    return url or (RELEASES_LIST if betas else RELEASES_API), betas
+
+
+def check(progress=None, url: str | None = None, current: str = __version__, betas: bool | None = None) -> str:
+    """For ``run_in_thread``: the newer release as JSON, or "" (up to date, offline, error). ``betas``: also
+    pre-releases (None: as set)."""
+    url, betas = _channel(url, betas)
     try:
-        release = latest_release(url)
+        release = latest_release(url, betas=betas)
     except Exception:
         return ""
     if release and is_newer(release["tag"], current):
@@ -64,11 +96,12 @@ def check(progress=None, url: str = RELEASES_API, current: str = __version__) ->
     return ""
 
 
-def check_now(progress=None, url: str = RELEASES_API, current: str = __version__) -> str:
+def check_now(progress=None, url: str | None = None, current: str = __version__, betas: bool | None = None) -> str:
     """For "Check for updates now" (``run_in_thread``): JSON ``{"status": "newer" | "current" | "error",
     "release": …}`` – unlike :func:`check` it tells "up to date" from "offline"."""
+    url, betas = _channel(url, betas)
     try:
-        release = latest_release(url)
+        release = latest_release(url, betas=betas)
     except Exception as exc:  # offline, rate limit …
         return json.dumps({"status": "error", "error": f"{type(exc).__name__}: {exc}"})
     if release and is_newer(release["tag"], current):

@@ -1,4 +1,14 @@
-## Neu in 3.8: Fernsteuerung 2.0
+## Neu in 4.0 (Beta 1): ein ruhigeres Studio
+
+Dies ist eine **Vorabversion** zum Ausprobieren. 4.0 erneuert das Aussehen des Studios Schritt für Schritt – jede Beta bringt einen weiteren Teil. Alle Funktionen bleiben.
+
+- **Beta-Versionen:** Der neue Schalter *Auch Beta-Versionen anbieten* (Einstellungen → Verhalten, auf dem Handy unter *App*) bietet künftige Vorabversionen als Update an – auch zum Installieren vom Handy. Ausgeschaltet bleibt es bei den fertigen Versionen. Betas gibt es nur für Windows.
+- **Neue Farben und Formen:** Dunkel und Hell überarbeitet. Jede Schrift erreicht auf ihrer Fläche mindestens 4,5 : 1, die Ränder von Eingabefeldern, Häkchen und Schaltern mindestens 3 : 1 – sie sind jetzt klar zu erkennen. Rundungen und Abstände folgen einer festen Reihe.
+- **Einheitliche Wörter:** *Bild* statt Foto, *Auftrag* statt Job oder Durchlauf, *Voreinstellung* statt Preset.
+
+---
+
+**Neu in 3.8: Fernsteuerung 2.0**
 
 - **3.8.1 – Korrekturen:** Die experimentelle Skizzen-Verbesserung (Schraffur) bricht nicht mehr mit „No module named 'scipy'“ ab. Findet die Grafikkarte für eine Berechnung keinen Weg („FIND was unable to find an engine …“, z. B. GTX 1060), rechnet der Auftrag mit einem einfacheren Weg weiter statt abzubrechen – fertige Skizzen bleiben. Dazu bessere Kontraste, nichts Abgeschnittenes im kleinen Fenster und klarere Ansagen für Bildschirmleser auf dem Handy.
 - **Update vom Handy:** Im neuen Bereich *App* der Handy-Seite: *Nach Updates suchen* und *Herunterladen & installieren*. Nach der 6-stelligen PIN lädt die App das Update, hält einen laufenden Auftrag an, installiert, startet neu und rechnet danach weiter – die Seite verbindet sich von selbst wieder. Bei einer Installation für alle Benutzer wird vom Handy nur geladen, installiert wird mit einem Klick am PC.

@@ -675,7 +675,7 @@ class MainWindow(QMainWindow):
             self.studio.export(fmt)
 
     # ---------------------------------------------------------------- updates
-    def start_update_check(self, url: str = updates.RELEASES_API):
+    def start_update_check(self, url: str | None = None):
         """Look for a newer release in the background (if enabled in the settings)."""
         if app_settings().get("check_updates"):
             dialogs.run_in_thread(self, updates.check, url=url, on_done=self._update_found)

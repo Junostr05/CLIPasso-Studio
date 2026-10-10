@@ -70,7 +70,7 @@ class Updater(QObject):
         return self.phase in BUSY
 
     # ------------------------------------------------------------------ steps
-    def check(self, url: str = updates.RELEASES_API) -> bool:
+    def check(self, url: str | None = None) -> bool:
         from . import dialogs
 
         if self.busy():

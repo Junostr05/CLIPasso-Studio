@@ -578,6 +578,8 @@
  "ui.export_desc.matrix": "Every sketch of the matrix as SVG and PNG (L<layer>_level<n>), plus matrix.svg / matrix.png with all of them in one overview.",
  "ui.export_matrix_title": "Export the whole matrix",
  "ui.settings.check_updates": "Check for a new version on start",
+ "ui.settings.beta_updates": "Also offer beta versions",
+ "ui.settings.beta_updates_hint": "Pre-releases to try before they are finished – they may still have bugs. Also for updates from the phone.",
  "ui.settings.logs_tip": "Error logs – attach them when you report a problem.",
  "ui.diag.copy": "Copy diagnostics",
  "ui.diag.copied": "Copied ✓",

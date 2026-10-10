@@ -1,4 +1,14 @@
-## New in 3.8: the phone remote 2.0
+## New in 4.0 (beta 1): a calmer studio
+
+This is a **pre-release** to try out. 4.0 renews the look of the studio step by step – every beta brings one more part. Every feature stays.
+
+- **Beta versions:** the new switch *Also offer beta versions* (Settings → Behaviour, on the phone under *App*) offers coming pre-releases as updates – also to install from the phone. Switched off, you stay with the finished versions. Betas are for Windows only.
+- **New colours and shapes:** dark and light reworked. Every text reaches at least 4.5 : 1 on its surface, the edges of text fields, tick boxes and switches at least 3 : 1 – they are clear to see now. Corners and spacing follow one fixed scale.
+- **The same words everywhere:** *image* instead of photo, *job* for what the queue holds, *preset* for Fast / Standard / Quality.
+
+---
+
+**New in 3.8: the phone remote 2.0**
 
 - **3.8.1 – fixes:** the experimental sketch improvement (hatching) no longer ends with “No module named 'scipy'”. When the graphics card finds no way for a computation (“FIND was unable to find an engine …”, e.g. a GTX 1060), the job goes on with a simpler way instead of ending – finished sketches are kept. Also better contrast, nothing cut off in a small window, and clearer screen-reader announcements on the phone.
 - **Update from the phone:** in the new *App* area of the phone page: *Check for updates* and *Download & install*. After the 6-digit PIN, the app downloads the update, stops a running job, installs, starts again and goes on computing – the page connects again by itself. For an installation for all users the phone only downloads; installing takes one click on the PC.

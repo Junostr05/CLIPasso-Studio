@@ -30,7 +30,13 @@ MODEL_GROUPS = ("bundled", "masking", "clipasso", "experimental", "swiftsketch",
 # the app's settings the phone may change (nothing about folders, backups, the GPU runtime, the phone or Telegram):
 # key -> the settings page's widget (switching it there has every effect switching it on the PC has)
 APP_SETTINGS = {"language": "lang", "experimental_sketch": "sketch_switch", "check_updates": "updates",
-                "keep_awake": "awake", "keep_models_loaded": "warm", "notify": "notify"}
+                "beta_updates": "beta_switch", "keep_awake": "awake", "keep_models_loaded": "warm", "notify": "notify"}
+
+
+def _app_setting_shown(key: str) -> bool:
+    from . import updates
+
+    return key != "beta_updates" or updates.beta_allowed()  # (betas: Windows only)
 
 
 class PhoneError(Exception):
@@ -946,6 +952,8 @@ class PhoneApi:
             raise PhoneError(tr("ui.phone.page.no_studio"))
         out = []
         for key, attr in APP_SETTINGS.items():
+            if not _app_setting_shown(key):
+                continue
             widget = getattr(page, attr)
             if key == "language":
                 out.append({"key": key, "label": page.lang_label.text(), "kind": "choice",
@@ -961,7 +969,7 @@ class PhoneApi:
     def do_app_setting(self, data: dict) -> dict:
         """One of the app's settings the phone may change – through the settings page's own control."""
         page, key = self.settings_page, str(data.get("key", ""))
-        if page is None or key not in APP_SETTINGS:
+        if page is None or key not in APP_SETTINGS or not _app_setting_shown(key):
             raise PhoneError(tr("ui.phone.page.failed"))
         widget = getattr(page, APP_SETTINGS[key])
         if key == "language":

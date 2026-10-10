@@ -21,6 +21,7 @@ DEFAULTS: dict[str, Any] = {
     "keep_awake": True,
     "notify": True,
     "check_updates": True,
+    "beta_updates": False,  # 4.0: also offer pre-releases (betas) – Windows only (gui/updates.beta_allowed)
     "ui_scale": 1.0,  # interface size (applied at the start via QT_SCALE_FACTOR)
     "canvas_style": "plain",  # brush style the sketches are shown in (brush.STYLES)
     "canvas_paper": "none",  # paper of the preview (paper.KINDS); the export starts with it

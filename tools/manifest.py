@@ -96,8 +96,14 @@ def parse_version(text: str) -> tuple:
     return pv(text)
 
 
+def is_beta(tag: str) -> bool:
+    """A pre-release tag (v4.0.0b1, v2.1.0-beta.1, …): its version ranks below the final one."""
+    return len(parse_version(tag)) > 3 and parse_version(tag)[3] < 3
+
+
 def previous_manifest(repo: str, edition: str, tag: str, token: str = "") -> dict | None:
-    """The manifest of the newest final release before ``tag`` (None: there is none or it has no manifest)."""
+    """The manifest of the newest final release before ``tag`` – for a beta the newest release of any kind
+    (who installs betas updates from the beta before) – None: there is none or it has no manifest."""
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "CLIPassoStudio-CI"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -105,7 +111,8 @@ def previous_manifest(repo: str, edition: str, tag: str, token: str = "") -> dic
     with urllib.request.urlopen(req, timeout=30) as resp:
         releases = json.load(resp)
     current = parse_version(tag)
-    earlier = [r for r in releases if not r.get("draft") and not r.get("prerelease")
+    betas = is_beta(tag)
+    earlier = [r for r in releases if not r.get("draft") and (betas or not r.get("prerelease"))
                and r.get("tag_name") != tag and parse_version(r.get("tag_name", "")) < current]
     if not earlier:
         return None

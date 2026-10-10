@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
 from ... import APP_NAME, __version__, paths
 from ... import settings_schema as schema
 from ...engine import imaging, jobs, model_store
-from .. import background, crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs
+from .. import background, crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs, updates
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
@@ -990,6 +990,19 @@ class SettingsPage(QWidget):
         r.addWidget(self.check_now_btn)
         r.addWidget(self.updates)
         self.behaviour.body.addLayout(r)
+        self.beta_switch_label = label("", None)  # 4.0: pre-releases too (Windows: the only build there is)
+        self.beta_switch = ToggleSwitch()
+        self.beta_switch.setChecked(bool(s.get("beta_updates")))
+        self.beta_switch.toggled.connect(lambda v: s.set("beta_updates", v))
+        self.beta_row = QWidget()
+        beta = QVBoxLayout(self.beta_row)
+        beta.setContentsMargins(0, 0, 0, 0)
+        beta.setSpacing(2)
+        beta.addLayout(self._row(self.beta_switch_label, self.beta_switch))
+        self.beta_hint = label("", "faint", wrap=True)
+        beta.addWidget(self.beta_hint)
+        self.beta_row.setVisible(updates.beta_allowed())
+        self.behaviour.body.addWidget(self.beta_row)
         self.warm_label = label("", None)
         self.warm = ToggleSwitch()  # the worker stays open between jobs with its models loaded
         self.warm.setChecked(bool(s.get("keep_models_loaded", True)))
@@ -1667,6 +1680,8 @@ class SettingsPage(QWidget):
         self.awake_label.setText(tr("ui.settings.keep_awake"))
         self.notify_label.setText(tr("ui.settings.notify"))
         self.updates_label.setText(tr("ui.settings.check_updates"))
+        self.beta_switch_label.setText(tr("ui.settings.beta_updates"))
+        self.beta_hint.setText(tr("ui.settings.beta_updates_hint"))
         self.check_now_btn.setText(tr("ui.update.check_now"))
         self.warm_label.setText(tr("ui.settings.keep_models"))
         self.warm_label.setToolTip(tr("ui.settings.keep_models_tip"))
