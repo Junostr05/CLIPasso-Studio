@@ -17,9 +17,9 @@ from .widgets.common import Card, button, label
 STEPS = (
     ("methods", "studio", lambda w: [w.studio.picker]),
     ("input", "studio", lambda w: [w.studio.input_card]),
-    ("params", "studio", lambda w: [w.studio.params]),
+    ("params", "studio", lambda w: [w.studio.preset_step]),  # 4.0: step 3 – "Anpassen" opens the parameters
     ("start", "studio", lambda w: [w.studio.start_btn, w.studio.queue_btn]),
-    ("result", "studio", lambda w: [w.studio.result_card]),
+    ("result", "studio", lambda w: [w.studio.export_btn, w.studio.canvas_tools]),  # 4.0: Export … and the tools
     ("gallery", None, lambda w: [w.nav_buttons["gallery"], w.nav_buttons["queue"]]),
     ("models", None, lambda w: [w.header.app_btn]),  # 4.0: models and settings are in the App menu
 )

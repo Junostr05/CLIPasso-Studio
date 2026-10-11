@@ -80,12 +80,12 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 | `tool_button(icon, tooltip, size, checkable)` | icon-only button – **always pass a tooltip** (it is the screen-reader name) | QToolButton |
 | `Card(flat=…)` | panel | `#Card`, `#CardFlat` |
 | `ToggleSwitch` | on/off – named by the label of its row (see `a11y.py`) | painted |
-| `SegmentedControl(items, orientation=…)` | exclusive choice, a row or (`Qt.Vertical`) a column; one Tab stop, the arrows choose; `set_icons()` for the compact form | `#SegmentBar`, `#Segment` |
+| `SegmentedControl(items, orientation=…)` | exclusive choice, a row or (`Qt.Vertical`) a column; one Tab stop, the arrows choose; `set_icons()` for the compact form, `set_dense()` (8 px beside a label) in a narrow column | `#SegmentBar`, `#Segment[dense]` |
 | `link_button(text, icon)` | an action that reads as a link (*Anpassen*, *Details*) | `variant="link"` |
 | `RovingFocus(parent, choose)` | one Tab stop for a group of choices (method cards, sketches): arrows, Home, End choose, Space / Enter too | – |
 | `CountBadge` | a number next to a name, hidden at 0 | `role="count"` |
 | `Chip(icon, text, framed)` | a small piece of state (hardware, a running job); text elides | `#Chip[framed="true"]` |
-| `StepHeader(n, title, action)` | *1 · BILD* above a step of the left column | `role="label"` |
+| `StepHeader(n, title, action)` | *1 · BILD* above a step of the left column; one action on the right (`set_action()`: *Vergleichen …*, *Meine Voreinstellungen*) | `role="label"` |
 | `Column(side, width)` | a side column: `surface`, a line towards the middle, `COLUMN_PADDING` | `#Column[side=…]` |
 | `WrapRow(first, second, tail)` | a row that breaks into two lines instead of overlapping | – |
 | `CollapsibleSection(title, icon)` | parameter groups | `#SectionHeader` |
@@ -96,6 +96,20 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 
 Other hooks in the stylesheet: `#Root`, `#Page`, `#Header` with `#HeaderTab`, `#RunChip` and `#AppButton`
 (`widgets/header.py`), `#MethodCard[selected="true"]`, `#Divider`.
+
+**The studio's footer** (`widgets/studio_footer.py`, 4.0): the job – status, estimate, *Details* (the numbers and
+the loss curve as a drawer below the sketch, remembered as `studio_details_open`), the progress, and either
+*Skizze erstellen* + *Zur Warteschlange* or, while the shown job runs, *Pause* + *Abbrechen*. The studio is a
+page from edge to edge (`theme.columns_layout`, `layout_kind = "columns"`); other pages use `theme.page_layout`.
+
+**The studio's columns** (4.0): on the left the numbered steps (`StepHeader`) – *1 · Bild* (preview, name and
+size, the mask row across the column, *Ändern …* as a split button with samples, recent images, webcam and paste),
+*2 · Methode* (the method cards one below the other), *3 · Voreinstellung* (the preset segment across the column,
+the `#Summary` of what the job draws with *Anpassen*, the time budget, the switch rows). *Anpassen* swaps the
+column for the parameter page (`left_stack`; *← Zurück* or Esc). In the middle the view segment, the job's ⋯ menu
+and *Exportieren …* (`export_center.py`: the formats in groups, the sketch, the options of the 3.x export dialog
+inside), the paper, and below it the floating `#CanvasToolbar`. On the right the job's sketches (`SeedThumb`, one
+Tab stop, the arrows choose). Tab runs left → middle → right → footer (`a11y.reading_order`).
 
 **The header** (`widgets/header.py`, 4.0) replaces the sidebar: logo and name, the areas *Studio · Galerie ·
 Warteschlange* (`window.nav_buttons`), the running job, the hardware and the menu **App** (`window.app_actions`:
@@ -122,7 +136,8 @@ colours read at construction are fine – except while a job runs (then only the
   thing and the consequence.
 - **Long work** never blocks: progress in a strip at the top, on the taskbar button, and on the phone.
 - **Narrow windows**: smallest window `MIN_WIDTH` = 1200 px (`main_window.py`); rows that may not fit use
-  `WrapRow`; a test checks the studio's columns at 1200 × 760.
+  `WrapRow`; a test checks the studio's columns at 1200 × 760. The left column scrolls there, so its parts get
+  312 − 2 × 20 − 10 (scroll bar) − 1 (line) = 261 px – in German too (`test_studio_columns_fit_a_small_window`).
 - **Shortcuts** live in `gui/shortcuts.py` (also listed on the About page).
 
 ## Text

@@ -1,7 +1,8 @@
-## New in 4.0 (beta 3): a calmer studio
+## New in 4.0 (beta 4): a calmer studio
 
 This is a **pre-release** to try out. 4.0 renews the look of the studio step by step – every beta brings one more part. Every feature stays.
 
+- **The studio in three columns (beta 4):** on the left the steps *1 · Image*, *2 · Method* and *3 · Preset* – with a summary like “16 strokes · 2001 iterations · 3 sketches”; *Adjust* shows the parameters in the column (*Back* or Esc). In the middle the sketch with a toolbar below it and **Export …**: every format in one dialog (Ctrl+E opens it on the format used last). On the right the job's sketches. At the bottom the job: status, time left, *Details* (numbers and curve) and *Create sketch* – while it runs *Pause* and *Cancel*.
 - **A header instead of the sidebar (beta 3):** at the top now *Studio · Gallery · Queue* (with the number of waiting jobs), the running job, what the app computes on (graphics card or “Processor · 8 cores”) and the **App** menu with *Models, Settings, Compare methods, Phone & messages, Check for updates* and *About & help*. Ctrl+1 … 7 follow this order (Ctrl+2 is the gallery now, Ctrl+6 compare).
 - **Keyboard (beta 2):** a visible focus ring shows where the keyboard is (Tab) – after a click it goes away. The method cards, every segmented choice (e.g. *Fast / Standard / Quality*) and the sketches of a job are one Tab stop each: the arrow keys choose inside, Space or Enter confirm. The image area opens an image with Space, too.
 - **Beta versions:** the new switch *Also offer beta versions* (Settings → Behaviour, on the phone under *App*) offers coming pre-releases as updates – also to install from the phone. Switched off, you stay with the finished versions. Betas are for Windows only.

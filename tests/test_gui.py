@@ -86,7 +86,7 @@ def test_scenesketch_in_the_studio(window):
     assert studio.params.settings()["layers"] == "8"  # starts with the standard preset, not the 3 x 9 matrix
     assert not studio.modes._buttons["matrix"].isHidden()
     assert studio.modes._labels["condition"] in ("Background", "Hintergrund")  # (shown as text or as tooltip)
-    assert studio.series_btn.isHidden()
+    assert not studio.series_btn.isVisible()
     studio.modes.set_current("matrix")
     studio._mode_changed("matrix")
     assert studio.matrix.isVisibleTo(studio) and not studio.canvas.isVisibleTo(studio)
@@ -149,7 +149,7 @@ def test_method_switch_rebuilds_the_panel_and_remembers_settings(window):
     panel.apply_preset("quality")
     assert panel.settings()["num_sketches"] == 12
     assert studio.quick["mask_object"][1].isVisibleTo(studio)
-    assert not studio.reuse_btn.isVisibleTo(studio) and not studio.series_btn.isVisibleTo(studio)
+    assert not studio.reuse_btn.isVisible() and not studio.series_btn.isVisible()
 
     studio.picker.cards["controlsketch"].clicked.emit("controlsketch")
     assert panel.method() == "controlsketch"
@@ -1361,7 +1361,7 @@ def test_scenesketch_views_and_layers(window, tmp_path):
     assert not studio.matrix.grab().isNull()  # (the axis titles are drawn without an error)
     studio.modes.set_current("sketch")
     assert studio.layer_btn.isVisibleTo(studio) and studio.layer_btn.isEnabled()
-    assert studio.export_btns["svglayers"].isVisibleTo(studio) and studio.export_btns["svglayers"].isEnabled()
+    assert studio.export_btns["svglayers"].isVisible() and studio.export_btns["svglayers"].isEnabled()
     studio.set_layer_part("object")
     assert studio._shown_svg(800).count("<path") == len(SCENE_OBJ)
     studio.eraser_btn.setChecked(True)  # the eraser works on the whole sketch
@@ -1845,37 +1845,48 @@ def test_every_button_has_a_name(window):
     assert lbl is window.studio.quick["turbo"][0]
 
 
-def test_studio_tab_order(window):
-    """3.6: Tab goes through the studio from left to right: the input, the canvas, the parameters."""
+def test_studio_tab_order(window, tmp_path):
+    """3.6: Tab goes through the studio from left to right. 4.0: in the order it is seen – the left column (the
+    steps), the middle, the right column (the job's sketches), the footer with the job."""
     from PySide6.QtCore import Qt
 
     window.show_page("studio")
     st = window.studio
+    job = _fake_job(str(tmp_path), "tabs", str(tmp_path / "tabs.png"), 80.0)
+    st.show_job_dir(job)  # (a sketch in the right column)
+    st.fix_tab_order()
+    roots = {st.left_scroll: 0, st.center_card: 1, st.right_pane: 2, st.footer: 3}
     areas, w = [], st.open_btn
-    for _ in range(600):
+    for _ in range(800):
         w = w.nextInFocusChain()
         if w is st.open_btn:
             break
         if not (w.focusPolicy() & Qt.TabFocus) or not w.isVisibleTo(window) or not w.isEnabled():
             continue
         a = w
-        while a is not None and a not in (st.left_scroll, st.center_card, st.right_pane):
+        while a is not None and a not in roots:
             a = a.parentWidget()
-        if a is not None:
-            area = {st.left_scroll: 0, st.center_card: 1, st.right_pane: 2}[a]
-            if not areas or areas[-1] != area:
-                areas.append(area)
-    assert areas == [0, 1, 2]
-
+        if a is not None and (not areas or areas[-1] != roots[a]):
+            areas.append(roots[a])
+    assert areas == [0, 1, 2, 3], areas
 
 def test_pages_use_the_spacing_tokens(window):
-    """3.6: every page has the same margins and spacing (theme tokens)."""
+    """3.6: every page has the same margins and spacing (theme tokens). 4.0: a page from edge to edge
+    (``layout_kind`` "columns", the studio) has none – its columns and its footer have COLUMN_PADDING inside."""
     from clipasso_studio.gui import theme
 
     for key, page in window.pages.items():
         m = page.layout().contentsMargins()
-        assert (m.left(), m.top(), m.right(), m.bottom()) == theme.PAGE_MARGINS, key
+        margins = (m.left(), m.top(), m.right(), m.bottom())
+        if getattr(page, "layout_kind", "padded") == "columns":
+            assert margins == (0, 0, 0, 0) and page.layout().spacing() == 0, key
+            continue
+        assert margins == theme.PAGE_MARGINS, key
         assert page.layout().spacing() == theme.PAGE_SPACING, key
+    st = window.studio
+    assert st.layout_kind == "columns"
+    m = st.footer.layout().contentsMargins()
+    assert (m.left(), m.right()) == (theme.COLUMN_PADDING, theme.COLUMN_PADDING)
 
 
 def test_empty_pages_say_what_to_do(window, monkeypatch):
@@ -1925,10 +1936,10 @@ def test_empty_pages_say_what_to_do(window, monkeypatch):
 
 
 def test_nothing_in_the_studio_centre_is_cut_in_a_small_window(window):
-    """4.0: at the smallest window, in German, nothing in the middle of the studio is cut off: Start, Pause and
-    Cancel show their whole text – or, when the three do not fit side by side, Pause and Cancel only their icon with
-    the name as tooltip and screen-reader name; the numbers below the progress bar fit; a long status line ends
-    in "…" with the whole text as tooltip (they were cut in the middle of a word)."""
+    """4.0: at the smallest window, in German, nothing of the job is cut off: before a start the footer shows
+    *Skizze erstellen* and *Zur Warteschlange*, while the job runs *Pause* and *Abbrechen* – each with its whole
+    text; the numbers of the Details fit in the middle; a long status line ends in "…" with the whole text as
+    tooltip (they were cut in the middle of a word)."""
     from PySide6.QtWidgets import QApplication
 
     from clipasso_studio.gui.i18n import i18n
@@ -1937,68 +1948,88 @@ def test_nothing_in_the_studio_centre_is_cut_in_a_small_window(window):
     window.show_page("studio")
     size = window.size()
     st = window.studio
+    was_open = st.details_panel.isVisible()
     try:
         i18n.set_language("de")
+        st.set_details_open(True)
         window.resize(MIN_WIDTH, 760)
         st.stat_iter.value.setText("2001/2001")
         st.stat_loss.value.setText("0.2000")
         st.stat_best.value.setText("0.2000")
         st.stat_time.value.setText("1:40:48")
         st.stat_eta.value.setText("0:00")
-        st.status.setText("Ergebnis geladen: ein_sehr_langer_bildname_mit_clipasso_ergebnis")
-        for _ in range(5):
-            QApplication.processEvents()
+        st.status.setText("Ergebnis geladen: ein_sehr_langer_bildname_mit_clipasso_ergebnis_"
+                          "vom_urlaub_am_meer_mit_der_ganzen_familie_und_dem_hund_im_sonnenuntergang")
+
+        def settle():
+            for _ in range(5):
+                QApplication.processEvents()
 
         def inside(w, outer):
             left = w.mapTo(outer, w.rect().topLeft()).x()
             return left >= 0 and left + w.width() <= outer.width()
 
-        for b in (st.start_btn, st.pause_btn, st.cancel_btn):
-            assert b.isVisible() and b.width() >= b.sizeHint().width(), b.text()  # (the whole text or the icon)
-            assert inside(b, st.center_card), b.accessibleName()
-        for b in (st.pause_btn, st.cancel_btn):
-            assert b.accessibleName() and (b.text() or b.toolTip() == b.accessibleName())
-        assert st.start_btn.text()  # (the main action keeps its words)
+        for running, shown in ((False, (st.start_btn, st.queue_btn)), (True, (st.pause_btn, st.cancel_btn))):
+            st.footer.show_actions(running, running)
+            settle()
+            for b in shown:
+                assert b.isVisible() and b.text() and b.width() >= b.sizeHint().width(), b.text()
+                assert inside(b, st.footer), b.text()
+            hidden = {st.start_btn, st.queue_btn, st.pause_btn, st.cancel_btn} - set(shown)
+            assert not any(b.isVisible() for b in hidden)
         for t in (st.stat_iter, st.stat_loss, st.stat_best, st.stat_time, st.stat_eta):
             if t.isVisible():
                 assert t.width() >= t.sizeHint().width() and inside(t, st.center_card), t.caption.text()
         assert st.stat_eta.isVisible() and st.stat_best.isVisible()  # (the time left and the best value stay)
-        assert inside(st.status, st.center_card) and st.status.toolTip() == st.status.text()
+        assert inside(st.status, st.footer) and st.status.toolTip() == st.status.text()
         window.resize(1480, 920)
-        for _ in range(5):
-            QApplication.processEvents()
-        assert st.pause_btn.text() and st.cancel_btn.text() and st.stat_loss.isVisible()  # (room: all of it again)
+        settle()
+        assert st.stat_loss.isVisible()  # (room: all of it again)
         st.status.setText("Ergebnis geladen: rose_clipasso")
         assert not st.status.toolTip()  # (it fits: no tooltip)
     finally:
+        st.set_details_open(was_open)
+        st._update_buttons()
         window.resize(size)
         i18n.set_language("de")
 
 
 def test_studio_columns_fit_a_small_window(window):
     """3.6: at the smallest window width the studio's columns sit side by side (they used to overlap below
-    about 1300 px); rows of buttons that do not fit go to a second line."""
+    about 1300 px). 4.0: the side columns have their fixed widths (312 / 168 px), the steps fit the left column
+    (also in German, with its scroll bar: nothing runs out on the right) and nothing in step 1 is cut."""
     from PySide6.QtWidgets import QApplication
 
+    from clipasso_studio.gui import theme
+    from clipasso_studio.gui.i18n import i18n
     from clipasso_studio.gui.main_window import MIN_WIDTH
 
     window.show_page("studio")
-    size = window.size()
+    size, lang = window.size(), i18n.lang
     try:
         window.resize(MIN_WIDTH, 760)
-        for _ in range(5):
-            QApplication.processEvents()
         st = window.studio
+        for code in ("de", "en"):
+            i18n.set_language(code)
+            for _ in range(5):
+                QApplication.processEvents()
 
-        def span(w):
-            left = w.mapTo(window, w.rect().topLeft()).x()
-            return left, left + w.width()
+            def span(w):
+                left = w.mapTo(window, w.rect().topLeft()).x()
+                return left, left + w.width()
 
-        left, center, right = span(st.left_scroll), span(st.center_card), span(st.right_pane)
-        assert left[1] <= center[0] and center[1] <= right[0], (left, center, right)
-        assert right[1] <= window.width()
-        assert st.input_buttons.is_wrapped()
+            left, center, right = span(st.left_stack), span(st.center_card), span(st.right_pane)
+            assert left[1] <= center[0] and center[1] <= right[0], (left, center, right)
+            assert right[1] <= window.width()
+            assert st.left_stack.width() == theme.LEFT_COLUMN and st.right_pane.width() == theme.RIGHT_COLUMN
+            assert st.left_scroll.verticalScrollBar().isVisible()  # (760 px: the steps scroll)
+            assert st.left_pane.minimumSizeHint().width() <= st.left_scroll.viewport().width(), code
+            assert st.left_pane.width() == st.left_scroll.viewport().width(), code
+            for b in (st.open_btn, st.edit_btn, st.detail_btn, st.params.user_btn, st.adjust_btn):
+                x = b.mapTo(st.left_pane, b.rect().topLeft()).x()
+                assert b.width() >= b.sizeHint().width() and x + b.width() <= st.left_pane.width(), b.text()
     finally:
+        i18n.set_language(lang)
         window.resize(size)
 
 
@@ -2063,3 +2094,219 @@ def test_the_header(window, monkeypatch):
         window.resize(size)
         i18n.set_language(lang)
         window.show_page("studio")
+
+
+def test_the_job_footer(window):
+    """4.0: the studio's footer – 76 px across the page; before a start the main action and the queue, while the
+    shown job runs Pause and Cancel (the buttons keep their names: the phone and the shortcuts use them)."""
+    from clipasso_studio.gui import theme
+
+    window.show_page("studio")
+    st = window.studio
+    f = st.footer
+    try:
+        assert f.height() == theme.FOOTER_HEIGHT and f.width() == st.width()
+        assert f.mapTo(st, f.rect().bottomLeft()).y() == st.height() - 1  # (at the bottom of the page)
+        for w in (st.status, st.estimate, st.progress, st.start_btn, st.queue_btn, st.pause_btn, st.cancel_btn):
+            assert f.isAncestorOf(w)
+        f.show_actions(False, False)
+        assert st.start_btn.isVisible() and st.queue_btn.isVisible() and not st.pause_btn.isVisible()
+        f.show_actions(False, True)  # another job runs: the start goes to the queue, no second queue button
+        assert st.start_btn.isVisible() and not st.queue_btn.isVisible() and not st.cancel_btn.isVisible()
+        f.show_actions(True, True)
+        assert st.pause_btn.isVisible() and st.cancel_btn.isVisible() and not st.start_btn.isVisible()
+        assert st.progress.isVisible()
+    finally:
+        st._update_buttons()
+
+
+def test_details_open_and_are_remembered(window):
+    """4.0: Details in the footer shows the numbers and the loss curve below the sketch – and the next start of
+    the app shows them the same way."""
+    from clipasso_studio.gui.app_settings import app_settings
+
+    window.show_page("studio")
+    st = window.studio
+    was = st.details_panel.isVisible()
+    try:
+        st.footer.details_btn.click()
+        assert st.details_panel.isVisible() != was and app_settings().get("studio_details_open") is (not was)
+        assert st.center_card.isAncestorOf(st.details_panel) and st.details_panel.isAncestorOf(st.stats_row)
+        assert st.details_panel.isAncestorOf(st.chart)
+        st.footer.details_btn.click()
+        assert st.details_panel.isVisible() == was and app_settings().get("studio_details_open") is was
+        assert st.footer.details_btn.text() and st.footer.details_btn.toolTip()
+    finally:
+        st.set_details_open(was)
+
+
+def test_the_export_dialog(window, tmp_path, monkeypatch):
+    """4.0: *Exportieren …* lists the formats the shown sketch has (in groups), shows the sketch and the options of
+    the chosen format – the 3.x options dialog inside it – and writes the file; copy and print are one button."""
+    from PySide6.QtCore import Qt
+
+    from clipasso_studio.gui import dialogs
+    from clipasso_studio.gui.export_center import ExportCenter
+
+    job = _fake_job(str(tmp_path), "exp", str(tmp_path / "exp.png"), 80.0)
+    st = window.studio
+    window.show_page("studio")
+    st.show_job_dir(job)
+    assert st.export_btn.isEnabled()
+    dlg = ExportCenter(st, "png")
+    try:
+        listed = [dlg.formats.item(i).data(Qt.UserRole) for i in range(dlg.formats.count())]
+        heads = [dlg.formats.item(i).text() for i in range(dlg.formats.count())
+                 if dlg.formats.item(i).data(Qt.UserRole) is None]
+        assert len(heads) == 3 and "matrix" not in listed and "svglayers" not in listed  # (SceneSketch only)
+        assert {"svg", "png", "pdf", "gif", "mp4", "webp", "svganim", "lottie", "html", "copy", "print"} <= set(listed)
+        assert dlg.current() == "png" and isinstance(dlg.options, dialogs.ExportDialog) and dlg.options.fmt == "png"
+        dlg.choose("svg")
+        assert dlg.options.fmt == "svg" and dlg.options.parentWidget() is dlg.options_host
+        dest = tmp_path / "out.svg"
+        monkeypatch.setattr(dialogs.QFileDialog, "getSaveFileName", lambda *a, **k: (str(dest), ""))
+        dlg.options.ok.click()
+        assert dest.is_file() and dlg.saved_path == str(dest) and dlg.result() == dialogs.QDialog.Accepted
+    finally:
+        dlg.deleteLater()
+    copied = []
+    monkeypatch.setattr(st, "copy_sketch", lambda: copied.append(True))
+    dlg = ExportCenter(st, "copy")
+    try:
+        assert dlg.current() == "copy" and dlg.options is None
+        do = next(b for b in dlg.options_host.findChildren(type(st.export_btn)) if b.property("variant") == "primary")
+        do.click()
+        assert copied == [True]
+    finally:
+        dlg.deleteLater()
+
+
+def test_ctrl_e_opens_the_export_dialog_on_the_last_format(window, monkeypatch):
+    """4.0: Ctrl+E opens *Exportieren …* on the format used last (a hidden one falls back to SVG)."""
+    from clipasso_studio.gui.app_settings import app_settings
+
+    st = window.studio
+    opened = []
+    monkeypatch.setattr(st, "open_export", lambda fmt=None: opened.append(fmt))
+    monkeypatch.setattr(st, "_selected_run", lambda: ("x.svg", "run"))
+    for act in st.export_btns.values():
+        act.setEnabled(True)
+    app_settings().data["export_last_format"] = "gif"
+    window.shortcuts["Ctrl+E"].activated.emit()
+    st.export_btns["matrix"].setVisible(False)
+    app_settings().data["export_last_format"] = "matrix"
+    window.shortcuts["Ctrl+E"].activated.emit()
+    assert opened == ["gif", "svg"]
+    monkeypatch.undo()
+    st._update_buttons()
+
+
+def test_every_studio_feature_is_still_reachable(window):
+    """4.0: everything the studio of 3.x could do has a place: the bar above the sketch, the floating tools below
+    it, the job's ⋯ menu, the export dialog, the footer and the App menu."""
+    st = window.studio
+    bar = st.canvas_header
+    for w in (st.modes, st.layer_btn, st.style_btn, st.job_btn, st.export_btn):
+        assert bar.isAncestorOf(w), w.objectName() or type(w).__name__
+    for w in (st.eraser_btn, st.pen_btn, st.undo_btn, st.redo_btn, st.revert_btn, st.history_btn, st.play_btn,
+              st.simplify_btn, st.continue_btn, st.up_btn, st.down_btn, st.focus_btn):
+        assert st.canvas_tools.isAncestorOf(w), w.toolTip()
+    menu = st.job_menu.actions()
+    for act in (st.folder_btn, st.reuse_btn, st.series_btn, st.export_btns["copy"], st.export_btns["print"]):
+        assert act in menu
+    from clipasso_studio.gui.export_center import GROUPS
+
+    assert {k for _, keys in GROUPS for k in keys} == set(st.export_btns)  # every format in the export dialog
+    for w in (st.start_btn, st.queue_btn, st.pause_btn, st.cancel_btn, st.status, st.progress, st.estimate):
+        assert st.footer.isAncestorOf(w)
+    assert set(window.app_actions) == {"models", "settings", "compare", "phone", "updates", "about"}
+
+
+def test_the_steps_of_the_left_column(window):
+    """4.0: the left column in numbered steps – 1 · Bild, 2 · Methode, 3 · Voreinstellung – everything visible and
+    whole at 1200 × 760 in German (scrolling where the column is taller)."""
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.i18n import i18n
+    from clipasso_studio.gui.main_window import MIN_WIDTH
+
+    window.show_page("studio")
+    st = window.studio
+    size = window.size()
+    try:
+        i18n.set_language("de")
+        window.resize(MIN_WIDTH, 760)
+        for _ in range(5):
+            QApplication.processEvents()
+        assert st.step_image.label.text() == "1 · Bild" and st.step_method.label.text() == "2 · Methode"
+        assert st.step_preset.label.text() == "3 · Voreinstellung"
+        tops = [w.mapTo(st.left_pane, QPoint(0, 0)).y() for w in (st.step_image, st.step_method, st.step_preset)]
+        assert tops == sorted(tops)  # (in this order, top to bottom)
+        for w in (st.open_btn, st.compare_link, st.adjust_btn, st.params.presets, *st.picker.cards.values()):
+            x = w.mapTo(st.left_pane, QPoint(0, 0)).x()
+            assert w.isVisibleTo(st) and x >= 0 and x + w.width() <= st.left_pane.width(), type(w).__name__
+            assert w.width() >= min(w.sizeHint().width(), st.left_pane.body.contentsRect().width()), type(w).__name__
+        xs = {c.mapTo(st.left_pane, QPoint(0, 0)).x() for c in st.picker.cards.values()}
+        assert len(xs) == 1  # (one below the other)
+    finally:
+        window.resize(size)
+
+
+def test_adjust_shows_the_parameters_and_esc_goes_back(window):
+    """4.0: "Anpassen" shows the parameters in the left column; "Zurück" or Esc brings the steps back."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    window.show_page("studio")
+    st = window.studio
+    assert st.left_stack.currentWidget() is st.left_scroll
+    st.adjust_btn.click()
+    assert st.left_stack.currentWidget() is st.params_page and st.params.isVisibleTo(st)
+    assert st.params.preset_box.parentWidget() is not None and st.preset_step.isAncestorOf(st.params.preset_box)
+    QTest.keyClick(st.params.search, Qt.Key_Escape)
+    assert st.left_stack.currentWidget() is st.left_scroll
+    st.open_params()
+    st.back_btn.click()
+    assert st.left_stack.currentWidget() is st.left_scroll
+
+
+def test_the_summary_follows_the_method_and_the_preset(window):
+    """4.0: step 3 says what the job draws – strokes, iterations, sketches (SwiftSketch 32 strokes, SceneSketch
+    its cells) – and follows every change."""
+    from clipasso_studio.gui.i18n import tr
+
+    st = window.studio
+    panel = st.params
+    method = panel.method()
+    try:
+        st.picker.cards["clipasso"].clicked.emit("clipasso")
+        panel.apply_preset("standard")
+        s = panel.settings()
+        assert st.summary.text() == " · ".join((tr("ui.summary.strokes", n=s["num_paths"]),
+                                                tr("ui.summary.iterations", n=s["num_iter"]),
+                                                tr("ui.summary.sketches", n=s["num_sketches"])))
+        panel.fields["num_paths"].set_value(24, emit=True)
+        assert tr("ui.summary.strokes", n=24) in st.summary.text()
+        st.picker.cards["swiftsketch"].clicked.emit("swiftsketch")
+        assert tr("ui.summary.strokes", n=32) in st.summary.text()
+        st.picker.cards["scenesketch"].clicked.emit("scenesketch")
+        assert tr("ui.summary.cells", n=1).split(" ")[-1] in st.summary.text()
+    finally:
+        st.picker.cards[method].clicked.emit(method)
+        panel.fields["num_paths"].set_value(16, emit=True) if "num_paths" in panel.fields else None
+
+
+def test_the_sketches_in_the_right_column(window, tmp_path):
+    """4.0: the right column lists the job's sketches (with their line below); without a job it says where they
+    will appear."""
+    window.show_page("studio")
+    st = window.studio
+    st._reset_view()
+    assert st.sketches_empty.isVisibleTo(st) and not st.thumb_area.isVisibleTo(st)
+    job = _fake_job(str(tmp_path), "list", str(tmp_path / "list.png"), 77.0)
+    st.show_job_dir(job)
+    assert st.thumb_area.isVisibleTo(st) and not st.sketches_empty.isVisibleTo(st)
+    assert all(st.right_pane.isAncestorOf(t) for t in st.thumbs.values())
+    t = next(iter(st.thumbs.values()))
+    assert t.width() <= st.thumb_area.viewport().width() and t.caption.text()

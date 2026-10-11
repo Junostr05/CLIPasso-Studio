@@ -456,10 +456,16 @@ class ParamPanel(QWidget):
         self.user_menu.aboutToShow.connect(self._build_user_menu)
         self.user_btn.setMenu(self.user_menu)
         prow.addWidget(self.user_btn)
-        outer.addLayout(prow)
+        # 4.0: the preset choice as one part – the studio shows it in its step 3 (the logic stays here)
+        self.preset_box = QWidget()
+        pb = QVBoxLayout(self.preset_box)
+        pb.setContentsMargins(0, 0, 0, 0)
+        pb.setSpacing(6)
+        pb.addLayout(prow)
         self._user_preset = ""
         self.preset_hint = label("", "faint", wrap=True)
-        outer.addWidget(self.preset_hint)
+        pb.addWidget(self.preset_hint)
+        outer.addWidget(self.preset_box)
 
         self.search = QLineEdit()
         self.search.setClearButtonEnabled(True)

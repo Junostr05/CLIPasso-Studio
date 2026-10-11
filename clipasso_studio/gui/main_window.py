@@ -198,6 +198,7 @@ class MainWindow(QMainWindow):
         self.toast = Toast(root)
         self.studio.toast.connect(self.toast.show_message)
         self.studio.open_queue.connect(lambda: self.show_page("queue"))
+        self.studio.open_compare.connect(lambda: self.show_page("compare"))
         self.gallery.open_job.connect(self._open_job)
         self.gallery.go_studio.connect(lambda: self.show_page("studio"))
         self.compare.go_studio.connect(lambda: self.show_page("studio"))
@@ -614,14 +615,14 @@ class MainWindow(QMainWindow):
             self.studio.copy_sketch()
 
     def _shortcut_export(self):
-        """Ctrl+E: export again in the format used last (SVG at first)."""
+        """Ctrl+E: the export dialog on the format used last (SVG at first)."""
         fmt = app_settings().get("export_last_format") or "svg"
-        btn = self.studio.export_btns.get(fmt)
-        if btn is None or btn.isHidden():
-            fmt, btn = "svg", self.studio.export_btns["svg"]
-        if btn.isEnabled():
+        act = self.studio.export_btns.get(fmt)
+        if act is None or not act.isVisible():
+            fmt, act = "svg", self.studio.export_btns["svg"]
+        if act.isEnabled():
             self.show_page("studio")
-            self.studio.export(fmt)
+            self.studio.open_export(fmt)
 
     # ---------------------------------------------------------------- updates
     def start_update_check(self, url: str | None = None):
@@ -725,6 +726,7 @@ class MainWindow(QMainWindow):
             self.set_focus(False)
         self.stack.setCurrentWidget(self.pages[key])
         self.header.set_current(key)
+        self.toast.set_bottom_inset(theme.FOOTER_HEIGHT if key == "studio" else 0)  # (above the job's footer)
         a11y.link_labels(self.pages[key])  # (names for screen readers, also for buttons made since)
 
     def current_page(self) -> str:
@@ -842,7 +844,7 @@ class MainWindow(QMainWindow):
         self.studio.open_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.open"), "Ctrl+O"))
         self.studio.start_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.start"), "Ctrl+Return"))
         self.studio.queue_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.queue"), "Ctrl+Shift+Return"))
-        self.studio.export_btns["svg"].setToolTip(shortcuts.with_key(tr("ui.shortcut.export"), "Ctrl+E"))
+        self.studio.export_btns["svg"].setToolTip(tr("ui.shortcut.export"))
         if self.update_bar.release:
             self.update_bar.retranslate()
         self._update_nav_badges()
@@ -890,5 +892,4 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, e):  # noqa: N802
         super().resizeEvent(e)
         if self.toast.isVisible():
-            par = self.toast.parentWidget()
-            self.toast.move(par.width() - self.toast.width() - 24, par.height() - self.toast.height() - 24)
+            self.toast.place()

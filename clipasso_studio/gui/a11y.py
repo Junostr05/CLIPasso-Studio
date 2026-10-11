@@ -87,3 +87,25 @@ def link_labels(root: QWidget) -> int:
                 lbl.setBuddy(button)
                 linked += 1
     return linked
+
+
+def reading_order(areas: list[QWidget]) -> list[QWidget]:
+    """4.0: Tab follows what is seen – area by area (e.g. the studio's left column, the middle, the right
+    column, the footer), inside each from top to bottom and left to right. (Qt's own order is the order the
+    widgets were made in, which is not the order on the screen once parts move.) Returns the chain."""
+    from PySide6.QtCore import QPoint, Qt
+
+    def own(w: QWidget, window: QWidget) -> bool:  # a control of the window – not the inner part of a spin box,
+        if w.window() is not window or w.focusProxy() is not None or not w.focusPolicy() & Qt.TabFocus:  # a menu …
+            return False
+        parent = w.parentWidget()
+        return parent is None or (parent.focusProxy() is not w and not isinstance(parent, SKIP_INSIDE))
+
+    chain: list[QWidget] = []
+    for area in areas:
+        parts = [w for w in area.findChildren(QWidget) if own(w, area.window())]
+        parts.sort(key=lambda w: (w.mapTo(area, QPoint(0, 0)).y(), w.mapTo(area, QPoint(0, 0)).x()))
+        chain += parts
+    for a, b in zip(chain, chain[1:]):
+        QWidget.setTabOrder(a, b)
+    return chain

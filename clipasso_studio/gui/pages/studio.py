@@ -9,9 +9,9 @@ import sys
 import time
 
 from PySide6.QtCore import QEvent, QRectF, QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QPixmap
-from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu, QMessageBox,
-                               QProgressBar, QScrollArea, QSplitter, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtGui import QAction, QActionGroup, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QPixmap
+from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QHBoxLayout, QMenu, QMessageBox, QProgressBar,
+                               QScrollArea, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 from ... import paths
 from ... import settings_schema as schema
@@ -22,11 +22,12 @@ from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SheetView, SketchCanvas, load_pixmap)
-from ..widgets.common import (Banner, Card, ElidedLabel, RovingFocus, SegmentedControl, ToggleSwitch, WrapRow, button,
-                              label, tool_button)
+from ..widgets.common import (Banner, Card, Column, ElidedLabel, RovingFocus, SegmentedControl, StepHeader,
+                              ToggleSwitch, WrapRow, button, label, link_button, tool_button)
 from ..widgets.edit_bar import EditBar, importance_command
 from ..widgets.hint_box import HintBox
 from ..widgets.method_picker import MethodPicker
+from ..widgets.studio_footer import StudioFooter
 from ..widgets.param_panel import ParamPanel, param_text_key
 
 
@@ -72,6 +73,7 @@ def _scene_attention(job_dir: str, cell_dir: str) -> str:
 class StudioPage(QWidget):
     toast = Signal(str, str)
     open_queue = Signal()
+    open_compare = Signal()  # 4.0: "Methoden vergleichen …" below step 2
     open_settings = Signal()  # the badge of the experimental sketch improvement: to its switch
     focus_requested = Signal()  # the focus button: the main window shows only the canvas (full screen)
 
@@ -98,34 +100,41 @@ class StudioPage(QWidget):
         self._status_key = ("ui.status.idle", {})
 
         root = QVBoxLayout(self)
-        theme.page_layout(root)
+        theme.columns_layout(root)  # 4.0: from edge to edge – the columns, below them the footer with the job
+        self.layout_kind = "columns"
 
         # 4.0: the page has no title row – the window's header names it and shows the hardware
         self.device_text = ""  # the running job's device ("GPU · CUDA", "CPU"; "2× …" with several cards)
-        self.picker = MethodPicker()
-        root.addWidget(self.picker)
+        self.picker = MethodPicker(orientation=Qt.Vertical)  # (step 2 of the left column)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setChildrenCollapsible(False)
-        root.addWidget(splitter, 1)
+        columns = QHBoxLayout()  # 4.0: the columns from edge to edge, each with its own padding
+        columns.setContentsMargins(0, 0, 0, 0)
+        columns.setSpacing(0)
+        root.addLayout(columns, 1)
 
-        # ------------------------------------------------------------- left pane
-        left = QWidget()
-        left.setMinimumHeight(560)
-        ll = QVBoxLayout(left)
-        ll.setContentsMargins(0, 0, 0, 0)
-        ll.setSpacing(14)
-        self.input_card = Card()
-        self.input_title = label("", "h2")
-        self.input_card.body.addWidget(self.input_title)
+        # ------------------------------------------------------------- left column: 1 · Bild, 2 · Methode, 3 · …
+        left = Column("left")
+        ll = left.body
+        self.input_card = QWidget()  # step 1: the image
+        self.input_card.body = QVBoxLayout(self.input_card)
+        self.input_card.body.setContentsMargins(0, 0, 0, 0)
+        self.input_card.body.setSpacing(theme.SPACE_M)
+        self.step_image = StepHeader(1)
+        self.input_card.body.addWidget(self.step_image)
         self.drop = ImageDropZone()
         self.drop.image_dropped.connect(self.set_image)
         self.drop.images_dropped.connect(self.images_dropped)
         self.drop.clicked.connect(self.browse_image)
-        self.input_card.body.addWidget(self.drop, 1)
-        self.file_label = label("", "faint")
+        image_row = QHBoxLayout()
+        image_row.setSpacing(theme.SPACE_M)
+        image_row.addWidget(self.drop, 0, Qt.AlignTop)
+        self.image_meta = QVBoxLayout()  # the name and size
+        self.image_meta.setSpacing(theme.SPACE_XS)
+        image_row.addLayout(self.image_meta, 1)
+        self.input_card.body.addLayout(image_row)
+        self.file_label = label("", "muted")
         self.file_label.setWordWrap(True)
-        self.input_card.body.addWidget(self.file_label)
+        self.image_meta.addWidget(self.file_label)
         # quality hints about the photo (too small / dark / blurred, a tiny object, an unsure mask)
         self.hint_box = HintBox()
         self.hint_box.action.connect(self._hint_action)
@@ -164,7 +173,7 @@ class StudioPage(QWidget):
         self.mask_eye.setChecked(bool(app_settings().get("show_mask", True)))
         self.mask_eye.toggled.connect(self._toggle_mask_overlay)
         self.drop.set_show_overlay(self.mask_eye.isChecked())
-        self.mask_status = label("", "faint")
+        self.mask_status = label("", "faint", wrap=True)
         self.mask_dl_btn = button("", "download", "ghost", size="sm")
         self.mask_dl_btn.clicked.connect(self._download_mask_model)
         self.mask_edit_btn = tool_button("brush", "", 16)
@@ -177,43 +186,71 @@ class StudioPage(QWidget):
         mrow.addWidget(self.mask_edit_btn)
         mrow.addWidget(self.mask_reset_btn)
         self.mask_row.hide()
-        self.input_card.body.addWidget(self.mask_row)
+        # (below the image, across the column: beside the preview there is no room for its buttons)
+        self.input_card.body.insertWidget(self.input_card.body.indexOf(self.hint_box), self.mask_row)
+        self.image_meta.addStretch(1)
         self.mask_preview = mask_view.MaskPreviewer(self)
         self.mask_preview.busy.connect(lambda on: on and self._set_mask_status("busy"))
         self.mask_preview.ready.connect(self._mask_ready)
         self.mask_preview.failed.connect(self._mask_failed)
         self._mask: dict | None = None  # the mask shown: key (image, model), probability, edited
-        row = QHBoxLayout()
-        self.open_btn = button("", "folder-open")
+        # 4.0: "Ändern …" opens an image; its arrow: the samples, the recent images, the webcam, the clipboard
+        self.open_btn = QToolButton()
+        self.open_btn.setObjectName("SplitButton")
+        self.open_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.open_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        self.open_btn.setCursor(Qt.PointingHandCursor)
+        self.open_btn.setIconSize(QSize(16, 16))
         self.open_btn.clicked.connect(self.browse_image)
-        self.samples_btn = button("", "images", "ghost")
-        self.samples_menu = QMenu(self)
-        self.samples_btn.setMenu(self.samples_menu)
-        self.edit_btn = button("", "crop", "ghost")
-        self.edit_btn.clicked.connect(self.edit_image)
-        self.detail_btn = button("", "sparkles", "ghost")  # detail brush (and portrait mode)
-        self.detail_btn.clicked.connect(self.edit_details)
-        self.recent_btn = button("", "clock", "ghost")  # the last images (icon only: the row is narrow)
-        self.recent_menu = QMenu(self)
+        self.open_menu = QMenu(self)
+        self.samples_menu = self.open_menu.addMenu("")
+        self.recent_menu = self.open_menu.addMenu("")
         self.recent_menu.aboutToShow.connect(self._build_recent_menu)
-        self.recent_btn.setMenu(self.recent_menu)
-        self.webcam_btn = button("", "camera", "ghost")
-        self.webcam_btn.clicked.connect(self.take_webcam_photo)
-        # (two groups: the tools go to a second line when the column is narrow – a small window)
-        files, tools = QWidget(), QWidget()
-        for box, buttons in ((files, (self.open_btn, self.samples_btn)),
-                             (tools, (self.recent_btn, self.webcam_btn, self.edit_btn, self.detail_btn))):
+        self.open_menu.addSeparator()
+        self.webcam_action = self.open_menu.addAction("")
+        self.webcam_action.triggered.connect(self.take_webcam_photo)
+        self.paste_action = self.open_menu.addAction("")
+        self.paste_action.triggered.connect(self.paste_image)
+        self.open_btn.setMenu(self.open_menu)
+        self.edit_btn = button("", "crop", "ghost", size="sm")
+        self.edit_btn.clicked.connect(self.edit_image)
+        self.detail_btn = button("", "sparkles", "ghost", size="sm")  # detail brush (and portrait mode)
+        self.detail_btn.clicked.connect(self.edit_details)
+        files, tools = QWidget(), QWidget()  # (the tools below "Ändern …" when the column is narrow)
+        for box, buttons in ((files, (self.open_btn,)), (tools, (self.edit_btn, self.detail_btn))):
             lay = QHBoxLayout(box)
             lay.setContentsMargins(0, 0, 0, 0)
-            lay.setSpacing(6)
+            lay.setSpacing(theme.SPACE_XS)
             for b in buttons:
                 lay.addWidget(b)
             lay.addStretch(1)
         self.input_buttons = WrapRow(files, tools)
-        row.addWidget(self.input_buttons, 1)
-        self.input_card.body.addLayout(row)
+        self.input_card.body.addWidget(self.input_buttons)
+        ll.addWidget(self.input_card)
+
+        # step 2: the method
+        self.step_method = StepHeader(2, action=link_button(""))
+        self.compare_link = self.step_method.action  # "Methoden vergleichen …"
+        self.compare_link.clicked.connect(self.open_compare.emit)
+        ll.addWidget(self.step_method)
+        ll.addWidget(self.picker)
+        self.experimental_btn = button("", "wand-sparkles", "ghost", size="sm")
+        self.experimental_btn.clicked.connect(self.open_settings.emit)
+        self.experimental_btn.setVisible(False)
+        ll.addWidget(self.experimental_btn)
+
+        # step 3: the preset – the summary, "Anpassen" (the parameters in this column), the quick switches
+        self.preset_step = QWidget()
+        self.preset_step.body = QVBoxLayout(self.preset_step)
+        self.preset_step.body.setContentsMargins(0, 0, 0, 0)
+        self.preset_step.body.setSpacing(theme.SPACE_M)
+        self.step_preset = StepHeader(3)
+        self.preset_step.body.addWidget(self.step_preset)
+        ll.addWidget(self.preset_step)
         # quick toggles mirrored from the parameter panel
         self.quick = {}
+        self.quick_rows = QVBoxLayout()
+        self.quick_rows.setSpacing(theme.SPACE_S)
         for key in ("mask_object", "fix_scale", "turbo"):
             r = QHBoxLayout()
             lbl = label("", None)
@@ -222,7 +259,7 @@ class StudioPage(QWidget):
             r.addWidget(lbl)
             r.addStretch(1)
             r.addWidget(sw)
-            self.input_card.body.addLayout(r)
+            self.quick_rows.addLayout(r)
             self.quick[key] = (lbl, sw)
         # time budget: the settings that give the best sketch in that time on this computer
         r = QHBoxLayout()
@@ -241,90 +278,42 @@ class StudioPage(QWidget):
         r.addWidget(self.budget_label)
         r.addStretch(1)
         r.addWidget(self.budget_btn)
-        self.input_card.body.addLayout(r)
-        ll.addWidget(self.input_card, 3)
+        self.budget_row = r
 
-        self.result_card = Card()
-        self.result_title = label("", "h2")
-        self.result_card.body.addWidget(self.result_title)
-        self.result_hint = label("", "faint", wrap=True)
-        self.result_card.body.addWidget(self.result_hint)
-        grid = QGridLayout()
-        grid.setSpacing(8)
-        self.export_btns = {}
-        for i, (fmt, ic) in enumerate((("svg", "pen-tool"), ("png", "image-plus"), ("gif", "film"),
-                                       ("mp4", "film"))):
-            b = button(fmt.upper(), ic)
-            b.clicked.connect(lambda _=False, f=fmt: self.export(f))
-            grid.addWidget(b, i // 2, i % 2)
-            self.export_btns[fmt] = b
-        b = button("WebP", "film")
-        b.clicked.connect(lambda _=False: self.export("webp"))
-        grid.addWidget(b, 2, 0)
-        self.export_btns["webp"] = b
-        # an SVG that draws itself in the browser, stroke by stroke
-        b = button("", "pencil-line")
-        b.clicked.connect(lambda _=False: self.export("svganim"))
-        grid.addWidget(b, 2, 1)
-        self.export_btns["svganim"] = b
-        # extra: plain single-layer SVG (one path with all strokes) for plotters / cutting machines
-        b = button("", "pen-tool", "ghost")
-        b.clicked.connect(lambda _=False: self.export("svg1"))
-        grid.addWidget(b, 3, 0)
-        self.export_btns["svg1"] = b
-        b = button("PDF", "file-down", "ghost")  # vector PDF for printing
-        b.clicked.connect(lambda _=False: self.export("pdf"))
-        grid.addWidget(b, 3, 1)
-        self.export_btns["pdf"] = b
-        # for web pages and apps: Lottie (lottie-web, LottieFiles) and a page of its own
-        b = button("Lottie", "sparkles", "ghost")
-        b.clicked.connect(lambda _=False: self.export("lottie"))
-        grid.addWidget(b, 4, 0)
-        self.export_btns["lottie"] = b
-        b = button("", "globe", "ghost")
-        b.clicked.connect(lambda _=False: self.export("html"))
-        grid.addWidget(b, 4, 1)
-        self.export_btns["html"] = b
-        # SceneSketch: every sketch of the matrix at once
-        b = button("", "layers", "ghost")
-        b.clicked.connect(lambda _=False: self.export("matrix"))
-        grid.addWidget(b, 5, 0)
-        self.export_btns["matrix"] = b
-        b = button("", "pen-tool", "ghost")  # the cell with background and object as two layers
-        b.clicked.connect(lambda _=False: self.export("svglayers"))
-        grid.addWidget(b, 5, 1)
-        self.export_btns["svglayers"] = b
-        b = button("", "copy", "ghost")  # the sketch on the clipboard (PNG + SVG)
-        b.clicked.connect(lambda _=False: self.copy_sketch())
-        grid.addWidget(b, 6, 0, 1, 2)
-        self.export_btns["copy"] = b
-        b = button("", "printer", "ghost")  # print layout: page, margins, title, signature – PDF or printer
-        b.clicked.connect(lambda _=False: self.print_sketch())
-        grid.addWidget(b, 7, 0, 1, 2)
-        self.export_btns["print"] = b
-        self.result_card.body.addLayout(grid)
-        self.folder_btn = button("", "folder-open", "ghost")
-        self.folder_btn.clicked.connect(self.open_folder)
-        self.reuse_btn = button("", "refresh-cw", "ghost")
-        self.reuse_btn.clicked.connect(self.use_as_initial_svg)
-        self.series_btn = button("", "layers", "ghost")
-        self.series_btn.clicked.connect(self.abstraction_series)
-        for b in (self.folder_btn, self.reuse_btn, self.series_btn):
-            b.setProperty("align", "left")
-            self.result_card.body.addWidget(b)
-        ll.addWidget(self.result_card, 2)
+        # 4.0: the ways out are actions – the export dialog (Exportieren …) lists them, Ctrl+E opens it
+        self.export_btns: dict[str, QAction] = {}
+        for fmt, text in (("svg", "SVG"), ("png", "PNG"), ("gif", "GIF"), ("mp4", "MP4"), ("webp", "WebP"),
+                          ("svganim", ""), ("svg1", ""), ("pdf", "PDF"), ("lottie", "Lottie"), ("html", ""),
+                          ("matrix", ""), ("svglayers", "")):
+            act = QAction(text, self)
+            act.triggered.connect(lambda _=False, f=fmt: self.export(f))
+            self.export_btns[fmt] = act
+        self.export_btns["copy"] = QAction("", self)  # the sketch on the clipboard (PNG + SVG)
+        self.export_btns["copy"].triggered.connect(lambda _=False: self.copy_sketch())
+        self.export_btns["print"] = QAction("", self)  # print layout: page, margins, title, signature – PDF or printer
+        self.export_btns["print"].triggered.connect(lambda _=False: self.print_sketch())
+        # the job's other actions: the ⋯ menu above the sketch
+        self.folder_btn = QAction(self)
+        self.folder_btn.triggered.connect(self.open_folder)
+        self.reuse_btn = QAction(self)
+        self.reuse_btn.triggered.connect(self.use_as_initial_svg)
+        self.series_btn = QAction(self)
+        self.series_btn.triggered.connect(self.abstraction_series)
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.NoFrame)
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         left_scroll.setWidget(left)
-        left_scroll.setMinimumWidth(260)
-        left_scroll.setMaximumWidth(370)
         self.left_pane, self.left_scroll = left, left_scroll
-        splitter.addWidget(left_scroll)
+        # "Anpassen": the parameters take the left column's place ("← Zurück" or Esc brings the steps back)
+        self.left_stack = QStackedWidget()
+        self.left_stack.setFixedWidth(theme.LEFT_COLUMN)
+        self.left_stack.addWidget(left_scroll)
+        columns.addWidget(self.left_stack)
 
         # ----------------------------------------------------------- center pane
-        center = Card(margins=18, spacing=12)
+        center = Card(margins=theme.SPACE_XL, spacing=theme.SPACE_M)
+        center.setObjectName("Centre")  # 4.0: the middle has no card – the paper is the only surface there
         self.center_card = center
         center.setMinimumWidth(380)
         self.modes = SegmentedControl([(m, "") for m in SketchCanvas.MODES])
@@ -391,7 +380,6 @@ class StudioPage(QWidget):
         et.addSpacing(6)
         et.addWidget(self.up_btn)
         et.addWidget(self.down_btn)
-        tools_row.addWidget(self.edit_tools)
         # SceneSketch: the whole cell, only its background or only its object (gui/scene_layers.py)
         self.layer_btn = tool_button("layers", "", 18)
         self.layer_btn.setPopupMode(QToolButton.InstantPopup)
@@ -442,14 +430,39 @@ class StudioPage(QWidget):
         # focus mode: only the canvas, full screen (also F11; Esc ends it)
         self.focus_btn = tool_button("maximize-2", "", 18)
         self.focus_btn.clicked.connect(self.focus_requested.emit)
-        tools_row.addWidget(self.focus_btn)
+        # 4.0: a floating toolbar below the paper – edit (when the sketch can be edited) and full screen
+        self.canvas_tools = QFrame()
+        self.canvas_tools.setObjectName("CanvasToolbar")
+        ct = QHBoxLayout(self.canvas_tools)
+        ct.setContentsMargins(6, 4, 6, 4)
+        ct.setSpacing(2)
+        ct.addWidget(self.edit_tools)
+        ct.addWidget(self.focus_btn)
         self.focused = False
         self._edit_undo: dict[int, list[str]] = {}
         self._edit_redo: dict[int, list[str]] = {}
         self._edit_changed = False
+        self.job_btn = tool_button("ellipsis", "", 18)  # the job: its folder, as a start, a series, copy, print
+        self.job_btn.setPopupMode(QToolButton.InstantPopup)
+        self.job_menu = QMenu(self)
+        for act in (self.folder_btn, self.reuse_btn, self.series_btn):
+            self.job_menu.addAction(act)
+        self.job_menu.addSeparator()
+        self.job_menu.addAction(self.export_btns["copy"])
+        self.job_menu.addAction(self.export_btns["print"])
+        self.job_btn.setMenu(self.job_menu)
+        tools_row.addWidget(self.job_btn)
         self.stage_badge = label("", "badge")
         self.stage_badge.setVisible(False)
-        self.canvas_header = WrapRow(self.modes, tools, self.stage_badge)
+        self.export_btn = button("", "download")  # Exportieren …
+        self.export_btn.clicked.connect(lambda: self.open_export())
+        tail = QWidget()
+        tl = QHBoxLayout(tail)
+        tl.setContentsMargins(0, 0, 0, 0)
+        tl.setSpacing(theme.SPACE_S)
+        tl.addWidget(self.stage_badge)
+        tl.addWidget(self.export_btn)
+        self.canvas_header = WrapRow(self.modes, tools, tail)
         center.body.addWidget(self.canvas_header)
         self.resume_banner = Banner()  # an interrupted / cancelled job is shown: "Continue"
         self.resume_banner.action.connect(self.continue_viewed_job)
@@ -466,6 +479,11 @@ class StudioPage(QWidget):
         self.canvas.erase_end.connect(self._erase_end)
         self.canvas.pen_stroke.connect(self._pen_stroke)
         center.body.addWidget(self.canvas, 1)
+        toolbar_row = QHBoxLayout()
+        toolbar_row.addStretch(1)
+        toolbar_row.addWidget(self.canvas_tools)
+        toolbar_row.addStretch(1)
+        center.body.addLayout(toolbar_row)
         self.edit_bar = EditBar()
         self.edit_bar.preview.connect(self.canvas.set_svg)
         self.edit_bar.apply.connect(self._edit_bar_apply)
@@ -486,15 +504,15 @@ class StudioPage(QWidget):
         center.body.addWidget(self.sheet, 1)
 
         self.status = ElidedLabel("", "h3")  # (a long file name ends in "…", not in the middle of a word)
-        status_row = QHBoxLayout()
-        status_row.addWidget(self.status, 1)
-        status_row.addWidget(self.estimate_holder())
-        center.body.addLayout(status_row)
-        self.progress = QProgressBar()
+        self.estimate_holder()
+        self.progress = QProgressBar()  # (the progress of the whole job – in the footer)
         self.progress.setRange(0, 1000)
         self.progress.setTextVisible(False)
-        self.progress.setFixedHeight(8)
-        center.body.addWidget(self.progress)
+        # 4.0: the numbers and the loss curve: a drawer at the bottom of the middle (Details in the footer)
+        self.details_panel = QWidget()
+        details = QVBoxLayout(self.details_panel)
+        details.setContentsMargins(0, 0, 0, 0)
+        details.setSpacing(theme.SPACE_S)
         self.stats_row = QWidget()  # (narrow: closer together, then without the current loss and the time so far)
         self.stats_row.setMinimumWidth(0)
         self.stats_layout = QHBoxLayout(self.stats_row)
@@ -505,27 +523,24 @@ class StudioPage(QWidget):
             self.stats_layout.addWidget(t)
         self.stats_layout.addStretch(1)
         self.stats_row.installEventFilter(self)
-        center.body.addWidget(self.stats_row)
+        details.addWidget(self.stats_row)
         self.chart = LossChart()
         self.chart.setFixedHeight(74)
-        center.body.addWidget(self.chart)
+        details.addWidget(self.chart)
 
-        self.thumb_area = QScrollArea()
-        self.thumb_area.setFixedHeight(116)
+        self.thumb_area = QScrollArea()  # 4.0: the job's sketches, a list in the right column
         self.thumb_area.setWidgetResizable(True)
-        self.thumb_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.thumb_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         thumbs_host = QWidget()
-        self.thumb_row = QHBoxLayout(thumbs_host)
-        self.thumb_row.setContentsMargins(0, 4, 0, 4)
-        self.thumb_row.setSpacing(8)
+        self.thumb_row = QVBoxLayout(thumbs_host)
+        self.thumb_row.setContentsMargins(0, 0, 0, 0)
+        self.thumb_row.setSpacing(theme.SPACE_M)
         self.thumb_row.addStretch(1)
         self.thumb_focus = RovingFocus(self, lambda t: self.select_seed(t.seed))  # 4.0: one Tab stop, arrows
         self.thumb_area.setWidget(thumbs_host)
         self.thumb_area.setVisible(False)
-        center.body.addWidget(self.thumb_area)
+        center.body.addWidget(self.details_panel)
 
-        actions = QHBoxLayout()
-        actions.setSpacing(8)
         self.start_btn = button("", "play", "primary", "lg")
         self.start_btn.clicked.connect(self.start)
         self.pause_btn = button("", "pause", None, "lg")
@@ -535,27 +550,9 @@ class StudioPage(QWidget):
         self.queue_btn = button("", "list-plus", "ghost", "lg")
         self.queue_btn.clicked.connect(self.add_to_queue)
         self.queue_btn.setToolTip("")
-        run, more = QWidget(), QWidget()  # (the queue button to a second line when the canvas is narrow)
-        self.action_run = run
-        rl = QHBoxLayout(run)
-        rl.setContentsMargins(0, 0, 0, 0)
-        for b in (self.start_btn, self.pause_btn, self.cancel_btn):
-            rl.addWidget(b)
-        rl.addStretch(1)
-        ml = QHBoxLayout(more)
-        ml.setContentsMargins(0, 0, 0, 0)
-        ml.addStretch(1)
-        ml.addWidget(self.queue_btn)
-        self.action_row = WrapRow(run, more)
-        self.action_row.installEventFilter(self)  # (too narrow even alone: Pause and Cancel as icons, see _fit_actions)
-        actions.addWidget(self.action_row, 1)
-        center.body.addLayout(actions)
-        splitter.addWidget(center)
+        columns.addWidget(center, 1)
 
-        # ------------------------------------------------------------ right pane
-        right = Card(margins=16)
-        right.setMinimumWidth(330)
-        right.setMaximumWidth(460)
+        # ------------------------------------------------------------ the parameters ("Anpassen": left column)
         self.params = ParamPanel()
         self.params.settings_changed.connect(self._settings_changed)
         self.params.method_changed.connect(self._method_changed)
@@ -564,18 +561,51 @@ class StudioPage(QWidget):
         self.params.import_btn.clicked.connect(self.import_preset)
         self.params.export_btn.clicked.connect(self.export_preset)
         self.params.cli_btn.clicked.connect(self.copy_cli)
-        # the experimental sketch improvement is on (switched in the settings): new jobs use it
-        self.experimental_btn = button("", "wand-sparkles", "ghost", size="sm")
-        self.experimental_btn.clicked.connect(self.open_settings.emit)
-        self.experimental_btn.setVisible(False)
-        right.body.addWidget(self.experimental_btn)
-        right.body.addWidget(self.params)
-        splitter.addWidget(right)
+        self.params_page = Column("left", spacing=theme.SPACE_M)
+        self.back_btn = link_button("", "arrow-left")
+        self.back_btn.clicked.connect(self.close_params)
+        self.params_page.body.addWidget(self.back_btn, 0, Qt.AlignLeft)
+        self.params_page.body.addWidget(self.params, 1)
+        self.left_stack.addWidget(self.params_page)
+        self.params_page.installEventFilter(self)  # (Esc: back to the steps)
+        # step 3: the preset segment (from the panel) across the column, the own presets in the step's header,
+        # what the job draws, "Anpassen"
+        self.params.presets.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.params.presets.set_dense()
+        self.step_preset.set_action(self.params.user_btn)
+        self.preset_step.body.addWidget(self.params.preset_box)
+        summary = QFrame()
+        summary.setObjectName("Summary")
+        sl = QHBoxLayout(summary)
+        sl.setContentsMargins(12, 10, 12, 10)
+        sl.setSpacing(theme.SPACE_S)
+        self.summary = label("", None, wrap=True)
+        self.adjust_btn = link_button("")
+        self.adjust_btn.clicked.connect(self.open_params)
+        sl.addWidget(self.summary, 1)
+        sl.addWidget(self.adjust_btn, 0, Qt.AlignTop)
+        self.preset_step.body.addWidget(summary)
+        self.preset_step.body.addLayout(self.budget_row)
+        self.preset_step.body.addLayout(self.quick_rows)
+        ll.addStretch(1)
+
+        # ------------------------------------------------------------ right column: the job's sketches
+        right = Column("right", theme.RIGHT_COLUMN, spacing=theme.SPACE_M)
+        self.sketches_title = label("", "label")
+        right.body.addWidget(self.sketches_title)
+        right.body.addWidget(self.thumb_area, 1)
+        self.sketches_empty = label("", "faint", wrap=True)
+        right.body.addWidget(self.sketches_empty)
+        right.body.addStretch(0)
+        columns.addWidget(right)
         self.right_pane = right
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 0)
-        splitter.setSizes([290, 800, 380])
+
+        # ---------------------------------------------------------------- footer (4.0: the job)
+        self.footer = StudioFooter(self.status, self.estimate, self.progress, self.start_btn, self.queue_btn,
+                                   self.pause_btn, self.cancel_btn)
+        self.footer.details_toggled.connect(self.set_details_open)
+        root.addWidget(self.footer)
+        self.set_details_open(bool(app_settings().get("studio_details_open")))
 
         # ---------------------------------------------------------------- wiring
         controller.job_started.connect(self._job_started)
@@ -741,6 +771,7 @@ class StudioPage(QWidget):
         self.image_path = path
         self._remember_recent(path)
         self.drop.set_image(path)
+        self._fit_drop()
         full = image_io.image_size(path)  # from the file header: the photo is decoded once, small
         pm = load_pixmap(path, DISPLAY_MAX)
         self.file_label.setText(f"{os.path.basename(path)}  ·  {full.width()}×{full.height()} px")
@@ -1027,6 +1058,7 @@ class StudioPage(QWidget):
 
     def _settings_changed(self, settings: dict):
         self._sync_quick()
+        self._update_summary()
         st = app_settings()
         st.data["last_params_by_method"] = self.params.all_settings()
         st.data["last_method"] = self.params.method()
@@ -1038,6 +1070,7 @@ class StudioPage(QWidget):
 
     def _method_changed(self, method: str):
         self.picker.set_current(method)
+        self._update_summary()
         self.picker.refresh_status(self.params.all_settings())
         self._sync_quick()
         self.reuse_btn.setVisible(method == "clipasso")
@@ -1187,7 +1220,7 @@ class StudioPage(QWidget):
         self._layers_ok.clear()
         self.layer_part = "all"
         self.layer_actions["all"].setChecked(True)
-        self.thumb_area.setVisible(False)
+        self._update_sketch_list()
         self.progress.setValue(0)
         for t in (self.stat_iter, self.stat_loss, self.stat_best, self.stat_time, self.stat_eta):
             t.value.setText("–")
@@ -1259,7 +1292,8 @@ class StudioPage(QWidget):
             self.thumb_row.insertWidget(self.thumb_row.count() - 1, t)
             self.thumbs[seed] = t
             self.thumb_focus.add(t)
-        self.thumb_area.setVisible(len(self.thumbs) > 1)
+        self._update_sketch_list()
+        QTimer.singleShot(0, self, self.fix_tab_order)  # (new sketches: in the right column's place)
         if self.selected_seed is None and seeds:
             self.select_seed(seeds[0])
 
@@ -1651,19 +1685,36 @@ class StudioPage(QWidget):
         return (self.view_method == "scenesketch" and len(self.seed_runs) > 1 and bool(self.view_dir)
                 and os.path.isfile(os.path.join(self.view_dir, "job.json")))
 
-    def export(self, fmt: str):
+    def export_dialog(self, fmt: str):
+        """The options of ``fmt`` for the shown sketch (None: nothing to export)."""
         sel = self._selected_run()
         if not sel:
-            return
+            return None
         svg, run_dir = sel
         name = os.path.basename(run_dir)
         if fmt == "matrix":
             if not self._matrix_exportable():
-                return
+                return None
             run_dir, name = self.view_dir, os.path.basename(os.path.normpath(self.view_dir))
-        dlg = dialogs.ExportDialog(fmt, svg, run_dir, name, self)
-        if dlg.exec():
+        return dialogs.ExportDialog(fmt, svg, run_dir, name, self)
+
+    def export(self, fmt: str):
+        """One format at once (its options, then the file)."""
+        dlg = self.export_dialog(fmt)
+        if dlg is not None and dlg.exec():
             self.toast.emit(tr("ui.exported", path=getattr(dlg, "saved_path", "")), "success")
+
+    def open_export(self, fmt: str | None = None):
+        """4.0: *Exportieren …* – every format in one dialog, on ``fmt`` (the one used last)."""
+        from ..export_center import ExportCenter
+
+        if self._selected_run() is None:
+            return None
+        dlg = ExportCenter(self, fmt or app_settings().get("export_last_format") or "svg")
+        self._export_center = dlg  # (tests look at it while it is open)
+        if dlg.exec() and dlg.saved_path:
+            self.toast.emit(tr("ui.exported", path=dlg.saved_path), "success")
+        return dlg
 
     def print_sketch(self) -> str:
         """The print layout dialog for the shown sketch."""
@@ -1826,7 +1877,7 @@ class StudioPage(QWidget):
     def set_focus(self, on: bool):
         """Focus mode: the panes beside the canvas go (the main window hides its own parts and goes full screen)."""
         self.focused = bool(on)
-        self.left_scroll.setVisible(not self.focused)
+        self.left_stack.setVisible(not self.focused)
         self.right_pane.setVisible(not self.focused)
         self.focus_btn.setIcon(icons.icon("minimize-2" if self.focused else "maximize-2", theme.current().muted,
                                           active_color=theme.current().text))
@@ -1973,12 +2024,11 @@ class StudioPage(QWidget):
         self.start_btn.setEnabled(bool(self.image_path))
         paused = bool(job and job.status == "paused")
         p = theme.current()
-        self.pause_btn.setProperty("full_text", tr("ui.resume") if paused else tr("ui.pause"))
+        self.pause_btn.setText(tr("ui.resume") if paused else tr("ui.pause"))
         self.pause_btn.setIcon(icons.icon("play" if paused else "pause", p.text))
         self.start_btn.setText(tr("ui.start_queue") if busy else tr("ui.start"))
         self.start_btn.setIcon(icons.icon("list-plus" if busy else "play", p.on_accent))
-        self.queue_btn.setVisible(not busy)
-        self._fit_actions()
+        self.footer.show_actions(viewing_current, busy)
         has_result = self._selected_run() is not None
         for b in self.export_btns.values():
             b.setEnabled(has_result)
@@ -1992,7 +2042,7 @@ class StudioPage(QWidget):
             b.setEnabled(has_result)
         self.folder_btn.setEnabled(bool(self.view_dir) or bool(app_settings().get("output_dir")))
         self._update_running_banner()
-        self.result_hint.setText(tr("ui.result_hint_ready") if has_result else tr("ui.result_hint_empty"))
+        self.export_btn.setEnabled(has_result)
 
     def _update_running_banner(self):
         job = self.controller.current
@@ -2003,16 +2053,44 @@ class StudioPage(QWidget):
         else:
             self.running_banner.hide()
 
+    # ------------------------------------------------------------------ 4.0: steps and parameters
+    def open_params(self) -> None:
+        """"Anpassen": the parameters take the left column's place."""
+        self.left_stack.setCurrentWidget(self.params_page)
+        self.params.search.setFocus(Qt.OtherFocusReason)
+
+    def close_params(self) -> None:
+        """"← Zurück" (or Esc): the steps again."""
+        self.left_stack.setCurrentWidget(self.left_scroll)
+        self.adjust_btn.setFocus(Qt.OtherFocusReason)
+
+    def fix_tab_order(self) -> None:
+        """Tab: the left column, the middle, the right column, the footer – in the order they are seen."""
+        from .. import a11y
+
+        a11y.reading_order([self.left_stack, self.center_card, self.right_pane, self.footer])
+
     def showEvent(self, e):  # noqa: N802
         super().showEvent(e)
-        QTimer.singleShot(0, self._fit_left_column)  # sizes are known once the page is styled and shown
+        QTimer.singleShot(0, self, self.fix_tab_order)  # (positions are known once the page is laid out)
 
-    def _fit_left_column(self):
-        """The left column is at least as wide as its content plus a vertical scroll bar – otherwise
-        the scroll bar (the column is taller than small windows) cuts off its right edge."""
-        need = self.left_pane.minimumSizeHint().width() + self.left_scroll.verticalScrollBar().sizeHint().width() + 4
-        self.left_scroll.setMinimumWidth(max(260, need))
-        self.left_scroll.setMaximumWidth(max(370, need))
+    def _update_sketch_list(self) -> None:
+        """The right column: the job's sketches (SceneSketch shows its matrix in the middle instead)."""
+        scene = self.view_method == "scenesketch"
+        self.thumb_area.setVisible(bool(self.thumbs) and not scene)
+        self.sketches_empty.setVisible(not self.thumbs and not scene)
+
+    def _update_summary(self) -> None:
+        self.summary.setText(methods_ui.summary(self.params.settings()))
+
+    def _fit_drop(self) -> None:
+        """A chosen image is a small preview beside its name; without one the drop zone invites to choose."""
+        if self.image_path:
+            self.drop.setFixedSize(72, 72)
+        else:
+            self.drop.setMinimumSize(0, 150)
+            self.drop.setMaximumSize(16777215, 150)
+        self.open_btn.setText(tr("ui.step.change") if self.image_path else tr("ui.step.open"))
 
     def set_canvas_style(self, style: str):
         """Show the sketches in another brush style (remembered; the export dialog starts with it)."""
@@ -2099,7 +2177,17 @@ class StudioPage(QWidget):
         self.undo_btn.setToolTip(tr("ui.eraser.undo"))
         self.redo_btn.setToolTip(tr("ui.eraser.redo"))
         self.revert_btn.setToolTip(tr("ui.eraser.revert"))
-        self.input_title.setText(tr("ui.input"))
+        self.step_image.set_title(tr("ui.step.image"))
+        self.step_method.set_title(tr("ui.step.method"))
+        self.step_preset.set_title(tr("ui.step.preset"))
+        self.compare_link.setText(tr("ui.step.compare"))
+        self.adjust_btn.setText(tr("ui.step.adjust"))
+        self.back_btn.setText(tr("ui.step.back"))
+        self.sketches_title.setText(tr("ui.step.sketches"))
+        self.sketches_empty.setText(tr("ui.step.sketches_empty"))
+        self.paste_action.setText(tr("ui.shortcut.paste"))
+        self.webcam_action.setText(tr("ui.webcam.title") + " …")
+        self._update_summary()
         self.mask_eye.setToolTip(tr("ui.mask.show"))
         self.mask_dl_btn.setText(tr("ui.mask.download"))
         self.mask_edit_btn.setToolTip(tr("ui.mask.edit"))
@@ -2109,16 +2197,16 @@ class StudioPage(QWidget):
             self._set_mask_status(self.mask_state, model)
         self.drop.set_texts(tr("ui.drop_title"), tr("ui.drop_subtitle"))
         self.drop.update()
-        self.open_btn.setText(tr("ui.open"))
-        self.samples_btn.setText(tr("ui.samples"))
+        self.open_btn.setIcon(icons.icon("image-plus", theme.current().text))
+        self._fit_drop()
+        self.samples_menu.setTitle(tr("ui.samples"))
         self.edit_btn.setToolTip(tr("ui.edit_image.tip"))  # icon only: the row must fit the narrow column
         self._update_detail_button()
-        self.recent_btn.setToolTip(tr("ui.recent"))
-        self.webcam_btn.setToolTip(tr("ui.webcam.tip"))
+        self.recent_menu.setTitle(tr("ui.recent"))
+
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(param_text_key(self.params.method(), key, "label")))
             lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
-        self.result_title.setText(tr("ui.result"))
         self.budget_label.setText(tr("ui.budget.label"))
         self.budget_btn.setText(tr("ui.budget.button"))
         self.budget_btn.setToolTip(tr("ui.budget.tip"))
@@ -2146,6 +2234,9 @@ class StudioPage(QWidget):
         self.folder_btn.setText(tr("ui.open_folder"))
         self.reuse_btn.setText(tr("ui.use_as_initial"))
         self.reuse_btn.setToolTip(tr("ui.use_as_initial_tip"))
+        self.export_btn.setText(tr("ui.export_center.button"))
+        self.export_btn.setToolTip(shortcuts.with_key(tr("ui.export_center.tip"), "Ctrl+E"))
+        self.job_btn.setToolTip(tr("ui.job_menu"))
         self.series_btn.setText(tr("ui.abstraction_series"))
         self.series_btn.setToolTip(tr("ui.abstraction_series_tip"))
         for m in SketchCanvas.MODES:
@@ -2155,10 +2246,10 @@ class StudioPage(QWidget):
         self.picker.retranslate()
         self.picker.refresh_status(self.params.all_settings())
         self._set_view_method(self.view_method)
-        self._fit_left_column()
         self.stat_time.caption.setText(tr("ui.stat.elapsed"))
         self.stat_eta.caption.setText(tr("ui.stat.eta"))
-        self.cancel_btn.setProperty("full_text", tr("ui.cancel"))
+        self.cancel_btn.setText(tr("ui.cancel"))
+        self.footer.retranslate()
         self.queue_btn.setText(tr("ui.add_to_queue"))
         key, fmt = self._status_key
         self.status.setText(tr(key, **fmt))
@@ -2167,31 +2258,21 @@ class StudioPage(QWidget):
         self._update_buttons()
 
     def eventFilter(self, obj, event):  # noqa: N802
-        if event.type() == QEvent.Resize and obj is self.action_row:
-            self._fit_actions()
-        elif event.type() in (QEvent.Resize, QEvent.LayoutRequest) and obj is self.stats_row:
+        if event.type() in (QEvent.Resize, QEvent.LayoutRequest) and obj is self.stats_row:
             self._fit_stats()  # (also when a number grows during a run)
+        elif event.type() == QEvent.KeyPress and obj is self.params_page and event.key() == Qt.Key_Escape:
+            self.close_params()  # (a key no field took)
+            return True
         return super().eventFilter(obj, event)
 
-    def _fit_actions(self):
-        """Pause and Cancel show only their icons when Start, Pause and Cancel do not fit side by side (a narrow
-        canvas, long German words); their names stay as tooltip and screen-reader name."""
-        if getattr(self, "_fitting", False) or not hasattr(self, "action_run"):
-            return
-        self._fitting = True
-        try:
-            small = (self.pause_btn, self.cancel_btn)
-            for b in small:
-                b.setText(b.property("full_text") or "")
-            compact = self.action_run.sizeHint().width() > self.action_row.width() > 0
-            for b in small:
-                name = b.property("full_text") or ""
-                b.setAccessibleName(name)
-                b.setToolTip(name if compact else "")
-                if compact:
-                    b.setText("")
-        finally:
-            self._fitting = False
+    def set_details_open(self, on: bool) -> None:
+        """4.0: the numbers and the loss curve below the sketch (Details in the footer) – remembered."""
+        on = bool(on)
+        self.details_panel.setVisible(on)
+        if self.footer.details_btn.isChecked() != on:
+            self.footer.set_details_open(on)
+        if bool(app_settings().get("studio_details_open")) != on:
+            app_settings().set("studio_details_open", on)
 
     def _fit_stats(self):
         """The numbers below the progress bar in a narrow canvas: closer together, then without the current loss

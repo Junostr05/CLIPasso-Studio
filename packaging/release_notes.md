@@ -1,3 +1,23 @@
+## CLIPasso Studio 4.0.0 beta 4 – the studio in three columns (pre-release)
+
+The fourth step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 3).
+It brings steps 4 to 7 of the plan at once – they are one new layout of the studio.
+
+- **Left: three numbered steps.** *1 · Image* – the preview with name, size and mask; *Change …* opens an image,
+  its arrow the samples, recent images, the webcam and the clipboard; crop and the detail brush next to it.
+  *2 · Method* – the four method cards one below the other, *Compare …* next to the step. *3 · Preset* – *Fast /
+  Standard / Quality*, your own presets, and what the job will draw (“16 strokes · 2001 iterations · 3 sketches”).
+  **Adjust** shows every parameter in the column; *Back* or Esc returns.
+- **Middle: the sketch.** The views at the top, the job's ⋯ menu (its folder, use as a start, abstraction series,
+  copy, print) and **Export …** – one dialog with every format in groups (*Image, Animation, Share*), the sketch
+  and the options of the format; Ctrl+E opens it on the format used last. Below the sketch a floating toolbar:
+  eraser, pen, undo, redo, back to the original, saved steps, time-lapse, *Simplify*, continue with CLIPasso,
+  rating and full screen.
+- **Right: the job's sketches**, each with its state and CLIP score; the arrow keys choose.
+- **Bottom: the job.** Status, estimate or time left, *Details* (the numbers and the loss curve below the sketch –
+  remembered), *Create sketch* and *To queue*; while the job runs, its progress, *Pause* and *Cancel*.
+- Every function of 3.8 is still there (a test walks through all of them).
+
 ## CLIPasso Studio 4.0.0 beta 3 – the header (pre-release)
 
 The third step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 2).

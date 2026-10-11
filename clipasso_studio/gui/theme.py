@@ -87,9 +87,23 @@ RADIUS_FLOAT = 12  # floating toolbars and panels
 
 
 def page_layout(layout) -> None:
-    """A page's outer layout with the page margins and spacing."""
+    """A page's outer layout with the page margins and spacing (``layout_kind`` "padded", the default)."""
     layout.setContentsMargins(*PAGE_MARGINS)
     layout.setSpacing(PAGE_SPACING)
+
+
+def dialog_layout(layout) -> None:
+    """4.0: a dialog's outer layout – DIALOG_MARGIN around, DIALOG_SPACING between its parts."""
+    layout.setContentsMargins(DIALOG_MARGIN, DIALOG_MARGIN, DIALOG_MARGIN, DIALOG_MARGIN)
+    layout.setSpacing(DIALOG_SPACING)
+
+
+def columns_layout(layout) -> None:
+    """4.0: a page from edge to edge (``layout_kind`` "columns": the studio) – its columns and bars have
+    ``COLUMN_PADDING`` inside."""
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
+
 FONT_FAMILY = "Inter"
 
 
@@ -160,6 +174,19 @@ def stylesheet(p: Palette) -> str:
 QMainWindow, QWidget#Root {{ background: {p.bg}; }}
 QWidget#Page {{ background: {p.bg}; }}
 QFrame#Header {{ background: {p.chrome}; border: none; border-bottom: 1px solid {p.border}; }}
+QFrame#Centre {{ background: transparent; border: none; }}
+QFrame#Summary {{ background: transparent; border: 1px solid {p.border}; border-radius: {rd}px; }}
+QToolButton#SplitButton {{
+    background: {p.surface2}; border: 1px solid {p.control}; border-radius: {rc}px; padding: 6px 28px 6px 10px;
+    font-weight: 500;
+}}
+QToolButton#SplitButton:hover {{ background: {p.surface3}; }}
+QToolButton#SplitButton::menu-button {{ border: none; border-left: 1px solid {p.control}; width: 22px; }}
+QToolButton#SplitButton::menu-arrow {{ image: url({_icon_url('chevron-down', p.muted)}); width: 12px; height: 12px; }}
+QFrame#CanvasToolbar {{ background: {p.surface2}; border: 1px solid {p.control}; border-radius: {RADIUS_FLOAT}px; }}
+QListWidget#FormatList {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: {rd}px; padding: 4px; }}
+QListWidget#FormatList::item:disabled {{ color: {p.faint}; }}
+QFrame#Footer {{ background: {p.chrome}; border: none; border-top: 1px solid {p.border}; }}
 QToolButton#HeaderTab {{
     border: none; border-radius: {rc}px; padding: 7px 12px; color: {p.muted}; font-weight: 500;
 }}
@@ -270,6 +297,7 @@ QToolButton:checked {{ background: {p.accent_soft}; border-color: {p.accent}; }}
 QPushButton#Segment {{
     background: transparent; border: none; border-radius: {rs}px; padding: 5px 12px; color: {p.muted};
 }}
+QPushButton#Segment[dense="true"] {{ padding: 5px 8px; }}
 QPushButton#Segment:hover {{ color: {p.text}; }}
 QPushButton#Segment:checked {{ background: {p.surface3}; color: {p.text}; font-weight: 600; }}
 QFrame#SegmentBar {{ background: {p.surface2}; border: 1px solid {p.control}; border-radius: {rb}px; }}

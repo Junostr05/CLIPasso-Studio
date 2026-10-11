@@ -90,11 +90,11 @@ class MethodPicker(QWidget):
 
     changed = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, orientation=Qt.Horizontal):
         super().__init__(parent)
-        lay = QHBoxLayout(self)
+        lay = QHBoxLayout(self) if orientation == Qt.Horizontal else QVBoxLayout(self)  # 4.0: a column in step 2
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(10)
+        lay.setSpacing(10 if orientation == Qt.Horizontal else theme.SPACE_S)
         self.cards: dict[str, MethodCard] = {}
         self.roving = RovingFocus(self, lambda card: self._clicked(card.method))
         for m in schema.METHODS:

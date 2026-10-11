@@ -92,6 +92,24 @@ def total_iterations(settings: dict) -> int:
     return iterations(settings) * n
 
 
+def summary(settings: dict) -> str:
+    """4.0: what a job draws in one line (step 3 of the studio): "16 Striche · 2001 Iterationen · 3 Skizzen" –
+    SwiftSketch always draws 32 strokes, SceneSketch counts the cells of its matrix."""
+    from .i18n import tr
+
+    method = schema.method_of(settings)
+    parts = []
+    strokes = 32 if method == "swiftsketch" else settings.get("num_paths")
+    if strokes:
+        parts.append(tr("ui.summary.strokes", n=int(strokes)))
+    parts.append(tr("ui.summary.iterations", n=iterations(settings)))
+    if method == "scenesketch":
+        parts.append(tr("ui.summary.cells", n=len(schema.scene_cells(settings))))
+    else:
+        parts.append(tr("ui.summary.sketches", n=int(settings.get("num_sketches", 1) or 1)))
+    return " · ".join(parts)
+
+
 def uses_loss(method: str) -> bool:
     """CLIPasso optimises a CLIP loss it reports; the other methods are judged by the CLIP score."""
     return method == "clipasso"

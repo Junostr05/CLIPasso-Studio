@@ -240,10 +240,15 @@ class StepHeader(QWidget):
         self.label = label("", "label")
         lay.addWidget(self.label)
         lay.addStretch(1)
-        self.action = action
+        self.action = None
         if action is not None:
-            lay.addWidget(action)
+            self.set_action(action)
         self.set_title(title)
+
+    def set_action(self, action: QWidget) -> None:
+        """The action on the right (also one made after the header)."""
+        self.action = action
+        self.layout().addWidget(action)
 
     def set_title(self, title: str) -> None:
         self.title = title
@@ -366,6 +371,7 @@ class SegmentedControl(QFrame):
         self._labels: dict[str, str] = {}
         self._icons: dict[str, str] = {}
         self._compact = False
+        self._pad = self.PADDING
         self.roving = RovingFocus(self, lambda b: b.click())
         for key, text in items:
             self._labels[key] = text
@@ -430,6 +436,14 @@ class SegmentedControl(QFrame):
         return self._compact
 
     COMPACT_BUTTON = 38
+    PADDING, DENSE_PADDING = 12, 8  # px left and right of a label (the style sheet's padding)
+
+    def set_dense(self, dense: bool = True) -> None:
+        """Labels with less room on their sides – where a column is narrow (the studio's step 3)."""
+        self._pad = self.DENSE_PADDING if dense else self.PADDING
+        for key, b in self._buttons.items():
+            set_prop(b, "dense", "true" if dense else "false")
+            self._show(key)
 
     def full_width(self) -> int:
         """The width with the labels (also while compact)."""
@@ -463,16 +477,14 @@ class SegmentedControl(QFrame):
             b.setText(self._labels[key])
             self._fit(b)
 
-    @staticmethod
-    def _label_width(b: QPushButton, text: str) -> int:
-        """Wide enough for the label in the bold font of the checked state (padding 12 px each side)."""
+    def _label_width(self, b: QPushButton, text: str) -> int:
+        """Wide enough for the label in the bold font of the checked state (and its padding on both sides)."""
         f = QFont(b.font())
         f.setWeight(QFont.Weight.DemiBold)
-        return QFontMetrics(f).horizontalAdvance(text) + 28
+        return QFontMetrics(f).horizontalAdvance(text) + 2 * self._pad + 4
 
-    @classmethod
-    def _fit(cls, b: QPushButton) -> None:
-        b.setMinimumWidth(cls._label_width(b, b.text()))
+    def _fit(self, b: QPushButton) -> None:
+        b.setMinimumWidth(self._label_width(b, b.text()))
 
     def set_enabled(self, key: str, enabled: bool) -> None:
         if key in self._buttons:
@@ -626,6 +638,17 @@ class Toast(QFrame):
         self._timer.timeout.connect(self._hide)
         self.hide()
 
+    bottom_inset = 0  # 4.0: room for the studio's footer below the message
+
+    def set_bottom_inset(self, px: int) -> None:
+        self.bottom_inset = px
+        if self.isVisible():
+            self.place()
+
+    def place(self) -> None:
+        par = self.parentWidget()
+        self.move(par.width() - self.width() - 24, par.height() - self.height() - 24 - self.bottom_inset)
+
     def show_message(self, text: str, kind: str = "info", msec: int = 4000) -> None:
         p = theme.current()
         name, color = {"success": ("circle-check", p.success), "error": ("circle-x", p.danger),
@@ -633,8 +656,7 @@ class Toast(QFrame):
         self.icon.setPixmap(icons.pixmap(name, color, 18))
         self.text.setText(text)
         self.adjustSize()
-        par = self.parentWidget()
-        self.move(par.width() - self.width() - 24, par.height() - self.height() - 24)
+        self.place()
         self.raise_()
         self.show()
         self._fade.stop()

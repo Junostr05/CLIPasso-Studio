@@ -835,7 +835,8 @@ class ImageDropZone(QFrame):
         p.setBrush(bg)
         p.drawRoundedRect(r, theme.RADIUS_CARD, theme.RADIUS_CARD)
         if self._pix and not self._pix.isNull():
-            inner = r.adjusted(10, 10, -10, -10)
+            pad = 10 if self.width() > 120 else 3  # (4.0: small beside the image's name in step 1)
+            inner = r.adjusted(pad, pad, -pad, -pad)
             scaled = _fitted(self, self._pix, inner.size().toSize())
             x = inner.left() + (inner.width() - scaled.width()) / 2
             y = inner.top() + (inner.height() - scaled.height()) / 2
@@ -876,13 +877,13 @@ class SeedThumb(QFrame):
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.StrongFocus)  # 4.0: the studio makes the sketches one Tab stop (RovingFocus)
         self.setProperty("ring_radius", theme.RADIUS_CARD)
-        self.setFixedSize(QSize(84, 102))
+        self.setFixedSize(QSize(118, 140))  # 4.0: a list in the studio's right column
         lay = QVBoxLayout(self)
         lay.setContentsMargins(5, 5, 5, 4)
         lay.setSpacing(2)
         self.view = SketchCanvas()
         self.view.setMinimumSize(70, 70)
-        self.view.setFixedSize(74, 74)
+        self.view.setFixedSize(108, 108)
         self.caption = QLabel(tr("ui.seed", seed=seed))
         self.caption.setProperty("role", "faint")
         self.caption.setAlignment(Qt.AlignCenter)
