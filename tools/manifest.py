@@ -101,19 +101,34 @@ def is_beta(tag: str) -> bool:
     return len(parse_version(tag)) > 3 and parse_version(tag)[3] < 3
 
 
-def previous_manifest(repo: str, edition: str, tag: str, token: str = "") -> dict | None:
-    """The manifest of the newest final release before ``tag`` – for a beta the newest release of any kind
-    (who installs betas updates from the beta before) – None: there is none or it has no manifest."""
+def _releases(repo: str, token: str = "") -> list[dict]:
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "CLIPassoStudio-CI"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases?per_page=30", headers=headers)
     with urllib.request.urlopen(req, timeout=30) as resp:
-        releases = json.load(resp)
+        return json.load(resp)
+
+
+def previous_manifest(repo: str, edition: str, tag: str, token: str = "", beta: bool = False) -> dict | None:
+    """The manifest of the newest final release before ``tag`` – for a beta the newest release of any kind
+    (who installs betas updates from the beta before) – None: there is none or it has no manifest.
+
+    ``beta``: for a final release, the newest beta before it instead – when it is newer than that final release
+    (who tried the betas gets a small update to the final one, too); None otherwise."""
+    releases = _releases(repo, token)
     current = parse_version(tag)
-    betas = is_beta(tag)
-    earlier = [r for r in releases if not r.get("draft") and (betas or not r.get("prerelease"))
-               and r.get("tag_name") != tag and parse_version(r.get("tag_name", "")) < current]
+    earlier = [r for r in releases if not r.get("draft") and r.get("tag_name") != tag
+               and parse_version(r.get("tag_name", "")) < current]
+    finals = [r for r in earlier if not r.get("prerelease")]
+    if beta:
+        if is_beta(tag):
+            return None
+        newest_final = max((parse_version(r["tag_name"]) for r in finals), default=None)
+        earlier = [r for r in earlier if r.get("prerelease")
+                   and (newest_final is None or parse_version(r["tag_name"]) > newest_final)]
+    elif not is_beta(tag):
+        earlier = finals
     if not earlier:
         return None
     prev = max(earlier, key=lambda r: parse_version(r["tag_name"]))
@@ -139,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tag", required=True)
     p.add_argument("--repo", required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--beta-out", default="", help="also the newest beta before a final release (its own patch)")
     m = sub.add_parser("patch")
     m.add_argument("old")
     m.add_argument("new")
@@ -162,12 +178,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"manifest: {len(data['files'])} files")
         return 0
     if args.cmd == "previous":
-        data = previous_manifest(args.repo, args.edition, args.tag, os.environ.get("GITHUB_TOKEN", ""))
+        token = os.environ.get("GITHUB_TOKEN", "")
+        data = previous_manifest(args.repo, args.edition, args.tag, token)
         if data is None:
             print("manifest: no earlier release with a manifest – no patch")
-            return 0
-        Path(args.out).write_text(json.dumps(data), encoding="utf-8")
-        print(f"manifest: previous release {data.get('version')}")
+        else:
+            Path(args.out).write_text(json.dumps(data), encoding="utf-8")
+            print(f"manifest: previous release {data.get('version')}")
+        if args.beta_out:
+            beta = previous_manifest(args.repo, args.edition, args.tag, token, beta=True)
+            if beta is not None:
+                Path(args.beta_out).write_text(json.dumps(beta), encoding="utf-8")
+                print(f"manifest: and the beta before it {beta.get('version')}")
         return 0
     old = json.loads(Path(args.old).read_text(encoding="utf-8"))
     new = json.loads(Path(args.new).read_text(encoding="utf-8"))

@@ -110,8 +110,10 @@ size, the mask row across the column, *Ändern …* as a split button with sampl
 the `#Summary` of what the job draws with *Anpassen*, the time budget, the switch rows). *Anpassen* swaps the
 column for the parameter page (`left_stack`; *← Zurück* or Esc). In the middle the view segment, the job's ⋯ menu
 and *Exportieren …* (`export_center.py`: the formats in groups, the sketch, the options of the 3.x export dialog
-inside), the paper, and below it the floating `#CanvasToolbar`. On the right the job's sketches (`SeedThumb`, one
-Tab stop, the arrows choose). Tab runs left → middle → right → footer (`a11y.reading_order`).
+inside), the paper, and below it the floating `#CanvasToolbar` (below the matrix or the contact sheet, too –
+whichever the middle shows). On the right the job's sketches (`SeedThumb`, one Tab stop, the arrows choose); for
+SceneSketch the right column goes – its matrix in the middle holds the sketches. Tab runs left → middle → right →
+footer (`a11y.reading_order`).
 
 **Gallery and settings** (4.0) are pages from edge to edge too: a `Column` of `FILTER_COLUMN` on the left – the
 gallery's search, methods (a vertical segment), favourites, albums with their counts (`AlbumChip.count_label`)

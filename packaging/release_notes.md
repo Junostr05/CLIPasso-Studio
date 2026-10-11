@@ -1,76 +1,50 @@
-## CLIPasso Studio 4.0.0 beta 5 – gallery, settings and dialogs (pre-release)
+## CLIPasso Studio 4.0 – a calmer studio
 
-The fifth step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 4).
+4.0 renews the whole studio: a new look in dark and light, a clearer order from the image to the export, and
+the keyboard everywhere. Every feature of 3.8 stays – a test walks through all of them. From 3.8.1 the app offers
+4.0 as a small update (*Settings → Behaviour*, also from the phone).
 
+- **A header instead of the sidebar:** the areas *Studio · Gallery · Queue* (the queue with the number of waiting
+  jobs), the running job's progress (a click shows it in the studio), the hardware the app computes on, and the
+  **App** menu: *Models, Settings, Compare methods, Phone & messages, Check for updates, About & help*.
+  **Ctrl+1 … 7 in the order you see:** Studio, Gallery, Queue, Models, Settings, Compare, About (3.8: Studio,
+  Compare, Queue, Gallery, …).
+- **The studio in three columns.** *Left – three numbered steps:* *1 · Image* (the preview with name, size and
+  mask; *Change …* opens an image, its arrow the samples, recent images, the webcam and the clipboard; crop and the
+  detail brush next to it), *2 · Method* (the four method cards one below the other, *Compare …*) and
+  *3 · Preset* (*Fast / Standard / Quality*, your own presets and what the job will draw: “16 strokes · 2001
+  iterations · 3 sketches”); **Adjust** shows every parameter in the column, *Back* or Esc returns.
+  *Middle – the sketch:* the views at the top, the job's ⋯ menu (its folder, use as a start, abstraction series,
+  copy, print) and a floating toolbar below the sketch (eraser, pen, undo, redo, the original, saved steps,
+  time-lapse, *Simplify*, continue with CLIPasso, rating, full screen). *Right – the job's sketches*, each with its
+  state and CLIP score; the arrow keys choose. *Bottom – the job:* status, estimate or time left, *Details* (the
+  numbers and the loss curve, remembered), *Create sketch* and *To queue*; while it runs *Pause* and *Cancel*.
+- **Export …:** one dialog with every format in groups (*Image, Animation, Share*), the sketch and the options of
+  the format; Ctrl+E opens it on the format used last.
 - **Gallery:** a column on the left with the search, the methods, *Favourites*, the albums with their number of
-  results (drop results on an album to add them) and the tags. Below the title how many results there are – and how
-  many are shown. Mark several results and a bar floats at the bottom: *View large, Compare* (two), *Favourite, Export*
-  and *Delete*. *Slideshow, Export shown, Open folder* and *Refresh* are icons now (their names in the
-  tooltips) – room for the sort, also on Windows.
-- **Settings:** their parts on the left – *Appearance, Files, Behaviour, Watched folder, Phone & messages, Storage,
-  System, Experimental*; a click scrolls there, and the column shows where you are. The cards are no wider than
-  820 px.
-- **Dialogs:** every dialog has the same margins and spacing (24 / 16 px); the export dialog no longer doubles them.
-- A "&" in a menu or a button (*Info & Hilfe*, *Name, Tags & Notizen*, *Kanten & Schraffur*) is shown again
-  instead of an underlined space.
-- **Numbers in German** have a decimal comma: CLIP 29,4, 1,2 GB, a loss of 0,250 (studio, gallery, comparison,
-  self-test, the Telegram message).
-- **Tab** runs from the header through the studio – left, middle, right, footer – and round to the header again.
-- The mask row below the image keeps its text in one piece: *Download* got a line of its own.
-- Fixed: resetting the studio's view could fail after a while (a menu's entries lost their link to Python); the
-  guide is tested at the smallest window in German.
+  results (drop results on an album to add them) and the tags; below the title how many results there are – and
+  how many are shown. Mark several and a bar floats at the bottom: *View large, Compare* (two), *Favourite,
+  Export, Delete*.
+- **Settings:** their parts on the left (*Appearance, Files, Behaviour, Watched folder, Phone & messages, Storage,
+  System, Experimental*); a click scrolls there, and the column shows where you are.
+- **Keyboard:** a visible focus ring (2 px in the focus colour) around the control the keyboard is on – while the
+  keyboard is used, gone after a click. The method cards, every segmented choice and a job's sketches are one Tab
+  stop each (arrows, Home, End, Space, Enter); the image area is reached by Tab. Tab runs from the header through
+  the studio – left, middle, right, footer – and round to the header again.
+- **The 4.0 colours** (direction “calm professional tool”): dark and light from one set of design tokens. Every
+  text reaches at least 4.5 : 1 on its surfaces, the edges of text fields, tick boxes and switches and the focus
+  colour at least 3 : 1 (in 3.8: 1.1–1.4 : 1). Corners and spacing follow one scale; every dialog has the same
+  margins (24 / 16 px).
+- **The same words everywhere:** *image*, *job*, *preset* – in German *Bild*, *Auftrag*, *Voreinstellung* – and
+  numbers in German with a decimal comma (CLIP 29,4, 1,2 GB).
+- **Beta versions:** the switch *Also offer beta versions* (Settings → Behaviour; on the phone under *App*) offers
+  pre-releases as updates; off (the default), the app offers finished versions only. Betas are for Windows only.
+- **Downloads:** every release page starts with *Which file do I need?* The portable single exe is gone – if you
+  used it, download the portable ZIP once (it starts faster and updates itself).
+- Fixed on the way: a “&” in a menu or a button is shown again; resetting the studio's view could fail after a
+  while; the app could crash when a dialog closed while one of its buttons had the keyboard focus.
 
-## CLIPasso Studio 4.0.0 beta 4 – the studio in three columns (pre-release)
-
-The fourth step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 3).
-It brings steps 4 to 7 of the plan at once – they are one new layout of the studio.
-
-- **Left: three numbered steps.** *1 · Image* – the preview with name, size and mask; *Change …* opens an image,
-  its arrow the samples, recent images, the webcam and the clipboard; crop and the detail brush next to it.
-  *2 · Method* – the four method cards one below the other, *Compare …* next to the step. *3 · Preset* – *Fast /
-  Standard / Quality*, your own presets, and what the job will draw (“16 strokes · 2001 iterations · 3 sketches”).
-  **Adjust** shows every parameter in the column; *Back* or Esc returns.
-- **Middle: the sketch.** The views at the top, the job's ⋯ menu (its folder, use as a start, abstraction series,
-  copy, print) and **Export …** – one dialog with every format in groups (*Image, Animation, Share*), the sketch
-  and the options of the format; Ctrl+E opens it on the format used last. Below the sketch a floating toolbar:
-  eraser, pen, undo, redo, back to the original, saved steps, time-lapse, *Simplify*, continue with CLIPasso,
-  rating and full screen.
-- **Right: the job's sketches**, each with its state and CLIP score; the arrow keys choose.
-- **Bottom: the job.** Status, estimate or time left, *Details* (the numbers and the loss curve below the sketch –
-  remembered), *Create sketch* and *To queue*; while the job runs, its progress, *Pause* and *Cancel*.
-- Every function of 3.8 is still there (a test walks through all of them).
-
-## CLIPasso Studio 4.0.0 beta 3 – the header (pre-release)
-
-The third step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 2).
-
-- **A header instead of the sidebar:** the logo and name, the areas *Studio · Gallery · Queue* (the queue with the
-  number of waiting jobs), the running job's progress (a click shows it in the studio), the hardware the app computes
-  on, and the **App** menu: *Models, Settings, Compare methods, Phone & messages, Check for updates, About & help*.
-- **Ctrl+1 … 7 in the order you see:** Studio, Gallery, Queue, Models, Settings, Compare, About (3.8: Studio, Compare,
-  Queue, Gallery, …). The menu shows the keys.
-- The studio has no title row any more – more room for the sketch. The guide points at the App menu.
-
-## CLIPasso Studio 4.0.0 beta 2 – the keyboard (pre-release)
-
-The second step of 4.0 (betas are for Windows only). With *Also offer beta versions* switched on in beta 1, the
-app – also from the phone – offers this beta as a small update.
-
-- **A visible focus ring:** 2 px in the focus colour, 2 px around the control the keyboard is on. It shows while the
-  keyboard is used (Tab) and goes away after a click; text fields show their focus by their border.
-- **Groups are one Tab stop:** the method cards, every segmented choice and the sketches of a job – the arrow keys,
-  Home and End choose inside, Space or Enter confirm. The image area is reached by Tab and opens an image with
-  Space or Enter.
-- Under the hood: new building blocks for the next steps (link buttons, counts, chips, numbered steps, columns).
-
-## CLIPasso Studio 4.0.0 beta 1 – a calmer studio (pre-release)
-
-A **pre-release** to try out: 4.0 renews the look of the studio step by step, and every beta brings one more part. Every feature stays. Betas are built for Windows only.
-
-- **Beta versions:** the new switch *Also offer beta versions* (Settings → Behaviour; on the phone under *App*) makes the app offer pre-releases as updates – also *Download & install* from the phone. Switched off (the default), the app offers finished versions only. A beta's small update starts from the beta before it.
-- **The 4.0 colours (direction “calm professional tool”):** dark and light reworked from one set of design tokens. Every text colour reaches at least 4.5 : 1 on its surfaces, the edges of text fields, tick boxes and switches at least 3 : 1 (in 3.8 they were 1.1–1.4 : 1), the keyboard focus colour too. Corners and spacing follow one scale; nothing in the interface uses a colour outside the theme any more (a new test keeps it so).
-- **The same words everywhere:** *image* (the input), *job* (what the queue holds and *Cancel* stops), *preset* (Fast / Standard / Quality and your own) – in German *Bild*, *Auftrag*, *Voreinstellung*.
-- **To get this beta:** download it from this page (installer or portable); 3.8 offers no betas. From here on the switch above brings the next ones.
+The betas 4.0.0b1 … b5 brought these parts one by one; their pages keep their notes.
 
 ## CLIPasso Studio 3.8.1 – fixes: the experimental sketch improvement, older graphics cards
 

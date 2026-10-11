@@ -500,11 +500,6 @@ class StudioPage(QWidget):
         self.canvas.erase_end.connect(self._erase_end)
         self.canvas.pen_stroke.connect(self._pen_stroke)
         center.body.addWidget(self.canvas, 1)
-        toolbar_row = QHBoxLayout()
-        toolbar_row.addStretch(1)
-        toolbar_row.addWidget(self.canvas_tools)
-        toolbar_row.addStretch(1)
-        center.body.addLayout(toolbar_row)
         self.edit_bar = EditBar()
         self.edit_bar.preview.connect(self.canvas.set_svg)
         self.edit_bar.apply.connect(self._edit_bar_apply)
@@ -523,6 +518,11 @@ class StudioPage(QWidget):
         self.sheet.menu_requested.connect(self._sheet_menu)
         self.sheet.setVisible(False)
         center.body.addWidget(self.sheet, 1)
+        toolbar_row = QHBoxLayout()  # (below the sketch, the matrix or the contact sheet – whichever is shown)
+        toolbar_row.addStretch(1)
+        toolbar_row.addWidget(self.canvas_tools)
+        toolbar_row.addStretch(1)
+        center.body.addLayout(toolbar_row)
 
         self.status = ElidedLabel("", "h3")  # (a long file name ends in "…", not in the middle of a word)
         self.estimate_holder()
@@ -1120,6 +1120,7 @@ class StudioPage(QWidget):
         self.chart.empty_text_key = "ui.loss_chart_empty" if loss else "ui.score_chart_empty"
         self.chart.update()
         scene = method == "scenesketch"
+        self._update_sketch_list()
         self.modes.set_visible("attention", method != "swiftsketch")
         self.modes.set_visible("condition", method in ("controlsketch", "scenesketch"))
         self.modes.set_text("condition", tr("ui.mode.background") if scene else tr("ui.mode.condition"))
@@ -1899,7 +1900,7 @@ class StudioPage(QWidget):
         """Focus mode: the panes beside the canvas go (the main window hides its own parts and goes full screen)."""
         self.focused = bool(on)
         self.left_stack.setVisible(not self.focused)
-        self.right_pane.setVisible(not self.focused)
+        self._update_sketch_list()
         self.focus_btn.setIcon(icons.icon("minimize-2" if self.focused else "maximize-2", theme.current().muted,
                                           active_color=theme.current().text))
         self.focus_btn.setToolTip(tr("ui.focus.leave" if self.focused else "ui.focus.enter"))
@@ -2102,8 +2103,10 @@ class StudioPage(QWidget):
         QTimer.singleShot(0, self, self.fix_tab_order)  # (positions are known once the page is laid out)
 
     def _update_sketch_list(self) -> None:
-        """The right column: the job's sketches (SceneSketch shows its matrix in the middle instead)."""
+        """The right column: the job's sketches (SceneSketch shows its matrix in the middle instead – the column
+        goes, the matrix gets its room)."""
         scene = self.view_method == "scenesketch"
+        self.right_pane.setVisible(not scene and not self.focused)
         self.thumb_area.setVisible(bool(self.thumbs) and not scene)
         self.sketches_empty.setVisible(not self.thumbs and not scene)
 

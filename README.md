@@ -10,7 +10,7 @@
   <a href="https://github.com/swiftsketch/SwiftSketch"><b>SwiftSketch</b></a> (SIGGRAPH 2025) ·
   <a href="https://github.com/swiftsketch/SwiftSketch"><b>ControlSketch</b></a> ·
   <a href="https://github.com/yael-vinker/SceneSketch"><b>SceneSketch</b></a> (ICCV 2023)<br>
-  Every option adjustable, live preview, method comparison – all in a single exe.
+  Every option adjustable, live preview, method comparison – in one Windows app.
 </p>
 
 <p align="center">
@@ -26,18 +26,19 @@
 </p>
 <p align="center"><sub>Made with this app on a CPU: CLIPasso (16 strokes, “Fast” preset, 11 min), SwiftSketch (32 strokes, 4 s per sketch), ControlSketch (32 strokes – only 250 of the 2000 iterations, 67 min; with an NVIDIA GPU the full run takes a few minutes).</sub></p>
 
-![Studio – the CLIPasso sketch shown in the ink brush style](docs/screenshots/studio_dark_en.png)
+![The studio in 4.0 – the steps on the left, the CLIPasso sketch in the ink brush style in the middle, the job's sketches on the right](docs/screenshots/studio_dark_en.png)
 
 ## Download
 
-The [releases page](https://github.com/Junostr05/CLIPasso-Studio/releases/latest) has four variants:
+The [releases page](https://github.com/Junostr05/CLIPasso-Studio/releases/latest) starts with *Which file do I need?* – there are three variants:
 
 | File | Description |
 |---|---|
-| **`CLIPassoStudio-CPU-Portable.zip`** (≈ 1 GB) | Portable without installation: unpack the ZIP anywhere (e.g. a USB stick) and start `CLIPassoStudio.exe` in it. Starts as fast as the installed app and updates itself (the new version is unpacked next to the old folder, which it then offers to delete). |
-| **`CLIPassoStudio-CPU-Portable.exe`** (≈ 1 GB) | A single file: download, double-click, done. No installation and no Python needed. Everything CLIPasso needs is included; SwiftSketch, ControlSketch and SceneSketch download their models the first time you use them (see below). It unpacks itself on every start (15–40 s, with a splash screen). |
-| **`CLIPassoStudio-CPU-Setup.exe`** (≈ 1 GB) | The same app as an installer: install once, then it starts quickly and gets Start menu and desktop shortcuts. No admin rights needed. Uninstalling asks whether the downloaded models and the app data should be removed too (your sketches always stay). |
+| **`CLIPassoStudio-CPU-Setup.exe`** (≈ 1 GB) | The installer for every PC: install once, then it starts quickly and gets Start menu and desktop shortcuts. No admin rights needed. Everything CLIPasso needs is included; SwiftSketch, ControlSketch and SceneSketch download their models the first time you use them (see below). Uninstalling asks whether the downloaded models and the app data should be removed too (your sketches always stay). |
+| **`CLIPassoStudio-CPU-Portable.zip`** (≈ 1 GB) | Portable without installation: unpack the ZIP anywhere (e.g. a USB stick) and start `CLIPassoStudio.exe` in it. Starts as fast as the installed app and updates itself (the new version is unpacked next to the old folder, which it then offers to delete). Up to 3.8 there was also a single `Portable.exe`; from 4.0 the ZIP takes its place. |
 | **`CLIPassoStudio-GPU-Setup.exe`** + `…-GPU-Setup-*.bin` (≈ 3.5 GB) | Edition for NVIDIA graphics cards (CUDA 12.8: GeForce GTX 16xx / RTX 20xx or newer, driver ≥ 570). CLIPasso and SceneSketch run 10–50× faster, and **ControlSketch is only practical with this edition**. Because it is larger than 2 GB, it is split into several files: **download all of them into the same folder** and run the `Setup.exe`. Without a suitable GPU it automatically falls back to the CPU. Can be installed next to the CPU edition (shortcut “CLIPasso Studio GPU”). **Older cards** (GTX 9xx / 10xx, e.g. a GTX 1060): from 3.1 the app detects them and offers an add-on with PyTorch for CUDA 12.6 (2.6 GB) – see below. |
+
+Once installed, the app offers new versions itself and downloads only the files that changed. **Betas** (from 4.0, Windows only): switch on *Also offer beta versions* in Settings → Behaviour to get pre-releases as updates, too.
 
 > Windows SmartScreen may warn about an “unknown publisher” (the exe is not signed) → *More info* → *Run anyway*.
 
@@ -73,6 +74,7 @@ Pick the method at the top of the studio with one click. Parameters, presets, ti
 
 ## Features
 
+- **A calm studio** (4.0): a header with *Studio · Gallery · Queue*, the running job, the hardware and the **App** menu (models, settings, compare, phone, updates, about – Ctrl+1 … 7 in this order). The studio in three columns: on the left the steps *1 · Image*, *2 · Method* and *3 · Preset* (*Adjust* shows every parameter), in the middle the sketch with a floating toolbar and **Export …** – every format in one dialog (Ctrl+E) –, on the right the job's sketches, at the bottom the job with its progress. A visible keyboard focus ring, arrow keys inside groups, and colours with measured contrast (text at least 4.5 : 1, the edges of controls at least 3 : 1) in dark and light.
 - **Every option of the originals** in the interface, each with a tooltip, a reset button and search:
   - *CLIPasso*: every argument of `run_object_sketching.py` and `config.py` (strokes, iterations, seeds, mask, working resolution, stroke width, segments, curve type, initial SVG, CLIP/DINO saliency, XDoG, softmax temperature, text target, CLIP model, conv loss, layer weights, FC weight, CLIP/text guidance, L2/LPIPS, learning rates, scheduler, opacity, multi-stage training, augmentations …).
   - *SwiftSketch*: all options of `generate.py` – guidance strength, refinement on/off, also saving the diffusion sketch, aspect ratio, seed, plus background mask and stroke width.
@@ -89,7 +91,7 @@ Pick the method at the top of the studio with one click. Parameters, presets, ti
 - **Hints about the photo** (3.6): too small, dark, flat or blurred, a tiny object or an unsure mask – said before the run, with *Crop* or *Check mask*.
 - **See and fix the mask before a run**: the studio shows the object on the input image as soon as you pick one. *Edit mask*: click a part to remove it, click next to the object to add an area of similar colour (magic wand), or paint with the brush – every method then uses your mask. Small objects in large photos are **framed automatically** so they fill the canvas (CLIPasso, SwiftSketch; can be switched off).
 - **Touch-ups**: crop, rotate or flip the input image right in the studio; remove single strokes from a finished sketch with the **eraser** (with undo – the original stays).
-- **Shape the result** (3.4): take a **saved step** as the result; **Simplify** (the button above the sketch) with a slider – the strokes that add least go first (CLIP measures, once per sketch, how far the likeness falls without each stroke).
+- **Shape the result** (3.4): take a **saved step** as the result; **Simplify** (in the toolbar below the sketch) with a slider – the strokes that add least go first (CLIP measures, once per sketch, how far the likeness falls without each stroke).
 - **Detail brush & portrait mode** (3.4, CLIPasso and ControlSketch): paint where the sketch should get more detail and where less – more starting strokes there, the photo softened here. *Find face* (BlazeFace, offline) marks the eyes, nose and mouth by itself.
 - **Experimental sketch improvement** (3.7, CLIPasso and SceneSketch; Settings → *Experimental*, off by default): the strokes follow the photo's edges more closely, and dark areas get an extra fine, even hatching at 45°.
 - **Newer image models for CLIPasso** (3.7, experimental, downloaded on request): OpenCLIP ViT-B/16 or SigLIP B/16 for the semantic part of the loss (*Semantic model*). Measured: OpenCLIP made objects, portraits and animals more similar and easier to recognise, SigLIP only animals; the default stays the original CLIP.
@@ -116,18 +118,18 @@ Pick the method at the top of the studio with one click. Parameters, presets, ti
 <p>
   <img src="docs/screenshots/studio_scenesketch_dark_en.png" width="49%" alt="SceneSketch's matrix view in the studio">
   <img src="docs/screenshots/studio_controlsketch_dark_en.png" width="49%" alt="ControlSketch in the studio">
-  <img src="docs/screenshots/gallery_dark_en.png" width="49%" alt="Gallery with titles, favourites and tags">
+  <img src="docs/screenshots/gallery_dark_en.png" width="49%" alt="Gallery with the filter column, favourites and albums">
   <img src="docs/screenshots/queue_dark_en.png" width="49%" alt="Queue with mixed methods and the total time left">
-  <img src="docs/screenshots/settings_dark_en.png" width="49%" alt="Settings: watched folder and storage">
+  <img src="docs/screenshots/settings_dark_en.png" width="49%" alt="Settings with their parts on the left">
   <img src="docs/screenshots/studio_light_en.png" width="49%" alt="Light theme">
 </p>
 
 ## Usage
 
-1. Choose the method at the top. If models are missing, one click on **Download** in the notice bar is enough.
-2. Drag an image onto **Input image** (or use *Open* / *Samples*). For non-square images, turn on **Keep aspect ratio**.
-3. Pick a preset, adjust parameters if you like, and click **Create sketch**.
-4. Export the best sketch (★) as SVG/PNG/GIF/MP4. The results are also saved in the output folder (default: `Documents\CLIPasso Studio`) – for every run `best_iter.svg`, `svg_logs/`, `config.json` (including the CLIP score) and `<run>_best.svg`.
+1. **1 · Image**: drag an image onto the studio (or use *Change …* – its arrow has the samples, recent images, the webcam and the clipboard). For non-square images, *Crop* is next to it.
+2. **2 · Method**: pick one of the four cards. If models are missing, one click on **Download** in the notice bar is enough.
+3. **3 · Preset**: *Fast / Standard / Quality* – *Adjust* shows every parameter. Then **Create sketch** at the bottom (Ctrl+Enter).
+4. **Export …** the best sketch (★, Ctrl+E) as SVG, PNG, PDF, GIF, MP4 and more. The results are also saved in the output folder (default: `Documents\CLIPasso Studio`) – for every run `best_iter.svg`, `svg_logs/`, `config.json` (including the CLIP score) and `<run>_best.svg`.
 
 **Compute time (CPU):** SwiftSketch ~5 s per sketch. CLIPasso: *Fast* preset 5–15 min, *Standard* 45–90 min. SceneSketch: *Fast* ≈ 20 min (one scene sketch), *Standard* ≈ 2 h (one column of the matrix), the full matrix of the paper many hours – with an NVIDIA GPU minutes to about an hour. ControlSketch needs about 10 hours per sketch on a CPU – a few minutes with an NVIDIA GPU.
 

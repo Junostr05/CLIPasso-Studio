@@ -324,19 +324,23 @@ jobs:
           python tools/manifest.py build dist\CLIPassoStudio --edition $ed --version $version --out "release\CLIPassoStudio-$ed-manifest.json"
           if ($LASTEXITCODE -ne 0) { throw "manifest failed" }
           if (-not $env:TAG) { exit 0 }
-          python tools/manifest.py previous --edition $ed --tag $env:TAG --repo "${{ github.repository }}" --out build\prev.json
+          # (a final release: also a patch from the newest beta before it – who tried the betas updates small, too)
+          python tools/manifest.py previous --edition $ed --tag $env:TAG --repo "${{ github.repository }}" --out build\prev.json --beta-out build\prev-beta.json
           if ($LASTEXITCODE -ne 0) { throw "reading the previous release failed" }
-          if (-not (Test-Path build\prev.json)) { exit 0 }
-          $info = python tools/manifest.py patch build\prev.json "release\CLIPassoStudio-$ed-manifest.json" dist\CLIPassoStudio build\patch | ConvertFrom-Json
-          $info | Format-List
-          if (-not $info.ok) { "the changes are too large for a patch – full files only"; exit 0 }
-          & $iscc /Q "/DEdition=$ed" "/DAppVersion=$version" "/DFromVersion=$($info.from)" "/DPatchDir=$pwd\build\patch" "/DRemovedList=$pwd\build\patch-removed.iss" "/DOutputDir=$pwd\release" packaging\patch.iss
-          if ($LASTEXITCODE -ne 0) { throw "ISCC (patch) failed" }
-          if ($ed -eq "CPU") {
-            New-Item -ItemType Directory -Force build\patchzip | Out-Null
-            Copy-Item -Recurse build\patch build\patchzip\CLIPassoStudio
-            7z a -tzip -mx=5 "release\CLIPassoStudio-CPU-Portable-Patch-from-$($info.from).zip" ".\build\patchzip\CLIPassoStudio" | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "7z (patch) failed" }
+          foreach ($prev in @("build\prev.json", "build\prev-beta.json")) {
+            if (-not (Test-Path $prev)) { continue }
+            Remove-Item -Recurse -Force build\patch, build\patchzip, build\patch-removed.iss -ErrorAction SilentlyContinue
+            $info = python tools/manifest.py patch $prev "release\CLIPassoStudio-$ed-manifest.json" dist\CLIPassoStudio build\patch | ConvertFrom-Json
+            $info | Format-List
+            if (-not $info.ok) { "the changes from $($info.from) are too large for a patch – full files only"; continue }
+            & $iscc /Q "/DEdition=$ed" "/DAppVersion=$version" "/DFromVersion=$($info.from)" "/DPatchDir=$pwd\build\patch" "/DRemovedList=$pwd\build\patch-removed.iss" "/DOutputDir=$pwd\release" packaging\patch.iss
+            if ($LASTEXITCODE -ne 0) { throw "ISCC (patch) failed" }
+            if ($ed -eq "CPU") {
+              New-Item -ItemType Directory -Force build\patchzip | Out-Null
+              Copy-Item -Recurse build\patch build\patchzip\CLIPassoStudio
+              7z a -tzip -mx=5 "release\CLIPassoStudio-CPU-Portable-Patch-from-$($info.from).zip" ".\build\patchzip\CLIPassoStudio" | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw "7z (patch) failed" }
+            }
           }
           Get-ChildItem release | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
       - name: Small update test (install, patch, restart, self-test, uninstall)

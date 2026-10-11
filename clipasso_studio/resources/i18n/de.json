@@ -1164,7 +1164,7 @@
  "ui.edit_bar.simplify": "Vereinfachen",
  "ui.edit_bar.simplify_tip": "Vereinfachen: die unwichtigsten Striche zuerst weglassen (gemessen mit CLIP)",
  "ui.edit_bar.simplify_note": "Nach links ziehen: die Striche, die am wenigsten zur Skizze beitragen, fallen zuerst weg (gemessen mit CLIP).",
- "ui.edit_bar.simplify_hint": "Tipp: Mit „Vereinfachen“ über der Skizze lässt du die unwichtigsten Striche weg – per Schieberegler.",
+ "ui.edit_bar.simplify_hint": "Tipp: Mit „Vereinfachen“ in der Werkzeugleiste unter der Skizze lässt du die unwichtigsten Striche weg – per Schieberegler.",
  "ui.edit_bar.measuring": "CLIP misst, wie viel jeder Strich beiträgt … (einige Sekunden, einmal pro Skizze)",
  "ui.edit_bar.measure_failed": "Messen ging nicht: {error}",
  "ui.edit_bar.exit_code": "der Messprozess endete mit Code {code}",

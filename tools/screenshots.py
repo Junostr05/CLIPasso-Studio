@@ -5,7 +5,8 @@ Usage: python tools/screenshots.py OUT_DIR [--job JOB_DIR ...] [--theme dark|lig
                                    [--set canvas_style=ink ...] [--queue IMAGE[:METHOD] ...]
 
 ``studio:<method>`` shows the studio with that method selected (and the given job of that method,
-if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``).
+if any); ``studio:<method>:<view>`` also picks the canvas view (e.g. ``studio:scenesketch:matrix``);
+``settings:<part>`` scrolls the settings to that part (e.g. ``settings:watch``).
 All jobs must be in the same output folder, which the gallery / compare pages then show.
 """
 
@@ -125,6 +126,8 @@ def main() -> int:
             for sec in ("basics", "image", "init", "diffusion", "sds"):
                 if sec in w.studio.params.sections and (sec != "sds" or method == "controlsketch"):
                     w.studio.params.sections[sec].set_expanded(sec in ("basics", "image", "init", "diffusion"))
+        elif method and hasattr(w.pages[page], "show_section"):  # e.g. settings:watch – that part of the page
+            w.pages[page].show_section(method)
 
         deadline = time.time() + 180
 

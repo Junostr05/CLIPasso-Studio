@@ -78,6 +78,9 @@ def test_language_setting_offers_auto(window):
 
 
 def test_scenesketch_in_the_studio(window):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QApplication
+
     from clipasso_studio.gui.widgets.canvas import MatrixView
 
     studio = window.studio
@@ -90,9 +93,20 @@ def test_scenesketch_in_the_studio(window):
     studio.modes.set_current("matrix")
     studio._mode_changed("matrix")
     assert studio.matrix.isVisibleTo(studio) and not studio.canvas.isVisibleTo(studio)
+    # 4.0: the matrix holds the job's sketches – the right column goes and gives it the room; the floating
+    # toolbar stays below what the middle shows
+    assert not studio.right_pane.isVisibleTo(studio)
+    for _ in range(3):
+        QApplication.processEvents()
+    below = studio.matrix.mapTo(studio, QPoint(0, studio.matrix.height())).y()
+    assert studio.canvas_tools.mapTo(studio, QPoint(0, 0)).y() >= below
     studio.params.set_method("clipasso")
     assert studio.modes.current() == "sketch" and studio.modes._buttons["matrix"].isHidden()
-    assert studio.canvas.isVisibleTo(studio)
+    assert studio.canvas.isVisibleTo(studio) and studio.right_pane.isVisibleTo(studio)
+    for _ in range(3):
+        QApplication.processEvents()
+    below = studio.canvas.mapTo(studio, QPoint(0, studio.canvas.height())).y()
+    assert studio.canvas_tools.mapTo(studio, QPoint(0, 0)).y() >= below
 
     m = MatrixView()
     m.resize(300, 400)

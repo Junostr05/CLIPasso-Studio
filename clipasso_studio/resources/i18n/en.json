@@ -1164,7 +1164,7 @@
  "ui.edit_bar.simplify": "Simplify",
  "ui.edit_bar.simplify_tip": "Simplify: leave out the least important strokes first (measured with CLIP)",
  "ui.edit_bar.simplify_note": "Drag to the left: the strokes that add the least to the sketch go first (measured with CLIP).",
- "ui.edit_bar.simplify_hint": "Tip: “Simplify” above the sketch leaves out the least important strokes – with a slider.",
+ "ui.edit_bar.simplify_hint": "Tip: “Simplify” in the toolbar below the sketch leaves out the least important strokes – with a slider.",
  "ui.edit_bar.measuring": "CLIP is measuring how much each stroke adds … (a few seconds, once per sketch)",
  "ui.edit_bar.measure_failed": "Measuring did not work: {error}",
  "ui.edit_bar.exit_code": "the measuring process ended with code {code}",

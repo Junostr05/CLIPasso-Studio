@@ -147,3 +147,7 @@ def test_a_beta_is_patched_from_the_beta_before(monkeypatch):
     assert manifest.previous_manifest("o/r", "cpu", "v4.0.0b3") == {"version": "v4.0.0b2"}
     assert manifest.previous_manifest("o/r", "cpu", "v4.0.0b1") == {"version": "v3.8.1"}
     assert manifest.previous_manifest("o/r", "cpu", "v4.0.0") == {"version": "v3.8.1"}
+    # 4.0: the final release also gets a patch from the newest beta (who tried the betas)
+    assert manifest.previous_manifest("o/r", "cpu", "v4.0.0", beta=True) == {"version": "v4.0.0b2"}
+    assert manifest.previous_manifest("o/r", "cpu", "v4.0.0b3", beta=True) is None  # (a beta: one patch)
+    assert manifest.previous_manifest("o/r", "cpu", "v3.8.2", beta=True) is None  # (no beta after 3.8.1)
