@@ -370,6 +370,41 @@ def test_page_and_its_files(server):
         assert status == 200 and kind in headers["Content-Type"] and data
 
 
+def test_the_studio_s_tokens_fonts_and_icons(server):
+    """4.2: the page's colours and radii are the studio's – /tokens.css, made from the palettes (also for the PIN
+    page, so it needs no sign-in); its font is the studio's Inter (/fonts/…, a week in the browser's cache, only the
+    four files of the app); its icons are the studio's Lucide icons, inline and without a style attribute; the
+    browser's bar and the home-screen app take the palette's colours."""
+    from clipasso_studio.gui import remote, theme
+
+    _srv, _bridge, base, _up = server
+    status, headers, css = _get(base + "/tokens.css")
+    assert status == 200 and headers["Content-Type"].startswith("text/css")
+    css = css.decode("utf-8")
+    assert css == theme.tokens_css()
+    for p in (theme.LIGHT, theme.DARK):
+        assert f"--accent: {p.accent};" in css and f"--card: {p.surface};" in css and f"--field: {p.field};" in css
+    assert f"--r-card: {theme.RADIUS_CARD}px;" in css
+    for name in remote.FONTS:
+        status, headers, data = _get(base + "/fonts/" + name)
+        assert status == 200 and headers["Content-Type"] == "font/ttf" and data[:4] == b"\x00\x01\x00\x00", name
+        assert headers["Cache-Control"] == "public, max-age=604800"
+    for bad in ("/fonts/LICENSE-Inter-OFL.txt", "/fonts/../phone.js", "/fonts/Inter-Thin.ttf"):
+        assert _get(base + bad)[0] == 403, bad  # (not one of the four: like any other unknown path)
+    status, headers, body = _get(base + "/", _cookie(base))
+    assert "font-src 'self'" in headers["Content-Security-Policy"]
+    page = body.decode("utf-8")
+    assert '<link rel="stylesheet" href="/tokens.css">' in page and "{{" not in page
+    assert f'content="{theme.LIGHT.chrome}"' in page and f'content="{theme.DARK.chrome}"' in page
+    svg = remote.icon_svg("brush")
+    assert svg.startswith('<svg class="icon" aria-hidden="true"') and "style" not in svg and "<!--" not in svg
+    assert 'stroke="currentColor"' in svg
+    login = _get(base + "/")[2].decode("utf-8")  # (the PIN page)
+    assert '<link rel="stylesheet" href="/tokens.css">' in login and "{{" not in login
+    data = json.loads(_get(base + "/manifest.webmanifest")[2])
+    assert data["theme_color"] == theme.DARK.chrome and data["background_color"] == theme.DARK.bg
+
+
 def test_page_texts_exist():
     """Every text the page uses has a translation (or comes from the app's other texts)."""
     import re

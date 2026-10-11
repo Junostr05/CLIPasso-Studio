@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication
 
-from .. import paths
+from .. import __version__, paths
 
 
 @dataclass(frozen=True)
@@ -86,6 +86,44 @@ RADIUS_BAR = 9  # the segment / tab bar, badges
 RADIUS_CARD = 10  # cards, method cards, banners, menus
 RADIUS_LARGE = 11  # large buttons, the toggle switch
 RADIUS_FLOAT = 12  # floating toolbars and panels
+
+
+# 4.2: the phone page takes its colours and radii from here too – ``tokens_css()``, served as /tokens.css (phone.css
+# has none of its own). (CSS variable, palette field); "card" is the studio's surface, "line" its border
+PHONE_COLOURS = (
+    ("bg", "bg"), ("chrome", "chrome"), ("card", "surface"), ("surface-2", "surface2"), ("surface-3", "surface3"),
+    ("line", "border"), ("control", "control"), ("field", "field"), ("text", "text"), ("muted", "muted"),
+    ("faint", "faint"), ("accent", "accent"), ("accent-hover", "accent_hover"), ("accent-soft", "accent_soft"),
+    ("on-accent", "on_accent"), ("on-accent-soft", "on_accent_soft"), ("accent-text", "accent_text"),
+    ("accent-text-hover", "accent_text_hover"), ("focus", "focus"), ("success", "success"), ("warning", "warning"),
+    ("danger", "danger"), ("danger-text", "danger_text"), ("on-status", "on_status"), ("paper", "paper"),
+    ("ink", "ink"), ("on-paper", "on_paper"), ("more", "detail_more"), ("less", "detail_less"),
+)
+SCRIM_ALPHA = 0.72  # the round buttons over a sketch (favourite, delete): the dark chrome, the same in both themes
+
+
+def _rgba(colour: str, alpha: float) -> str:
+    h = colour.lstrip("#")
+    return f"rgba({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}, {alpha})"
+
+
+def tokens_css() -> str:
+    """The design tokens as CSS variables for the phone page: light, and dark when the browser asks for it (unless
+    the page is set to light) or the page is set to dark (``data-theme`` on the root)."""
+    radii = {"r-progress": RADIUS_PROGRESS, "r-segment": RADIUS_SEGMENT, "r-control": RADIUS_CONTROL,
+             "r-bar": RADIUS_BAR, "r-card": RADIUS_CARD, "r-large": RADIUS_LARGE, "r-float": RADIUS_FLOAT}
+
+    def block(p: Palette) -> str:
+        lines = [f"  --{name}: {getattr(p, field)};" for name, field in PHONE_COLOURS]
+        lines += [f"  --scrim: {_rgba(DARK.chrome, SCRIM_ALPHA)};", f"  --on-scrim: {DARK.text};",
+                  f"  color-scheme: {p.name};"]
+        return "\n".join(lines)
+
+    shared = "\n".join(f"  --{k}: {v}px;" for k, v in radii.items())
+    return (f"/* CLIPasso Studio {__version__} – the studio's design tokens (gui/theme.py, tokens_css) */\n"
+            f":root {{\n{shared}\n{block(LIGHT)}\n}}\n"
+            f"@media (prefers-color-scheme: dark) {{\n:root:not([data-theme=light]) {{\n{block(DARK)}\n}}\n}}\n"
+            f":root[data-theme=dark] {{\n{block(DARK)}\n}}\n")
 
 
 def page_layout(layout) -> None:

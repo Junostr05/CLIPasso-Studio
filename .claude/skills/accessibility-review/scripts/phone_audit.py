@@ -1,8 +1,8 @@
 """Accessibility audit of the phone page in a real browser – the page the phone remote serves, with the app running
 offscreen (tests/e2e/app_harness.py: own folders, one finished result, one SceneSketch result).
 
-For every tab (studio, sketch, gallery, queue) in light and dark it takes a phone-sized screenshot and checks what
-is on screen:
+For every tab (studio, gallery, queue, app – 4.2: the sketch is part of the studio) in light and dark it takes a
+phone-sized screenshot and checks what is on screen:
 - controls without a name, or whose name is only a symbol (✎, ×, ★ … – screen readers read the glyph's name);
 - touch targets below 24 × 24 px (WCAG 2.2 AA 2.5.8) and below 44 × 44 px (the comfortable size, 2.5.5 AAA);
 - text contrast below 4.5:1 (3:1 for large text), measured on the computed colours;
@@ -11,7 +11,7 @@ is on screen:
 
 Needs the dev requirements (PySide6, Playwright) and Chromium: python -m playwright install chromium.
 Usage: python .claude/skills/accessibility-review/scripts/phone_audit.py OUT_DIR [--lang en|de]
-       [--schemes light,dark] [--tabs studio,sketch,gallery,queue]
+       [--schemes light,dark] [--tabs studio,gallery,queue,app]
 The report is printed and saved as OUT_DIR/phone_audit.md; the screenshots are next to it.
 """
 
@@ -185,7 +185,7 @@ def main() -> int:
     ap.add_argument("out")
     ap.add_argument("--lang", default="en")
     ap.add_argument("--schemes", default="light,dark")
-    ap.add_argument("--tabs", default="studio,sketch,gallery,queue")
+    ap.add_argument("--tabs", default="studio,gallery,queue,app")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

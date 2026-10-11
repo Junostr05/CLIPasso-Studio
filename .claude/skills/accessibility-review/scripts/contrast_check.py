@@ -1,5 +1,6 @@
-"""WCAG contrast of CLIPasso Studio's colours: the studio (theme.py, dark and light) and the phone page (phone.css,
-light and dark) – text at 4.5:1 (1.4.3) and the parts of controls at 3:1 (1.4.11).
+"""WCAG contrast of CLIPasso Studio's colours: the studio (theme.py, dark and light) and the phone page (4.2: the
+same palettes as CSS variables – theme.PHONE_COLOURS, served as /tokens.css) – text at 4.5:1 (1.4.3) and the parts of
+controls at 3:1 (1.4.11).
 
 tests/test_theme_contrast.py already guards the studio's text colours; this adds the non-text pairs (borders,
 focus, tracks, checked states), the phone page and any pair you pass.
@@ -13,13 +14,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 THEME = ROOT / "clipasso_studio" / "gui" / "theme.py"
-PHONE_CSS = ROOT / "clipasso_studio" / "resources" / "phone" / "phone.css"
 TEXT, LARGE, UI = 4.5, 3.0, 3.0
 
 
@@ -55,11 +54,13 @@ def palettes() -> dict[str, dict[str, str]]:
 
 
 def phone_vars() -> dict[str, dict[str, str]]:
-    css = PHONE_CSS.read_text(encoding="utf-8")
-    light = dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{3,6})\s*;", re.search(r":root\s*\{([^}]*)\}", css).group(1)))
-    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css)
-    dark = {**light, **dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{3,6})\s*;", m.group(1) if m else ""))}
-    return {"light": light, "dark": dark}
+    """4.2: the phone page's variables – the studio's palettes under the names of theme.PHONE_COLOURS."""
+    tree = ast.parse(THEME.read_text(encoding="utf-8"))
+    names = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                 and getattr(n.targets[0], "id", "") == "PHONE_COLOURS")
+    pals = palettes()
+    modes = (("light", "LIGHT"), ("dark", "DARK"))
+    return {mode: {css: pals[pal][field] for css, field in names} for mode, pal in modes}
 
 
 def studio_pairs(p: dict[str, str]) -> list[tuple[str, str, str, float]]:
@@ -98,21 +99,19 @@ def studio_pairs(p: dict[str, str]) -> list[tuple[str, str, str, float]]:
 def phone_pairs(v: dict[str, str]) -> list[tuple[str, str, str, float]]:
     out = []
     for fg in ("text", "muted"):
-        for bg in ("bg", "card", "field"):
-            if fg in v and bg in v:
-                out.append((f"text: --{fg} on --{bg}", v[fg], v[bg], TEXT))
-    out += [("text: --on-accent on --accent (primary button)", v["on-accent"], v["accent"], TEXT),
-            ("text: --accent-text (.phase, the chosen tab) on --card", v.get("accent-text", v["accent"]), v["card"],
-             TEXT),
-            ("text: --accent-text on --bg", v.get("accent-text", v["accent"]), v["bg"], TEXT),
-            ("text: --on-paper (hints on the white paper) on #fff", v.get("on-paper", v["muted"]), "#FFFFFF", TEXT),
-            ("text: --warn-text on --warn", v["warn-text"], v["warn"], TEXT),
-            ("text: toast – #fff on #222", "#FFFFFF", "#222222", TEXT),
-            ("ui: --line (control border) on --card", v["line"], v["card"], UI),
-            ("ui: --field (control fill) on --card", v["field"], v["card"], UI),
+        for bg in ("bg", "chrome", "card", "surface-2", "surface-3"):
+            out.append((f"text: --{fg} on --{bg}", v[fg], v[bg], TEXT))
+    out += [("text: --on-accent on --accent (primary button, chosen segment)", v["on-accent"], v["accent"], TEXT),
+            ("text: --accent-text (.phase, the chosen tab) on --chrome", v["accent-text"], v["chrome"], TEXT),
+            ("text: --accent-text on --card", v["accent-text"], v["card"], TEXT),
+            ("text: --on-paper (hints on the white paper) on --paper", v["on-paper"], v["paper"], TEXT),
+            ("text: --warning (experimental badge) on --surface-2", v["warning"], v["surface-2"], TEXT),
+            ("text: toast – --text on --surface-3", v["text"], v["surface-3"], TEXT),
+            ("ui: --field (text-field border) on --card", v["field"], v["card"], UI),
+            ("ui: --focus (focus ring) on --card", v["focus"], v["card"], UI),
             ("ui: --accent (checked, range, checkbox) on --card", v["accent"], v["card"], UI),
-            ("ui: favourite star #f5b301 on --field", "#F5B301", v["field"], UI),
-            ("ui: best-result border #2fb36b on --card", "#2FB36B", v["card"], UI)]
+            ("ui: favourite star --warning on --surface-2", v["warning"], v["surface-2"], UI),
+            ("ui: best-result border --success on --card", v["success"], v["card"], UI)]
     return out
 
 

@@ -1,3 +1,20 @@
+## CLIPasso Studio 4.2 – the phone in the style of 4.0
+
+From 4.1 the app offers 4.2 as a small update (also from the phone). The phone page is renewed like the studio was
+in 4.0 – every function stays.
+
+- **One source for the colours:** the page takes its colours and corners from the app's design tokens (served as
+  `/tokens.css`) – dark and light the same as the studio's, with the same measured contrasts (text at least 4.5 : 1,
+  the edges of text fields and the focus ring at least 3 : 1); it has no colours of its own any more (a test keeps
+  it so). The font is the studio's Inter (served by the app, cached for a week), the icons are the studio's Lucide
+  icons. A visible focus ring shows where the keyboard is.
+- **Four tabs** – *Studio · Gallery · Queue · App*, with icons. The sketch tab is gone: the sketch is the top of the
+  studio as soon as a job draws there or a result is opened (its views, editing, rating, look and export).
+- **On a computer or a tablet held across** the page is laid out like the 4.0 studio: a header with the areas, the
+  steps on the left (image, method, preset, detail brush, parameters, compare), the sketch in the middle (look and
+  export below it), the job's sketches on the right, and a footer with the job's status, *Create sketch*, *To
+  queue*, *Pause* and *Cancel*.
+
 ## CLIPasso Studio 4.1 – Simplify keeps the shape
 
 From 4.0 the app offers 4.1 as a small update (also from the phone).

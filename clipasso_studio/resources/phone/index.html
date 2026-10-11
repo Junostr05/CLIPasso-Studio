@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>CLIPasso Studio</title>
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/phone.css">
 <link rel="icon" href="/icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon.png">
-<meta name="theme-color" content="#14161b">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="{{colour:light}}">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{{colour:dark}}">
 </head>
 <body>
 <script id="cfg" type="application/json">{{config}}</script>
@@ -17,19 +19,136 @@
 <header id="top">
   <div class="toprow">
     <div class="brand">CLIPasso Studio</div>
-    <div class="topbtns">
+    <div id="top-tabs" class="top-tabs"></div>
+    <div id="run-buttons" class="topbtns">
       <button id="pause" class="small" disabled></button>
       <button id="cancel" class="small" disabled></button>
     </div>
   </div>
   <div id="status" class="muted one-line">…</div>
   <button id="to-live" class="live" hidden></button>
-  <div class="bar"><div id="progress"></div></div>
+  <div id="top-bar" class="bar"><div id="progress"></div></div>
 </header>
 
 <main>
   <!-- ======================================================== studio -->
-  <section id="tab-studio" class="tab">
+  <section id="tab-studio" class="tab studio">
+    <!-- the sketch (4.2: no tab of its own) – on top while a job draws here or a sketch is shown -->
+    <div id="studio-sketch" class="studio-sketch" hidden>
+    <div class="card" id="sketch-card">
+      <div class="row between"><div id="view-name" class="muted one-line"></div>
+        <button id="full" class="small desk-only" data-t="full_screen"></button></div>
+      <div id="views" class="seg views" hidden>
+        <button data-v="sketch" class="on" data-t="view_sketch"></button>
+        <button data-v="compare" data-t="view_compare"></button>
+        <button data-v="attention" data-t="view_attention"></button>
+        <button data-v="mask" data-t="view_mask"></button>
+        <button data-v="condition" data-t="view_condition"></button>
+        <button data-v="all" data-t="view_all"></button>
+      </div>
+      <div id="scene-views" class="seg views" hidden>
+        <button data-view="sketch" class="on" data-t="view_sketch"></button>
+        <button data-view="background" data-t="view_background"></button>
+        <button data-view="matrix" data-t="view_matrix"></button>
+      </div>
+      <div id="scene-part" class="phase" hidden></div>
+      <div id="sketch-box" class="preview"><img id="sketch" alt="">
+        <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
+        <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="compare-view" class="preview split" hidden><img id="split-photo" alt=""><img id="split-sketch" alt=""></div>
+      <input id="split" class="split-range" type="range" min="0" max="100" value="50" data-label="split" hidden>
+      <div id="plain-view" class="preview" hidden><img id="plain-img" alt=""></div>
+      <div id="all-view" class="sheet-grid" hidden></div>
+      <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
+        <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
+      <div id="matrix-box" class="matrix-box" hidden>
+        <div class="axis-x"></div>
+        <div class="matrix-wrap"><div class="axis-y"></div><div id="matrix" class="matrix"></div></div>
+        <div class="muted small-text" data-t="matrix_hint"></div>
+      </div>
+      <div id="layer-switch" class="seg layers" hidden>
+        <button data-part="all" class="on" data-t="layer_all"></button>
+        <button data-part="background" data-t="layer_background"></button>
+        <button data-part="object" data-t="layer_object"></button>
+      </div>
+      <div id="edit-tools" class="edit-tools" hidden>
+        <div class="seg">
+          <button id="tool-erase" data-t="edit_eraser"></button>
+          <button id="tool-pen" data-t="edit_pen"></button>
+          <button id="edit-undo" class="small" aria-label="undo">↶</button>
+          <button id="edit-redo" class="small" aria-label="redo">↷</button>
+          <button id="edit-revert" class="small" data-t="edit_revert"></button>
+        </div>
+        <div class="row wrap">
+          <button id="open-simplify" class="small" data-t="edit_simplify"></button>
+          <button id="open-steps" class="small" data-t="edit_steps"></button>
+          <button id="play-lapse" class="small" data-t="edit_lapse"></button>
+          <select id="lapse-speed" class="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            <option value="2">2×</option><option value="4">4×</option></select>
+          <button id="rerun-cell" class="small" data-t="rerun_cell" hidden></button>
+        </div>
+        <div id="edit-hint" class="muted small-text"></div>
+        <div id="edit-panel" class="edit-panel" hidden>
+          <div class="row between"><b id="edit-panel-title"></b><span id="edit-panel-value" class="muted"></span></div>
+          <input id="edit-slider" type="range" min="0" max="0" value="0" aria-labelledby="edit-panel-title">
+          <div id="edit-panel-note" class="muted small-text"></div>
+          <div class="row"><button id="edit-apply" class="primary"></button><button id="edit-close" data-t="close"></button></div>
+        </div>
+        <details id="continue-box" class="group">
+          <summary data-t="edit_continue"></summary>
+          <div class="muted small-text" data-t="edit_continue_hint"></div>
+          <div class="row"><span class="muted grow" data-t="edit_new_strokes"></span>
+            <input id="cont-new" type="number" class="num" min="0" max="128" inputmode="numeric"></div>
+          <div class="row"><span class="muted grow" data-t="edit_iterations"></span>
+            <input id="cont-iter" type="number" class="num" min="1" max="20000" inputmode="numeric"></div>
+          <label class="check"><input id="cont-keep" type="checkbox" checked><span data-t="edit_keep_drawn"></span></label>
+          <div class="row"><button id="cont-go" class="primary" data-t="edit_continue_go"></button></div>
+        </details>
+      </div>
+      <div id="seeds" class="seeds"></div>
+      <div id="stats" class="stats"></div>
+      <button id="continue" class="primary" data-t="continue" hidden></button>
+    </div>
+    <div class="card desk-only-card" id="seeds-card">
+      <h2 data-t="sketches"></h2>
+      <div id="seeds-list"></div>
+    </div>
+    <div class="card" id="rate-card">
+      <h2 data-t="rating"></h2>
+      <div class="row"><button id="up" class="thumb">👍</button><button id="down" class="thumb">👎</button></div>
+      <div id="taste" class="muted"></div>
+    </div>
+    <div class="card" id="look-card">
+      <h2 data-t="look"></h2>
+      <div class="field"><label data-t="style"></label><select id="style"></select></div>
+      <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
+      <div class="row wrap">
+        <label class="check grow"><input id="vignette" type="checkbox"><span data-t="x_vignette"></span></label>
+        <input id="paper-color" type="color" class="color-sm" aria-label="color">
+        <button id="paper-color-reset" class="small" data-t="paper_color_reset"></button>
+      </div>
+      <div class="row wrap">
+        <a id="dl-svg" class="btn" download data-t="download_svg"></a>
+        <a id="dl-png" class="btn" download data-t="download_png"></a>
+      </div>
+    </div>
+    <div class="card" id="export-card" hidden>
+      <h2 data-t="export"></h2>
+      <div id="formats" class="chips"></div>
+      <div id="fmt-desc" class="muted small-text"></div>
+      <div id="export-opts" class="xopts"></div>
+      <div class="row">
+        <button id="export-go" class="primary"></button>
+        <button id="export-cancel" data-t="cancel" hidden></button>
+      </div>
+      <div id="export-state" hidden>
+        <div class="bar"><div id="export-progress"></div></div>
+        <div id="export-msg" class="muted"></div>
+      </div>
+      <a id="export-dl" class="btn primary wide" hidden></a>
+    </div>
+    </div>
+
     <div class="card" id="picture-card">
       <h2 data-t="picture"></h2>
       <div class="input-wrap"><img id="input" alt=""><div id="no-input" class="muted center" data-t="no_picture"></div></div>
@@ -133,118 +252,6 @@
     </div>
   </section>
 
-  <!-- ======================================================== sketch -->
-  <section id="tab-sketch" class="tab" hidden>
-    <div class="card" id="sketch-card">
-      <div class="row between"><div id="view-name" class="muted one-line"></div>
-        <button id="full" class="small desk-only" data-t="full_screen"></button></div>
-      <div id="views" class="seg views" hidden>
-        <button data-v="sketch" class="on" data-t="view_sketch"></button>
-        <button data-v="compare" data-t="view_compare"></button>
-        <button data-v="attention" data-t="view_attention"></button>
-        <button data-v="mask" data-t="view_mask"></button>
-        <button data-v="condition" data-t="view_condition"></button>
-        <button data-v="all" data-t="view_all"></button>
-      </div>
-      <div id="scene-views" class="seg views" hidden>
-        <button data-view="sketch" class="on" data-t="view_sketch"></button>
-        <button data-view="background" data-t="view_background"></button>
-        <button data-view="matrix" data-t="view_matrix"></button>
-      </div>
-      <div id="scene-part" class="phase" hidden></div>
-      <div id="sketch-box" class="preview"><img id="sketch" alt="">
-        <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
-        <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
-      <div id="compare-view" class="preview split" hidden><img id="split-photo" alt=""><img id="split-sketch" alt=""></div>
-      <input id="split" class="split-range" type="range" min="0" max="100" value="50" data-label="split" hidden>
-      <div id="plain-view" class="preview" hidden><img id="plain-img" alt=""></div>
-      <div id="all-view" class="sheet-grid" hidden></div>
-      <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
-        <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
-      <div id="matrix-box" class="matrix-box" hidden>
-        <div class="axis-x"></div>
-        <div class="matrix-wrap"><div class="axis-y"></div><div id="matrix" class="matrix"></div></div>
-        <div class="muted small-text" data-t="matrix_hint"></div>
-      </div>
-      <div id="layer-switch" class="seg layers" hidden>
-        <button data-part="all" class="on" data-t="layer_all"></button>
-        <button data-part="background" data-t="layer_background"></button>
-        <button data-part="object" data-t="layer_object"></button>
-      </div>
-      <div id="edit-tools" class="edit-tools" hidden>
-        <div class="seg">
-          <button id="tool-erase" data-t="edit_eraser"></button>
-          <button id="tool-pen" data-t="edit_pen"></button>
-          <button id="edit-undo" class="small" aria-label="undo">↶</button>
-          <button id="edit-redo" class="small" aria-label="redo">↷</button>
-          <button id="edit-revert" class="small" data-t="edit_revert"></button>
-        </div>
-        <div class="row wrap">
-          <button id="open-simplify" class="small" data-t="edit_simplify"></button>
-          <button id="open-steps" class="small" data-t="edit_steps"></button>
-          <button id="play-lapse" class="small" data-t="edit_lapse"></button>
-          <select id="lapse-speed" class="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option>
-            <option value="2">2×</option><option value="4">4×</option></select>
-          <button id="rerun-cell" class="small" data-t="rerun_cell" hidden></button>
-        </div>
-        <div id="edit-hint" class="muted small-text"></div>
-        <div id="edit-panel" class="edit-panel" hidden>
-          <div class="row between"><b id="edit-panel-title"></b><span id="edit-panel-value" class="muted"></span></div>
-          <input id="edit-slider" type="range" min="0" max="0" value="0" aria-labelledby="edit-panel-title">
-          <div id="edit-panel-note" class="muted small-text"></div>
-          <div class="row"><button id="edit-apply" class="primary"></button><button id="edit-close" data-t="close"></button></div>
-        </div>
-        <details id="continue-box" class="group">
-          <summary data-t="edit_continue"></summary>
-          <div class="muted small-text" data-t="edit_continue_hint"></div>
-          <div class="row"><span class="muted grow" data-t="edit_new_strokes"></span>
-            <input id="cont-new" type="number" class="num" min="0" max="128" inputmode="numeric"></div>
-          <div class="row"><span class="muted grow" data-t="edit_iterations"></span>
-            <input id="cont-iter" type="number" class="num" min="1" max="20000" inputmode="numeric"></div>
-          <label class="check"><input id="cont-keep" type="checkbox" checked><span data-t="edit_keep_drawn"></span></label>
-          <div class="row"><button id="cont-go" class="primary" data-t="edit_continue_go"></button></div>
-        </details>
-      </div>
-      <div id="seeds" class="seeds"></div>
-      <div id="stats" class="stats"></div>
-      <button id="continue" class="primary" data-t="continue" hidden></button>
-    </div>
-    <div class="card" id="rate-card">
-      <h2 data-t="rating"></h2>
-      <div class="row"><button id="up" class="thumb">👍</button><button id="down" class="thumb">👎</button></div>
-      <div id="taste" class="muted"></div>
-    </div>
-    <div class="card" id="look-card">
-      <h2 data-t="look"></h2>
-      <div class="field"><label data-t="style"></label><select id="style"></select></div>
-      <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
-      <div class="row wrap">
-        <label class="check grow"><input id="vignette" type="checkbox"><span data-t="x_vignette"></span></label>
-        <input id="paper-color" type="color" class="color-sm" aria-label="color">
-        <button id="paper-color-reset" class="small" data-t="paper_color_reset"></button>
-      </div>
-      <div class="row wrap">
-        <a id="dl-svg" class="btn" download data-t="download_svg"></a>
-        <a id="dl-png" class="btn" download data-t="download_png"></a>
-      </div>
-    </div>
-    <div class="card" id="export-card" hidden>
-      <h2 data-t="export"></h2>
-      <div id="formats" class="chips"></div>
-      <div id="fmt-desc" class="muted small-text"></div>
-      <div id="export-opts" class="xopts"></div>
-      <div class="row">
-        <button id="export-go" class="primary"></button>
-        <button id="export-cancel" data-t="cancel" hidden></button>
-      </div>
-      <div id="export-state" hidden>
-        <div class="bar"><div id="export-progress"></div></div>
-        <div id="export-msg" class="muted"></div>
-      </div>
-      <a id="export-dl" class="btn primary wide" hidden></a>
-    </div>
-  </section>
-
   <!-- ======================================================== gallery -->
   <section id="tab-gallery" class="tab" hidden>
     <div class="card">
@@ -290,6 +297,7 @@
   <!-- ======================================================== the studio on a wide screen: three columns -->
   <div id="desk" class="desk-grid" hidden>
     <div id="desk-left" class="col"></div><div id="desk-center" class="col"></div><div id="desk-right" class="col"></div>
+    <div id="desk-footer" class="desk-footer"><div id="desk-job" class="desk-job"></div></div>
   </div>
 
   <!-- ======================================================== the app: version and updates -->
@@ -343,11 +351,10 @@
 </main>
 
 <nav id="tabs" role="tablist">
-  <button data-tab="studio" class="on" role="tab" aria-selected="true"><span aria-hidden="true">✎</span><span data-t="tab_studio"></span></button>
-  <button data-tab="sketch" role="tab" aria-selected="false"><span aria-hidden="true">◐</span><span data-t="tab_sketch"></span></button>
-  <button data-tab="gallery" role="tab" aria-selected="false"><span aria-hidden="true">▦</span><span data-t="tab_gallery"></span></button>
-  <button data-tab="queue" role="tab" aria-selected="false"><span aria-hidden="true">☰</span><span data-t="tab_queue"></span></button>
-  <button data-tab="app" role="tab" aria-selected="false"><span aria-hidden="true">⚙</span><span data-t="tab_app"></span></button>
+  <button data-tab="studio" class="on" role="tab" aria-selected="true">{{icon:brush}}<span data-t="tab_studio"></span></button>
+  <button data-tab="gallery" role="tab" aria-selected="false">{{icon:images}}<span data-t="tab_gallery"></span></button>
+  <button data-tab="queue" role="tab" aria-selected="false">{{icon:list-todo}}<span data-t="tab_queue"></span></button>
+  <button data-tab="app" role="tab" aria-selected="false">{{icon:ellipsis}}<span data-t="tab_app"></span></button>
 </nav>
 
 <!-- ========================================================== detail brush -->

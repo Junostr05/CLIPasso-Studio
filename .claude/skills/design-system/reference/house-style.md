@@ -10,19 +10,25 @@ when they disagree – then fix this file too.
 |---|---|---|
 | Tech | PySide6 Qt Widgets, Fusion style, one QSS from `theme.stylesheet()` | Plain HTML/CSS/JS, no framework |
 | Files | `gui/theme.py`, `gui/widgets/common.py`, `gui/pages/*.py`, `gui/*.py` | `resources/phone/index.html`, `phone.css`, `phone.js`, `login.*` |
-| Colours | `Palette` DARK / LIGHT in `theme.py` | CSS variables in `phone.css` `:root` (+ `prefers-color-scheme: dark`) |
+| Colours | `Palette` DARK / LIGHT in `theme.py` | 4.2: the same palettes – `theme.tokens_css()`, served as `/tokens.css` (names: `PHONE_COLOURS`) |
 | Text | `tr("ui.…")` from `resources/i18n/{en,de}.json` | `data-t="name"` / `T.name` = key `ui.phone.page.name` (extra names: `texts.update(...)` in `gui/phone.py`) |
 | Served by | – | `gui/remote.py` (HTTP), API in `gui/phone_api.py` |
 | Tests | `tests/test_gui.py`, `test_theme_contrast.py`, `test_wrap_row.py` … | `tests/e2e/test_phone_page.py` (Playwright + Chromium), `test_phone*.py` |
 
-The two palettes are separate on purpose (web vs desktop) but must read as one app – same accent family, same
-text colours. `token_audit.py` lists where they drift. On the phone, `--accent` is the fill (white text on it),
-`--accent-text` the accent as text, `--on-paper` text on the white sketch paper; `test_theme_contrast.py` checks the
-phone's text pairs too.
+4.2: one source. The phone page has no colours or radii of its own: `theme.tokens_css()` writes the palettes
+(`PHONE_COLOURS`: `--card` is the studio's surface, `--surface-2/3`, `--line` the border, `--control` a button's edge,
+`--field` a text field's edge) and `RADIUS_*` (`--r-control`, `--r-card` …) as CSS variables, served as `/tokens.css`
+before `phone.css`; Inter comes from `/fonts/…`, the icons are the studio's Lucide files, inline through
+`{{icon:name}}` in the HTML. `--accent` is the fill (white text on it), `--accent-text` the accent as text,
+`--on-paper` text on the white sketch paper. `test_design_tokens.py` keeps colour literals and px radii out of
+`phone.css`; `test_theme_contrast.py` checks the phone's pairs.
 
 Phone page semantics: a chosen tab / segment / toggle is set with `setOn(el, on)` in `phone.js` (the class `on` plus
 `aria-selected` for tabs, `aria-pressed` otherwise); a control without visible text gets its name from
-`data-label="<text name>"` (or `aria-labelledby`); glyphs inside buttons sit in `<span aria-hidden="true">`.
+`data-label="<text name>"` (or `aria-labelledby`); glyphs inside buttons sit in `<span aria-hidden="true">`, icons
+are `<svg class="icon" aria-hidden="true">`. 4.2: four tabs (Studio · Gallery · Queue · App); the sketch is the top of
+the studio (`#studio-sketch`, CSS `order`) while there is one to see; on a wide screen (`body.desk`) the parts move
+into a header, three columns and a footer like the PC (`DESK` in `phone.js`: [part, where to]).
 
 ## Tokens (desktop)
 

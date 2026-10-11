@@ -16,6 +16,7 @@ import html
 import ipaddress
 import json
 import os
+import re
 import secrets
 import socket
 import threading
@@ -27,7 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from PySide6.QtCore import QObject, Signal
 
 from .. import __version__, paths
-
+from . import theme
 from .app_settings import app_settings
 
 DEFAULT_PORT = 8765
@@ -300,31 +301,49 @@ def _resource(name: str) -> bytes:
     return paths.resource("phone", name).read_bytes()
 
 
+_ICON = re.compile(r"\{\{icon:([a-z0-9-]+)\}\}")
+
+
+def icon_svg(name: str) -> str:
+    """4.2: a Lucide icon of the studio, inline in the page – drawn in the text colour around it
+    (``currentColor``), hidden from screen readers (the button's text says what it does); no style attribute."""
+    svg = paths.resource("icons", f"{name}.svg").read_text(encoding="utf-8")
+    svg = svg[svg.index("<svg"):]  # (without the licence comment: it is in LICENSE-lucide.txt)
+    svg = re.sub(r'\s*class="[^"]*"', "", svg, count=1)
+    svg = svg.replace("<svg", '<svg class="icon" aria-hidden="true" focusable="false"', 1)
+    return re.sub(r">\s+<", "><", re.sub(r"\s+", " ", svg)).strip()
+
+
+def _fill(body: str, texts: dict, cfg: dict) -> str:
+    """A page with its language, its data (JSON, read by the script – nothing runs inline), its icons and the
+    colour of the browser's bar."""
+    data = json.dumps(cfg).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    body = _ICON.sub(lambda m: icon_svg(m.group(1)), body)
+    body = body.replace("{{colour:light}}", theme.LIGHT.chrome).replace("{{colour:dark}}", theme.DARK.chrome)
+    return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", data)
+
+
 def page(texts: dict, access: str) -> str:
-    """The phone page (``resources/phone/index.html``) with its texts and the access code (as JSON data, read by
-    ``phone.js``; nothing runs inline)."""
-    cfg = json.dumps({"token": access, "texts": texts, "lang": texts.get("lang", "en"), "version": __version__})
-    cfg = cfg.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    body = _resource("index.html").decode("utf-8")
-    return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
+    """The phone page (``resources/phone/index.html``) with its texts and the access code."""
+    cfg = {"token": access, "texts": texts, "lang": texts.get("lang", "en"), "version": __version__}
+    return _fill(_resource("index.html").decode("utf-8"), texts, cfg)
 
 
 def login_page(texts: dict) -> str:
     """The page for the PIN (no access code in it)."""
-    cfg = json.dumps({"texts": texts, "lang": texts.get("lang", "en")})
-    cfg = cfg.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    body = _resource("login.html").decode("utf-8")
-    return body.replace("{{lang}}", html.escape(str(texts.get("lang", "en")))).replace("{{config}}", cfg)
+    return _fill(_resource("login.html").decode("utf-8"), texts, {"texts": texts, "lang": texts.get("lang", "en")})
 
 
 def manifest() -> bytes:
     """So the page can be put on the home screen like an app (it opens at the fixed address)."""
     return json.dumps({"name": "CLIPasso Studio", "short_name": "CLIPasso", "start_url": "/", "scope": "/",
-                       "display": "standalone", "background_color": "#14161b", "theme_color": "#14161b",
+                       "display": "standalone", "background_color": theme.DARK.bg, "theme_color": theme.DARK.chrome,
                        "icons": [{"src": "/icon.png", "sizes": "256x256", "type": "image/png"}]}).encode("utf-8")
 
 
 PUBLIC = {"phone.css": "text/css; charset=utf-8", "login.js": "text/javascript; charset=utf-8"}
+FONTS = ("Inter-Regular.ttf", "Inter-Medium.ttf", "Inter-SemiBold.ttf", "Inter-Bold.ttf")  # 4.2: /fonts/<name>
+FONT_CACHE = "public, max-age=604800"  # a week (a new version may bring new fonts – then the page asks again)
 COOKIE_AGE = 400 * 24 * 3600  # (the longest browsers keep a cookie); renewed on every visit
 
 
@@ -333,7 +352,7 @@ def access_cookie() -> str:
 
 
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; "
-            "connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'")
+            "font-src 'self'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'")
 SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
 
 
@@ -350,10 +369,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        headers = dict(headers or {})
+        self.send_header("Cache-Control", headers.pop("Cache-Control", "no-store"))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        for k, v in (headers or {}).items():
+        for k, v in headers.items():
             self.send_header(k, v)
         self.end_headers()
         if self.command != "HEAD":
@@ -488,6 +508,13 @@ class _Handler(BaseHTTPRequestHandler):
         name = parsed.path.lstrip("/")
         if name in PUBLIC:  # (what the sign-in page needs: nothing secret)
             self._send(200, _resource(name), PUBLIC[name])
+            return
+        if name == "tokens.css":  # 4.2: the studio's colours and radii
+            self._send(200, theme.tokens_css().encode("utf-8"), "text/css; charset=utf-8")
+            return
+        if name.startswith("fonts/") and name[len("fonts/"):] in FONTS:  # 4.2: Inter, as in the studio
+            self._send(200, paths.resource("fonts", name[len("fonts/"):]).read_bytes(), "font/ttf",
+                       {"Cache-Control": FONT_CACHE})
             return
         if name in ("icon.png", "favicon.ico"):
             self._send(200, paths.resource("app_icon.png").read_bytes(), "image/png")

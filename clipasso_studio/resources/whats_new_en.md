@@ -1,4 +1,12 @@
-## New in 4.1: Simplify keeps the shape
+## New in 4.2: the phone in the style of 4.0
+
+- **The same colours as the studio:** the phone page takes dark and light straight from the app – with the same measured contrasts (every text at least 4.5 : 1, the edges of text fields 3 : 1), the same font (Inter) and the same icons. A visible focus ring shows where the keyboard is.
+- **Four tabs:** *Studio · Gallery · Queue · App*, each with its icon. The sketch has no tab of its own any more: it is at the top of the studio as soon as a job draws or you open a result – with its views, the editing tools, the rating and the export.
+- **On a computer or a tablet held across** the page looks like the studio on the PC: the areas at the top, the steps on the left (image, method, preset and the parameters), the sketch in the middle, the job's sketches on the right and the job at the bottom with *Create sketch*, *Pause* and *Cancel*.
+
+---
+
+**New in 4.1: Simplify keeps the shape**
 
 - **Outlines before areas:** *Simplify* now leaves out the strokes that fill dark areas first – thinned evenly where they crowd instead of emptied at once. The outlines of the subject stay longest, so the shape is still clear with a quarter of the strokes. What CLIP measures counts, too.
 - A sketch measured by 4.0 or earlier is measured again on the first *Simplify* (a few seconds).

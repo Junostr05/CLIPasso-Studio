@@ -1,4 +1,12 @@
-## Neu in 4.1: Vereinfachen behält die Form
+## Neu in 4.2: das Handy im Stil von 4.0
+
+- **Dieselben Farben wie das Studio:** Die Handy-Seite nimmt Dunkel und Hell direkt aus der App – mit denselben geprüften Kontrasten (jede Schrift mindestens 4,5 : 1, die Ränder von Eingabefeldern 3 : 1), derselben Schrift (Inter) und denselben Symbolen. Ein sichtbarer Fokusring zeigt, wo die Tastatur gerade ist.
+- **Vier Reiter:** *Studio · Galerie · Warteschlange · App*, jeder mit seinem Symbol. Die Skizze hat keinen eigenen Reiter mehr: Sie steht oben im Studio, sobald ein Auftrag zeichnet oder du ein Ergebnis öffnest – mit ihren Ansichten, den Werkzeugen zum Bearbeiten, der Bewertung und dem Export.
+- **Am Computer oder Tablet im Querformat** sieht die Seite aus wie das Studio am PC: oben die Bereiche, links die Schritte (Bild, Methode, Voreinstellung und die Parameter), in der Mitte die Skizze, rechts die Skizzen des Auftrags und unten der Auftrag mit *Skizze erstellen*, *Pause* und *Abbrechen*.
+
+---
+
+**Neu in 4.1: Vereinfachen behält die Form**
 
 - **Umrisse vor Flächen:** *Vereinfachen* lässt jetzt zuerst die Striche weg, die dunkle Flächen füllen – dort, wo sie dicht liegen, gleichmäßig ausgedünnt statt auf einmal geleert. Die Umrisse des Motivs bleiben am längsten; so ist die Form auch mit einem Viertel der Striche noch zu erkennen. Was CLIP misst, zählt weiter mit.
 - Eine Skizze, die mit 4.0 oder früher gemessen wurde, wird beim ersten *Vereinfachen* einmal neu gemessen (einige Sekunden).

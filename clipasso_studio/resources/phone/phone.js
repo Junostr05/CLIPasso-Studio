@@ -70,19 +70,24 @@ for (const node of document.querySelectorAll("[data-t]")) node.textContent = t(n
 for (const node of document.querySelectorAll("[data-label]")) node.setAttribute("aria-label", t(node.dataset.label));
 
 let tab = "studio";
-let desk = false;  // the studio layout of a wide screen (three columns): studio and sketch are one
+let desk = false;  // the studio layout of a wide screen: a header, three columns and a footer – like the PC
 function showTab(name) {
-  if (desk && name === "sketch") name = "studio";
   tab = name;
   for (const b of document.querySelectorAll("#tabs button")) setOn(b, b.dataset.tab === name);
   for (const s of document.querySelectorAll("section.tab")) s.hidden = s.id !== "tab-" + name;
   $("desk").hidden = !(desk && name === "studio");
   if (desk && name === "studio") $("tab-studio").hidden = true;
   if (name === "gallery") loadResults();
-  if ((name === "sketch" || (desk && name === "studio")) && S) renderSketch();
+  if (name === "studio" && S) renderSketch();
   if (name === "queue") loadQueue();
   if (name === "app") { loadUpdate(); loadAppSettings(); loadModels(); }
   window.scrollTo(0, 0);
+}
+// 4.2: the sketch has no tab of its own – it is the top of the studio while it is shown (a result opened from the
+// gallery or the queue, the running job); on a wide screen the middle column
+function showStudio() {
+  $("studio-sketch").hidden = false;  // (at once – the next answer of the app keeps it so)
+  showTab("studio");
 }
 for (const b of document.querySelectorAll("#tabs button")) b.onclick = () => showTab(b.dataset.tab);
 
@@ -175,7 +180,7 @@ function renderTop() {
 
 $("to-live").onclick = async () => {
   const a = await act("live");
-  if (a.ok) showTab("sketch");
+  if (a.ok) showStudio();
 };
 
 $("pause").onclick = () => fetch(S && S.paused ? "/api/resume" : "/api/pause",
@@ -241,7 +246,7 @@ async function renderHistory() {
   $("history-title").textContent = t("history_title", {n: h.jobs.length});
   $("history-list").replaceChildren(...h.jobs.map((j) => el("button", {
     class: j.shown ? "sel" : "", title: j.created + (j.score ? " · " + j.score : ""),
-    onclick: async () => { const a = await act("open", {dir: j.dir}); if (a.ok) showTab("sketch"); }},
+    onclick: async () => { const a = await act("open", {dir: j.dir}); if (a.ok) showStudio(); }},
     el("img", {src: "/api/file/result?d=" + encodeURIComponent(j.dir), alt: "", loading: "lazy"}),
     el("span", {text: j.method}), el("span", {text: j.created.slice(5, 10)}))));
 }
@@ -574,7 +579,7 @@ async function start(queue, memory) {
   }
   if (a.ok) {
     $("start-msg").textContent = a.queued || queue ? T.added : T.started;
-    if (!queue) showTab("sketch");
+    if (!queue) showStudio();
   }
 }
 $("start").onclick = () => start(false);
@@ -876,6 +881,7 @@ function renderViews() {
 function renderSketch() {
   renderScene();
   const has = S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
+  $("studio-sketch").hidden = !has && !S.running_here;  // (on the phone: on top while there is a sketch to see)
   $("no-sketch").hidden = has;
   $("no-sketch").textContent = S.running_here ? (S.status || T.running) : T.no_sketch;
   $("view-name").textContent = S.view || "";
@@ -888,6 +894,7 @@ function renderSketch() {
     $("sketch").removeAttribute("src");
     lastSeen.sketch = "";
   }
+  $("seeds-card").hidden = S.seeds.length < 2;  // (the wide screen's right column: only with several sketches)
   const seedsSig = JSON.stringify(S.seeds) + S.shown + S.style;
   if (seedsSig !== lastSeen.seeds) {
     lastSeen.seeds = seedsSig;
@@ -918,7 +925,7 @@ function renderSketch() {
   $("dl-png").classList.toggle("off", !has);
   $("continue").hidden = !S.can_continue;
   $("export-card").hidden = !has || !X.info;
-  if (has && (tab === "sketch" || (desk && tab === "studio"))) loadExportInfo(false);
+  if (has && tab === "studio") loadExportInfo(false);
   renderViews();
   renderEdit();
 }
@@ -1286,7 +1293,7 @@ $("viewer-open").onclick = async () => {
   const r = G.items[G.at];
   if (!r) return;
   const a = await act("open", {dir: r.dir});
-  if (a.ok) { closeViewer(); showTab("sketch"); }
+  if (a.ok) { closeViewer(); showStudio(); }
 };
 
 let dragging = null;  // (a waiting job being dragged: the list is not rebuilt meanwhile)
@@ -1435,7 +1442,7 @@ async function loadCompare() {
     return el("div", {class: "compare-item" + (m.best ? " best" : ""), onclick: async () => {
       if (!m.dir) return;
       const a = await act("open", {dir: m.dir});
-      if (a.ok) showTab("sketch");
+      if (a.ok) showStudio();
     }}, el("b", {text: (m.best ? "★ " : "") + m.name}),
       m.dir ? el("img", {src: `/api/file/result?d=${encodeURIComponent(m.dir)}`, alt: "", loading: "lazy"}) : null,
       el("span", {class: "small-text", text: [m.score !== null ? "CLIP " + m.score.toFixed(1) : "", m.time,
@@ -1832,13 +1839,18 @@ $("cont-go").onclick = async () => {
 };
 
 // ------------------------------------------------------------------ the studio layout of a wide screen (3.8)
-// On a computer or a tablet held across, the page looks almost like the studio on the PC: the areas in a bar on the
-// left, the studio in three columns – the picture and the result on the left, the sketch in the middle, the settings
-// on the right. The cards move into the columns (and back to where they were for the phone layout).
+// On a computer or a tablet held across, the page looks like the studio on the PC (4.2): a header with the areas,
+// on the left the steps (image, method, preset and the settings), in the middle the sketch, on the right the job's
+// sketches, at the bottom the job – status, start, pause, cancel. The parts move there (and back to where they were
+// for the phone layout): [what, where to].
 const DESK = [
-  ["picture-card", "left"], ["details-card", "left"], ["look-card", "left"], ["export-card", "left"],
-  ["method-card", "center"], ["sketch-card", "center"], ["rate-card", "center"], ["startbar", "center"],
-  ["preset-card", "right"], ["params-card", "right"], ["compare-card", "right"],
+  ["tabs", "top-tabs"],
+  ["picture-card", "desk-left"], ["method-card", "desk-left"], ["preset-card", "desk-left"],
+  ["details-card", "desk-left"], ["params-card", "desk-left"], ["compare-card", "desk-left"],
+  ["sketch-card", "desk-center"], ["look-card", "desk-center"], ["export-card", "desk-center"],
+  ["seeds-card", "desk-right"], ["seeds", "seeds-list"], ["rate-card", "desk-right"],
+  ["status", "desk-job"], ["to-live", "desk-job"], ["top-bar", "desk-job"],
+  ["startbar", "desk-footer"], ["run-buttons", "desk-footer"],
 ];
 const wide = window.matchMedia ? window.matchMedia("(min-width: 1024px) and (orientation: landscape)") : null;
 
@@ -1857,12 +1869,12 @@ function applyLayout() {
   if (want === desk) return;
   desk = want;
   document.body.classList.toggle("desk", desk);
-  for (const [id, column] of DESK) {
-    const card = $(id);
-    if (!card) continue;
-    if (!card.home) { card.home = document.createComment(id); card.before(card.home); }  // (its place on the phone)
-    if (desk) $("desk-" + column).append(card);
-    else card.home.after(card);
+  for (const [id, where] of DESK) {
+    const part = $(id);
+    if (!part) continue;
+    if (!part.home) { part.home = document.createComment(id); part.before(part.home); }  // (its place on the phone)
+    if (desk) $(where).append(part);
+    else part.home.after(part);
   }
   showTab(tab);
 }

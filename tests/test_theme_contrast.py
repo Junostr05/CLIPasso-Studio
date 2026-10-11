@@ -80,11 +80,11 @@ def test_the_contrast_formula():
 
 
 def _phone_palettes() -> dict[str, dict[str, str]]:
-    """The phone page's colours (phone.css): light from :root, dark from the prefers-color-scheme block."""
+    """The phone page's colours – 4.2: the studio's tokens (``theme.tokens_css()``, served as /tokens.css): light
+    from :root, dark from the prefers-color-scheme block."""
     import re
-    from pathlib import Path
 
-    css = (Path(theme.__file__).parent.parent / "resources" / "phone" / "phone.css").read_text(encoding="utf-8")
+    css = theme.tokens_css()
     pick = lambda block: dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{6})\s*;", block))  # noqa: E731
     light = pick(re.search(r":root\s*\{([^}]*)\}", css).group(1))
     dark = {**light, **pick(re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css).group(1))}
@@ -94,12 +94,25 @@ def _phone_palettes() -> dict[str, dict[str, str]]:
 @pytest.mark.parametrize("name", ["light", "dark"])
 def test_phone_page_text_colours_meet_wcag_aa(name):
     """4.0: the phone page's text colours meet AA as well – white on the accent of the buttons, the accent as text,
-    the muted text, the hints on the white paper (the dark page's buttons had 3.2:1)."""
+    the muted text, the hints on the white paper (the dark page's buttons had 3.2:1). 4.2: they are the studio's."""
     v = _phone_palettes()[name]
-    pairs_ = [(f"{fg} on {bg}", v[fg], v[bg]) for fg in ("text", "muted") for bg in ("bg", "card", "field")]
-    pairs_ += [(f"accent-text on {bg}", v["accent-text"], v[bg]) for bg in ("bg", "card")]
+    pairs_ = [(f"{fg} on {bg}", v[fg], v[bg]) for fg in ("text", "muted") for bg in ("bg", "chrome", "card",
+                                                                                   "surface-2", "surface-3")]
+    pairs_ += [(f"{fg} on {bg}", v[fg], v[bg]) for fg in ("accent-text", "warning", "danger-text")
+               for bg in ("bg", "chrome", "card", "surface-2")]
     pairs_ += [("on-accent on accent (buttons)", v["on-accent"], v["accent"]),
-               ("on-paper on white paper", v["on-paper"], "#FFFFFF"),
-               ("warn-text on warn", v["warn-text"], v["warn"])]
+               ("on-accent on accent-hover", v["on-accent"], v["accent-hover"]),
+               ("on-paper on paper", v["on-paper"], v["paper"])]
     low = [f"{what}: {contrast(fg, bg):.2f}" for what, fg, bg in pairs_ if contrast(fg, bg) < AA]
     assert low == []
+    edges = [("field (text-field border) on card", v["field"], v["card"]), ("focus on card", v["focus"], v["card"]),
+             ("focus on bg", v["focus"], v["bg"]), ("warning edge on card", v["warning"], v["card"])]
+    assert [f"{w}: {contrast(a, b):.2f}" for w, a, b in edges if contrast(a, b) < 3.0] == []
+
+
+def test_the_phone_page_has_the_studio_s_colours():
+    """4.2: one source – the page's light and dark colours are the studio's palettes, nothing of its own."""
+    v = _phone_palettes()
+    for name, p in (("light", theme.LIGHT), ("dark", theme.DARK)):
+        assert {k: v[name][k] for k, _ in theme.PHONE_COLOURS} == \
+            {k: getattr(p, field) for k, field in theme.PHONE_COLOURS}, name

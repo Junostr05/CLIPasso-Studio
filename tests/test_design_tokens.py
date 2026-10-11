@@ -94,3 +94,23 @@ def test_dialogs_use_the_dialog_spacing():
             if m.group(1) not in own_spacing:
                 assert "theme.dialog_layout(" in init, f"{path.name}: {m.group(1)}"
     assert len(found) >= 20 and own_spacing <= set(found)
+
+
+def test_the_phone_page_sets_no_colour_of_its_own():
+    """4.2: phone.css has no colour and no radius of its own – every var(--…) it uses comes from /tokens.css (the
+    studio's palettes); the shapes are var(--r-…) or circles (50 %). Drawing colours in phone.js (the brush, the
+    eraser's trace) are drawing colours, like the studio's."""
+    import re
+
+    from clipasso_studio import paths
+    from clipasso_studio.gui import theme
+
+    css = paths.resource("phone", "phone.css").read_text(encoding="utf-8")
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    assert re.findall(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(", css) == []
+    named = re.findall(r":\s*[^;{}]*\b(white|black|red|green|blue|gray|grey|orange|yellow)\b", css)
+    assert named == []
+    defined = set(re.findall(r"--([\w-]+):", theme.tokens_css()))
+    assert set(re.findall(r"var\(--([\w-]+)\)", css)) - defined == set()
+    radii = re.findall(r"border-radius:\s*([^;}]+)", css)
+    assert [r for r in radii if not re.fullmatch(r"var\(--r-[a-z]+\)|50%|0", r.strip())] == []

@@ -1,7 +1,7 @@
 """Design-token audit of CLIPasso Studio: where the UI leaves the theme.
 
-Reads the tokens from clipasso_studio/gui/theme.py (DARK, LIGHT, SPACE_*) and the phone page's CSS variables
-(resources/phone/phone.css) without importing Qt, then lists:
+Reads the tokens from clipasso_studio/gui/theme.py (DARK, LIGHT, SPACE_*; 4.2: the phone page's CSS variables are
+the same palettes – PHONE_COLOURS, served as /tokens.css) without importing Qt, then lists:
 
 - hard-coded colours in the GUI code – a colour that equals a token value is the strongest finding (it will be
   wrong in the other theme), the rest are off-palette; colours of the sketch itself (export, paper, brush,
@@ -121,25 +121,26 @@ def scan_gui(theme: dict) -> dict:
     return out
 
 
-def read_phone_css() -> dict[str, dict[str, str]]:
-    css = (PHONE / "phone.css").read_text(encoding="utf-8")
-    blocks = {"light": "", "dark": ""}
-    m = re.search(r":root\s*\{([^}]*)\}", css)
-    blocks["light"] = m.group(1) if m else ""
-    m = re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*:root[^{]*\{([^}]*)\}", css)
-    blocks["dark"] = m.group(1) if m else ""
-    out = {k: dict(re.findall(r"--([\w-]+):\s*([^;]+);", v)) for k, v in blocks.items()}
-    out["dark"] = {**out["light"], **out["dark"]}  # (the dark block only overrides)
-    return out
+def phone_colours() -> dict[str, str]:
+    """4.2: which phone variable is which studio token (theme.PHONE_COLOURS)."""
+    tree = ast.parse(THEME.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "PHONE_COLOURS":
+            return dict(ast.literal_eval(node.value))
+    return {}
 
 
-# which phone variable plays the role of which studio token
-PHONE_TO_QT = {"bg": "bg", "card": "surface", "text": "text", "muted": "muted", "accent": "accent",
-               "on-accent": "on_accent", "line": "border", "field": "surface2"}
+PHONE_TO_QT = phone_colours()
+
+
+def read_phone_css(theme: dict) -> dict[str, dict[str, str]]:
+    """The phone page's colours: 4.2 – theme.tokens_css() makes them from the palettes (nothing in phone.css)."""
+    pals = {"light": theme["palettes"].get("LIGHT", {}), "dark": theme["palettes"].get("DARK", {})}
+    return {mode: {var: pals[mode][tok] for var, tok in PHONE_TO_QT.items() if tok in pals[mode]} for mode in pals}
 
 
 def scan_phone(theme: dict) -> dict:
-    css_vars = read_phone_css()
+    css_vars = read_phone_css(theme)
     pals = {"light": theme["palettes"].get("LIGHT", {}), "dark": theme["palettes"].get("DARK", {})}
     drift = []
     for mode in ("light", "dark"):
@@ -221,10 +222,10 @@ def report(theme: dict, gui: dict, phone: dict, show_all: bool) -> str:
     lines.append("")
     section("Phone page vs studio palette", phone["drift"],
             lambda r: f"- {r['mode']}: {r['phone']} {r['phone_value']} ≠ {r['studio']} {r['studio_value']}",
-            "The phone page has its own CSS variables. Differences are not always wrong (web vs desktop), but the "
-            "accent and text colours should read as the same app.")
-    section("Colour literals on the phone page (outside :root)", phone["literals"],
-            lambda r: f"- {r['file']}:{r['line']} {r['value']} — `{r['code']}`")
+            "4.2: the phone page's variables are made from the palettes (theme.tokens_css) – this stays empty.")
+    section("Colour literals on the phone page", phone["literals"],
+            lambda r: f"- {r['file']}:{r['line']} {r['value']} — `{r['code']}`",
+            "phone.css has none (a test keeps it so); phone.js may draw with colours (brush, eraser trace, paper).")
     by_file: dict[str, int] = {}
     for r in gui["artwork"]:
         by_file[r["file"]] = by_file.get(r["file"], 0) + 1
