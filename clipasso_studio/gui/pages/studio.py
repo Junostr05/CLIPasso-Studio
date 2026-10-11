@@ -100,19 +100,8 @@ class StudioPage(QWidget):
         root = QVBoxLayout(self)
         theme.page_layout(root)
 
-        # ---------------------------------------------------------------- header
-        head = QHBoxLayout()
-        titles = QVBoxLayout()
-        titles.setSpacing(2)
-        self.title = label("", "title")
-        self.subtitle = label("", "muted")
-        titles.addWidget(self.title)
-        titles.addWidget(self.subtitle)
-        head.addLayout(titles)
-        head.addStretch(1)
-        self.device_badge = label("", "badge")
-        head.addWidget(self.device_badge, 0, Qt.AlignVCenter)
-        root.addLayout(head)
+        # 4.0: the page has no title row – the window's header names it and shows the hardware
+        self.device_text = ""  # the running job's device ("GPU · CUDA", "CPU"; "2× …" with several cards)
         self.picker = MethodPicker()
         root.addWidget(self.picker)
 
@@ -1358,7 +1347,7 @@ class StudioPage(QWidget):
         if kind == "job_start":
             text = self._device_text(data.get("device", ""))
             n = len(getattr(job, "devices", ()) or ())
-            self.device_badge.setText(f"{n}× {text}" if n > 1 else text)  # (one worker per graphics card)
+            self.device_text = f"{n}× {text}" if n > 1 else text  # (one worker per graphics card)
         elif kind == "stage":
             n = job.seeds.index(seed) + 1 if seed in job.seeds else 1
             extra = {k: v for k, v in data.items() if k not in ("name", "seed", "n", "total")}  # e.g. step/steps
@@ -1815,7 +1804,7 @@ class StudioPage(QWidget):
 
     def _update_estimate(self):
         s = self.params.settings()
-        gpu = s["device"] == "cuda" or (s["device"] == "auto" and (self.device_badge.text().startswith("GPU")
+        gpu = s["device"] == "cuda" or (s["device"] == "auto" and ("GPU" in self.device_text
                                                                   or methods_ui.has_cuda()))
         secs = methods_ui.estimate_seconds(s, gpu)
         self.estimate.setText(tr("ui.estimate", time=imaging.eta_string(secs)))
@@ -2110,10 +2099,6 @@ class StudioPage(QWidget):
         self.undo_btn.setToolTip(tr("ui.eraser.undo"))
         self.redo_btn.setToolTip(tr("ui.eraser.redo"))
         self.revert_btn.setToolTip(tr("ui.eraser.revert"))
-        self.title.setText(tr("ui.studio.title"))
-        self.subtitle.setText(tr("ui.studio.subtitle"))
-        if not self.device_badge.text():
-            self.device_badge.setText(tr("ui.device_unknown"))
         self.input_title.setText(tr("ui.input"))
         self.mask_eye.setToolTip(tr("ui.mask.show"))
         self.mask_dl_btn.setText(tr("ui.mask.download"))

@@ -1,4 +1,4 @@
-"""Main window: navigation rail + pages."""
+"""Main window: the header (areas, App menu) and the pages."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ import json
 import os
 import sys
 
-from PySide6.QtCore import QByteArray, QEvent, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QByteArray, QEvent, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-                               QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+                               QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
 from . import a11y, background, dialogs, focus_ring, icons, methods_ui, power, remote_update, shortcuts, theme, updates
@@ -21,18 +21,9 @@ from .pages.compare import ComparePage
 from .pages.gallery import GalleryPage
 from .pages.other_pages import AboutPage, ModelsPage, QueuePage, SettingsPage
 from .pages.studio import StudioPage
-from .widgets.common import Toast, button, label, tool_button
-
-NAV = (
-    ("studio", "brush"),
-    ("compare", "git-compare"),
-    ("queue", "list-todo"),
-    ("gallery", "images"),
-    ("models", "box"),
-    ("settings", "settings"),
-    ("about", "info"),
-)
-
+from .widgets import header
+from .widgets.common import Toast, button, tool_button
+from .widgets.header import AppHeader
 
 class UpdateBar(QFrame):
     """"CLIPasso Studio x.y is available" – with Download, Skip this version and close."""
@@ -147,64 +138,21 @@ class MainWindow(QMainWindow):
 
         root = QWidget()
         root.setObjectName("Root")
-        h = QHBoxLayout(root)
-        h.setContentsMargins(0, 0, 0, 0)
-        h.setSpacing(0)
+        v = QVBoxLayout(root)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
 
-        # ------------------------------------------------------------- sidebar
-        side = QWidget()
-        side.setObjectName("Sidebar")
-        side.setFixedWidth(104)
-        sv = QVBoxLayout(side)
-        sv.setContentsMargins(6, 16, 6, 16)
-        sv.setSpacing(6)
-        logo = QLabel()
-        logo.setPixmap(icons.QPixmap(str(paths.resource("app_icon.png"))).scaled(
-            40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        logo.setAlignment(Qt.AlignCenter)
-        sv.addWidget(logo)
-        brand = label("CLIPasso", "faint")
-        brand.setAlignment(Qt.AlignCenter)
-        sv.addWidget(brand)
-        self.byline = label("By: Junostr05", "faint")  # app idea, GUI vision and UI/UX direction
-        self.byline.setObjectName("Byline")
-        self.byline.setAlignment(Qt.AlignCenter)
-        sv.addWidget(self.byline)
-        sv.addSpacing(12)
-        self.nav_group = QButtonGroup(self)
-        self.nav_buttons: dict[str, QToolButton] = {}
-        for key, ic in NAV:
-            b = QToolButton()
-            b.setObjectName("NavButton")
-            b.setCheckable(True)
-            b.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            b.setIconSize(QSize(22, 22))
-            b.setFixedSize(92, 62)
-            b.setCursor(Qt.PointingHandCursor)
-            b.clicked.connect(lambda _=False, k=key: self.show_page(k))
-            self.nav_group.addButton(b)
-            self.nav_buttons[key] = b
-            if key == "settings":
-                sv.addStretch(1)
-                self.run_indicator = QWidget()
-                ri = QVBoxLayout(self.run_indicator)
-                ri.setContentsMargins(2, 0, 2, 8)
-                ri.setSpacing(4)
-                self.run_label = label("", "faint")
-                self.run_label.setAlignment(Qt.AlignCenter)
-                self.run_bar = QProgressBar()
-                self.run_bar.setRange(0, 1000)
-                self.run_bar.setFixedHeight(5)
-                self.run_bar.setTextVisible(False)
-                ri.addWidget(self.run_label)
-                ri.addWidget(self.run_bar)
-                self.run_indicator.setVisible(False)
-                self.run_indicator.setCursor(Qt.PointingHandCursor)
-                self.run_indicator.mouseReleaseEvent = lambda e: self.show_running_job()
-                sv.addWidget(self.run_indicator)
-            sv.addWidget(b, 0, Qt.AlignHCenter)
-        h.addWidget(side)
-        self.sidebar = side
+        # -------------------------------------------------------------- header (4.0: instead of the sidebar)
+        self.header = AppHeader()
+        self.header.area_chosen.connect(self.show_page)
+        self.header.action_chosen.connect(self._app_action)
+        self.header.run_clicked.connect(self.show_running_job)
+        v.addWidget(self.header)
+        self.nav_buttons = self.header.tabs  # studio, gallery, queue
+        self.app_actions = self.header.app_actions  # models, settings, compare, phone, updates, about
+        self.byline = self.header.byline
+        self.run_indicator = self.header.run_chip
+        self.run_label, self.run_bar = self.header.run_chip.label, self.header.run_chip.bar
 
         # --------------------------------------------------------------- pages
         self.stack = QStackedWidget()
@@ -244,7 +192,7 @@ class MainWindow(QMainWindow):
         background.work().ended.connect(self._work_ended)
         cv.addWidget(self.work_wrap)
         cv.addWidget(self.stack, 1)
-        h.addWidget(content, 1)
+        v.addWidget(content, 1)
         self.setCentralWidget(root)
 
         self.toast = Toast(root)
@@ -528,8 +476,8 @@ class MainWindow(QMainWindow):
         add("Ctrl+Z", self._shortcut_undo)  # sketch edits (text fields keep their own undo)
         for seq in ("Ctrl+Y", "Ctrl+Shift+Z"):
             add(seq, self._shortcut_redo)
-        for i, (key, _) in enumerate(NAV):
-            add(f"Ctrl+{i + 1}", lambda k=key: self.show_page(k))
+        for key in header.PAGES:
+            add(header.page_shortcut(key), lambda k=key: self.show_page(k))
         add("F11", self.toggle_focus)
         add("Esc", lambda: self.set_focus(False))
         self.shortcuts["Esc"].setEnabled(False)  # (only in focus mode: dialogs and editors keep their own Esc)
@@ -548,7 +496,7 @@ class MainWindow(QMainWindow):
             self.show_page("studio")
             self._before_focus = self.windowState()
             self._update_shown = self.update_wrap.isVisible()
-        self.sidebar.setVisible(not on)
+        self.header.setVisible(not on)
         self.update_wrap.setVisible(not on and getattr(self, "_update_shown", False))
         self.studio.set_focus(on)
         self.shortcuts["Esc"].setEnabled(on)
@@ -752,6 +700,7 @@ class MainWindow(QMainWindow):
         def done(text):
             info = hardware.store(text)
             self.settings.set_hardware(info)
+            self.header.set_hardware(info)
             self.studio.hardware_known()
             QTimer.singleShot(0, lambda: self.offer_gpu_runtime(info))
 
@@ -767,7 +716,7 @@ class MainWindow(QMainWindow):
         return answer
 
     def show_running_job(self):
-        """The sidebar's run indicator: the studio with the running job's live view."""
+        """The header's run chip: the studio with the running job's live view."""
         self.show_page("studio")
         self.studio.show_running_job()
 
@@ -775,56 +724,33 @@ class MainWindow(QMainWindow):
         if key != "studio" and self.studio.focused:  # (another page: the focus mode ends)
             self.set_focus(False)
         self.stack.setCurrentWidget(self.pages[key])
-        self.nav_buttons[key].setChecked(True)
-        self._refresh_nav_icons()
+        self.header.set_current(key)
         a11y.link_labels(self.pages[key])  # (names for screen readers, also for buttons made since)
+
+    def current_page(self) -> str:
+        return next(k for k, w in self.pages.items() if w is self.stack.currentWidget())
+
+    def _app_action(self, key: str) -> None:
+        """An item of the header's App menu: a page, the phone's settings or the update check."""
+        if key == "phone":
+            self.show_page("settings")
+            self.settings.show_phone()
+        elif key == "updates":
+            self.check_updates_now()
+        else:
+            self.show_page(key)
 
     def _open_job(self, job_dir: str):
         self.studio.show_job_dir(job_dir)
         self.show_page("studio")
 
-    def _refresh_nav_icons(self):
-        p = theme.current()
-        pending = len(self.controller.pending())
-        for key, ic in NAV:
-            b = self.nav_buttons[key]
-            color = p.text if b.isChecked() else p.muted
-            if key == "queue" and pending:
-                b.setIcon(QIcon(self._badged(ic, color, pending)))
-            else:
-                b.setIcon(icons.icon(ic, color))
-
-    @staticmethod
-    def _badged(name: str, color: str, count: int):
-        """Nav icon with a small count bubble in the top right corner."""
-        from PySide6.QtCore import QRectF
-        from PySide6.QtGui import QColor, QFont, QPainter
-
-        pm = icons.pixmap(name, color, 22)
-        dpr = pm.devicePixelRatio()
-        painter = QPainter(pm)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(theme.current().accent))
-        rect = QRectF(11, -1, 13, 13)
-        painter.drawEllipse(rect)
-        font = QFont(theme.FONT_FAMILY)
-        font.setPixelSize(9)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QColor(theme.current().on_accent))
-        painter.drawText(rect, Qt.AlignCenter, str(count) if count < 10 else "9+")
-        painter.end()
-        pm.setDevicePixelRatio(dpr)
-        return pm
-
     def apply_theme(self, mode: str):
         theme.apply(QApplication.instance(), mode)
         # rebuild the window so every custom-painted widget picks up the new palette
         geo = self.saveGeometry()
-        current = next(k for k, w in self.pages.items() if w is self.stack.currentWidget())
+        current = self.current_page()
         if self.controller.is_busy():
-            self._refresh_nav_icons()
+            self.header.retranslate()  # (the icons in the new colours)
             self.toast.show_message(tr("ui.theme_after_run"), "info")
             return
         self.phone.shutdown()  # (the new window's phone page takes the port)
@@ -845,19 +771,11 @@ class MainWindow(QMainWindow):
             field.set_value(value, emit=True)
 
     def _update_nav_badges(self):
-        n = len(self.controller.pending())
-        for i, (key, _) in enumerate(NAV):
-            tip = shortcuts.with_key(tr(f"nav.{key}"), f"Ctrl+{i + 1}")
-            if key == "queue" and n:
-                tip = f"{tr('ui.queue.pending', n=n)}\n{tip}"
-            self.nav_buttons[key].setToolTip(tip)
-        self._refresh_nav_icons()
+        self.header.set_queue_count(len(self.controller.pending()))
 
     def _on_job_event(self, job, kind, data):
         if kind == "iteration":
-            self.run_indicator.setVisible(True)
-            self.run_bar.setValue(int(job.progress * 1000))
-            self.run_label.setText(f"{int(job.progress * 100)} %")
+            self.header.set_running(job.progress)
             self.update_taskbar()
 
     def update_taskbar(self):
@@ -889,7 +807,8 @@ class MainWindow(QMainWindow):
             self.update_taskbar()
 
     def _on_job_finished(self, job):
-        self.run_indicator.setVisible(self.controller.is_busy())
+        if not self.controller.is_busy():
+            self.header.set_running(None)
         self._taskbar_failed = job.status == "failed" and not self.isActiveWindow()
         self.update_taskbar()
         if job.status == "failed" and getattr(job, "oom", False):
@@ -919,8 +838,7 @@ class MainWindow(QMainWindow):
         return choice
 
     def retranslate(self):
-        for key, _ in NAV:
-            self.nav_buttons[key].setText(tr(f"nav.{key}"))
+        self.header.retranslate()
         self.studio.open_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.open"), "Ctrl+O"))
         self.studio.start_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.start"), "Ctrl+Return"))
         self.studio.queue_btn.setToolTip(shortcuts.with_key(tr("ui.shortcut.queue"), "Ctrl+Shift+Return"))
@@ -928,7 +846,6 @@ class MainWindow(QMainWindow):
         if self.update_bar.release:
             self.update_bar.retranslate()
         self._update_nav_badges()
-        self._refresh_nav_icons()
 
     # ------------------------------------------------------------------ events
     def closeEvent(self, event):  # noqa: N802

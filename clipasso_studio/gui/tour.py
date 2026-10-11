@@ -21,7 +21,7 @@ STEPS = (
     ("start", "studio", lambda w: [w.studio.start_btn, w.studio.queue_btn]),
     ("result", "studio", lambda w: [w.studio.result_card]),
     ("gallery", None, lambda w: [w.nav_buttons["gallery"], w.nav_buttons["queue"]]),
-    ("models", None, lambda w: [w.nav_buttons["models"], w.nav_buttons["settings"]]),
+    ("models", None, lambda w: [w.header.app_btn]),  # 4.0: models and settings are in the App menu
 )
 PAD = 8  # space around the highlighted part
 GAP = 16  # between the highlight and the card

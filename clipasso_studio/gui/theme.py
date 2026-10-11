@@ -159,7 +159,24 @@ def stylesheet(p: Palette) -> str:
 }}
 QMainWindow, QWidget#Root {{ background: {p.bg}; }}
 QWidget#Page {{ background: {p.bg}; }}
-QWidget#Sidebar {{ background: {p.chrome}; border-right: 1px solid {p.border}; }}
+QFrame#Header {{ background: {p.chrome}; border: none; border-bottom: 1px solid {p.border}; }}
+QToolButton#HeaderTab {{
+    border: none; border-radius: {rc}px; padding: 7px 12px; color: {p.muted}; font-weight: 500;
+}}
+QToolButton#HeaderTab[counted="true"] {{ padding-right: 40px; }}
+QToolButton#HeaderTab:hover {{ background: {p.surface2}; color: {p.text}; }}
+QToolButton#HeaderTab:checked {{ background: {p.accent_soft}; color: {p.text}; font-weight: 600; }}
+QPushButton#RunChip {{
+    background: {p.surface2}; border: 1px solid {p.control}; border-radius: {rb}px; padding: 0; text-align: left;
+}}
+QPushButton#RunChip:hover {{ background: {p.surface3}; }}
+QToolButton#AppButton {{
+    border: 1px solid {p.control}; border-radius: {rc}px; padding: 6px 12px; background: {p.surface2};
+    font-weight: 500;
+}}
+QToolButton#AppButton:hover {{ background: {p.surface3}; }}
+QToolButton#AppButton[current="true"] {{ background: {p.accent_soft}; border-color: {p.accent}; }}
+QToolButton#AppButton::menu-indicator {{ image: none; width: 0; }}
 QLabel {{ background: transparent; }}
 QLabel[role="brand"] {{ font-size: 15px; font-weight: 700; }}
 QLabel[role="title"] {{ font-size: 22px; font-weight: 700; }}
@@ -249,12 +266,6 @@ QPushButton#SectionHeader:hover {{ color: {p.accent_text}; background: transpare
 QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: {rc}px; padding: 4px; }}
 QToolButton:hover {{ background: {p.surface2}; border-color: {p.control}; }}
 QToolButton:checked {{ background: {p.accent_soft}; border-color: {p.accent}; }}
-
-QToolButton#NavButton {{
-    border-radius: {rd}px; padding: 8px 2px; color: {p.muted}; font-size: 11px; font-weight: 500;
-}}
-QToolButton#NavButton:hover {{ background: {p.surface2}; color: {p.text}; border-color: transparent; }}
-QToolButton#NavButton:checked {{ background: {p.accent_soft}; color: {p.text}; border-color: transparent; }}
 
 QPushButton#Segment {{
     background: transparent; border: none; border-radius: {rs}px; padding: 5px 12px; color: {p.muted};

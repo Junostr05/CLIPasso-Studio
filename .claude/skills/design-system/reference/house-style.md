@@ -94,7 +94,13 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 | `EmptyState(icon)` | empty page: icon, title, what to do, a button that does it | – |
 | `HintBox` (`widgets/hint_box.py`) | warnings about the photo, each with an action and "don't show again" | `#BannerWarn` |
 
-Other hooks in the stylesheet: `#Root`, `#Page`, `#Sidebar`, `#NavButton`, `#MethodCard[selected="true"]`, `#Divider`.
+Other hooks in the stylesheet: `#Root`, `#Page`, `#Header` with `#HeaderTab`, `#RunChip` and `#AppButton`
+(`widgets/header.py`), `#MethodCard[selected="true"]`, `#Divider`.
+
+**The header** (`widgets/header.py`, 4.0) replaces the sidebar: logo and name, the areas *Studio · Galerie ·
+Warteschlange* (`window.nav_buttons`), the running job, the hardware and the menu **App** (`window.app_actions`:
+models, settings, compare, phone, updates, about). Ctrl+1 … 7 follow what is seen from left to right
+(`header.PAGES`); a menu item shows its key but only the window's shortcut triggers it (`Qt.WidgetShortcut`).
 A new look = a new objectName or property in `theme.stylesheet()`, styled for both palettes.
 
 **Keyboard focus** (`gui/focus_ring.py`): a 2 px ring in `focus`, 2 px outside the control, drawn by one overlay

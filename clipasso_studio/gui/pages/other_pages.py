@@ -1193,6 +1193,10 @@ class SettingsPage(QWidget):
         """Scroll to the experimental switches (the studio's badge leads here)."""
         self.scroll.ensureWidgetVisible(self.experimental)
 
+    def show_phone(self) -> None:
+        """Scroll to the phone and Telegram settings (App menu → Phone & messages)."""
+        self.scroll.ensureWidgetVisible(self.phone_card, 0, 0)
+
     def show_hints_again(self) -> None:
         """Every kind of quality hint is shown again."""
         app_settings().set("hints_off", [])

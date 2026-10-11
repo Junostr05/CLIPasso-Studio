@@ -1,3 +1,14 @@
+## CLIPasso Studio 4.0.0 beta 3 – the header (pre-release)
+
+The third step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 2).
+
+- **A header instead of the sidebar:** the logo and name, the areas *Studio · Gallery · Queue* (the queue with the
+  number of waiting jobs), the running job's progress (a click shows it in the studio), the hardware the app computes
+  on, and the **App** menu: *Models, Settings, Compare methods, Phone & messages, Check for updates, About & help*.
+- **Ctrl+1 … 7 in the order you see:** Studio, Gallery, Queue, Models, Settings, Compare, About (3.8: Studio, Compare,
+  Queue, Gallery, …). The menu shows the keys.
+- The studio has no title row any more – more room for the sketch. The guide points at the App menu.
+
 ## CLIPasso Studio 4.0.0 beta 2 – the keyboard (pre-release)
 
 The second step of 4.0 (betas are for Windows only). With *Also offer beta versions* switched on in beta 1, the

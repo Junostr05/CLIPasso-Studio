@@ -491,7 +491,9 @@ def test_shortcuts_and_paste(window, tmp_path):
     from clipasso_studio.gui.app_settings import app_settings
 
     studio = window.studio
-    window.shortcuts["Ctrl+2"].activated.emit()
+    window.shortcuts["Ctrl+2"].activated.emit()  # 4.0: Ctrl+1 … 7 in the order the header shows the pages
+    assert window.stack.currentWidget() is window.gallery
+    window.shortcuts["Ctrl+6"].activated.emit()
     assert window.stack.currentWidget() is window.compare
     clip = QGuiApplication.clipboard()
     img = QImage(64, 48, QImage.Format_RGB32)
@@ -507,7 +509,8 @@ def test_shortcuts_and_paste(window, tmp_path):
     assert studio.paste_image() and studio.image_path == str(other)
     clip.setText("just some text")
     assert not studio.paste_image() and studio.image_path == str(other)
-    assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["compare"].toolTip()
+    assert "Ctrl+O" in studio.open_btn.toolTip() and "Ctrl+2" in window.nav_buttons["gallery"].toolTip()
+    assert window.app_actions["compare"].shortcut().toString() == "Ctrl+6"
     keys = [lbl.text() for lbl in window.about.key_labels]
     assert len(keys) == 10 and all(keys) and "Ctrl+C" in window.shortcuts and "F11" in window.shortcuts
     # undo / redo of sketch edits only act on the studio page
@@ -1505,15 +1508,15 @@ def test_focus_mode(window):
     window.show_page("gallery")
     studio.focus_btn.click()
     assert studio.focused and window.stack.currentWidget() is studio
-    assert not window.sidebar.isVisible() and not studio.left_scroll.isVisible() and not studio.right_pane.isVisible()
+    assert not window.header.isVisible() and not studio.left_scroll.isVisible() and not studio.right_pane.isVisible()
     assert window.isFullScreen() and window.shortcuts["Esc"].isEnabled()
     window.shortcuts["Esc"].activated.emit()
-    assert not studio.focused and window.sidebar.isVisible() and studio.left_scroll.isVisible()
+    assert not studio.focused and window.header.isVisible() and studio.left_scroll.isVisible()
     assert not window.isFullScreen() and not window.shortcuts["Esc"].isEnabled()
     window.shortcuts["F11"].activated.emit()
     assert studio.focused
     window.show_page("queue")  # another page: back to normal
-    assert not studio.focused and window.sidebar.isVisible()
+    assert not studio.focused and window.header.isVisible()
     window.show_page("studio")
 
 
@@ -1997,3 +2000,66 @@ def test_studio_columns_fit_a_small_window(window):
         assert st.input_buttons.is_wrapped()
     finally:
         window.resize(size)
+
+
+def test_the_header(window, monkeypatch):
+    """4.0: the header instead of the sidebar – 52 px, the areas Studio · Gallery · Queue, every item of the App
+    menu leads somewhere, the waiting jobs' count, the running job; everything fits at 1200 px in German."""
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui import theme
+    from clipasso_studio.gui.i18n import i18n, tr
+    from clipasso_studio.gui.main_window import MIN_WIDTH
+
+    head = window.header
+    size, lang = window.size(), i18n.lang
+    checks = []
+    monkeypatch.setattr(window, "check_updates_now", lambda: checks.append(True))
+    try:
+        i18n.set_language("de")
+        assert head.height() == theme.HEADER_HEIGHT and set(window.nav_buttons) == {"studio", "gallery", "queue"}
+        for key, page in (("models", window.models), ("settings", window.settings), ("compare", window.compare),
+                          ("about", window.about)):
+            window.show_page("studio")
+            window.app_actions[key].trigger()
+            assert window.stack.currentWidget() is page, key
+            assert not any(t.isChecked() for t in window.nav_buttons.values()) and head.app_btn.property("current")
+        window.app_actions["phone"].trigger()
+        assert window.stack.currentWidget() is window.settings
+        window.app_actions["updates"].trigger()
+        assert checks == [True]
+        window.nav_buttons["gallery"].click()
+        assert window.stack.currentWidget() is window.gallery and window.nav_buttons["gallery"].isChecked()
+        assert head.app_btn.property("current") == "false"
+
+        monkeypatch.setattr(window.controller, "pending", lambda: [object(), object()])
+        window._update_nav_badges()
+        badge = window.nav_buttons["queue"].badge
+        assert not badge.isHidden() and badge.text() == "2" and "2" in window.nav_buttons["queue"].accessibleName()
+        head.set_running(0.42)
+        assert not head.run_chip.isHidden() and "42" in head.run_chip.label.text()
+        head.set_hardware({"cuda": True, "gpus": [{"name": "NVIDIA GeForce RTX 4090 Laptop GPU", "supported": True}]})
+        assert head.hardware.text.text() == "GeForce RTX 4090 Laptop GPU"
+
+        window.resize(MIN_WIDTH, 760)
+        for _ in range(5):
+            QApplication.processEvents()
+        parts = [head.logo, head.name, *window.nav_buttons.values(), head.run_chip, head.hardware, head.app_btn]
+        boxes = [(w, w.mapTo(head, w.rect().topLeft()).x(), w.width()) for w in parts]
+        for (a, x, w), (b, x2, _) in zip(boxes, boxes[1:]):
+            assert x + w <= x2, (a.objectName() or type(a).__name__, b.objectName() or type(b).__name__)
+        assert boxes[-1][1] + boxes[-1][2] <= head.width()
+        for t in window.nav_buttons.values():  # the names are whole (not cut)
+            assert t.width() >= t.sizeHint().width(), t.text()
+        assert head.hardware.text.text() == "GeForce RTX 4090 Laptop GPU"  # (elided if needed, whole as a tooltip)
+
+        head.set_hardware({"cuda": False, "gpus": []})
+        assert head.hardware.text.text().startswith(tr("ui.header.cpu", n=1).split(" · ")[0])
+    finally:
+        monkeypatch.undo()
+        window._update_nav_badges()
+        head.set_running(None)
+        head.set_hardware(None)
+        window.resize(size)
+        i18n.set_language(lang)
+        window.show_page("studio")
