@@ -77,3 +77,20 @@ def test_the_label_role(qapp):
     assert lbl.text() == "1 · Bild" and lbl.property("role") == "label"
     assert lbl.font().capitalization() == QFont.AllUppercase and lbl.font().letterSpacing() > 0
     assert 'QLabel[role="label"]' in theme.stylesheet(theme.DARK)
+
+
+def test_dialogs_use_the_dialog_spacing():
+    """4.0: every dialog lays itself out with ``theme.dialog_layout`` (DIALOG_MARGIN 24 around, DIALOG_SPACING 16
+    between its parts) – except the gallery's large view, a picture with its controls close around it."""
+    own_spacing = {"GalleryViewer"}
+    found = []
+    for path in sorted(GUI.rglob("*.py")):
+        src = path.read_text(encoding="utf-8")
+        for m in re.finditer(r"^class (\w+)\(QDialog\):", src, re.M):
+            nxt = re.search(r"^class \w+", src[m.end():], re.M)
+            body = src[m.end(): m.end() + (nxt.start() if nxt else len(src))]
+            init = body.split("\n    def ", 2)[1] if "\n    def __init__" in body else ""
+            found.append(m.group(1))
+            if m.group(1) not in own_spacing:
+                assert "theme.dialog_layout(" in init, f"{path.name}: {m.group(1)}"
+    assert len(found) >= 20 and own_spacing <= set(found)

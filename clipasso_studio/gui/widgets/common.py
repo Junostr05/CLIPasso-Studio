@@ -474,7 +474,7 @@ class SegmentedControl(QFrame):
         else:
             b.setIcon(QIcon())
             b.setToolTip("")
-            b.setText(self._labels[key])
+            b.setText(self._labels[key].replace("&", "&&"))  # (a & is text, not a shortcut mark)
             self._fit(b)
 
     def _label_width(self, b: QPushButton, text: str) -> int:

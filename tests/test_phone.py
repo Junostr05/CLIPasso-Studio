@@ -215,7 +215,10 @@ def test_telegram_message_for_a_job(qapp, user_data, monkeypatch, tmp_path):
     assert notifier.job_finished(job, {"clip_score": 81.234})
     assert _wait(qapp, lambda: sent)
     method, data, _ = fake.calls[-1]
-    assert sent == [(True, "")] and method == "sendPhoto" and b"camel.png" in data and b"81.2" in data
+    from clipasso_studio.gui.i18n import number
+
+    assert sent == [(True, "")] and method == "sendPhoto" and b"camel.png" in data
+    assert number(81.234).encode() in data  # (the language's decimal mark)
     assert b"1:30" in data  # how long it took
     failed = SimpleNamespace(**{**vars(job), "status": "failed", "message": "out of memory"})
     app_settings().data["telegram_failed"] = False

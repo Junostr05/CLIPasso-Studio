@@ -50,8 +50,10 @@ Tests: `tests/test_theme_contrast.py` (text 4.5 : 1, control parts 3 : 1, both t
 
 **Spacing** – `SPACE_XS/S/M/L/XL` = 4 / 8 / 12 / 16 / 24 px. Pages use `theme.page_layout(layout)`
 (margins 24/20/24/20, spacing 16 – a test enforces it). 4.0: side columns, header and footer `COLUMN_PADDING` 20;
-dialogs `DIALOG_MARGIN` 24 / `DIALOG_SPACING` 16; `HEADER_HEIGHT` 52, `FOOTER_HEIGHT` 76, `LEFT_COLUMN` 312,
-`RIGHT_COLUMN` 168.
+dialogs `DIALOG_MARGIN` 24 / `DIALOG_SPACING` 16 via `theme.dialog_layout(layout)` (every dialog but the
+gallery's large view – a test reads the sources); `HEADER_HEIGHT` 52, `FOOTER_HEIGHT` 76, `LEFT_COLUMN` 312,
+`RIGHT_COLUMN` 168, `FILTER_COLUMN` 240 (the gallery's filters, the settings' parts), `READING_WIDTH` 820 (the
+widest column of cards).
 
 **Type** – font Inter (bundled in `resources/fonts`), 13 px base. Roles via `label(text, role)` /
 `set_role(widget, role)`: `brand` 15/700 · `title` 22/700 · `h2` 15/600 · `h3` 13/600 · `muted` · `faint` 12 ·
@@ -111,6 +113,16 @@ and *Exportieren …* (`export_center.py`: the formats in groups, the sketch, th
 inside), the paper, and below it the floating `#CanvasToolbar`. On the right the job's sketches (`SeedThumb`, one
 Tab stop, the arrows choose). Tab runs left → middle → right → footer (`a11y.reading_order`).
 
+**Gallery and settings** (4.0) are pages from edge to edge too: a `Column` of `FILTER_COLUMN` on the left – the
+gallery's search, methods (a vertical segment), favourites, albums with their counts (`AlbumChip.count_label`)
+and tags; the settings' parts (`section_nav`: a click scrolls the card to the top, the column follows the
+scrolling) – and the content beside it. A selection's actions float at the bottom of the results
+(`#FloatingBar`, styled like `#CanvasToolbar`); the results keep room for it below their last row.
+
+**A "&" in a button's or a menu item's text** is a shortcut mark to Qt (it underlines the next character):
+texts like *Info & Hilfe* go through `.replace("&", "&&")` where they are set (segments and section headers do it
+themselves).
+
 **The header** (`widgets/header.py`, 4.0) replaces the sidebar: logo and name, the areas *Studio · Galerie ·
 Warteschlange* (`window.nav_buttons`), the running job, the hardware and the menu **App** (`window.app_actions`:
 models, settings, compare, phone, updates, about). Ctrl+1 … 7 follow what is seen from left to right
@@ -139,6 +151,9 @@ colours read at construction are fine – except while a job runs (then only the
   `WrapRow`; a test checks the studio's columns at 1200 × 760. The left column scrolls there, so its parts get
   312 − 2 × 20 − 10 (scroll bar) − 1 (line) = 261 px – in German too (`test_studio_columns_fit_a_small_window`).
 - **Shortcuts** live in `gui/shortcuts.py` (also listed on the About page).
+- **Menus whose entries are kept** (in an attribute or a dict) make them in Python – `act = QAction(self)`,
+  `menu.addAction(act)`; `sub = QMenu(self)`, `menu.addMenu(sub)`. An entry made by `menu.addAction("")` belongs
+  to Qt, and its Python object can go stale (a later call on it raises `RuntimeError`).
 
 ## Text
 
@@ -147,6 +162,8 @@ colours read at construction are fine – except while a job runs (then only the
 - Widgets that show text implement `retranslate()` (connected to `i18n.language_changed`) – the language
   switches at run time without a restart.
 - Voice: see the ux-copy skill. German uses "du".
+- Numbers a person reads (scores, losses, sizes) go through `i18n.number(value, decimals)` and `i18n.size(mb)`:
+  29,4 / 1,2 GB in German, 29.4 / 1.2 GB in English. Files, logs and the phone's data keep the dot.
 
 ## Accessibility rules the tests already enforce
 
@@ -154,7 +171,7 @@ colours read at construction are fine – except while a job runs (then only the
 |---|---|
 | Every text colour ≥ 4.5:1 on every surface, both themes | `tests/test_theme_contrast.py` |
 | Every visible button has a name (text, tooltip, accessible name or a buddy label) | `test_gui.py::test_every_button_has_a_name` |
-| Tab order: input → canvas → parameters | `test_gui.py::test_studio_tab_order` |
+| Tab order (4.0): header → left column → middle → right column → footer → header | `test_gui.py::test_studio_tab_order` |
 | Keyboard focus is visible; groups of choices are one Tab stop with arrows | `tests/test_focus_ring.py` |
 | Pages use the spacing tokens | `test_gui.py::test_pages_use_the_spacing_tokens` |
 | Empty pages explain the next step | `test_gui.py::test_empty_pages_say_what_to_do` |

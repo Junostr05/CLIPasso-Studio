@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ... import settings_schema as schema
 from .. import icons, methods_ui, theme
+from ..i18n import size as i18n_size
 from ..i18n import tr
 from .common import RovingFocus, label, set_role
 
@@ -61,7 +62,7 @@ class MethodCard(QFrame):
         missing = methods_ui.missing_models(settings)
         if missing:
             mb = methods_ui.download_mb(missing)
-            size = f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+            size = i18n_size(mb)
             self.status.setText(tr("ui.method.download_needed", size=size))
             set_role(self.status, "status-warning")
         elif self.method == "controlsketch" and not methods_ui.has_cuda():

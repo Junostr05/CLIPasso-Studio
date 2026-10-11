@@ -13,6 +13,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLineEdit, QPlainTextEdit, QVBoxLayout
 
 from .. import __version__
+from . import theme
 from .i18n import tr
 from .widgets.common import button, label
 
@@ -79,8 +80,7 @@ class ReportDialog(QDialog):
         self.setWindowTitle(tr("ui.report.title"))
         self.setMinimumSize(620, 520)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(10)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.report.title"), "h2"))
         lay.addWidget(label(tr("ui.report.desc"), "muted", wrap=True))
         self.title_edit = QLineEdit(issue_title(message))

@@ -232,7 +232,7 @@ class AppHeader(QFrame):
         self.app_btn.setToolTip(tr("ui.header.app_tip"))
         self.app_btn.setIcon(icons.icon("ellipsis", theme.current().muted))
         for key, act in self.app_actions.items():
-            act.setText(tr(f"ui.app_menu.{key}"))
+            act.setText(tr(f"ui.app_menu.{key}").replace("&", "&&"))  # ("Info & Hilfe": not a shortcut mark)
         self.run_chip.setToolTip(tr("ui.header.running_tip"))
         self.hardware.setToolTip(tr("ui.header.hw_tip"))
         self.set_hardware(self._hardware)

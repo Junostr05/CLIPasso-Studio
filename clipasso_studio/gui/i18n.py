@@ -72,3 +72,14 @@ i18n = _I18n()
 
 def tr(key: str, **fmt) -> str:
     return i18n.tr(key, **fmt)
+
+
+def number(value: float, decimals: int = 1) -> str:
+    """``value`` with ``decimals`` places and the language's decimal mark (29,4 in German)."""
+    text = f"{value:.{decimals}f}"
+    return text.replace(".", ",") if i18n.lang == "de" else text
+
+
+def size(mb: float) -> str:
+    """A download or file size: "650 MB", "1,2 GB"."""
+    return f"{number(mb / 1000)} GB" if mb >= 1000 else f"{mb:.0f} MB"

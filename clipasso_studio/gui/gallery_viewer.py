@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QComboBox, QDialog, QHBoxLayout, QSizePolicy, QVBo
 
 from . import icons, methods_ui, theme
 from .app_settings import app_settings
-from .i18n import tr
+from .i18n import number, tr
 from .widgets.canvas import styled, svg_renderer
 from .widgets.common import button, label
 
@@ -33,9 +33,9 @@ def describe(item) -> str:
     """Method · score · strokes · time · date of a result (one line)."""
     parts = [methods_ui.name(item.method)]
     if item.score is not None:
-        parts.append(f"CLIP {item.score:.1f}")
+        parts.append(f"CLIP {number(item.score)}")
     elif item.loss is not None:
-        parts.append(f"Loss {item.loss:.3f}")
+        parts.append(f"Loss {number(item.loss, 3)}")
     if item.strokes > 1:
         parts.append(tr("ui.viewer.strokes", n=item.strokes))
     if item.seconds:

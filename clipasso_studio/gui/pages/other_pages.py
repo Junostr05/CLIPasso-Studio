@@ -19,9 +19,10 @@ from .. import background, crash, dialogs, icons, methods_ui, power, shortcuts, 
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
-from ..i18n import AUTO, LANGUAGES, i18n, system_language, tr
+from ..i18n import AUTO, LANGUAGES, i18n, number, system_language, tr
 from ..widgets.canvas import IMAGE_FILTER
-from ..widgets.common import Card, EmptyState, SegmentedControl, ToggleSwitch, button, label, set_prop, tool_button
+from ..widgets.common import (Card, Column, EmptyState, SegmentedControl, ToggleSwitch, button, label, set_prop,
+                              tool_button)
 
 try:
     from .. import _build_info  # generated at build time
@@ -568,7 +569,9 @@ def model_group(key: str) -> str:
 
 
 def _size_text(mb: float) -> str:
-    return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+    from ..i18n import size
+
+    return size(mb)
 
 
 def _bytes_text(n: int) -> str:
@@ -887,13 +890,31 @@ class SettingsPage(QWidget):
         self.release_worker = lambda: None  # the main window: end the warm worker
         self.setObjectName("Page")
         s = app_settings()
-        root = QVBoxLayout(self)
-        theme.page_layout(root)
+        # 4.0: a column on the left jumps to a part of the settings (and follows the scrolling)
+        self.layout_kind = "columns"
+        root = QHBoxLayout(self)
+        theme.columns_layout(root)
+        nav = Column("left", theme.FILTER_COLUMN, spacing=theme.SPACE_M)
+        self.nav_pane = nav
+        self.nav_title = label("", "label")
+        self.section_nav = SegmentedControl([(k, "") for k in self.SECTIONS], orientation=Qt.Vertical)
+        self.section_nav.changed.connect(self.show_section)
+        nav.body.addWidget(self.nav_title)
+        nav.body.addWidget(self.section_nav)
+        nav.body.addStretch(1)
+        root.addWidget(nav)
+        main = QWidget()
+        mlay = QVBoxLayout(main)
+        pad = theme.COLUMN_PADDING
+        mlay.setContentsMargins(pad + 4, pad, pad, 0)
+        mlay.setSpacing(theme.PAGE_SPACING)
         lay, self.title, self.subtitle = _page_header("ui.settings.title", "ui.settings.subtitle")
-        root.addLayout(lay)
+        mlay.addLayout(lay)
+        root.addWidget(main, 1)
         host = QWidget()
+        host.setMaximumWidth(theme.READING_WIDTH)
         col = QVBoxLayout(host)
-        col.setContentsMargins(0, 0, 8, 0)
+        col.setContentsMargins(0, 0, 8, pad)
         col.setSpacing(14)
 
         self.look = Card()
@@ -1107,7 +1128,8 @@ class SettingsPage(QWidget):
         col.addWidget(self.experimental)
         col.addStretch(1)
         self.scroll = _scroll(host)
-        root.addWidget(self.scroll, 1)
+        mlay.addWidget(self.scroll, 1)
+        self.scroll.verticalScrollBar().valueChanged.connect(self._follow_scroll)
         from .. import hardware
 
         self._hardware = hardware.cached()  # the main window probes again after the start
@@ -1189,13 +1211,36 @@ class SettingsPage(QWidget):
         app_settings().set("experimental_sketch", bool(on))
         self.experimental_changed.emit(bool(on))
 
+    # the parts of the page, top to bottom: the key in the column on the left → the card
+    SECTIONS = {"look": "look", "files": "files", "behaviour": "behaviour", "watch": "watch_card",
+                "phone": "phone_card", "storage": "storage_card", "system": "system",
+                "experimental": "experimental"}
+    SECTION_TITLES = {"look": "ui.settings.appearance", "files": "ui.settings.files",
+                      "behaviour": "ui.settings.behaviour", "watch": "ui.watch.title", "phone": "ui.phone.title",
+                      "storage": "ui.storage.title", "system": "ui.settings.system",
+                      "experimental": "ui.settings.experimental.title"}
+
+    def show_section(self, key: str) -> None:
+        """Scroll the part ``key`` to the top (as far as the page goes) – the column on the left shows it."""
+        card = getattr(self, self.SECTIONS[key])
+        self.scroll.widget().layout().activate()
+        self.scroll.verticalScrollBar().setValue(card.y())
+        self.section_nav.set_current(key)  # (also when the last parts cannot reach the top)
+
+    def _follow_scroll(self, value: int) -> None:
+        current = next(iter(self.SECTIONS))
+        for key, attr in self.SECTIONS.items():
+            if getattr(self, attr).y() <= value + theme.SPACE_XL:
+                current = key
+        self.section_nav.set_current(current)
+
     def show_experimental(self) -> None:
         """Scroll to the experimental switches (the studio's badge leads here)."""
-        self.scroll.ensureWidgetVisible(self.experimental)
+        self.show_section("experimental")
 
     def show_phone(self) -> None:
         """Scroll to the phone and Telegram settings (App menu → Phone & messages)."""
-        self.scroll.ensureWidgetVisible(self.phone_card, 0, 0)
+        self.show_section("phone")
 
     def show_hints_again(self) -> None:
         """Every kind of quality hint is shown again."""
@@ -1654,7 +1699,7 @@ class SettingsPage(QWidget):
         lines = [f"PyTorch {info.get('torch', '?')}"]
         for i, gpu in enumerate(info.get("gpus", [])):
             ok = "" if gpu.get("supported", True) else f"  ⚠ {tr('ui.settings.gpu_unsupported')}"
-            lines.append(f"GPU {i}: {gpu.get('name', '?')} · {gpu.get('memory_gb', 0):.1f} GB{ok}")
+            lines.append(f"GPU {i}: {gpu.get('name', '?')} · {number(gpu.get('memory_gb', 0))} GB{ok}")
         if not info.get("gpus"):
             lines.append(f"CUDA {info['cuda_build']}: {tr('ui.settings.gpu_none')}" if info.get("cuda_build")
                          else "CUDA: –")
@@ -1663,6 +1708,9 @@ class SettingsPage(QWidget):
     def retranslate(self):
         self.title.setText(tr("ui.settings.title"))
         self.subtitle.setText(tr("ui.settings.subtitle"))
+        self.nav_title.setText(tr("ui.settings.title"))
+        for key, text_key in self.SECTION_TITLES.items():
+            self.section_nav.set_text(key, tr(text_key))
         self.look_title.setText(tr("ui.settings.appearance"))
         self.lang_label.setText(tr("ui.settings.language"))
         self.lang.setItemText(0, tr("ui.settings.language_auto", lang=LANGUAGES[system_language()]))

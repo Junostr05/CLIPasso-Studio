@@ -103,3 +103,33 @@ def test_guide_texts_in_both_languages():
         for part in ("title", "text"):
             k = f"ui.tour.{key}.{part}"
             assert en.get(k) and de.get(k) and en[k] != de[k], k
+
+
+def test_every_step_at_the_smallest_window_in_german(make_window):
+    """4.0: the guide at 1200 × 760 in German – every step points at something on the screen (the steps in the
+    scrolling left column too), and its card is in the window beside it."""
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui.i18n import i18n
+    from clipasso_studio.gui.main_window import MIN_WIDTH
+    from clipasso_studio.gui.tour import STEPS
+
+    lang = i18n.lang
+    try:
+        i18n.set_language("de")
+        w = make_window()
+        w.resize(MIN_WIDTH, 760)
+        for _ in range(3):
+            QApplication.processEvents()
+        w.maybe_show_tour()
+        tour = w.tour
+        for i in range(len(STEPS)):
+            QApplication.processEvents()
+            target = tour.target_rect()
+            visible = target.intersected(w.rect())
+            assert visible.height() >= min(target.height(), 40) and visible.width() > 0, STEPS[i][0]
+            assert not tour.card.geometry().intersects(target.adjusted(10, 10, -10, -10)), STEPS[i][0]
+            assert w.rect().contains(tour.card.geometry()), STEPS[i][0]
+            tour.next()
+    finally:
+        i18n.set_language(lang)

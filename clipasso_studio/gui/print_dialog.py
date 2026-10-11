@@ -10,7 +10,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, QFormLayout, QHBoxLayout,
                                QLabel, QLineEdit, QMessageBox, QProgressBar, QVBoxLayout)
 
-from . import brush, print_layout
+from . import brush, print_layout, theme
 from .app_settings import app_settings
 from .dialogs import ColorButton, PaperChoice, error_text, paper_colours, run_in_thread
 from .i18n import tr
@@ -31,8 +31,7 @@ class PrintDialog(QDialog):
         st = app_settings()
         self.setWindowTitle(tr("ui.print.title"))
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(14)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.print.title"), "h2"))
         lay.addWidget(label(tr("ui.print.desc", n=len(items)), "muted", wrap=True))
         body = QHBoxLayout()

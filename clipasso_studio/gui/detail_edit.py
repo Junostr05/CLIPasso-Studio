@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QSizePolicy, QSlider, QVBoxL
 
 from ..engine import details
 from ..engine.imaging import load_rgb
+from . import theme
 from .i18n import tr
 from .widgets.common import SegmentedControl, button, label, tool_button
 
@@ -177,8 +178,7 @@ class DetailEditDialog(QDialog):
             arr = np.clip(np.round(details.NORMAL + start * 127), 0, 255).astype(np.uint8)
             values = np.asarray(Image.fromarray(arr, mode="L").resize(photo.size, Image.BILINEAR))
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(20, 18, 20, 18)
-        lay.setSpacing(10)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.detail.title"), "h2"))
         lay.addWidget(label(tr("ui.detail.hint"), "faint", wrap=True))
         self.view = DetailCanvas(photo, values)

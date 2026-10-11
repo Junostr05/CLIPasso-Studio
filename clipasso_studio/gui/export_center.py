@@ -122,7 +122,8 @@ class ExportCenter(QDialog):
         dlg = self.studio.export_dialog(fmt)
         if dlg is None:
             return
-        dlg.setWindowFlags(Qt.Widget)  # (inside this dialog)
+        dlg.setWindowFlags(Qt.Widget)  # (inside this dialog – its margins are this dialog's)
+        dlg.layout().setContentsMargins(0, 0, 0, 0)
         dlg.accepted.connect(lambda: self._saved(dlg))
         dlg.rejected.connect(self.reject)
         self.options = dlg

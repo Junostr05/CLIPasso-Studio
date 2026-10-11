@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QMessageBox, QProgressBar, Q
 from .. import APP_NAME, gpu_runtime
 from .app_settings import app_settings
 from .dialogs import run_in_thread, set_progress
+from . import theme
 from .i18n import tr
 from .widgets.common import button, label
 
@@ -34,10 +35,9 @@ def state() -> str:
 
 def gb(n: int) -> str:
     """Gigabytes with one decimal, with a decimal comma in German."""
-    from .i18n import i18n
+    from .i18n import number
 
-    text = f"{n / 1e9:.1f}"
-    return text.replace(".", ",") if i18n.lang == "de" else text
+    return number(n / 1e9)
 
 
 class RuntimeDownloadDialog(QDialog):
@@ -54,8 +54,7 @@ class RuntimeDownloadDialog(QDialog):
         self.setWindowTitle(tr("ui.gpurt.title"))
         self.setMinimumWidth(460)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(12)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.gpurt.title"), "h2"))
         lay.addWidget(label(tr("ui.gpurt.dialog_desc", download=gb(rt.download_size), disk=gb(rt.unpacked)),
                             "muted", wrap=True))

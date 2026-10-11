@@ -111,3 +111,19 @@ def test_the_glossary_words():
     assert {k for k, v in de.items() if "Foto" in v} <= camera | photographs
     assert [k for k, v in de.items() if re.search(r"Preset|\bJobs?\b", v)] == []
     assert de["ui.cancel_run"] == "Auftrag abbrechen" and de["ui.phone.page.my_presets"] == "Meine Voreinstellungen"
+
+
+def test_numbers_have_the_decimal_mark_of_the_language():
+    """4.0: a score, a loss or a size reads 29,4 / 1,2 GB in German and 29.4 / 1.2 GB in English (the CLIP score
+    in the studio, the gallery, the comparison, the self-test, the Telegram message)."""
+    i18n = i18n_mod.i18n
+    lang = i18n.lang
+    try:
+        i18n.set_language("de")
+        assert i18n_mod.number(29.43) == "29,4" and i18n_mod.number(0.25, 3) == "0,250"
+        assert i18n_mod.size(1234) == "1,2 GB" and i18n_mod.size(650) == "650 MB"
+        i18n.set_language("en")
+        assert i18n_mod.number(29.43) == "29.4" and i18n_mod.number(0.25, 3) == "0.250"
+        assert i18n_mod.size(1234) == "1.2 GB" and i18n_mod.size(650) == "650 MB"
+    finally:
+        i18n.set_language(lang)

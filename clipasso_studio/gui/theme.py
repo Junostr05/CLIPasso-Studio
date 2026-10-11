@@ -75,6 +75,8 @@ COLUMN_PADDING = 20  # 4.0: inside the side columns, the header and the footer
 DIALOG_MARGIN, DIALOG_SPACING = SPACE_XL, SPACE_L  # 4.0: dialogs on the scale (3.8: 22 / 14 by habit)
 HEADER_HEIGHT, FOOTER_HEIGHT = 52, 76
 LEFT_COLUMN, RIGHT_COLUMN = 312, 168
+FILTER_COLUMN = 240  # 4.0: the gallery's filters, the settings' parts
+READING_WIDTH = 820  # 4.0: the widest a column of cards gets (settings)
 
 # radii (px) – every rounded shape uses one of these
 RADIUS_PROGRESS = 4  # the progress bar, check boxes, scroll bar handles
@@ -183,7 +185,9 @@ QToolButton#SplitButton {{
 QToolButton#SplitButton:hover {{ background: {p.surface3}; }}
 QToolButton#SplitButton::menu-button {{ border: none; border-left: 1px solid {p.control}; width: 22px; }}
 QToolButton#SplitButton::menu-arrow {{ image: url({_icon_url('chevron-down', p.muted)}); width: 12px; height: 12px; }}
-QFrame#CanvasToolbar {{ background: {p.surface2}; border: 1px solid {p.control}; border-radius: {RADIUS_FLOAT}px; }}
+QFrame#CanvasToolbar, QFrame#FloatingBar {{
+    background: {p.surface2}; border: 1px solid {p.control}; border-radius: {RADIUS_FLOAT}px;
+}}
 QListWidget#FormatList {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: {rd}px; padding: 4px; }}
 QListWidget#FormatList::item:disabled {{ color: {p.faint}; }}
 QFrame#Footer {{ background: {p.chrome}; border: none; border-top: 1px solid {p.border}; }}

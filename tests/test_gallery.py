@@ -202,7 +202,7 @@ def test_albums(gallery, monkeypatch):
     page.new_album([c], name="Best")
     page.show_album("Animals")
     assert {it.job_dir for it in page.items()} == {a, b} and page.album_chips["Animals"].isChecked()
-    assert page.album_chips["Animals"].text().endswith("2")
+    assert page.album_chips["Animals"].count_label.text() == "2"
     # dragging results onto an album: the gallery's drag data and the chip that takes it
     mime = page.model.mimeData([page.model.index(0), page.model.index(1)])
     assert sorted(AlbumChip.job_dirs(mime)) == sorted([a, b]) and mime.hasFormat(JOBS_MIME)
@@ -218,3 +218,51 @@ def test_albums(gallery, monkeypatch):
     assert jobs.read_meta(a)["albums"] == ["Best"] and "Camels" not in albums.names()
     page.refresh()  # read again from the disk
     assert [n for n in page.album_chips] == ["", "Best"]
+
+
+def test_the_filter_column_and_the_floating_selection_bar(gallery):
+    """4.0: the gallery from edge to edge – on the left the search, the methods (a column), favourites, the
+    albums with their counts and the tags (only when there are some); below the title how many results are
+    shown; the actions for a selection float at the bottom of the results, which keep room for them."""
+    from PySide6.QtCore import QPoint, Qt
+
+    from clipasso_studio.gui import theme
+    from clipasso_studio.gui.i18n import i18n, tr
+
+    page, out = gallery
+    lang = i18n.lang
+    try:
+        i18n.set_language("de")
+        a = _job(out, "zebra", "2026-09-01 10:00:00")
+        b = _job(out, "apple", "2026-09-02 10:00:00", method="clipasso")
+        page.refresh()
+        assert page.layout_kind == "columns" and page.filter_pane.width() == theme.FILTER_COLUMN
+        assert page.filter.orientation == Qt.Vertical
+        assert page.subtitle.text() == tr("ui.gallery.count", n=2)
+        assert not page.tag_label.isVisibleTo(page) and not page.tag_filter.isVisibleTo(page)
+        assert page.album_chips[""].count_label.text() == "2"
+        page.filter.set_current("clipasso")
+        page._apply()
+        assert page.subtitle.text() == tr("ui.gallery.count_shown", n=1, total=2)
+        page.filter.set_current("all")
+        page._apply()
+        page.save_info(a, title="Zebra", tags=["animals"], notes="")
+        assert page.tag_label.isVisibleTo(page) and page.tag_filter.isVisibleTo(page)
+
+        page.select([a, b])
+        bar, view = page.selection_bar, page.view
+        assert bar.isVisibleTo(page) and bar.parentWidget() is view
+        left = bar.mapTo(view, QPoint(0, 0))
+        assert abs(left.x() + bar.width() / 2 - view.width() / 2) <= 1  # in the middle …
+        assert left.y() + bar.height() <= view.height() and left.y() > view.height() / 2  # … at the bottom
+        assert view.viewportMargins().bottom() >= bar.height()  # (the last row can scroll above it)
+        page.view.clearSelection()
+        assert not bar.isVisibleTo(page) and view.viewportMargins().bottom() == 0
+        # every action in the head fits beside the title at the smallest window
+        page.resize(1200, 600)  # (MIN_WIDTH: the page is as wide as the window)
+        page.refresh()
+        for w in (page.sort, page.slideshow_btn, page.export_btn, page.folder_btn, page.refresh_btn):
+            assert w.width() >= w.sizeHint().width() and w.mapTo(page, QPoint(w.width(), 0)).x() <= page.width()
+        assert page.folder_btn.accessibleName() and page.refresh_btn.toolTip()
+    finally:
+        i18n.set_language(lang)

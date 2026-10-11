@@ -126,7 +126,7 @@ def _minutes(seconds: float) -> str:
 def job_message(job, summary: dict | None = None) -> tuple[str, str]:
     """(text, sketch file) of a finished or failed job ("" when it has no sketch)."""
     from . import methods_ui
-    from .i18n import tr
+    from .i18n import number, tr
 
     summary = summary or {}
     seconds = (job.finished - job.started) if job.finished and job.started else float(summary.get("seconds") or 0)
@@ -134,7 +134,7 @@ def job_message(job, summary: dict | None = None) -> tuple[str, str]:
     if job.status == "done":
         score = summary.get("clip_score")
         text = tr("ui.telegram.msg_done", name=job.name, method=method, time=_minutes(seconds),
-                  score=f"{score:.1f}" if isinstance(score, (int, float)) else "–")
+                  score=number(score) if isinstance(score, (int, float)) else "–")
     else:
         text = tr("ui.telegram.msg_failed", name=job.name, method=method, error=(job.message or job.status)[:300])
     sketch = job.best_svg or summary.get("best_svg") or ""

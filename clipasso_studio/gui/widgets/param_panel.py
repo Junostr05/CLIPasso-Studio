@@ -12,6 +12,7 @@ from ... import settings_schema as schema
 from ...engine import model_store
 from .. import icons, methods_ui, theme
 from ..i18n import i18n, tr
+from ..i18n import size as i18n_size
 from .common import CollapsibleSection, SegmentedControl, ToggleSwitch, button, label, set_prop, tool_button
 
 GROUP_ICONS = {
@@ -710,7 +711,7 @@ class ParamPanel(QWidget):
     def _after_change_controlsketch(self, s: dict):
         def size_of(keys):
             mb = methods_ui.download_mb(keys)
-            return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+            return i18n_size(mb)
 
         blip_missing = not model_store.is_available("blip")
         if not schema.text_value(s["caption"]):

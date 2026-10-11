@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import (QAbstractListModel, QEvent, QItemSelectionModel, QMimeData, QModelIndex, QRect, QRectF,
                             QSize, Qt, QTimer, QUrl, Signal)
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFormLayout, QHBoxLayout, QInputDialog,
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFormLayout, QFrame, QHBoxLayout, QInputDialog,
                                QLineEdit, QListView, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QStyle,
                                QStyledItemDelegate, QVBoxLayout, QWidget)
 
@@ -23,8 +23,8 @@ from ... import settings_schema as schema
 from ...engine import jobs
 from .. import albums, background, dialogs, icons, methods_ui, theme, thumbs
 from ..app_settings import app_settings
-from ..i18n import i18n, tr
-from ..widgets.common import Banner, EmptyState, SegmentedControl, button, label
+from ..i18n import i18n, number, tr
+from ..widgets.common import Banner, Column, EmptyState, SegmentedControl, button, label
 from .other_pages import _page_header, job_method, move_to_trash
 
 SORTS = ("newest", "oldest", "score", "duration", "strokes", "name")
@@ -295,9 +295,9 @@ class GalleryDelegate(QStyledItemDelegate):
         x = r.left() + self.PAD
         badges = [(methods_ui.name(it.method), pal.accent_soft, pal.text)]
         if it.score is not None:
-            badges.append((f"CLIP {it.score:.1f}", pal.surface3, pal.text))
+            badges.append((f"CLIP {number(it.score)}", pal.surface3, pal.text))
         elif it.loss is not None:
-            badges.append((f"Loss {it.loss:.3f}", pal.surface3, pal.text))
+            badges.append((f"Loss {number(it.loss, 3)}", pal.surface3, pal.text))
         if it.active:
             badges.append((tr("ui.gallery.state_active"), pal.accent, pal.on_accent))
         elif it.can_continue:
@@ -371,6 +371,10 @@ class GalleryView(QListView):
         self.setObjectName("GalleryView")
         self.doubleClicked.connect(lambda index: self.open_requested.emit(index.row()))
 
+    def set_bottom_space(self, px: int) -> None:
+        """Room below the last row (for the selection bar floating there)."""
+        self.setViewportMargins(0, 0, 0, px)
+
     def keyPressEvent(self, e):  # noqa: N802
         if e.key() in (Qt.Key_Return, Qt.Key_Enter) and self.currentIndex().isValid():
             self.open_requested.emit(self.currentIndex().row())
@@ -385,18 +389,27 @@ class GalleryView(QListView):
 
 
 class AlbumChip(QPushButton):
-    """An album in the bar above the results: click to show it; results dropped on it are added to it."""
+    """An album in the gallery's filter column – its name, its number of results on the right: click to show
+    it; results dropped on it are added to it."""
 
     dropped = Signal(str, list)  # album, job folders
 
-    def __init__(self, name: str, text: str, parent=None):
+    def __init__(self, name: str, text: str, count: int | None = None, parent=None):
         super().__init__(text, parent)
         self.album = name
         self.setCheckable(True)
         self.setProperty("variant", "ghost")
         self.setProperty("size", "sm")
+        self.setProperty("align", "left")
         self.setCursor(Qt.PointingHandCursor)
         self.setAcceptDrops(bool(name))
+        self.count_label = label("" if count is None else str(count), "faint")
+        self.count_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 10, 0)
+        lay.addStretch(1)
+        lay.addWidget(self.count_label)
+        self.setAccessibleName(text if count is None else f"{text}, {count}")
 
     @staticmethod
     def job_dirs(mime) -> list[str]:
@@ -427,8 +440,7 @@ class JobInfoDialog(QDialog):
         self.setWindowTitle(tr("ui.gallery.info_title"))
         self.setMinimumWidth(420)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(12)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.gallery.info_title"), "h2"))
         form = QFormLayout()
         form.setSpacing(10)
@@ -480,88 +492,81 @@ class GalleryPage(QWidget):
         if controller is not None:  # new and finished results appear without "Refresh"
             controller.job_started.connect(lambda _: self._refresh_if_shown())
             controller.job_finished.connect(lambda _: self._refresh_if_shown())
-        root = QVBoxLayout(self)
-        theme.page_layout(root)
-        head = QHBoxLayout()
-        lay, self.title, self.subtitle = _page_header("ui.gallery.title", "ui.gallery.subtitle")
-        head.addLayout(lay, 1)
-        self.folder_btn = button("", "folder-open", "ghost")
-        self.folder_btn.clicked.connect(self._open_folder)
-        self.export_btn = button("", "file-down", "ghost")
-        self.export_btn.clicked.connect(self.export_items)
-        self.refresh_btn = button("", "refresh-cw")
-        self.refresh_btn.clicked.connect(self.refresh)
-        self.slideshow_btn = button("", "play", "ghost")
-        self.slideshow_btn.clicked.connect(lambda: self.show_large(slideshow=True))
-        for b in (self.slideshow_btn, self.export_btn, self.folder_btn, self.refresh_btn):
-            head.addWidget(b, 0, Qt.AlignBottom)
-        root.addLayout(head)
-
-        tools = QHBoxLayout()
-        tools.setSpacing(10)
-        self.filter = SegmentedControl([("all", "")] + [(m, methods_ui.name(m)) for m in schema.METHODS])
-        self.filter.changed.connect(lambda _: self._apply())
-        self.fav_btn = button("", "star", "ghost")
-        self.fav_btn.setCheckable(True)
-        self.fav_btn.toggled.connect(lambda _: self._apply())
-        self.tag_filter = QComboBox()
-        self.tag_filter.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.tag_filter.currentIndexChanged.connect(lambda _: self._apply())
-        self.sort = QComboBox()
-        self.sort.currentIndexChanged.connect(lambda _: self._apply())
+        # 4.0: the search and the filters in a column on the left, the results beside them
+        self.layout_kind = "columns"
+        root = QHBoxLayout(self)
+        theme.columns_layout(root)
+        side = Column("left", theme.FILTER_COLUMN, spacing=theme.SPACE_M)
+        self.filter_pane = side
         self.search = QLineEdit()
         self.search.setClearButtonEnabled(True)
-        self.search.setFixedWidth(240)
         self._search_timer = QTimer(self, singleShot=True, interval=200)  # typing does not refilter every key
         self._search_timer.timeout.connect(self._apply)
         self.search.textChanged.connect(lambda _: self._search_timer.start())
-        for w in (self.filter, self.fav_btn, self.tag_filter, self.sort):
-            tools.addWidget(w)
-        tools.addStretch(1)
-        tools.addWidget(self.search)
-        root.addLayout(tools)
+        side.body.addWidget(self.search)
+        self.method_label = label("", "label")
+        self.filter = SegmentedControl([("all", "")] + [(m, methods_ui.name(m)) for m in schema.METHODS],
+                                       orientation=Qt.Vertical)
+        self.filter.changed.connect(lambda _: self._apply())
+        self.fav_btn = button("", "star", "ghost")
+        self.fav_btn.setCheckable(True)
+        self.fav_btn.setProperty("align", "left")
+        self.fav_btn.toggled.connect(lambda _: self._apply())
+        for w in (self.method_label, self.filter, self.fav_btn):
+            side.body.addWidget(w)
 
         # albums: click to show one, drop results on it to add them; right click for more
         self.album = ""  # the album shown ("": all results)
         self.album_bar = QWidget()
-        ab = QHBoxLayout(self.album_bar)
-        ab.setContentsMargins(0, 0, 0, 0)
-        ab.setSpacing(6)
-        self.album_label = label("", "faint")
+        ab = QVBoxLayout(self.album_bar)
+        ab.setContentsMargins(0, theme.SPACE_S, 0, 0)
+        ab.setSpacing(2)
+        self.album_label = label("", "label")
         ab.addWidget(self.album_label)
-        self.album_row = QHBoxLayout()
-        self.album_row.setSpacing(6)
+        self.album_row = QVBoxLayout()
+        self.album_row.setSpacing(2)
         ab.addLayout(self.album_row)
         self.new_album_btn = button("", "plus", "ghost", size="sm")
+        self.new_album_btn.setProperty("align", "left")
         self.new_album_btn.clicked.connect(lambda: self.new_album())
         ab.addWidget(self.new_album_btn)
-        ab.addStretch(1)
         self.album_chips: dict[str, AlbumChip] = {}
-        root.addWidget(self.album_bar)
+        side.body.addWidget(self.album_bar)
+        self.tag_label = label("", "label")
+        self.tag_filter = QComboBox()
+        self.tag_filter.currentIndexChanged.connect(lambda _: self._apply())
+        side.body.addSpacing(theme.SPACE_S)
+        side.body.addWidget(self.tag_label)
+        side.body.addWidget(self.tag_filter)
+        side.body.addStretch(1)
+        root.addWidget(side)
 
-        # actions for the selected results
-        self.selection_bar = QWidget()
-        sb = QHBoxLayout(self.selection_bar)
-        sb.setContentsMargins(0, 0, 0, 0)
-        sb.setSpacing(8)
-        self.selection_label = label("", "muted")
-        self.sel_view_btn = button("", "maximize-2", "ghost", size="sm")
-        self.sel_view_btn.clicked.connect(lambda: self.show_large(items=self.selected_items()))
-        self.sel_compare_btn = button("", "git-compare", "ghost", size="sm")
-        self.sel_compare_btn.clicked.connect(lambda: self.show_large(compare=True))
-        self.sel_fav_btn = button("", "star", "ghost", size="sm")
-        self.sel_fav_btn.clicked.connect(self.toggle_favourite_selected)
-        self.sel_export_btn = button("", "file-down", "ghost", size="sm")
-        self.sel_export_btn.clicked.connect(lambda: self.export_items(self.selected_items()))
-        self.sel_delete_btn = button("", "trash-2", "ghost", size="sm")
-        self.sel_delete_btn.clicked.connect(self.delete_selected)
-        sb.addWidget(self.selection_label)
-        sb.addStretch(1)
-        for b in (self.sel_view_btn, self.sel_compare_btn, self.sel_fav_btn, self.sel_export_btn,
-                  self.sel_delete_btn):
-            sb.addWidget(b)
-        self.selection_bar.setVisible(False)
-        root.addWidget(self.selection_bar)
+        main = QWidget()
+        ml = QVBoxLayout(main)
+        pad = theme.COLUMN_PADDING
+        ml.setContentsMargins(pad + 4, pad, pad + 4, pad)
+        ml.setSpacing(theme.PAGE_SPACING)
+        head = QHBoxLayout()
+        head.setSpacing(theme.SPACE_S)
+        lay, self.title, self.subtitle = _page_header("ui.gallery.title", "ui.gallery.subtitle")
+        head.addLayout(lay, 1)
+        self.sort = QComboBox()
+        self.sort.currentIndexChanged.connect(lambda _: self._apply())
+        self.sort.setMinimumContentsLength(12)
+        self.folder_btn = button("", "folder-open", "ghost")
+        self.folder_btn.clicked.connect(self._open_folder)
+        self.export_btn = button("", "file-down", "ghost")
+        self.export_btn.clicked.connect(self.export_items)
+        self.refresh_btn = button("", "refresh-cw", "ghost")
+        self.refresh_btn.clicked.connect(self.refresh)
+        self.slideshow_btn = button("", "play", "ghost")
+        self.slideshow_btn.clicked.connect(lambda: self.show_large(slideshow=True))
+        for b in (self.sort, self.slideshow_btn, self.export_btn, self.folder_btn, self.refresh_btn):
+            head.addWidget(b, 0, Qt.AlignBottom)
+        ml.addLayout(head)
+        # while the results move to another folder (in the background) the gallery waits
+        self.lock_banner = Banner()
+        ml.addWidget(self.lock_banner)
 
         self.model = GalleryModel(self)
         self.view = GalleryView()
@@ -578,14 +583,37 @@ class GalleryPage(QWidget):
         self.view.selectionModel().selectionChanged.connect(lambda *_: self._selection_changed())
         self.view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.view.customContextMenuRequested.connect(self._context_menu)
-        root.addWidget(self.view, 1)
+        ml.addWidget(self.view, 1)
         self.empty = EmptyState("images")  # no results yet / none fits the search
         self.empty.action.connect(self._empty_action)
         self.empty.hide()
-        root.addWidget(self.empty, 1)
-        # while the results move to another folder (in the background) the gallery waits
-        self.lock_banner = Banner()
-        root.insertWidget(1, self.lock_banner)
+        ml.addWidget(self.empty, 1)
+        root.addWidget(main, 1)
+
+        # actions for the selected results: a bar floating at the bottom of the results
+        self.selection_bar = QFrame(self.view)
+        self.selection_bar.setObjectName("FloatingBar")
+        sb = QHBoxLayout(self.selection_bar)
+        sb.setContentsMargins(14, 6, 6, 6)
+        sb.setSpacing(4)
+        self.selection_label = label("", None)
+        self.sel_view_btn = button("", "maximize-2", "ghost", size="sm")
+        self.sel_view_btn.clicked.connect(lambda: self.show_large(items=self.selected_items()))
+        self.sel_compare_btn = button("", "git-compare", "ghost", size="sm")
+        self.sel_compare_btn.clicked.connect(lambda: self.show_large(compare=True))
+        self.sel_fav_btn = button("", "star", "ghost", size="sm")
+        self.sel_fav_btn.clicked.connect(self.toggle_favourite_selected)
+        self.sel_export_btn = button("", "file-down", "ghost", size="sm")
+        self.sel_export_btn.clicked.connect(lambda: self.export_items(self.selected_items()))
+        self.sel_delete_btn = button("", "trash-2", "ghost", size="sm")
+        self.sel_delete_btn.clicked.connect(self.delete_selected)
+        sb.addWidget(self.selection_label)
+        sb.addSpacing(theme.SPACE_S)
+        for b in (self.sel_view_btn, self.sel_compare_btn, self.sel_fav_btn, self.sel_export_btn,
+                  self.sel_delete_btn):
+            sb.addWidget(b)
+        self.selection_bar.setVisible(False)
+        self.view.installEventFilter(self)  # (the bar stays at the bottom when the results resize)
         self._lockable = [self.view, self.selection_bar, self.album_bar, self.export_btn, self.refresh_btn,
                           self.slideshow_btn, self.folder_btn, self.filter, self.fav_btn, self.tag_filter, self.sort,
                           self.search]
@@ -627,7 +655,7 @@ class GalleryPage(QWidget):
         self.album_chips = {}
         for name in [""] + names:
             count = sum(1 for it in self._all if name in it.albums) if name else len(self._all)
-            chip = AlbumChip(name, f"{name or tr('ui.albums.all')}  {count}")
+            chip = AlbumChip(name, name or tr("ui.albums.all"), count)
             chip.setChecked(name == self.album)
             chip.clicked.connect(lambda _=False, n=name: self.show_album(n))
             chip.dropped.connect(lambda n, dirs: self.add_to_album(dirs, n))
@@ -748,6 +776,7 @@ class GalleryPage(QWidget):
             self.tag_filter.addItem(f"#{t}", t)
         self.tag_filter.setCurrentIndex(max(self.tag_filter.findData(current or ""), 0))
         self.tag_filter.setVisible(bool(tags))
+        self.tag_label.setVisible(bool(tags))
         self.tag_filter.blockSignals(False)
 
     def _apply(self):
@@ -769,8 +798,15 @@ class GalleryPage(QWidget):
         self.slideshow_btn.setEnabled(len(self.shown_items()) > 1)
         self.empty.setVisible(not items)
         self.view.setVisible(bool(items))
+        self._update_count()
         self._update_empty()
         self._selection_changed()
+
+    def _update_count(self):
+        """Below the title: how many results there are – and how many of them are shown."""
+        n, total = self.model.rowCount(), len(self._all)
+        self.subtitle.setText(tr("ui.gallery.count", n=total) if n == total else
+                              tr("ui.gallery.count_shown", n=n, total=total))
 
     def _update_empty(self):
         if self._all:
@@ -828,6 +864,22 @@ class GalleryPage(QWidget):
         self.selection_bar.setVisible(n > 1)
         self.selection_label.setText(tr("ui.gallery.selected", n=n))
         self.sel_compare_btn.setVisible(n == 2)
+        self._place_selection_bar()
+
+    def _place_selection_bar(self):
+        """At the bottom of the results, in the middle – the results keep room for it below the last row."""
+        bar = self.selection_bar
+        shown = bar.isVisibleTo(self.view)
+        self.view.set_bottom_space(bar.sizeHint().height() + 2 * theme.SPACE_L if shown else 0)
+        if shown:
+            bar.adjustSize()
+            bar.move((self.view.width() - bar.width()) // 2, self.view.height() - bar.height() - theme.SPACE_L)
+            bar.raise_()
+
+    def eventFilter(self, obj, e):  # noqa: N802
+        if obj is self.view and e.type() == QEvent.Resize:
+            self._place_selection_bar()
+        return False
 
     def locked(self) -> bool:
         """The results are moving to another folder (``background``): nothing is changed meanwhile."""
@@ -964,7 +1016,8 @@ class GalleryPage(QWidget):
             menu.addAction(icons.icon("folder-open"), tr("ui.gallery.show_folder"),
                            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(it.job_dir)))
             menu.addAction(icons.icon("copy"), tr("ui.copy"), lambda: self._copy(it))
-            menu.addAction(icons.icon("pen-tool"), tr("ui.gallery.info"), lambda: self.edit_info(it.job_dir))
+            menu.addAction(icons.icon("pen-tool"), tr("ui.gallery.info").replace("&", "&&"),
+                           lambda: self.edit_info(it.job_dir))
         fav = all(c.favourite for c in chosen)
         menu.addAction(icons.icon("star"), tr("ui.gallery.unfavourite" if fav else "ui.gallery.favourite"),
                        self.toggle_favourite_selected)
@@ -976,7 +1029,7 @@ class GalleryPage(QWidget):
         for name in albums.names([i.summary for i in self._all]):
             to_album.addAction(name, lambda n=name: self.add_to_album(dirs, n))
         to_album.addSeparator()
-        to_album.addAction(icons.icon("plus"), tr("ui.albums.new") + " …", lambda: self.new_album(dirs))
+        to_album.addAction(icons.icon("plus"), tr("ui.albums.new"), lambda: self.new_album(dirs))
         if self.album and any(self.album in c.albums for c in chosen):
             menu.addAction(tr("ui.albums.remove_from", album=self.album),
                            lambda a=self.album: self.remove_from_album(dirs, a))
@@ -1044,7 +1097,8 @@ class GalleryPage(QWidget):
 
     def retranslate(self):
         self.title.setText(tr("ui.gallery.title"))
-        self.subtitle.setText(tr("ui.gallery.subtitle"))
+        self.subtitle.setToolTip(tr("ui.gallery.subtitle"))
+        self._update_count()
         self.search.setPlaceholderText(tr("ui.gallery.search"))
         self.filter.set_text("all", tr("ui.gallery.all"))
         self.fav_btn.setText(tr("ui.gallery.favourites"))
@@ -1057,10 +1111,11 @@ class GalleryPage(QWidget):
         self.sort.blockSignals(False)
         if self.tag_filter.count():
             self.tag_filter.setItemText(0, tr("ui.gallery.all_tags"))
-        self.folder_btn.setText(tr("ui.open_folder"))
+        for b, key in ((self.folder_btn, "ui.open_folder"), (self.refresh_btn, "ui.refresh")):  # (icons only)
+            b.setToolTip(tr(key))
+            b.setAccessibleName(tr(key))
         self.export_btn.setText(tr("ui.batch.export_shown"))
         self.export_btn.setToolTip(tr("ui.batch.export_shown_tip"))
-        self.refresh_btn.setText(tr("ui.refresh"))
         self.slideshow_btn.setText(tr("ui.viewer.slideshow"))
         self.slideshow_btn.setToolTip(tr("ui.viewer.slideshow_gallery_tip"))
         self.sel_view_btn.setText(tr("ui.viewer.show"))
@@ -1071,6 +1126,8 @@ class GalleryPage(QWidget):
         self.sel_delete_btn.setText(tr("ui.gallery.delete"))
         self.view.setToolTip(tr("ui.gallery.keys_tip"))
         self.album_label.setText(tr("ui.albums.label"))
+        self.method_label.setText(tr("ui.gallery.method"))
+        self.tag_label.setText(tr("ui.gallery.tag"))
         self.new_album_btn.setText(tr("ui.albums.new"))
         self.new_album_btn.setToolTip(tr("ui.albums.new_tip"))
         if "" in self.album_chips:

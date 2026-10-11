@@ -53,7 +53,9 @@ def test_selftest_dialog(own_settings, monkeypatch, tmp_path, ok):
     _wait(dlg)
     assert dlg.result is not None and dlg.result["ok"] is ok
     text = dlg.results.toPlainText()
-    assert "✓  CLIPasso" in text and "CLIP 67.1" in text
+    from clipasso_studio.gui.i18n import number
+
+    assert "✓  CLIPasso" in text and f"CLIP {number(67.1)}" in text
     assert ("✓" if ok else "✗") + "  " in text.splitlines()[-1]
     dlg.reject()
 

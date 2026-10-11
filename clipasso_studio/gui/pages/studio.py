@@ -19,7 +19,8 @@ from ...engine import imaging, jobs, masking, model_store
 from .. import brush, dialogs, icons, image_hints, image_io, mask_view, methods_ui, paper, shortcuts, theme
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
-from ..i18n import i18n, tr
+from ..i18n import i18n, number, tr
+from ..i18n import size as i18n_size
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SheetView, SketchCanvas, load_pixmap)
 from ..widgets.common import (Banner, Card, Column, ElidedLabel, RovingFocus, SegmentedControl, StepHeader,
@@ -203,13 +204,17 @@ class StudioPage(QWidget):
         self.open_btn.setIconSize(QSize(16, 16))
         self.open_btn.clicked.connect(self.browse_image)
         self.open_menu = QMenu(self)
-        self.samples_menu = self.open_menu.addMenu("")
-        self.recent_menu = self.open_menu.addMenu("")
+        self.samples_menu = QMenu(self)
+        self.open_menu.addMenu(self.samples_menu)
+        self.recent_menu = QMenu(self)
+        self.open_menu.addMenu(self.recent_menu)
         self.recent_menu.aboutToShow.connect(self._build_recent_menu)
         self.open_menu.addSeparator()
-        self.webcam_action = self.open_menu.addAction("")
+        self.webcam_action = QAction(self)
+        self.open_menu.addAction(self.webcam_action)
         self.webcam_action.triggered.connect(self.take_webcam_photo)
-        self.paste_action = self.open_menu.addAction("")
+        self.paste_action = QAction(self)
+        self.open_menu.addAction(self.paste_action)
         self.paste_action.triggered.connect(self.paste_image)
         self.open_btn.setMenu(self.open_menu)
         self.edit_btn = button("", "crop", "ghost", size="sm")
@@ -268,11 +273,13 @@ class StudioPage(QWidget):
         self.budget_menu = QMenu(self)
         self.budget_actions = {}
         for minutes in methods_ui.BUDGET_MINUTES:
-            action = self.budget_menu.addAction("")
+            action = QAction(self)
+            self.budget_menu.addAction(action)
             action.triggered.connect(lambda _=False, m=minutes: self.fit_to_budget(m))
             self.budget_actions[minutes] = action
         self.budget_menu.addSeparator()
-        self.budget_other = self.budget_menu.addAction("")
+        self.budget_other = QAction(self)
+        self.budget_menu.addAction(self.budget_other)
         self.budget_other.triggered.connect(lambda: self.fit_to_budget(None))
         self.budget_btn.setMenu(self.budget_menu)
         r.addWidget(self.budget_label)
@@ -353,7 +360,8 @@ class StudioPage(QWidget):
         self.speed_group = QActionGroup(self)
         self.speed_actions = {}
         for speed in (0.5, 1.0, 2.0, 4.0):
-            action = self.speed_menu.addAction(f"{speed:g}×")
+            action = QAction(f"{speed:g}×", self)
+            self.speed_menu.addAction(action)
             action.setCheckable(True)
             action.setChecked(speed == 1.0)
             action.triggered.connect(lambda _=False, v=speed: self.set_timelapse_speed(v))
@@ -387,7 +395,8 @@ class StudioPage(QWidget):
         self.layer_group = QActionGroup(self)
         self.layer_actions = {}
         for key in ("all", "background", "object"):
-            action = self.layer_menu.addAction("")
+            action = QAction(self)  # (made here, not by the menu: a kept action made by Qt can lose its wrapper)
+            self.layer_menu.addAction(action)
             action.setCheckable(True)
             action.setChecked(key == "all")
             action.triggered.connect(lambda _=False, k=key: self.set_layer_part(k))
@@ -403,26 +412,31 @@ class StudioPage(QWidget):
         self.style_group = QActionGroup(self)
         self.style_actions = {}
         for key in brush.STYLES:
-            action = self.style_menu.addAction("")
+            action = QAction(self)
+            self.style_menu.addAction(action)
             action.setCheckable(True)
             action.triggered.connect(lambda _=False, k=key: self.set_canvas_style(k))
             self.style_group.addAction(action)
             self.style_actions[key] = action
         # the paper the sketches are shown on – the export starts with it, too
         self.style_menu.addSeparator()
-        self.paper_menu = self.style_menu.addMenu("")
+        self.paper_menu = QMenu(self)
+        self.style_menu.addMenu(self.paper_menu)
         self.paper_group = QActionGroup(self)
         self.paper_actions = {}
         for key in paper.KINDS:
-            action = self.paper_menu.addAction("")
+            action = QAction(self)
+            self.paper_menu.addAction(action)
             action.setCheckable(True)
             action.triggered.connect(lambda _=False, k=key: self.set_canvas_paper(kind=k))
             self.paper_group.addAction(action)
             self.paper_actions[key] = action
         self.paper_menu.addSeparator()
-        self.paper_color_action = self.paper_menu.addAction("")
+        self.paper_color_action = QAction(self)
+        self.paper_menu.addAction(self.paper_color_action)
         self.paper_color_action.triggered.connect(self._pick_paper_color)
-        self.vignette_action = self.paper_menu.addAction("")
+        self.vignette_action = QAction(self)
+        self.paper_menu.addAction(self.vignette_action)
         self.vignette_action.setCheckable(True)
         self.vignette_action.triggered.connect(lambda on: self.set_canvas_paper(vignette=on))
         self.style_btn.setMenu(self.style_menu)
@@ -910,7 +924,7 @@ class StudioPage(QWidget):
         score = summary.get("clip_score")
         secs = summary.get("seconds") or 0
         b.setToolTip(tr("ui.history.tip", method=methods_ui.name(method), date=str(summary.get("created", ""))[:16],
-                        score=f"{score:.1f}" if isinstance(score, (int, float)) else "–",
+                        score=number(score) if isinstance(score, (int, float)) else "–",
                         time=imaging.eta_string(secs) if secs else "–"))
         b.clicked.connect(lambda _=False, d=job_dir: self._open_history_job(d))
         return b
@@ -1117,7 +1131,7 @@ class StudioPage(QWidget):
         method = self.params.method()
         if missing:
             mb = methods_ui.download_mb(missing)
-            size = f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+            size = i18n_size(mb)
             names = ", ".join(dialogs.model_display_name(k) for k in missing)
             self.banner.show_message(tr("ui.banner.models_missing", method=methods_ui.name(method), names=names,
                                         size=size), button_text=tr("ui.download"), icon_name="download")
@@ -1314,7 +1328,7 @@ class StudioPage(QWidget):
         self.canvas.set_attention(self.seed_attn.get(seed))
         self._update_layer_btn()
         if not methods_ui.uses_loss(self.view_method) and seed in self.seed_scores:
-            self.stat_loss.value.setText(f"{self.seed_scores[seed]:.1f}")
+            self.stat_loss.value.setText(number(self.seed_scores[seed]))
         self._update_buttons()
 
     def _job_started(self, job: QueuedJob):
@@ -1428,9 +1442,9 @@ class StudioPage(QWidget):
                 self.canvas.set_svg(self._shown_svg(seed))
                 self._update_layer_btn()
             if not methods_ui.uses_loss(self.view_method) and self.seed_scores:
-                self.stat_best.value.setText(f"{max(self.seed_scores.values()):.1f}")
+                self.stat_best.value.setText(number(max(self.seed_scores.values())))
                 if seed == self.selected_seed and data.get("clip_score") is not None:
-                    self.stat_loss.value.setText(f"{data['clip_score']:.1f}")
+                    self.stat_loss.value.setText(number(data['clip_score']))
         elif kind == "job_done":
             best_run = data.get("best_run", "")
             for r in data.get("runs", []):
@@ -1467,11 +1481,11 @@ class StudioPage(QWidget):
         self.progress.setValue(int(job.progress * 1000))
         self.stat_iter.value.setText(f"{it}/{total}")
         if methods_ui.uses_loss(method):
-            self.stat_loss.value.setText(f"{data['loss']:.4f}")
+            self.stat_loss.value.setText(number(data['loss'], 4))
             best = data["best_loss"]
-            self.stat_best.value.setText(f"{best:.4f}" if best < 99 else "–")
+            self.stat_best.value.setText(number(best, 4) if best < 99 else "–")
         elif data.get("score") is not None:
-            self.stat_loss.value.setText(f"{data['score']:.1f}")
+            self.stat_loss.value.setText(number(data['score']))
         self.stat_time.value.setText(imaging.eta_string(data["elapsed"]))
         remaining_seeds = sum(1 for s in job.seeds if job.seed_progress.get(s, 0) < 1.0) - 1
         eta = data["eta"]
@@ -1650,8 +1664,8 @@ class StudioPage(QWidget):
             total = methods_ui.iterations(summary.get("settings", {}))
             self.stat_iter.value.setText(f"{best.get('iterations_done', 0)}/{total}")
             if best.get("clip_score") is not None:
-                self.stat_loss.value.setText(f"{best['clip_score']:.1f}")
-                self.stat_best.value.setText(f"{best['clip_score']:.1f}")
+                self.stat_loss.value.setText(number(best['clip_score']))
+                self.stat_best.value.setText(number(best['clip_score']))
             if cfg.get("seconds"):
                 self.stat_time.value.setText(imaging.eta_string(cfg["seconds"]))
             self.chart.reset(max(int(total), 1))
@@ -1661,7 +1675,7 @@ class StudioPage(QWidget):
             return
         total = cfg.get("num_iter", best.get("iterations_done", 0))
         self.stat_iter.value.setText(f"{best.get('iterations_done', 0)}/{total}")
-        self.stat_best.value.setText(f"{best.get('best_loss', 0):.4f}")
+        self.stat_best.value.setText(number(best.get('best_loss', 0), 4))
         if cfg.get("seconds"):
             self.stat_time.value.setText(imaging.eta_string(cfg["seconds"]))
         evals = cfg.get("loss_eval") or []
@@ -1670,7 +1684,7 @@ class StudioPage(QWidget):
         for i, v in enumerate(evals):
             self.chart.add(i * interval, v, v)
         if evals:
-            self.stat_loss.value.setText(f"{evals[-1]:.4f}")
+            self.stat_loss.value.setText(number(evals[-1], 4))
         self.chart.update()
 
     def _selected_run(self) -> tuple[str, str] | None:
@@ -1867,8 +1881,8 @@ class StudioPage(QWidget):
             score = f"  {clip_score:.0f}" if clip_score is not None else ""
             return self._cell_label(seed) + score
         if methods_ui.uses_loss(self.view_method) or clip_score is None:
-            return f"{best_loss:.3f}" if best_loss is not None else ""
-        return f"{clip_score:.1f}"
+            return number(best_loss, 3) if best_loss is not None else ""
+        return number(clip_score)
 
     @staticmethod
     def _cell_label(cell: int) -> str:
@@ -2064,11 +2078,17 @@ class StudioPage(QWidget):
         self.left_stack.setCurrentWidget(self.left_scroll)
         self.adjust_btn.setFocus(Qt.OtherFocusReason)
 
+    tab_lead: QWidget | None = None  # what Tab reaches before the studio (the window sets its header)
+
     def fix_tab_order(self) -> None:
-        """Tab: the left column, the middle, the right column, the footer – in the order they are seen."""
+        """Tab: (the header,) the left column, the middle, the right column, the footer – in the order they are
+        seen, and from the footer round to the header."""
         from .. import a11y
 
-        a11y.reading_order([self.left_stack, self.center_card, self.right_pane, self.footer])
+        areas = [self.tab_lead, self.left_stack, self.center_card, self.right_pane, self.footer]
+        chain = a11y.reading_order([a for a in areas if a is not None])
+        if self.tab_lead is not None and chain:
+            QWidget.setTabOrder(chain[-1], chain[0])  # (round: the footer's last control → the header)
 
     def showEvent(self, e):  # noqa: N802
         super().showEvent(e)
@@ -2168,7 +2188,7 @@ class StudioPage(QWidget):
         self.up_btn.setToolTip(tr("ui.rate.up"))
         self.down_btn.setToolTip(tr("ui.rate.down"))
         self.simplify_btn.setText(tr("ui.edit_bar.simplify"))
-        self.experimental_btn.setText(tr("ui.studio.experimental_badge"))
+        self.experimental_btn.setText(tr("ui.studio.experimental_badge").replace("&", "&&"))
         self.experimental_btn.setToolTip(tr("ui.studio.experimental_tip"))
         self.simplify_btn.setToolTip(tr("ui.edit_bar.simplify_tip"))
         self.edit_bar.retranslate()

@@ -12,7 +12,7 @@ from ... import settings_schema as schema
 from ...engine import imaging, jobs
 from .. import dialogs, icons, methods_ui, theme, thumbs
 from ..controller import JobController, QueuedJob
-from ..i18n import i18n, tr
+from ..i18n import i18n, number, tr
 from ..widgets.canvas import SketchCanvas
 from ..widgets.common import Card, EmptyState, ToggleSwitch, button, label
 from .other_pages import _page_header, _scroll, job_method, scan_jobs
@@ -105,7 +105,7 @@ class CompareCard(Card):
         score_v, time_v, strokes_v = (self.stat_values[k][0] for k in ("score", "time", "strokes"))
         if summary:
             score, secs, strokes = result_numbers(summary, self.method)
-            score_v.setText(f"{score:.1f}" if score is not None else "–")
+            score_v.setText(number(score) if score is not None else "–")
             time_v.setText(imaging.eta_string(secs) if secs else "–")
             strokes_v.setText(str(strokes))
         else:
@@ -345,7 +345,7 @@ class ComparePage(QWidget):
         for m, c in self.cards.items():
             c.set_best(m == best)
         if best:
-            self.verdict.setText(tr("ui.compare.verdict", method=methods_ui.name(best), score=f"{scored[best]:.1f}"))
+            self.verdict.setText(tr("ui.compare.verdict", method=methods_ui.name(best), score=number(scored[best])))
         else:
             self.verdict.setText(tr("ui.compare.verdict_none"))
         self.start_btn.setEnabled(bool(image))

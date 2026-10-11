@@ -16,7 +16,8 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QPlainTextEdit, QProgressBar, QVBoxLayout
 
 from .. import logs
-from .i18n import tr
+from . import theme
+from .i18n import number, tr
 from .widgets.common import button, label
 
 PARTS = ("clipasso", "swiftsketch", "controlsketch", "scenesketch", "resume", "mask", "warm", "inputs",
@@ -62,8 +63,7 @@ class SelftestDialog(QDialog):
         self.setWindowTitle(tr("ui.selftest.title"))
         self.setMinimumWidth(520)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(10)
+        theme.dialog_layout(lay)
         lay.addWidget(label(tr("ui.selftest.title"), "h2"))
         lay.addWidget(label(tr("ui.selftest.desc"), "muted", wrap=True))
         self.status = label(tr("ui.selftest.starting"), "faint", wrap=True)
@@ -155,7 +155,7 @@ def summary_text(result: dict) -> str:
         r = result.get(part)
         if not isinstance(r, dict):
             continue
-        extra = f" · CLIP {r['clip_score']:.1f}" if isinstance(r.get("clip_score"), (int, float)) else ""
+        extra = f" · CLIP {number(r['clip_score'])}" if isinstance(r.get("clip_score"), (int, float)) else ""
         lines.append(f"{'✓' if r.get('ok') else '✗'}  {tr(f'ui.selftest.part.{part}')}{extra}")
     if result.get("error"):
         lines.append(f"✗  {result['error']}")

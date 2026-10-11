@@ -318,9 +318,11 @@ def test_loading_a_swiftsketch_result(window, tmp_path):
     studio.show_job_dir(str(job))
     assert studio.params.method() == "swiftsketch"
     assert studio.file_label.text().startswith("horse.png") and "30×20" in studio.file_label.text()
-    assert studio.stat_loss.value.text() == "81.5"
+    from clipasso_studio.gui.i18n import number
+
+    assert studio.stat_loss.value.text() == number(81.5)  # (4.0: 81,5 in German)
     assert studio.stat_loss.caption.text() in ("CLIP-Score", "CLIP score")
-    assert studio.thumbs[20].caption.text().endswith("81.5")
+    assert studio.thumbs[20].caption.text().endswith(number(81.5))
     assert not studio.chart.isVisibleTo(studio)
 
 
@@ -411,7 +413,9 @@ def test_gallery_large_view_slideshow_and_compare(window, tmp_path):
     viewer = gallery.viewer
     assert viewer is not None and viewer.isVisible()
     assert viewer.current().job_dir == b and viewer.position_label.text() == "2 / 3"
-    assert viewer.name_label.text() == "crab" and "CLIP 85.0" in viewer.info_label.text()
+    from clipasso_studio.gui.i18n import number
+
+    assert viewer.name_label.text() == "crab" and f"CLIP {number(85.0)}" in viewer.info_label.text()
     assert viewer.view.has_sketch() and not viewer.compare_btn.isVisible()
     viewer.next()
     assert viewer.current().job_dir == a
@@ -735,8 +739,10 @@ def test_turbo_switch_estimate_and_dropped_sketches(window):
     assert panel.settings()["turbo"] is False
 
     studio.view_method = "clipasso"
-    assert studio._seed_caption(0.25, None, 0, pruned=True) == tr("ui.seed_pruned", value="0.250")
-    assert studio._seed_caption(0.25, None, 0) == "0.250"
+    from clipasso_studio.gui.i18n import number
+
+    assert studio._seed_caption(0.25, None, 0, pruned=True) == tr("ui.seed_pruned", value=number(0.25, 3))
+    assert studio._seed_caption(0.25, None, 0) == number(0.25, 3)
 
 
 def test_brush_style_in_the_canvas(window):
@@ -1846,8 +1852,9 @@ def test_every_button_has_a_name(window):
 
 
 def test_studio_tab_order(window, tmp_path):
-    """3.6: Tab goes through the studio from left to right. 4.0: in the order it is seen – the left column (the
-    steps), the middle, the right column (the job's sketches), the footer with the job."""
+    """3.6: Tab goes through the studio from left to right. 4.0: in the order it is seen – the header, the left
+    column (the steps), the middle, the right column (the job's sketches), the footer with the job, and from
+    there round to the header again."""
     from PySide6.QtCore import Qt
 
     window.show_page("studio")
@@ -1855,11 +1862,12 @@ def test_studio_tab_order(window, tmp_path):
     job = _fake_job(str(tmp_path), "tabs", str(tmp_path / "tabs.png"), 80.0)
     st.show_job_dir(job)  # (a sketch in the right column)
     st.fix_tab_order()
-    roots = {st.left_scroll: 0, st.center_card: 1, st.right_pane: 2, st.footer: 3}
-    areas, w = [], st.open_btn
-    for _ in range(800):
+    roots = {window.header: 0, st.left_scroll: 1, st.center_card: 2, st.right_pane: 3, st.footer: 4}
+    start = window.header.tabs["studio"]
+    areas, w = [0], start
+    for _ in range(20000):
         w = w.nextInFocusChain()
-        if w is st.open_btn:
+        if w is start:
             break
         if not (w.focusPolicy() & Qt.TabFocus) or not w.isVisibleTo(window) or not w.isEnabled():
             continue
@@ -1868,7 +1876,7 @@ def test_studio_tab_order(window, tmp_path):
             a = a.parentWidget()
         if a is not None and (not areas or areas[-1] != roots[a]):
             areas.append(roots[a])
-    assert areas == [0, 1, 2, 3], areas
+    assert w is start and areas == [0, 1, 2, 3, 4], areas  # (round: from the footer to the header again)
 
 def test_pages_use_the_spacing_tokens(window):
     """3.6: every page has the same margins and spacing (theme tokens). 4.0: a page from edge to edge
@@ -2310,3 +2318,44 @@ def test_the_sketches_in_the_right_column(window, tmp_path):
     assert all(st.right_pane.isAncestorOf(t) for t in st.thumbs.values())
     t = next(iter(st.thumbs.values()))
     assert t.width() <= st.thumb_area.viewport().width() and t.caption.text()
+
+
+def test_the_settings_jump_to_their_parts(window):
+    """4.0: the settings have a column on the left with their parts – a click scrolls the part to the top, the
+    column follows the scrolling, and the App menu's *Phone & messages* lands on its part. A "&" in a part's name
+    is text (it was shown as an underlined space)."""
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui import theme
+    from clipasso_studio.gui.i18n import i18n
+
+    st = window.settings
+    window.show_page("settings")
+    size, lang = window.size(), i18n.lang
+    try:
+        i18n.set_language("de")
+        window.resize(1200, 760)
+        for _ in range(3):
+            QApplication.processEvents()
+        assert st.layout_kind == "columns" and st.nav_pane.width() == theme.FILTER_COLUMN
+        assert list(st.section_nav._buttons) == list(st.SECTIONS)
+        assert st.section_nav._buttons["phone"].text() == "Handy && Nachrichten"
+        bar = st.scroll.verticalScrollBar()
+        st.section_nav._buttons["behaviour"].click()
+        assert bar.value() == st.behaviour.y() and st.section_nav.current() == "behaviour"
+        assert st.watch_card.y() < bar.maximum()
+        bar.setValue(st.watch_card.y())
+        assert st.section_nav.current() == "watch"
+        bar.setValue(0)
+        assert st.section_nav.current() == "look"
+        st.section_nav._buttons["experimental"].click()  # (the last part cannot reach the top)
+        assert st.section_nav.current() == "experimental" and bar.value() == bar.maximum()
+        window.show_page("studio")
+        window.app_actions["phone"].trigger()
+        assert window.stack.currentWidget() is st and st.section_nav.current() == "phone"
+        assert "&&" in window.app_actions["phone"].text() and "&&" in window.app_actions["about"].text()
+        assert st.scroll.widget().width() <= theme.READING_WIDTH
+    finally:
+        i18n.set_language(lang)
+        window.resize(size)
+        window.show_page("studio")

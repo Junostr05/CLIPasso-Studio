@@ -1,3 +1,23 @@
+## CLIPasso Studio 4.0.0 beta 5 – gallery, settings and dialogs (pre-release)
+
+The fifth step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 4).
+
+- **Gallery:** a column on the left with the search, the methods, *Favourites*, the albums with their number of
+  results (drop results on an album to add them) and the tags. Below the title how many results there are – and how
+  many are shown. Mark several results and a bar floats at the bottom: *View large, Compare* (two), *Favourite, Export*
+  and *Delete*. *Open folder* and *Refresh* are icons now (with their names as tooltips).
+- **Settings:** their parts on the left – *Appearance, Files, Behaviour, Watched folder, Phone & messages, Storage,
+  System, Experimental*; a click scrolls there, and the column shows where you are. The cards are no wider than
+  820 px.
+- **Dialogs:** every dialog has the same margins and spacing (24 / 16 px); the export dialog no longer doubles them.
+- A "&" in a menu or a button (*Info & Hilfe*, *Name, Tags & Notizen*, *Kanten & Schraffur*) is shown again
+  instead of an underlined space.
+- **Numbers in German** have a decimal comma: CLIP 29,4, 1,2 GB, a loss of 0,250 (studio, gallery, comparison,
+  self-test, the Telegram message).
+- **Tab** runs from the header through the studio – left, middle, right, footer – and round to the header again.
+- Fixed: resetting the studio's view could fail after a while (a menu's entries lost their link to Python); the
+  guide is tested at the smallest window in German.
+
 ## CLIPasso Studio 4.0.0 beta 4 – the studio in three columns (pre-release)
 
 The fourth step of 4.0 (betas are for Windows only; with *Also offer beta versions* on, a small update from beta 3).

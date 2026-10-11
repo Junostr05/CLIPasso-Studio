@@ -157,6 +157,7 @@ class MainWindow(QMainWindow):
         # --------------------------------------------------------------- pages
         self.stack = QStackedWidget()
         self.studio = StudioPage(self.controller)
+        self.studio.tab_lead = self.header  # (Tab: the header, then the studio's columns)
         self.compare = ComparePage(self.controller, self.studio)
         self.queue = QueuePage(self.controller, lambda: self.studio.params.settings())
         self.gallery = GalleryPage(self.controller)

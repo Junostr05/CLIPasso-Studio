@@ -6,15 +6,15 @@ import os
 
 from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QHBoxLayout, QMessageBox, QProgressBar, QVBoxLayout
 
-from . import backup
+from . import backup, theme
 from .app_settings import app_settings
 from .dialogs import error_text, run_in_thread
-from .i18n import tr
+from .i18n import number, tr
 from .widgets.common import button, label
 
 
 def _gb(n: int) -> str:
-    return f"{n / 1e9:.2f} GB" if n >= 1e8 else f"{n / 1e6:.1f} MB"
+    return f"{number(n / 1e9, 2)} GB" if n >= 1e8 else f"{number(n / 1e6)} MB"
 
 
 class BackupDialog(QDialog):
@@ -31,8 +31,7 @@ class BackupDialog(QDialog):
         self.setWindowTitle(tr("ui.backup.restore_title" if restoring else "ui.backup.title"))
         self.setMinimumWidth(460)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(22, 20, 22, 20)
-        lay.setSpacing(12)
+        theme.dialog_layout(lay)
         lay.addWidget(label(self.windowTitle(), "h2"))
         self.parts: dict[str, QCheckBox] = {}
         if restoring:
