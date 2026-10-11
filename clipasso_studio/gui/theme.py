@@ -75,6 +75,7 @@ COLUMN_PADDING = 20  # 4.0: inside the side columns, the header and the footer
 DIALOG_MARGIN, DIALOG_SPACING = SPACE_XL, SPACE_L  # 4.0: dialogs on the scale (3.8: 22 / 14 by habit)
 HEADER_HEIGHT, FOOTER_HEIGHT = 52, 76
 LEFT_COLUMN, RIGHT_COLUMN = 312, 168
+LEFT_COLUMN_MIN, LEFT_COLUMN_MAX = 260, 560  # 4.2.1: the left column drawn wider (never narrower than it needs)
 FILTER_COLUMN = 240  # 4.0: the gallery's filters, the settings' parts
 READING_WIDTH = 820  # 4.0: the widest a column of cards gets (settings)
 

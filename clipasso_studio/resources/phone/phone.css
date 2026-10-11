@@ -125,7 +125,7 @@ button.thumb { font-size: 26px; }
 .job .info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .job .bar { margin-top: 4px; }
 
-/* bottom tabs (4.2: four, with the studio's icons) */
+/* bottom tabs (4.2: with the studio's icons; 4.2.1: the sketch a tab of its own again – not on a wide screen) */
 #tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; background: var(--chrome);
   border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
 #tabs button { flex: 1; flex-direction: column; border: 0; background: transparent; min-height: 56px; padding: 4px;
@@ -134,11 +134,6 @@ button.thumb { font-size: 26px; }
 svg.icon { width: 20px; height: 20px; flex: 0 0 auto; }
 #tabs svg.icon { width: 22px; height: 22px; }
 .top-tabs { display: none; }
-
-/* the studio (4.2): the sketch is its top while there is one to see – a result opened, the job drawing */
-#tab-studio { display: flex; flex-direction: column; }
-#studio-sketch { order: -1; }
-#studio-sketch[hidden] { display: none; }
 .desk-only-card { display: none; }
 
 /* detail brush */
@@ -271,6 +266,7 @@ body.desk #tabs { position: static; flex-direction: row; background: transparent
 body.desk #tabs button { flex: 0 0 auto; flex-direction: row; min-height: 36px; padding: 6px 12px; gap: 8px;
   border-radius: var(--r-control); font-size: 14px; white-space: nowrap; }
 body.desk #tabs button.on { background: var(--surface-3); color: var(--text); }
+body.desk #tabs button[data-tab=sketch] { display: none; }  /* (the sketch is the studio's middle here) */
 body.desk #tabs svg.icon { width: 16px; height: 16px; }
 body.desk main { max-width: none; padding: 12px 16px 88px; }
 body.desk #toast { bottom: 96px; }

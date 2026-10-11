@@ -1,7 +1,9 @@
 ## Neu in 4.2: das Handy im Stil von 4.0
 
+- **4.2.1 – Skizze wieder als eigener Reiter:** Auf dem Handy hat die Skizze wieder ihren eigenen Reiter (*Studio · Skizze · Galerie · Warteschlange · App*) – das Studio bleibt übersichtlich. Am Computer oder Tablet im Querformat steht sie weiter in der Mitte des Studios.
+- **4.2.1 – die linke Spalte breiter ziehen:** Zwischen der linken Spalte des Studios und der Skizze sitzt ein Griff (drei Punkte) – mit der Maus ziehst du die Spalte breiter oder schmaler, die App merkt sich die Breite. Schmaler als ihr Inhalt braucht wird sie nie: Bisher konnte rechts etwas abgeschnitten sein (vor allem die Parameter unter *Anpassen*). Ein Doppelklick auf den Griff gibt ihr die eigene Breite zurück. In *1 · Bild* steht *Ändern …* jetzt direkt unter dem Bild, darunter die Schalter *Hintergrund entfernen*, *Seitenverhältnis erhalten* und *Turbo-Modus* (bisher in Schritt 3) und dann die früheren Skizzen des Bildes.
 - **Dieselben Farben wie das Studio:** Die Handy-Seite nimmt Dunkel und Hell direkt aus der App – mit denselben geprüften Kontrasten (jede Schrift mindestens 4,5 : 1, die Ränder von Eingabefeldern 3 : 1), derselben Schrift (Inter) und denselben Symbolen. Ein sichtbarer Fokusring zeigt, wo die Tastatur gerade ist.
-- **Vier Reiter:** *Studio · Galerie · Warteschlange · App*, jeder mit seinem Symbol. Die Skizze hat keinen eigenen Reiter mehr: Sie steht oben im Studio, sobald ein Auftrag zeichnet oder du ein Ergebnis öffnest – mit ihren Ansichten, den Werkzeugen zum Bearbeiten, der Bewertung und dem Export.
+- **Reiter mit Symbolen:** jeder Bereich mit dem Symbol des Studios.
 - **Am Computer oder Tablet im Querformat** sieht die Seite aus wie das Studio am PC: oben die Bereiche, links die Schritte (Bild, Methode, Voreinstellung und die Parameter), in der Mitte die Skizze, rechts die Skizzen des Auftrags und unten der Auftrag mit *Skizze erstellen*, *Pause* und *Abbrechen*.
 
 ---

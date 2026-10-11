@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPainterPath, QPen, QShortcut
-from PySide6.QtWidgets import QHBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QWidget
 
 from . import theme
 from .i18n import tr
@@ -82,7 +82,17 @@ class Tour(QWidget):
         self.next_btn.setText(tr("ui.tour.done") if last else tr("ui.tour.next"))
         self.back_btn.setEnabled(self.index > 0)
         self.card.adjustSize()
+        self._reveal()
         self._place()
+
+    def _reveal(self):
+        """A part in a column that scrolls (step 3 below steps 1 and 2 in a small window): scrolled into view."""
+        for wdg in STEPS[self.index][2](self.window_):
+            area = wdg.parentWidget() if wdg is not None else None
+            while area is not None and not isinstance(area, QScrollArea):
+                area = area.parentWidget()
+            if area is not None:
+                area.ensureWidgetVisible(wdg, 0, PAD + 4)
 
     def next(self):
         if self.index >= len(STEPS) - 1:

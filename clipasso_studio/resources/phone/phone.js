@@ -72,22 +72,21 @@ for (const node of document.querySelectorAll("[data-label]")) node.setAttribute(
 let tab = "studio";
 let desk = false;  // the studio layout of a wide screen: a header, three columns and a footer – like the PC
 function showTab(name) {
+  if (desk && name === "sketch") name = "studio";  // (a wide screen: the sketch is the studio's middle)
   tab = name;
   for (const b of document.querySelectorAll("#tabs button")) setOn(b, b.dataset.tab === name);
   for (const s of document.querySelectorAll("section.tab")) s.hidden = s.id !== "tab-" + name;
   $("desk").hidden = !(desk && name === "studio");
   if (desk && name === "studio") $("tab-studio").hidden = true;
   if (name === "gallery") loadResults();
-  if (name === "studio" && S) renderSketch();
+  if ((name === "sketch" || (desk && name === "studio")) && S) renderSketch();
   if (name === "queue") loadQueue();
   if (name === "app") { loadUpdate(); loadAppSettings(); loadModels(); }
   window.scrollTo(0, 0);
 }
-// 4.2: the sketch has no tab of its own – it is the top of the studio while it is shown (a result opened from the
-// gallery or the queue, the running job); on a wide screen the middle column
-function showStudio() {
-  $("studio-sketch").hidden = false;  // (at once – the next answer of the app keeps it so)
-  showTab("studio");
+// the sketch: on the phone a tab of its own (4.2.1 – the studio stays clear), on a wide screen the studio's middle
+function showSketch() {
+  showTab("sketch");
 }
 for (const b of document.querySelectorAll("#tabs button")) b.onclick = () => showTab(b.dataset.tab);
 
@@ -180,7 +179,7 @@ function renderTop() {
 
 $("to-live").onclick = async () => {
   const a = await act("live");
-  if (a.ok) showStudio();
+  if (a.ok) showSketch();
 };
 
 $("pause").onclick = () => fetch(S && S.paused ? "/api/resume" : "/api/pause",
@@ -246,7 +245,7 @@ async function renderHistory() {
   $("history-title").textContent = t("history_title", {n: h.jobs.length});
   $("history-list").replaceChildren(...h.jobs.map((j) => el("button", {
     class: j.shown ? "sel" : "", title: j.created + (j.score ? " · " + j.score : ""),
-    onclick: async () => { const a = await act("open", {dir: j.dir}); if (a.ok) showStudio(); }},
+    onclick: async () => { const a = await act("open", {dir: j.dir}); if (a.ok) showSketch(); }},
     el("img", {src: "/api/file/result?d=" + encodeURIComponent(j.dir), alt: "", loading: "lazy"}),
     el("span", {text: j.method}), el("span", {text: j.created.slice(5, 10)}))));
 }
@@ -579,7 +578,7 @@ async function start(queue, memory) {
   }
   if (a.ok) {
     $("start-msg").textContent = a.queued || queue ? T.added : T.started;
-    if (!queue) showStudio();
+    if (!queue) showSketch();
   }
 }
 $("start").onclick = () => start(false);
@@ -881,7 +880,6 @@ function renderViews() {
 function renderSketch() {
   renderScene();
   const has = S.shown !== null && S.shown !== undefined && S.seeds.length > 0;
-  $("studio-sketch").hidden = !has && !S.running_here;  // (on the phone: on top while there is a sketch to see)
   $("no-sketch").hidden = has;
   $("no-sketch").textContent = S.running_here ? (S.status || T.running) : T.no_sketch;
   $("view-name").textContent = S.view || "";
@@ -925,7 +923,7 @@ function renderSketch() {
   $("dl-png").classList.toggle("off", !has);
   $("continue").hidden = !S.can_continue;
   $("export-card").hidden = !has || !X.info;
-  if (has && tab === "studio") loadExportInfo(false);
+  if (has && (tab === "sketch" || (desk && tab === "studio"))) loadExportInfo(false);
   renderViews();
   renderEdit();
 }
@@ -1293,7 +1291,7 @@ $("viewer-open").onclick = async () => {
   const r = G.items[G.at];
   if (!r) return;
   const a = await act("open", {dir: r.dir});
-  if (a.ok) { closeViewer(); showStudio(); }
+  if (a.ok) { closeViewer(); showSketch(); }
 };
 
 let dragging = null;  // (a waiting job being dragged: the list is not rebuilt meanwhile)
@@ -1442,7 +1440,7 @@ async function loadCompare() {
     return el("div", {class: "compare-item" + (m.best ? " best" : ""), onclick: async () => {
       if (!m.dir) return;
       const a = await act("open", {dir: m.dir});
-      if (a.ok) showStudio();
+      if (a.ok) showSketch();
     }}, el("b", {text: (m.best ? "★ " : "") + m.name}),
       m.dir ? el("img", {src: `/api/file/result?d=${encodeURIComponent(m.dir)}`, alt: "", loading: "lazy"}) : null,
       el("span", {class: "small-text", text: [m.score !== null ? "CLIP " + m.score.toFixed(1) : "", m.time,

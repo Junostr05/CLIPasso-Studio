@@ -58,6 +58,7 @@ DEFAULTS: dict[str, Any] = {
     "user_presets": [],  # the user's own presets (gui/user_presets.py)
     "hints_off": [],  # the kinds of quality hints about the photo not to show any more (gui/image_hints.py)
     "studio_details_open": False,  # 4.0: the numbers and the loss curve below the sketch (Details in the footer)
+    "studio_left_width": 0,  # 4.2.1: the left column's width drawn with the mouse (0: its own width)
     "simplify_tip_shown": False,  # the hint where "Simplify" is, once after the first finished sketch
     "experimental_sketch": False,  # new CLIPasso / SceneSketch jobs: strokes along edges, hatched dark areas
     "skipped_version": "",

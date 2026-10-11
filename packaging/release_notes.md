@@ -1,3 +1,21 @@
+## CLIPasso Studio 4.2.1 – the left column can be drawn wider, the sketch has its tab again
+
+A small update from 4.2.0 (also from the phone).
+
+- **The phone: the sketch is a tab of its own again** – *Studio · Sketch · Gallery · Queue · App*. In 4.2.0 it sat
+  at the top of the studio tab, which made the studio crowded on a phone. On a computer or a tablet held across it
+  stays the studio's middle column.
+- **A handle at the studio's left column:** three dots between the column and the sketch; under the mouse a line in
+  the accent colour and the split cursor. Drag it to make the column wider (up to 560 px) or narrower – the app keeps
+  the width for the next start. A double click on the handle gives the column its own width back.
+- **Nothing cut off any more:** the column is never narrower than its content needs on this computer (the language
+  and the fonts of Windows count). Before, it was 312 px whatever was in it – the parameter page under *Adjust*
+  needed 315 px, and with slightly wider fonts the steps ran out on the right, too.
+- **Step 1 in its order:** the image and its mask, then *Change …* with crop and the detail brush, then the switches
+  *Remove background*, *Keep aspect ratio* and *Turbo mode* (they were in step 3), then the hints and the image's
+  earlier sketches (they used to sit between the image and *Change …*). The guide scrolls the left column to the
+  part it shows.
+
 ## CLIPasso Studio 4.2 – the phone in the style of 4.0
 
 From 4.1 the app offers 4.2 as a small update (also from the phone). The phone page is renewed like the studio was

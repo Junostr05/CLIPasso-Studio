@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import (Property, QEasingCurve, QEvent, QObject, QPropertyAnimation, QRectF, QSize, Qt, QTimer,
-                            Signal)
+from PySide6.QtCore import (Property, QEasingCurve, QEvent, QObject, QPointF, QPropertyAnimation, QRectF, QSize, Qt,
+                            QTimer, Signal)
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
-                               QLabel, QLayout, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
+                               QLabel, QLayout, QPushButton, QSizePolicy, QSplitter, QSplitterHandle, QToolButton,
+                               QVBoxLayout, QWidget)
 
 from .. import icons, theme
 
@@ -269,6 +270,54 @@ class Column(QFrame):
         self.body.setSpacing(pad if spacing is None else spacing)
         if width:
             self.setFixedWidth(width)
+
+
+class ColumnHandle(QSplitterHandle):
+    """4.2.1: the handle at the edge of a side column – a grip of three dots in the middle; under the mouse a line in
+    the accent colour. A double click asks for the column's own width again (``ColumnSplitter.reset_requested``)."""
+
+    def __init__(self, orientation, parent):
+        super().__init__(orientation, parent)
+        self.setAttribute(Qt.WA_Hover)
+        self.setCursor(Qt.SplitHCursor)
+        self.hot = False
+
+    def event(self, e):
+        if e.type() in (QEvent.HoverEnter, QEvent.HoverLeave):
+            self.hot = e.type() == QEvent.HoverEnter
+            self.update()
+        return super().event(e)
+
+    def paintEvent(self, event):  # noqa: N802
+        p = theme.current()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        cx, cy = self.width() / 2, self.height() / 2
+        if self.hot:
+            painter.fillRect(QRectF(cx - 1, 0, 2, self.height()), QColor(p.accent))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(p.text if self.hot else p.faint))
+        for dy in (-8, 0, 8):
+            painter.drawEllipse(QPointF(cx, cy + dy), 1.6, 1.6)
+        painter.end()
+
+    def mouseDoubleClickEvent(self, e):  # noqa: N802
+        self.splitter().reset_requested.emit(self.splitter().indexOf(self))
+
+
+class ColumnSplitter(QSplitter):
+    """4.2.1: columns side by side whose borders can be drawn with the mouse (``ColumnHandle``); a column is never
+    narrower than its minimum width (no column collapses)."""
+
+    reset_requested = Signal(int)  # the index of the widget right of the handle that was double-clicked
+
+    def __init__(self, parent=None):
+        super().__init__(Qt.Horizontal, parent)
+        self.setObjectName("Columns")
+        self.setChildrenCollapsible(False)
+
+    def createHandle(self):  # noqa: N802
+        return ColumnHandle(self.orientation(), self)
 
 
 class Card(QFrame):

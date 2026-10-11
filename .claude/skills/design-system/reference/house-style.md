@@ -26,9 +26,10 @@ before `phone.css`; Inter comes from `/fonts/…`, the icons are the studio's Lu
 Phone page semantics: a chosen tab / segment / toggle is set with `setOn(el, on)` in `phone.js` (the class `on` plus
 `aria-selected` for tabs, `aria-pressed` otherwise); a control without visible text gets its name from
 `data-label="<text name>"` (or `aria-labelledby`); glyphs inside buttons sit in `<span aria-hidden="true">`, icons
-are `<svg class="icon" aria-hidden="true">`. 4.2: four tabs (Studio · Gallery · Queue · App); the sketch is the top of
-the studio (`#studio-sketch`, CSS `order`) while there is one to see; on a wide screen (`body.desk`) the parts move
-into a header, three columns and a footer like the PC (`DESK` in `phone.js`: [part, where to]).
+are `<svg class="icon" aria-hidden="true">`. Tabs with the studio's icons: Studio · Sketch · Gallery · Queue · App
+(4.2.1: the sketch a tab of its own on the phone – the studio stays clear); on a wide screen (`body.desk`) the parts
+move into a header, three columns and a footer like the PC (`DESK` in `phone.js`: [part, where to]) and the sketch
+is the middle column (no sketch tab there).
 
 ## Tokens (desktop)
 
@@ -57,7 +58,9 @@ Tests: `tests/test_theme_contrast.py` (text 4.5 : 1, control parts 3 : 1, both t
 **Spacing** – `SPACE_XS/S/M/L/XL` = 4 / 8 / 12 / 16 / 24 px. Pages use `theme.page_layout(layout)`
 (margins 24/20/24/20, spacing 16 – a test enforces it). 4.0: side columns, header and footer `COLUMN_PADDING` 20;
 dialogs `DIALOG_MARGIN` 24 / `DIALOG_SPACING` 16 via `theme.dialog_layout(layout)` (every dialog but the
-gallery's large view – a test reads the sources); `HEADER_HEIGHT` 52, `FOOTER_HEIGHT` 76, `LEFT_COLUMN` 312,
+gallery's large view – a test reads the sources); `HEADER_HEIGHT` 52, `FOOTER_HEIGHT` 76, `LEFT_COLUMN` 312
+(4.2.1: or wider where its content needs it; drawn with the `ColumnHandle` of `ColumnSplitter` between
+`LEFT_COLUMN_MIN` / `MAX`, kept as `studio_left_width`; a double click on the handle: its own width again),
 `RIGHT_COLUMN` 168, `FILTER_COLUMN` 240 (the gallery's filters, the settings' parts), `READING_WIDTH` 820 (the
 widest column of cards).
 

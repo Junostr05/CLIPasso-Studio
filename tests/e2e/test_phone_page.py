@@ -32,39 +32,39 @@ def test_sign_in_with_the_pin(phone, studio_app):
 
 
 def test_every_tab_fits_the_phone(signed_in):
-    for tab in ("studio", "gallery", "queue", "app"):
+    for tab in ("studio", "sketch", "gallery", "queue", "app"):
         signed_in.tab(tab)
         assert signed_in.width() == 390, tab
     assert signed_in.errors == []
 
 
-def test_four_tabs_with_the_studio_s_icons(signed_in):
-    """4.2: Studio · Gallery · Queue · App, each with the studio's icon (inline, hidden from screen readers – the
-    name says it) – the sketch is no tab of its own any more."""
+def test_the_tabs_with_the_studio_s_icons(signed_in):
+    """4.2: every tab with the studio's icon (inline, hidden from screen readers – the name says it). 4.2.1: on the
+    phone the sketch is a tab of its own again (the studio stays clear): Studio · Sketch · Gallery · Queue · App."""
     page = signed_in.page
     tabs = page.evaluate("[...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab)")
-    assert tabs == ["studio", "gallery", "queue", "app"]
+    assert tabs == ["studio", "sketch", "gallery", "queue", "app"]
     icons = page.evaluate("""[...document.querySelectorAll('#tabs button')].map(b => {
         const i = b.querySelector('svg.icon'); return !!i && i.getAttribute('aria-hidden') === 'true'
             && i.getBoundingClientRect().width >= 20 && b.textContent.trim().length > 0; })""")
-    assert icons == [True] * 4
-    assert page.query_selector("#tab-sketch") is None
+    assert icons == [True] * 5
     assert signed_in.errors == []
 
 
-def test_the_sketch_is_on_top_of_the_studio(signed_in):
-    """4.2: a result opened from the gallery is shown at the top of the studio – above the picture, the method and
-    the preset (CSS order, no inline style) – with its views, tools and export."""
+def test_the_sketch_has_its_own_tab_on_the_phone(signed_in):
+    """4.2.1: a result opened from the gallery shows on the sketch tab – with its views, tools, rating and export;
+    the studio tab keeps only the steps (the picture first)."""
     ph = signed_in
     page = ph.page
     ph.open_result("camel")
     ph.wait_js("document.querySelector('#sketch').naturalWidth > 0")
-    order = page.evaluate("""['studio-sketch', 'picture-card', 'method-card', 'preset-card', 'params-card'].map(id =>
-        document.getElementById(id).getBoundingClientRect().top)""")  # (not the start bar: it sticks to the bottom)
-    assert order == sorted(order), order
-    assert page.eval_on_selector("#sketch-card", "e => e.parentElement.id") == "studio-sketch"
-    assert page.is_visible("#look-card") and page.is_hidden("#seeds-card")  # (the job's sketches: in the card)
-    assert page.get_attribute("#studio-sketch", "style") is None
+    assert page.get_attribute("#tabs button[data-tab=sketch]", "aria-selected") == "true"
+    assert page.is_hidden("#tab-studio") and page.is_visible("#sketch-card") and page.is_visible("#look-card")
+    assert page.eval_on_selector("#sketch-card", "e => e.parentElement.id") == "tab-sketch"
+    assert page.is_hidden("#seeds-card")  # (the job's sketches: inside the sketch's card on the phone)
+    ph.tab("studio")
+    first = page.evaluate("[...document.querySelector('#tab-studio').children].find(e => e.offsetParent).id")
+    assert first == "picture-card" and page.is_hidden("#sketch-card")
     assert ph.width() == 390 and ph.errors == []
 
 
@@ -97,7 +97,7 @@ def test_screen_readers_hear_what_is_chosen(signed_in):
     page = ph.page
     assert page.get_attribute("#tabs", "role") == "tablist"
     selected = page.evaluate("[...document.querySelectorAll('#tabs button')].map(b => b.getAttribute('aria-selected'))")
-    assert selected == ["true", "false", "false", "false"]
+    assert selected == ["true", "false", "false", "false", "false"]
     ph.tab("gallery")
     assert page.get_attribute("#tabs button[data-tab=gallery]", "aria-selected") == "true"
     assert page.get_attribute("#tabs button[data-tab=studio]", "aria-selected") == "false"

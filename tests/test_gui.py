@@ -2020,8 +2020,9 @@ def test_nothing_in_the_studio_centre_is_cut_in_a_small_window(window):
 
 def test_studio_columns_fit_a_small_window(window):
     """3.6: at the smallest window width the studio's columns sit side by side (they used to overlap below
-    about 1300 px). 4.0: the side columns have their fixed widths (312 / 168 px), the steps fit the left column
-    (also in German, with its scroll bar: nothing runs out on the right) and nothing in step 1 is cut."""
+    about 1300 px). 4.0: the right column is 168 px, the steps fit the left column (also in German, with its scroll
+    bar: nothing runs out on the right) and nothing in step 1 is cut. 4.2.1: the left column is its own 312 px –
+    or wider where its content needs it (the parameter page needed 315 px and was cut)."""
     from PySide6.QtWidgets import QApplication
 
     from clipasso_studio.gui import theme
@@ -2045,7 +2046,9 @@ def test_studio_columns_fit_a_small_window(window):
             left, center, right = span(st.left_stack), span(st.center_card), span(st.right_pane)
             assert left[1] <= center[0] and center[1] <= right[0], (left, center, right)
             assert right[1] <= window.width()
-            assert st.left_stack.width() == theme.LEFT_COLUMN and st.right_pane.width() == theme.RIGHT_COLUMN
+            assert st.left_stack.width() == st.left_column_default() >= theme.LEFT_COLUMN, code
+            assert st.right_pane.width() == theme.RIGHT_COLUMN
+            assert st.params_page.minimumSizeHint().width() <= st.left_stack.width(), code
             assert st.left_scroll.verticalScrollBar().isVisible()  # (760 px: the steps scroll)
             assert st.left_pane.minimumSizeHint().width() <= st.left_scroll.viewport().width(), code
             assert st.left_pane.width() == st.left_scroll.viewport().width(), code
@@ -2055,6 +2058,61 @@ def test_studio_columns_fit_a_small_window(window):
     finally:
         i18n.set_language(lang)
         window.resize(size)
+
+
+def test_step_one_in_its_order(window):
+    """4.2.1: step 1 reads from the top – the image, its mask, "Ändern …" with crop and the detail brush, the switches
+    for the image (remove the background, keep the aspect ratio, turbo – they were in step 3), then the hints about
+    the image and its earlier sketches (they used to sit between the image and "Ändern …")."""
+    st = window.studio
+    body = st.input_card.body
+    order = [body.indexOf(w) for w in (st.step_image, st.mask_row, st.input_buttons, st.quick_box, st.hint_box,
+                                         st.history_title, st.history_scroll)]
+    assert -1 not in order and order == sorted(order), order
+    assert set(st.quick) == {"mask_object", "fix_scale", "turbo"}
+    assert all(st.quick_box.isAncestorOf(sw) for _lbl, sw in st.quick.values())
+    assert not any(st.preset_step.isAncestorOf(sw) for _lbl, sw in st.quick.values())
+
+
+def test_the_left_column_can_be_drawn_wider(window):
+    """4.2.1: a handle at the left column's border (a grip; the split cursor) – drawn with the mouse the column gets
+    wider or narrower, but never narrower than its content needs (nothing is cut) and not wider than LEFT_COLUMN_MAX;
+    the width is kept (also for the next start); a double click on the handle gives its own width back."""
+    from PySide6.QtCore import QEvent, QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtWidgets import QApplication
+
+    from clipasso_studio.gui import theme
+    from clipasso_studio.gui.app_settings import app_settings
+    from clipasso_studio.gui.widgets.common import ColumnHandle
+
+    window.show_page("studio")
+    st = window.studio
+    try:
+        for _ in range(3):
+            QApplication.processEvents()
+        handle = st.columns.handle(1)
+        assert isinstance(handle, ColumnHandle) and handle.isVisible() and handle.cursor().shape() == Qt.SplitHCursor
+        handle.grab()  # (paints its grip)
+        own = st.left_column_default()
+        st.columns.moveSplitter(own + 80, 1)  # (what dragging the handle does)
+        assert st.left_stack.width() == own + 80
+        st._left_width_timer.timeout.emit()  # (kept once the drawing pauses)
+        assert app_settings().get("studio_left_width") == own + 80
+        st.columns.moveSplitter(100, 1)
+        assert st.left_stack.width() == st.left_stack.minimumWidth() >= st.left_column_needs()  # nothing cut
+        st.columns.moveSplitter(5000, 1)
+        assert st.left_stack.width() <= theme.LEFT_COLUMN_MAX
+        app_settings().set("studio_left_width", own + 40)  # the next start: the width kept
+        st.restore_left_width()
+        assert st.left_stack.width() == own + 40
+        pos = QPointF(handle.width() / 2, handle.height() / 2)
+        handle.mouseDoubleClickEvent(QMouseEvent(QEvent.MouseButtonDblClick, pos, pos, Qt.LeftButton, Qt.LeftButton,
+                                                 Qt.NoModifier))
+        assert st.left_stack.width() == own and app_settings().get("studio_left_width") == 0
+    finally:
+        app_settings().set("studio_left_width", 0)
+        st.set_left_width(None)
 
 
 def test_the_header(window, monkeypatch):

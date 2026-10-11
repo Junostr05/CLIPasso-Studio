@@ -55,8 +55,10 @@ def test_the_studio_on_a_computer(screen):
     # the header: the logo and the four areas in one row of 52 px; the footer: the job, at the bottom
     assert page.eval_on_selector("#tabs", "e => e.parentElement.id") == "top-tabs"
     assert page.eval_on_selector("#top", "e => Math.round(e.getBoundingClientRect().height)") <= 53
-    tabs = page.evaluate("[...document.querySelectorAll('#tabs button')].map(b => b.getBoundingClientRect().top)")
+    tabs = page.evaluate("[...document.querySelectorAll('#tabs button')].filter(b => b.offsetParent)"
+                         ".map(b => b.getBoundingClientRect().top)")
     assert len(tabs) == 4 and max(tabs) - min(tabs) < 2 and max(tabs) < 40
+    assert page.is_hidden("#tabs button[data-tab=sketch]")  # (the sketch is the studio's middle here)
     foot = page.eval_on_selector("#desk-footer", "e => [e.getBoundingClientRect().bottom, e.offsetHeight]")
     assert foot == [900, 76]
     for id_ in ("start", "pause", "cancel", "status"):
@@ -88,7 +90,7 @@ def test_the_switch_is_kept(screen):
     ph.wait_js("!document.body.classList.contains('desk')")
     ph.tab("studio")
     assert page.eval_on_selector("#picture-card", "e => e.parentElement.id") == "tab-studio"
-    assert page.eval_on_selector("#sketch-card", "e => e.parentElement.id") == "studio-sketch"
+    assert page.eval_on_selector("#sketch-card", "e => e.parentElement.id") == "tab-sketch"
     assert page.eval_on_selector("#tabs", "e => e.parentElement.tagName") == "BODY"  # (back at the bottom)
     assert page.eval_on_selector("#startbar", "e => e.parentElement.id") == "tab-studio"
     page.reload()
@@ -108,5 +110,6 @@ def test_tablet_across_and_the_phone(screen):
     phone = screen({"viewport": {"width": 390, "height": 844}, "device_scale_factor": 2, "is_mobile": True,
                     "has_touch": True})
     assert not phone.page.evaluate("document.body.classList.contains('desk')")
-    assert phone.page.evaluate("document.querySelectorAll('#tabs button').length") == 4 and phone.width() == 390
+    assert phone.page.evaluate("document.querySelectorAll('#tabs button').length") == 5 and phone.width() == 390
+    assert phone.page.is_visible("#tabs button[data-tab=sketch]")
     assert phone.page.eval_on_selector("#tabs", "e => e.getBoundingClientRect().bottom") == 844  # (at the bottom)

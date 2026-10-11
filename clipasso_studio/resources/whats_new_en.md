@@ -1,7 +1,9 @@
 ## New in 4.2: the phone in the style of 4.0
 
+- **4.2.1 – the sketch a tab of its own again:** on the phone the sketch has its own tab again (*Studio · Sketch · Gallery · Queue · App*) – the studio stays clear. On a computer or a tablet held across it stays in the middle of the studio.
+- **4.2.1 – draw the left column wider:** a handle (three dots) sits between the studio's left column and the sketch – drag it with the mouse to make the column wider or narrower; the app keeps the width. It never gets narrower than its content needs: before, something could be cut off on the right (above all the parameters under *Adjust*). A double click on the handle gives the column its own width back. In *1 · Image*, *Change …* now sits right below the image, then the switches *Remove background*, *Keep aspect ratio* and *Turbo mode* (step 3 before), then the image's earlier sketches.
 - **The same colours as the studio:** the phone page takes dark and light straight from the app – with the same measured contrasts (every text at least 4.5 : 1, the edges of text fields 3 : 1), the same font (Inter) and the same icons. A visible focus ring shows where the keyboard is.
-- **Four tabs:** *Studio · Gallery · Queue · App*, each with its icon. The sketch has no tab of its own any more: it is at the top of the studio as soon as a job draws or you open a result – with its views, the editing tools, the rating and the export.
+- **Tabs with icons:** every area with the studio's icon.
 - **On a computer or a tablet held across** the page looks like the studio on the PC: the areas at the top, the steps on the left (image, method, preset and the parameters), the sketch in the middle, the job's sketches on the right and the job at the bottom with *Create sketch*, *Pause* and *Cancel*.
 
 ---

@@ -166,13 +166,12 @@ class Phone:
         self.page.wait_for_timeout(400)
 
     def open_result(self, text: str):
-        """A result of the gallery in the studio (through its large view) – 4.2: the sketch on top of the studio."""
+        """A result of the gallery in the studio (through its large view), then the sketch tab."""
         self.tab("gallery")
         self.page.click(f"#results .result:has-text('{text}')")
         self.page.wait_for_selector("#viewer:not([hidden])")
         self.page.click("#viewer-open")
-        self.wait_js("!document.querySelector('#tab-studio').hidden "
-                     "&& !document.querySelector('#studio-sketch').hidden")
+        self.wait_js("!document.querySelector('#tab-sketch').hidden")
 
     def width(self) -> int:
         return self.page.evaluate("document.documentElement.scrollWidth")

@@ -23,8 +23,8 @@ from ..i18n import i18n, number, tr
 from ..i18n import size as i18n_size
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SheetView, SketchCanvas, load_pixmap)
-from ..widgets.common import (Banner, Card, Column, ElidedLabel, RovingFocus, SegmentedControl, StepHeader,
-                              ToggleSwitch, WrapRow, button, label, link_button, tool_button)
+from ..widgets.common import (Banner, Card, Column, ColumnSplitter, ElidedLabel, RovingFocus, SegmentedControl,
+                              StepHeader, ToggleSwitch, WrapRow, button, label, link_button, tool_button)
 from ..widgets.edit_bar import EditBar, importance_command
 from ..widgets.hint_box import HintBox
 from ..widgets.method_picker import MethodPicker
@@ -108,10 +108,14 @@ class StudioPage(QWidget):
         self.device_text = ""  # the running job's device ("GPU · CUDA", "CPU"; "2× …" with several cards)
         self.picker = MethodPicker(orientation=Qt.Vertical)  # (step 2 of the left column)
 
-        columns = QHBoxLayout()  # 4.0: the columns from edge to edge, each with its own padding
+        # 4.0: the columns from edge to edge, each with its own padding. 4.2.1: the left one's border can be drawn
+        # with the mouse (its width is kept; a double click on the handle gives its own width back)
+        self.columns = ColumnSplitter()
+        root.addWidget(self.columns, 1)
+        middle = QWidget()  # the sketch and the job's sketches
+        columns = QHBoxLayout(middle)
         columns.setContentsMargins(0, 0, 0, 0)
         columns.setSpacing(0)
-        root.addLayout(columns, 1)
 
         # ------------------------------------------------------------- left column: 1 · Bild, 2 · Methode, 3 · …
         left = Column("left")
@@ -237,7 +241,8 @@ class StudioPage(QWidget):
                 lay.addWidget(b)
             lay.addStretch(1)
         self.input_buttons = WrapRow(files, tools)
-        self.input_card.body.addWidget(self.input_buttons)
+        # (right below the image and its mask; the hints and the earlier sketches of the image below them – 4.2.1)
+        self.input_card.body.insertWidget(self.input_card.body.indexOf(self.hint_box), self.input_buttons)
         ll.addWidget(self.input_card)
 
         # step 2: the method
@@ -251,7 +256,7 @@ class StudioPage(QWidget):
         self.experimental_btn.setVisible(False)
         ll.addWidget(self.experimental_btn)
 
-        # step 3: the preset – the summary, "Anpassen" (the parameters in this column), the quick switches
+        # step 3: the preset – the summary, "Anpassen" (the parameters in this column), the time budget
         self.preset_step = QWidget()
         self.preset_step.body = QVBoxLayout(self.preset_step)
         self.preset_step.body.setContentsMargins(0, 0, 0, 0)
@@ -259,9 +264,11 @@ class StudioPage(QWidget):
         self.step_preset = StepHeader(3)
         self.preset_step.body.addWidget(self.step_preset)
         ll.addWidget(self.preset_step)
-        # quick toggles mirrored from the parameter panel
+        # quick toggles mirrored from the parameter panel (4.2.1: in step 1, below "Ändern …")
         self.quick = {}
-        self.quick_rows = QVBoxLayout()
+        self.quick_box = QWidget()
+        self.quick_rows = QVBoxLayout(self.quick_box)
+        self.quick_rows.setContentsMargins(0, 0, 0, 0)
         self.quick_rows.setSpacing(theme.SPACE_S)
         for key in ("mask_object", "fix_scale", "turbo"):
             r = QHBoxLayout()
@@ -321,9 +328,18 @@ class StudioPage(QWidget):
         self.left_pane, self.left_scroll = left, left_scroll
         # "Anpassen": the parameters take the left column's place ("← Zurück" or Esc brings the steps back)
         self.left_stack = QStackedWidget()
-        self.left_stack.setFixedWidth(theme.LEFT_COLUMN)
+        self.left_stack.setMinimumWidth(theme.LEFT_COLUMN)
+        self.left_stack.setMaximumWidth(theme.LEFT_COLUMN_MAX)
         self.left_stack.addWidget(left_scroll)
-        columns.addWidget(self.left_stack)
+        self.columns.addWidget(self.left_stack)
+        self.columns.addWidget(middle)
+        self.columns.setStretchFactor(0, 0)
+        self.columns.setStretchFactor(1, 1)  # (a wider window widens the middle)
+        self.columns.splitterMoved.connect(lambda *_: self._left_width_timer.start())
+        self.columns.reset_requested.connect(lambda _i: self.set_left_width(None, keep=True))
+        self._left_width_timer = QTimer(self, singleShot=True, interval=400)  # (kept once the drawing pauses)
+        self._left_width_timer.timeout.connect(self._keep_left_width)
+        self._left_width_restored = False
 
         # ----------------------------------------------------------- center pane
         center = Card(margins=theme.SPACE_XL, spacing=theme.SPACE_M)
@@ -588,7 +604,8 @@ class StudioPage(QWidget):
         self.params_page.body.addWidget(self.back_btn, 0, Qt.AlignLeft)
         self.params_page.body.addWidget(self.params, 1)
         self.left_stack.addWidget(self.params_page)
-        self.params_page.installEventFilter(self)  # (Esc: back to the steps)
+        self.params_page.installEventFilter(self)  # (Esc: back to the steps; a longer text: the column fits it)
+        self.left_pane.installEventFilter(self)  # (a longer text: the column fits it)
         # step 3: the preset segment (from the panel) across the column, the own presets in the step's header,
         # what the job draws, "Anpassen"
         self.params.presets.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -607,7 +624,7 @@ class StudioPage(QWidget):
         sl.addWidget(self.adjust_btn, 0, Qt.AlignTop)
         self.preset_step.body.addWidget(summary)
         self.preset_step.body.addLayout(self.budget_row)
-        self.preset_step.body.addLayout(self.quick_rows)
+        self.input_card.body.insertWidget(self.input_card.body.indexOf(self.hint_box), self.quick_box)
         ll.addStretch(1)
 
         # ------------------------------------------------------------ right column: the job's sketches
@@ -2101,6 +2118,46 @@ class StudioPage(QWidget):
     def showEvent(self, e):  # noqa: N802
         super().showEvent(e)
         QTimer.singleShot(0, self, self.fix_tab_order)  # (positions are known once the page is laid out)
+        if not self._left_width_restored:  # (the width drawn last time – once the page has its width)
+            self._left_width_restored = True
+            QTimer.singleShot(0, self, self.restore_left_width)
+
+    # ------------------------------------------------------------ 4.2.1: the left column's width
+    def left_column_needs(self) -> int:
+        """The width the left column needs so that nothing in it is cut – the steps with their scroll bar and the
+        parameter page – in the language and with the font of this computer."""
+        bar = self.left_scroll.verticalScrollBar().sizeHint().width()
+        return max(self.left_pane.minimumSizeHint().width() + bar, self.params_page.minimumSizeHint().width())
+
+    def fit_left_column(self) -> None:
+        """The left column never narrower than its content needs (it grows when a longer text needs it)."""
+        need = max(theme.LEFT_COLUMN_MIN, min(self.left_column_needs(), theme.LEFT_COLUMN_MAX))
+        if self.left_stack.minimumWidth() != need:
+            self.left_stack.setMinimumWidth(need)
+
+    def left_column_default(self) -> int:
+        """Its own width: LEFT_COLUMN – or wider, when its content needs it here."""
+        self.fit_left_column()
+        return max(theme.LEFT_COLUMN, self.left_stack.minimumWidth())
+
+    def set_left_width(self, width: int | None, keep: bool = False) -> None:
+        """The left column this wide (None: its own width) within its bounds; the middle takes the rest.
+        ``keep``: remember it (None: forget the width drawn before)."""
+        self.fit_left_column()
+        w = self.left_column_default() if width is None else int(width)
+        w = max(self.left_stack.minimumWidth(), min(theme.LEFT_COLUMN_MAX, w))
+        total = sum(self.columns.sizes()) or self.columns.width()
+        self.columns.setSizes([w, max(1, total - w)])
+        if keep:
+            app_settings().set("studio_left_width", 0 if width is None else self.left_stack.width())
+
+    def restore_left_width(self) -> None:
+        self.set_left_width(int(app_settings().get("studio_left_width", 0) or 0) or None)
+
+    def _keep_left_width(self) -> None:
+        width = self.left_stack.width()
+        if self.left_stack.isVisible() and width != int(app_settings().get("studio_left_width", 0) or 0):
+            app_settings().set("studio_left_width", width)
 
     def _update_sketch_list(self) -> None:
         """The right column: the job's sketches (SceneSketch shows its matrix in the middle instead – the column
@@ -2290,6 +2347,8 @@ class StudioPage(QWidget):
     def eventFilter(self, obj, event):  # noqa: N802
         if event.type() in (QEvent.Resize, QEvent.LayoutRequest) and obj is self.stats_row:
             self._fit_stats()  # (also when a number grows during a run)
+        elif event.type() == QEvent.LayoutRequest and obj in (self.left_pane, self.params_page):
+            QTimer.singleShot(0, self, self.fit_left_column)  # (a longer text: the column grows to fit it)
         elif event.type() == QEvent.KeyPress and obj is self.params_page and event.key() == Qt.Key_Escape:
             self.close_params()  # (a key no field took)
             return True
