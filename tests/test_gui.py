@@ -948,10 +948,12 @@ def test_saved_steps_and_simplify_in_the_studio(window, tmp_path, monkeypatch):
     studio.undo_edit()
     assert studio.seed_svgs[seed] == two and not os.path.isfile(edited)
 
-    # Simplify: the measuring process (here a stand-in that writes the file) – then the slider works
+    # Simplify: the measuring process (here a stand-in that writes the file – 4.1: with its version and the
+    # order, the second stroke first) – then the slider works
     script = ("import json, sys; from clipasso_studio.engine import importance as i, jobs; r = sys.argv[1]; "
               "s = open(jobs.sketch_file(r)).read(); "
-              "json.dump({'sha1': i.digest(s), 'drops': [1.0, 0.1]}, open(r + '/' + i.FILE, 'w'))")
+              "json.dump({'version': i.VERSION, 'sha1': i.digest(s), 'drops': [1.0, 0.1], 'rank': [1, 0]}, "
+              "open(r + '/' + i.FILE, 'w'))")
     monkeypatch.setattr(studio_mod, "importance_command", lambda r: (sys.executable, ["-c", script, r]))
     assert studio.open_simplify() and not studio.edit_bar.slider.isEnabled()
     proc = studio._importance_proc
@@ -961,7 +963,7 @@ def test_saved_steps_and_simplify_in_the_studio(window, tmp_path, monkeypatch):
         window_app.processEvents()
         if studio.edit_bar.slider.isEnabled():
             break
-    assert studio.edit_bar.slider.isEnabled() and importance.read(run, two) == [1.0, 0.1]
+    assert studio.edit_bar.slider.isEnabled() and importance.read(run, two) == [1.0, 0.0]
     studio.edit_bar.slider.setValue(1)
     studio.edit_bar.apply_btn.click()
     assert "200 200" not in studio.seed_svgs[seed]  # the second, less important stroke went

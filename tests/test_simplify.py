@@ -28,15 +28,79 @@ def _run(tmp_path, svg=SVG):
 
 
 def test_importance_file_belongs_to_one_sketch(tmp_path):
+    """The file belongs to one sketch – and, 4.1, to the order of its version: a file of 4.0 (CLIP's drops only) is
+    measured again."""
     from clipasso_studio.engine import importance
 
     run = _run(tmp_path)
     assert importance.read(run, SVG) is None
     with open(os.path.join(run, importance.FILE), "w") as f:
         json.dump({"sha1": importance.digest(SVG), "base": 80.0, "drops": [3.0, 2.5, -0.1]}, f)
-    assert importance.read(run, SVG) == [3.0, 2.5, -0.1]
+    assert importance.read(run, SVG) is None  # (4.0's file: measured again)
+    with open(os.path.join(run, importance.FILE), "w") as f:
+        json.dump({"version": importance.VERSION, "sha1": importance.digest(SVG), "base": 80.0,
+                   "drops": [3.0, 2.5, -0.1], "rank": [2, 1, 0]}, f)
+    assert importance.read(run, SVG) == [2.0, 1.0, 0.0]
     assert importance.read(run, SVG.replace("204 112", "200 112")) is None  # the sketch changed: measure again
-    assert importance.order([3.0, 2.5, -0.1]) == [2, 1, 0]
+    assert importance.order([2.0, 1.0, 0.0]) == [2, 1, 0]
+
+
+def _disc_sketch(size=112):
+    """A black disc on white, 8 strokes on its outline, 8 strokes crowded in one place inside and 4 spread out."""
+    import numpy as np
+
+    yy, xx = np.mgrid[0:size, 0:size]
+    c, r = size / 2, size * 0.34
+    gray = np.where((xx - c) ** 2 + (yy - c) ** 2 <= r ** 2, 0.05, 0.97).astype(np.float32)
+    strokes = []
+    for k in range(8):  # the outline: arcs of 45° each
+        a = np.linspace(k * np.pi / 4, (k + 1) * np.pi / 4, 16)
+        strokes.append(np.stack([c + r * np.cos(a), c + r * np.sin(a)], 1))
+    rng = np.random.default_rng(1)
+    for _ in range(8):  # crowded: short lines through about the same spot
+        p = np.array([c - 8, c - 6]) + rng.uniform(-3, 3, 2)
+        d = rng.uniform(-1, 1, 2)
+        d /= np.linalg.norm(d)
+        strokes.append(np.linspace(p - 9 * d, p + 9 * d, 16))
+    for q in ((c + 14, c + 2), (c - 2, c + 16), (c + 6, c - 18), (c - 18, c + 10)):  # spread out
+        strokes.append(np.linspace(np.array(q) - (7, 3), np.array(q) + (7, 3), 16))
+    coverage = np.zeros((len(strokes), size, size))
+    for i, pts in enumerate(strokes):
+        dense = np.concatenate([np.linspace(pts[j], pts[j + 1], 6) for j in range(len(pts) - 1)])
+        for x, y in dense:
+            coverage[i, max(int(y) - 1, 0): int(y) + 2, max(int(x) - 1, 0): int(x) + 2] = 1.0
+    samples = [(pts, np.gradient(pts, axis=0)) for pts in strokes]
+    return gray, strokes, coverage, samples
+
+
+def test_simplify_keeps_the_outline_and_thins_areas_evenly():
+    """4.1: "Simplify" lets the strokes that fill a dark area go first – where they crowd first – and keeps the
+    outline longest, even when CLIP alone would rather keep the filling (here: every outline stroke adds least)."""
+    from clipasso_studio.engine import importance
+
+    gray, strokes, coverage, samples = _disc_sketch()
+    outline, crowded, spread = range(0, 8), range(8, 16), range(16, 20)
+    # CLIP alone: the outline matters least, the crowded strokes most – it would empty the outline first
+    drops = [0.1] * 8 + [2.0 + 0.01 * i for i in range(8)] + [1.0 + 0.01 * i for i in range(4)]
+    rank = importance.ranking(drops, coverage, samples, gray)
+    assert sorted(rank) == list(range(20))
+    assert min(rank[i] for i in outline) > max(rank[i] for i in (*crowded, *spread))  # the outline goes last
+    first = sorted(range(20), key=lambda i: rank[i])[:4]
+    assert sum(i in crowded for i in first) >= 3, first  # the crowded place is thinned first (CLIP: the others) …
+    assert max(rank[i] for i in crowded) > min(rank[i] for i in spread)  # … not emptied before the others go
+    assert importance.order([float(v) for v in rank])[:4] == first
+
+
+def test_simplify_without_edges_follows_clip():
+    """4.1: a picture without edges or dark areas (a blank one): the order is CLIP's."""
+    import numpy as np
+
+    from clipasso_studio.engine import importance
+
+    _, strokes, coverage, samples = _disc_sketch()
+    drops = list(np.linspace(0.0, 1.0, len(strokes)))[::-1]
+    rank = importance.ranking(drops, coverage, samples, np.full((112, 112), 0.97, dtype=np.float32))
+    assert rank == list(range(len(strokes)))[::-1]
 
 
 @pytest.mark.skipif(not HAS_CLIP, reason="CLIP ViT-B/32 not available")
@@ -51,8 +115,11 @@ def test_importance_is_leave_one_out(tmp_path):
 
     run = _run(tmp_path)
     assert main(["--importance", run]) == 0
-    drops = importance.read(run, SVG)
-    assert len(drops) == 3
+    with open(os.path.join(run, importance.FILE), encoding="utf-8") as f:
+        data = json.load(f)
+    drops = data["drops"]
+    assert len(drops) == 3 and data["version"] == importance.VERSION and sorted(data["rank"]) == [0, 1, 2]
+    assert importance.read(run, SVG) == [float(v) for v in data["rank"]]
     scorer = get_scorer("cpu")
     target = Image.open(os.path.join(run, "input.png")).convert("RGB")
     base = scorer.score_svg(os.path.join(run, "best_iter.svg"), target)

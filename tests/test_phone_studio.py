@@ -107,8 +107,9 @@ def test_simplify_and_saved_steps_on_the_phone(window, tmp_path):
     studio, call = window.studio, window.phone.api.handle
     studio.show_job_dir(str(job))
     assert call("file_simplified", {"keep": 1})["ok"] is False  # not measured yet
-    # (measured as the CLIP process would: stroke 2 adds most, stroke 0 least)
-    (run / importance.FILE).write_text(json.dumps({"sha1": importance.digest(SVG), "drops": [0.1, 0.5, 0.9]}))
+    # (measured as the process would: stroke 2 adds most, stroke 0 least – 4.1: its version and the order)
+    (run / importance.FILE).write_text(json.dumps({"version": importance.VERSION, "sha1": importance.digest(SVG),
+                                                   "drops": [0.1, 0.5, 0.9], "rank": [0, 1, 2]}))
     assert call("get_studio", {})["edit"]["simplify"] == "ready"
     assert call("do_simplify_measure", {}) == {"ok": True, "ready": True}
     one = call("file_simplified", {"keep": 1})

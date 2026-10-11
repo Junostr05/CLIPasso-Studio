@@ -1,6 +1,12 @@
-## Neu in 4.0: ein ruhigeres Studio
+## Neu in 4.1: Vereinfachen behält die Form
 
-Das Studio sieht neu aus und ist klarer aufgebaut – vom Bild über die Methode bis zum Export. Alle Funktionen von 3.8 sind geblieben; manche stehen an einem neuen Ort.
+- **Umrisse vor Flächen:** *Vereinfachen* lässt jetzt zuerst die Striche weg, die dunkle Flächen füllen – dort, wo sie dicht liegen, gleichmäßig ausgedünnt statt auf einmal geleert. Die Umrisse des Motivs bleiben am längsten; so ist die Form auch mit einem Viertel der Striche noch zu erkennen. Was CLIP misst, zählt weiter mit.
+- Eine Skizze, die mit 4.0 oder früher gemessen wurde, wird beim ersten *Vereinfachen* einmal neu gemessen (einige Sekunden).
+- Gilt auch auf dem Handy, wenn du dort eine Skizze bearbeitest.
+
+---
+
+**Neu in 4.0: ein ruhigeres Studio**
 
 - **Kopfzeile statt Seitenleiste:** Oben stehen *Studio · Galerie · Warteschlange* (mit der Zahl der wartenden Aufträge), der laufende Auftrag, worauf die App rechnet (Grafikkarte oder „Prozessor · 8 Kerne“) und das Menü **App** mit *Modelle, Einstellungen, Methoden vergleichen, Handy & Nachrichten, Nach Updates suchen* und *Info & Hilfe*. Strg+1 … 7 folgen dieser Reihenfolge (Strg+2 ist jetzt die Galerie, Strg+6 der Vergleich).
 - **Das Studio in drei Spalten:** Links die Schritte *1 · Bild*, *2 · Methode* und *3 · Voreinstellung* – mit einer Zusammenfassung wie „16 Striche · 2001 Iterationen · 3 Skizzen“; *Anpassen* zeigt die Parameter in der Spalte (*Zurück* oder Esc). In der Mitte die Skizze mit einer Werkzeugleiste darunter: Radierer, Stift, Rückgängig, *Vereinfachen*, Bewertung und Vollbild. Rechts die Skizzen des Auftrags mit ihrem Stand und CLIP-Score. Unten der Auftrag: Status, Restzeit, *Details* (Zahlen und Kurve) und *Skizze erstellen* – während er läuft *Pause* und *Abbrechen*.

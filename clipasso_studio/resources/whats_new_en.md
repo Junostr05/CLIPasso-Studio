@@ -1,6 +1,12 @@
-## New in 4.0: a calmer studio
+## New in 4.1: Simplify keeps the shape
 
-The studio has a new look and a clearer order – from the image through the method to the export. Every feature of 3.8 stays; some are in a new place.
+- **Outlines before areas:** *Simplify* now leaves out the strokes that fill dark areas first – thinned evenly where they crowd instead of emptied at once. The outlines of the subject stay longest, so the shape is still clear with a quarter of the strokes. What CLIP measures counts, too.
+- A sketch measured by 4.0 or earlier is measured again on the first *Simplify* (a few seconds).
+- On the phone as well, when you edit a sketch there.
+
+---
+
+**New in 4.0: a calmer studio**
 
 - **A header instead of the sidebar:** at the top *Studio · Gallery · Queue* (with the number of waiting jobs), the running job, what the app computes on (graphics card or “Processor · 8 cores”) and the **App** menu with *Models, Settings, Compare methods, Phone & messages, Check for updates* and *About & help*. Ctrl+1 … 7 follow this order (Ctrl+2 is the gallery now, Ctrl+6 compare).
 - **The studio in three columns:** on the left the steps *1 · Image*, *2 · Method* and *3 · Preset* – with a summary like “16 strokes · 2001 iterations · 3 sketches”; *Adjust* shows the parameters in the column (*Back* or Esc). In the middle the sketch with a toolbar below it: eraser, pen, undo, *Simplify*, rating and full screen. On the right the job's sketches with their state and CLIP score. At the bottom the job: status, time left, *Details* (numbers and curve) and *Create sketch* – while it runs *Pause* and *Cancel*.

@@ -1,3 +1,16 @@
+## CLIPasso Studio 4.1 – Simplify keeps the shape
+
+From 4.0 the app offers 4.1 as a small update (also from the phone).
+
+- **Outlines before areas.** *Simplify* (the slider in the toolbar below the sketch) used to drop the strokes by
+  CLIP alone – how far the likeness falls without each one. That often kept the strokes that fill a dark area and
+  let the outline go, and the sketch lost its shape. Now three things decide for every stroke: its rank by CLIP,
+  how much of it lies on an edge of the picture and runs along it (strongly preferred – it weighs one and a half
+  times CLIP's whole range), and how much of it lies in a dark area that other strokes cover too (goes first). The
+  crowding is counted again after every stroke that goes, so an area thins out evenly instead of being emptied.
+- A sketch measured by 4.0 or earlier is measured again the first time you simplify it (a few seconds, once).
+- The same order on the phone, when a sketch is edited there.
+
 ## CLIPasso Studio 4.0 – a calmer studio
 
 4.0 renews the whole studio: a new look in dark and light, a clearer order from the image to the export, and

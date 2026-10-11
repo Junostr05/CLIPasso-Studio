@@ -80,33 +80,51 @@ def bezier_samples(points: torch.Tensor, order: int, samples: int = SAMPLES) -> 
     return torch.cat(pos, dim=1), torch.cat(tan, dim=1)
 
 
+def edge_maps(gray: np.ndarray) -> dict:
+    """The picture's edges, from its brightness [H,W] in 0..1 (also for "Simplify", ``importance``):
+
+    - ``g``: the softened brightness, ``side``: the shorter side (px);
+    - ``edges`` (bool), ``dist``: every pixel's distance to the nearest edge (px), ``has_edges``;
+    - ``cos2``, ``sin2``: the direction of the edge's tangent (a direction without a sign, as 2θ);
+    - ``clarity``: how clear that direction is (0..1: the edge's strength × the tensor's coherence);
+    - ``dark``: the dark interior – dark and a little away from the edges."""
+    from .imaging import distance_transform_edt, gaussian_filter, sobel  # (no scipy: the app build has none)
+
+    side = float(min(gray.shape))
+    g = gaussian_filter(gray, BLUR)
+    gx, gy = sobel(g, axis=1) / 4.0, sobel(g, axis=0) / 4.0  # (a black-white step: 1)
+    mag = np.hypot(gx, gy)
+    edges = mag > EDGE
+    has_edges = bool(edges.any())
+    dist = distance_transform_edt(~edges) if has_edges else np.full(gray.shape, side)
+    # the edges' direction: the structure tensor's main axis is across the edge, the edge runs at right angles
+    jxx = gaussian_filter(gx * gx, TENSOR_BLUR)
+    jxy = gaussian_filter(gx * gy, TENSOR_BLUR)
+    jyy = gaussian_filter(gy * gy, TENSOR_BLUR)
+    diff = jxx - jyy
+    r = np.sqrt(diff ** 2 + 4 * jxy ** 2) + 1e-12
+    cos2, sin2 = -diff / r, -2 * jxy / r  # of the edge's tangent
+    coherence = r / (jxx + jyy + 1e-12)
+    strength = np.clip(gaussian_filter(mag, TENSOR_BLUR) / EDGE, 0.0, 1.0)
+    return {"g": g, "side": side, "edges": edges, "has_edges": has_edges, "dist": dist, "cos2": cos2,
+            "sin2": sin2, "clarity": strength * coherence, "dark": (g < DARK) & (dist > EDGE_CLEAR * side)}
+
+
 class Guide:
     def __init__(self, target: torch.Tensor, mask=None):
         """``target`` [1,3,H,W] in 0..1: the picture on the canvas the strokes live on (pixel coordinates);
         ``mask`` [H,W] (optional): hatching only inside it."""
-        from .imaging import distance_transform_edt, gaussian_filter, sobel  # (no scipy: the app build has none)
+        from .imaging import gaussian_filter
 
         gray = _gray(target)
         self.height, self.width = gray.shape
-        side = float(min(self.height, self.width))
-        g = gaussian_filter(gray, BLUR)
-        gx, gy = sobel(g, axis=1) / 4.0, sobel(g, axis=0) / 4.0  # (a black-white step: 1)
-        mag = np.hypot(gx, gy)
-        edges = mag > EDGE
-        self.has_edges = bool(edges.any())
-        dist = distance_transform_edt(~edges) if self.has_edges else np.full(gray.shape, side)
+        e = edge_maps(gray)
+        side, g, dist = e["side"], e["g"], e["dist"]
+        self.has_edges = e["has_edges"]
         reach = EDGE_REACH * side
-        # the edges' direction: the structure tensor's main axis is across the edge, the edge runs at right angles
-        jxx = gaussian_filter(gx * gx, TENSOR_BLUR)
-        jxy = gaussian_filter(gx * gy, TENSOR_BLUR)
-        jyy = gaussian_filter(gy * gy, TENSOR_BLUR)
-        diff = jxx - jyy
-        r = np.sqrt(diff ** 2 + 4 * jxy ** 2) + 1e-12
-        cos2, sin2 = -diff / r, -2 * jxy / r  # of the edge's tangent
-        coherence = r / (jxx + jyy + 1e-12)
-        strength = np.clip(gaussian_filter(mag, TENSOR_BLUR) / EDGE, 0.0, 1.0)
+        cos2, sin2 = e["cos2"], e["sin2"]
         # the hatch region: dark, a little away from the edges (inside the mask)
-        region = (g < DARK) & (dist > EDGE_CLEAR * side)
+        region = e["dark"].copy()
         if mask is not None:
             m = mask.detach().cpu().numpy() if torch.is_tensor(mask) else np.asarray(mask)
             if m.shape == region.shape:
@@ -115,7 +133,7 @@ class Guide:
         self.darkness = np.clip((DARK - g) / DARK, 0.0, 1.0)
         self.dark_share = float(region.mean())
         dark_soft = gaussian_filter(region.astype(np.float32), 1.5)
-        maps = np.stack([np.minimum(dist / reach, 1.0), cos2, sin2, strength * coherence, dark_soft])
+        maps = np.stack([np.minimum(dist / reach, 1.0), cos2, sin2, e["clarity"], dark_soft])
         self.maps = torch.from_numpy(maps.astype(np.float32))[None]  # [1, 5, H, W]
         self.length = HATCH_LENGTH * side
         self.spacing = 0.0  # the hatch strokes' distance, set by init_hatch
