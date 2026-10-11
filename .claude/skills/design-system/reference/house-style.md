@@ -80,9 +80,15 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 | `tool_button(icon, tooltip, size, checkable)` | icon-only button – **always pass a tooltip** (it is the screen-reader name) | QToolButton |
 | `Card(flat=…)` | panel | `#Card`, `#CardFlat` |
 | `ToggleSwitch` | on/off – named by the label of its row (see `a11y.py`) | painted |
-| `SegmentedControl(items)` | exclusive choice; `set_icons()` for the compact form | `#SegmentBar`, `#Segment` |
+| `SegmentedControl(items, orientation=…)` | exclusive choice, a row or (`Qt.Vertical`) a column; one Tab stop, the arrows choose; `set_icons()` for the compact form | `#SegmentBar`, `#Segment` |
+| `link_button(text, icon)` | an action that reads as a link (*Anpassen*, *Details*) | `variant="link"` |
+| `RovingFocus(parent, choose)` | one Tab stop for a group of choices (method cards, sketches): arrows, Home, End choose, Space / Enter too | – |
+| `CountBadge` | a number next to a name, hidden at 0 | `role="count"` |
+| `Chip(icon, text, framed)` | a small piece of state (hardware, a running job); text elides | `#Chip[framed="true"]` |
+| `StepHeader(n, title, action)` | *1 · BILD* above a step of the left column | `role="label"` |
+| `Column(side, width)` | a side column: `surface`, a line towards the middle, `COLUMN_PADDING` | `#Column[side=…]` |
 | `WrapRow(first, second, tail)` | a row that breaks into two lines instead of overlapping | – |
-| `CollapsibleSection(title, icon)` | parameter groups | header styled inline in `common.py` |
+| `CollapsibleSection(title, icon)` | parameter groups | `#SectionHeader` |
 | `Banner` | inline notice with one action (missing models, hardware) | `#Banner`, `#BannerWarn` |
 | `Toast` | transient message, bottom right | `#Card` |
 | `EmptyState(icon)` | empty page: icon, title, what to do, a button that does it | – |
@@ -90,6 +96,11 @@ Build with the helpers in `gui/widgets/common.py` – never a bare widget with i
 
 Other hooks in the stylesheet: `#Root`, `#Page`, `#Sidebar`, `#NavButton`, `#MethodCard[selected="true"]`, `#Divider`.
 A new look = a new objectName or property in `theme.stylesheet()`, styled for both palettes.
+
+**Keyboard focus** (`gui/focus_ring.py`): a 2 px ring in `focus`, 2 px outside the control, drawn by one overlay
+per window while the keyboard is in use (hidden after a click, like `:focus-visible`). Text fields, spin boxes and
+drop-downs show focus by their border instead. A focusable custom widget sets `ring_radius` (its corner radius) –
+or `focus_ring = False` if it shows its focus itself. Never `setFocusPolicy(Qt.NoFocus)` on something clickable.
 
 Custom-painted widgets (`canvas.py`, `ToggleSwitch`, `mask_edit.py`, `detail_edit.py`, `gallery_viewer.py`) read
 `theme.current()` when they paint. Switching the theme rebuilds the main window (`MainWindow.apply_theme`), so
@@ -123,6 +134,7 @@ colours read at construction are fine – except while a job runs (then only the
 | Every text colour ≥ 4.5:1 on every surface, both themes | `tests/test_theme_contrast.py` |
 | Every visible button has a name (text, tooltip, accessible name or a buddy label) | `test_gui.py::test_every_button_has_a_name` |
 | Tab order: input → canvas → parameters | `test_gui.py::test_studio_tab_order` |
+| Keyboard focus is visible; groups of choices are one Tab stop with arrows | `tests/test_focus_ring.py` |
 | Pages use the spacing tokens | `test_gui.py::test_pages_use_the_spacing_tokens` |
 | Empty pages explain the next step | `test_gui.py::test_empty_pages_say_what_to_do` |
 | Columns fit the smallest window | `test_gui.py::test_studio_columns_fit_a_small_window` |

@@ -38,6 +38,7 @@ class Tour(QWidget):
         self.index = 0
         self.setAttribute(Qt.WA_StyledBackground, False)
         self.setFocusPolicy(Qt.StrongFocus)
+        self.setProperty("focus_ring", False)  # (the whole window: its buttons show the ring)
         self.card = Card(self, margins=18, spacing=10)
         self.card.setFixedWidth(360)
         self.step_label = label("", "faint")

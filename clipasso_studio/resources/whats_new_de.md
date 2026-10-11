@@ -1,7 +1,8 @@
-## Neu in 4.0 (Beta 1): ein ruhigeres Studio
+## Neu in 4.0 (Beta 2): ein ruhigeres Studio
 
 Dies ist eine **Vorabversion** zum Ausprobieren. 4.0 erneuert das Aussehen des Studios Schritt für Schritt – jede Beta bringt einen weiteren Teil. Alle Funktionen bleiben.
 
+- **Tastatur (Beta 2):** Ein sichtbarer Fokusring zeigt, wo du mit der Tastatur gerade bist (Tab) – nach einem Klick verschwindet er wieder. Die Methodenkarten, jedes Segment (z. B. *Schnell / Standard / Qualität*) und die Skizzen eines Auftrags sind je ein Tab-Halt: Mit den Pfeiltasten wählst du darin, Leertaste oder Enter bestätigen. Auch die Bildfläche öffnet mit Leertaste ein Bild.
 - **Beta-Versionen:** Der neue Schalter *Auch Beta-Versionen anbieten* (Einstellungen → Verhalten, auf dem Handy unter *App*) bietet künftige Vorabversionen als Update an – auch zum Installieren vom Handy. Ausgeschaltet bleibt es bei den fertigen Versionen. Betas gibt es nur für Windows.
 - **Neue Farben und Formen:** Dunkel und Hell überarbeitet. Jede Schrift erreicht auf ihrer Fläche mindestens 4,5 : 1, die Ränder von Eingabefeldern, Häkchen und Schaltern mindestens 3 : 1 – sie sind jetzt klar zu erkennen. Rundungen und Abstände folgen einer festen Reihe.
 - **Einheitliche Wörter:** *Bild* statt Foto, *Auftrag* statt Job oder Durchlauf, *Voreinstellung* statt Preset.

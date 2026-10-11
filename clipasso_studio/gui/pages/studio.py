@@ -22,8 +22,8 @@ from ..controller import JobController, QueuedJob
 from ..i18n import i18n, tr
 from ..widgets.canvas import (DISPLAY_MAX, IMAGE_EXT, IMAGE_FILTER, ImageDropZone, LossChart, MatrixView, SeedThumb,
                               SheetView, SketchCanvas, load_pixmap)
-from ..widgets.common import (Banner, Card, ElidedLabel, SegmentedControl, ToggleSwitch, WrapRow, button, label,
-                              tool_button)
+from ..widgets.common import (Banner, Card, ElidedLabel, RovingFocus, SegmentedControl, ToggleSwitch, WrapRow, button,
+                              label, tool_button)
 from ..widgets.edit_bar import EditBar, importance_command
 from ..widgets.hint_box import HintBox
 from ..widgets.method_picker import MethodPicker
@@ -530,6 +530,7 @@ class StudioPage(QWidget):
         self.thumb_row.setContentsMargins(0, 4, 0, 4)
         self.thumb_row.setSpacing(8)
         self.thumb_row.addStretch(1)
+        self.thumb_focus = RovingFocus(self, lambda t: self.select_seed(t.seed))  # 4.0: one Tab stop, arrows
         self.thumb_area.setWidget(thumbs_host)
         self.thumb_area.setVisible(False)
         center.body.addWidget(self.thumb_area)
@@ -1183,6 +1184,7 @@ class StudioPage(QWidget):
         self.sheet.clear()
         self.chart.reset(1)
         for t in self.thumbs.values():
+            self.thumb_focus.remove(t)
             t.setParent(None)
         self.thumbs.clear()
         self.seed_svgs.clear()
@@ -1267,6 +1269,7 @@ class StudioPage(QWidget):
                 t.setToolTip(tr("ui.cell_tip", layer=seed // 100, level=seed % 100))
             self.thumb_row.insertWidget(self.thumb_row.count() - 1, t)
             self.thumbs[seed] = t
+            self.thumb_focus.add(t)
         self.thumb_area.setVisible(len(self.thumbs) > 1)
         if self.selected_seed is None and seeds:
             self.select_seed(seeds[0])
@@ -1283,6 +1286,7 @@ class StudioPage(QWidget):
         self.sheet.set_selected(seed)
         for s, t in self.thumbs.items():
             t.set_selected(s == seed)
+        self.thumb_focus.set_current(self.thumbs.get(seed))
         self.canvas.set_svg(self._shown_svg(seed))
         self.canvas.set_attention(self.seed_attn.get(seed))
         self._update_layer_btn()
@@ -2118,8 +2122,7 @@ class StudioPage(QWidget):
         if self.mask_row.isVisible() and getattr(self, "mask_state", ""):
             _, model, _ = self._mask_settings()
             self._set_mask_status(self.mask_state, model)
-        self.drop.title = tr("ui.drop_title")
-        self.drop.subtitle = tr("ui.drop_subtitle")
+        self.drop.set_texts(tr("ui.drop_title"), tr("ui.drop_subtitle"))
         self.drop.update()
         self.open_btn.setText(tr("ui.open"))
         self.samples_btn.setText(tr("ui.samples"))

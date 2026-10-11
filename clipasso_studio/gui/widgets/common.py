@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPropertyAnimation, QRectF, QSize, Qt, QTimer, Signal)
+from PySide6.QtCore import (Property, QEasingCurve, QEvent, QObject, QPropertyAnimation, QRectF, QSize, Qt, QTimer,
+                            Signal)
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QFrame, QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
                                QLabel, QLayout, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
@@ -101,6 +102,170 @@ def tool_button(icon_name: str, tooltip: str = "", size: int = 16, checkable: bo
     return btn
 
 
+def link_button(text: str = "", icon_name: str | None = None) -> QPushButton:
+    """4.0: an action that reads as a link (*Anpassen*, *Details*, *Methoden vergleichen …*) – the accent as text."""
+    btn = button(text, variant="link")
+    if icon_name:
+        btn.setIcon(icons.icon(icon_name, theme.current().accent_text))
+        btn.setIconSize(QSize(14, 14))
+    btn.setProperty("ring_radius", theme.RADIUS_PROGRESS)
+    return btn
+
+
+class RovingFocus(QObject):
+    """4.0: one Tab stop for a group of choices (method cards, segments, sketches) – the keyboard pattern of a
+    radio group. Tab reaches the chosen item (or the first one), the arrow keys, Home and End move to the
+    neighbour and choose it (``choose(widget)``), Space and Enter choose the focused item. Items that are not
+    buttons get the focus by Tab; buttons press themselves on Space."""
+
+    NEXT = {Qt.Key_Right: 1, Qt.Key_Down: 1, Qt.Key_Left: -1, Qt.Key_Up: -1}
+
+    def __init__(self, parent: QObject, choose):
+        super().__init__(parent)
+        self._choose = choose
+        self.items: list[QWidget] = []
+        self.current: QWidget | None = None
+
+    def add(self, widget: QWidget) -> None:
+        self.items.append(widget)
+        widget.installEventFilter(self)
+        self.update()
+
+    def remove(self, widget: QWidget) -> None:
+        if widget in self.items:
+            self.items.remove(widget)
+            widget.removeEventFilter(self)
+        if self.current is widget:
+            self.current = None
+        self.update()
+
+    def set_current(self, widget: QWidget | None) -> None:
+        self.current = widget
+        self.update()
+
+    def reachable(self) -> list[QWidget]:
+        return [w for w in self.items if not w.isHidden() and w.isEnabled()]
+
+    def update(self) -> None:
+        """Only the chosen item is a Tab stop (a click still focuses the others)."""
+        reach = self.reachable()
+        stop = self.current if self.current in reach else (reach[0] if reach else None)
+        for w in self.items:
+            w.setFocusPolicy(Qt.StrongFocus if w is stop else Qt.ClickFocus)
+
+    def eventFilter(self, obj, event):  # noqa: N802
+        t = event.type()
+        if t == QEvent.KeyPress and obj in self.items and not (
+                event.modifiers() & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)):
+            key = event.key()
+            reach = self.reachable()
+            if obj in reach and (key in self.NEXT or key in (Qt.Key_Home, Qt.Key_End)):
+                if key == Qt.Key_Home:
+                    target = reach[0]
+                elif key == Qt.Key_End:
+                    target = reach[-1]
+                else:
+                    target = reach[(reach.index(obj) + self.NEXT[key]) % len(reach)]
+                if target is not obj:
+                    self._choose(target)
+                    target.setFocus(Qt.TabFocusReason)
+                return True
+            if key in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not isinstance(obj, QAbstractButton):
+                self._choose(obj)
+                return True
+        elif t in (QEvent.ShowToParent, QEvent.HideToParent, QEvent.EnabledChange) and obj in self.items:
+            self.update()
+        return False
+
+
+class CountBadge(QLabel):
+    """4.0: a number next to a name (*Warteschlange 2*): hidden at 0."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setProperty("role", "count")
+        self.setAlignment(Qt.AlignCenter)
+        self.set_count(0)
+
+    def set_count(self, n: int) -> None:
+        self.count = n
+        self.setText(str(n) if n < 100 else "99+")
+        self.setVisible(n > 0)
+
+
+class Chip(QFrame):
+    """4.0: a small piece of state with an icon – the hardware in the header (*Prozessor · 8 Kerne*), a running
+    job. ``framed`` gives it a pill of its own; its text ends in "…" when it does not fit."""
+
+    def __init__(self, icon_name: str | None = None, text: str = "", framed: bool = False, parent=None):
+        super().__init__(parent)
+        self.setObjectName("Chip")
+        self.setProperty("framed", "true" if framed else "false")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(*((10, 4, 10, 4) if framed else (0, 0, 0, 0)))
+        lay.setSpacing(6)
+        self.icon = QLabel()
+        self.text = ElidedLabel(text, "muted")
+        lay.addWidget(self.icon)
+        lay.addWidget(self.text, 1)
+        self.icon_name = None
+        self.set_icon(icon_name)
+
+    def set_icon(self, name: str | None, color: str | None = None) -> None:
+        self.icon_name = name
+        self.icon.setVisible(bool(name))
+        if name:
+            self.icon.setPixmap(icons.pixmap(name, color or theme.current().muted, 16))
+
+    def set_text(self, text: str) -> None:
+        self.text.setText(text)
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - the whole text when there is room (the label alone is elastic)
+        m = self.layout().contentsMargins()
+        w = self.text.fontMetrics().horizontalAdvance(self.text.text()) + m.left() + m.right() + 2
+        if self.icon.isVisibleTo(self):
+            w += 16 + self.layout().spacing()
+        return QSize(w, super().sizeHint().height())
+
+
+class StepHeader(QWidget):
+    """4.0: the label of a numbered step in the left column – *1 · BILD* – with an optional action on the right."""
+
+    def __init__(self, number: int, title: str = "", action: QWidget | None = None, parent=None):
+        super().__init__(parent)
+        self.number = number
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(theme.SPACE_S)
+        self.label = label("", "label")
+        lay.addWidget(self.label)
+        lay.addStretch(1)
+        self.action = action
+        if action is not None:
+            lay.addWidget(action)
+        self.set_title(title)
+
+    def set_title(self, title: str) -> None:
+        self.title = title
+        self.label.setText(f"{self.number} · {title}")
+
+
+class Column(QFrame):
+    """4.0: a side column of the studio, gallery or settings – ``surface``, a 1 px line towards the middle,
+    ``COLUMN_PADDING`` inside. ``body`` holds its parts."""
+
+    def __init__(self, side: str = "left", width: int | None = None, spacing: int | None = None, parent=None):
+        super().__init__(parent)
+        self.setObjectName("Column")
+        self.setProperty("side", side)
+        pad = theme.COLUMN_PADDING
+        self.body = QVBoxLayout(self)
+        self.body.setContentsMargins(pad, pad, pad, pad)
+        self.body.setSpacing(pad if spacing is None else spacing)
+        if width:
+            self.setFixedWidth(width)
+
+
 class Card(QFrame):
     def __init__(self, parent=None, flat: bool = False, margins: int = 16, spacing: int = 12):
         super().__init__(parent)
@@ -183,14 +348,16 @@ def _mix(a: QColor, b: QColor, t: float) -> QColor:
 
 
 class SegmentedControl(QFrame):
-    """A row of exclusive toggle buttons."""
+    """A row (or, ``Qt.Vertical``, a column) of exclusive toggle buttons. One Tab stop: the arrow keys move
+    the choice (:class:`RovingFocus`)."""
 
     changed = Signal(str)
 
-    def __init__(self, items: list[tuple[str, str]], parent=None):
+    def __init__(self, items: list[tuple[str, str]], parent=None, orientation=Qt.Horizontal):
         super().__init__(parent)
         self.setObjectName("SegmentBar")
-        lay = QHBoxLayout(self)
+        self.orientation = orientation
+        lay = QHBoxLayout(self) if orientation == Qt.Horizontal else QVBoxLayout(self)
         lay.setContentsMargins(3, 3, 3, 3)
         lay.setSpacing(2)
         self._group = QButtonGroup(self)
@@ -199,20 +366,31 @@ class SegmentedControl(QFrame):
         self._labels: dict[str, str] = {}
         self._icons: dict[str, str] = {}
         self._compact = False
+        self.roving = RovingFocus(self, lambda b: b.click())
         for key, text in items:
             self._labels[key] = text
             b = QPushButton(text)
             b.setObjectName("Segment")
             b.setCheckable(True)
             b.setCursor(Qt.PointingHandCursor)
+            if orientation != Qt.Horizontal:
+                b.setProperty("align", "left")
             self._group.addButton(b)
             lay.addWidget(b)
             self._buttons[key] = b
             self._fit(b)
             b.clicked.connect(lambda _=False, k=key: self.changed.emit(k))
+            b.toggled.connect(self._update_stop)
+            self.roving.add(b)
         if items:
             self._buttons[items[0][0]].setChecked(True)
-        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        if orientation == Qt.Horizontal:
+            self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        else:
+            self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+
+    def _update_stop(self, *_):
+        self.roving.set_current(self._buttons.get(self.current()))
 
     def set_current(self, key: str) -> None:
         if key in self._buttons:

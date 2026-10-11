@@ -1,7 +1,8 @@
-## New in 4.0 (beta 1): a calmer studio
+## New in 4.0 (beta 2): a calmer studio
 
 This is a **pre-release** to try out. 4.0 renews the look of the studio step by step – every beta brings one more part. Every feature stays.
 
+- **Keyboard (beta 2):** a visible focus ring shows where the keyboard is (Tab) – after a click it goes away. The method cards, every segmented choice (e.g. *Fast / Standard / Quality*) and the sketches of a job are one Tab stop each: the arrow keys choose inside, Space or Enter confirm. The image area opens an image with Space, too.
 - **Beta versions:** the new switch *Also offer beta versions* (Settings → Behaviour, on the phone under *App*) offers coming pre-releases as updates – also to install from the phone. Switched off, you stay with the finished versions. Betas are for Windows only.
 - **New colours and shapes:** dark and light reworked. Every text reaches at least 4.5 : 1 on its surface, the edges of text fields, tick boxes and switches at least 3 : 1 – they are clear to see now. Corners and spacing follow one fixed scale.
 - **The same words everywhere:** *image* instead of photo, *job* for what the queue holds, *preset* for Fast / Standard / Quality.

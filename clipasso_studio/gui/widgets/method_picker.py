@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from ... import settings_schema as schema
 from .. import icons, methods_ui, theme
 from ..i18n import tr
-from .common import label, set_role
+from .common import RovingFocus, label, set_role
 
 
 class MethodCard(QFrame):
@@ -20,6 +20,7 @@ class MethodCard(QFrame):
         self.setObjectName("MethodCard")
         self.setCursor(Qt.PointingHandCursor)
         self.setProperty("selected", False)
+        self.setProperty("ring_radius", theme.RADIUS_CARD)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 10, 12, 10)
         lay.setSpacing(10)
@@ -73,6 +74,8 @@ class MethodCard(QFrame):
     def retranslate(self):
         self.tagline.setText(tr(f"method.{self.method}.tagline"))
         self.speed.setText(tr(f"method.{self.method}.speed"))
+        self.setAccessibleName(methods_ui.name(self.method))
+        self.setAccessibleDescription(self.tagline.text())
         self.setToolTip(f"<div style='max-width:340px'><b>{methods_ui.name(self.method)}</b><br>"
                         f"{tr(f'method.{self.method}.desc')}</div>")
         self._paint_icon()
@@ -83,6 +86,8 @@ class MethodCard(QFrame):
 
 
 class MethodPicker(QWidget):
+    """The method cards – a radio group for the keyboard (one Tab stop, the arrow keys choose)."""
+
     changed = Signal(str)
 
     def __init__(self, parent=None):
@@ -91,11 +96,13 @@ class MethodPicker(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
         self.cards: dict[str, MethodCard] = {}
+        self.roving = RovingFocus(self, lambda card: self._clicked(card.method))
         for m in schema.METHODS:
             c = MethodCard(m)
             c.clicked.connect(self._clicked)
             lay.addWidget(c, 1)
             self.cards[m] = c
+            self.roving.add(c)
         self._current = schema.DEFAULT_METHOD
         self.set_current(self._current)
 
@@ -111,6 +118,7 @@ class MethodPicker(QWidget):
         self._current = method
         for m, c in self.cards.items():
             c.set_selected(m == method)
+        self.roving.set_current(self.cards.get(method))
 
     def refresh_status(self, settings_per_method: dict[str, dict]) -> None:
         for m, c in self.cards.items():

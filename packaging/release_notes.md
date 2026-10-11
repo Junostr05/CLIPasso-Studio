@@ -1,3 +1,15 @@
+## CLIPasso Studio 4.0.0 beta 2 – the keyboard (pre-release)
+
+The second step of 4.0 (betas are for Windows only). With *Also offer beta versions* switched on in beta 1, the
+app – also from the phone – offers this beta as a small update.
+
+- **A visible focus ring:** 2 px in the focus colour, 2 px around the control the keyboard is on. It shows while the
+  keyboard is used (Tab) and goes away after a click; text fields show their focus by their border.
+- **Groups are one Tab stop:** the method cards, every segmented choice and the sketches of a job – the arrow keys,
+  Home and End choose inside, Space or Enter confirm. The image area is reached by Tab and opens an image with
+  Space or Enter.
+- Under the hood: new building blocks for the next steps (link buttons, counts, chips, numbered steps, columns).
+
 ## CLIPasso Studio 4.0.0 beta 1 – a calmer studio (pre-release)
 
 A **pre-release** to try out: 4.0 renews the look of the studio step by step, and every beta brings one more part. Every feature stays. Betas are built for Windows only.

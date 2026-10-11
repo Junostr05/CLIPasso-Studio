@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
                                QProgressBar, QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import a11y, background, dialogs, icons, methods_ui, power, remote_update, shortcuts, theme, updates
+from . import a11y, background, dialogs, focus_ring, icons, methods_ui, power, remote_update, shortcuts, theme, updates
 from .app_settings import app_settings
 from .drop import dropped_images, has_images
 from .controller import JobController
@@ -132,6 +132,7 @@ MIN_WIDTH = 1200  # px: the studio's input, canvas and parameters fit side by si
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        focus_ring.install()  # 4.0: the keyboard focus ring (one tracker for the app, also after a theme change)
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
         self.setMinimumSize(MIN_WIDTH, 660)  # (the studio's three columns side by side)

@@ -763,6 +763,8 @@ class ImageDropZone(QFrame):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.StrongFocus)  # 4.0: Tab reaches it, Space or Enter opens an image
+        self.setProperty("ring_radius", theme.RADIUS_CARD)
         self.setMinimumHeight(190)
         self._pix: QPixmap | None = None
         self._hover = False
@@ -770,6 +772,18 @@ class ImageDropZone(QFrame):
         self.show_overlay = True
         self.title = ""
         self.subtitle = ""
+
+    def set_texts(self, title: str, subtitle: str) -> None:
+        self.title, self.subtitle = title, subtitle
+        self.setAccessibleName(title)
+        self.setAccessibleDescription(subtitle)
+        self.update()
+
+    def keyPressEvent(self, e):  # noqa: N802
+        if e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not e.modifiers():
+            self.clicked.emit()
+        else:
+            super().keyPressEvent(e)
 
     def set_image(self, path: str | None):
         # decoded at most at a screen-friendly size (a 24-megapixel photo is not needed here)
@@ -860,6 +874,8 @@ class SeedThumb(QFrame):
         self.seed = seed
         self.setObjectName("CardFlat")
         self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.StrongFocus)  # 4.0: the studio makes the sketches one Tab stop (RovingFocus)
+        self.setProperty("ring_radius", theme.RADIUS_CARD)
         self.setFixedSize(QSize(84, 102))
         lay = QVBoxLayout(self)
         lay.setContentsMargins(5, 5, 5, 4)
@@ -875,6 +891,11 @@ class SeedThumb(QFrame):
         self._selected = False
         self._best = False
         self.setToolTip(tr("ui.seed", seed=seed))
+        self.setAccessibleName(tr("ui.seed", seed=seed))
+
+    def setToolTip(self, text: str) -> None:  # noqa: N802 - the tooltip names it for screen readers too
+        super().setToolTip(text)
+        self.setAccessibleName(text)
 
     def set_svg(self, svg: str):
         self.view.set_svg(svg)
@@ -884,6 +905,7 @@ class SeedThumb(QFrame):
 
     def set_caption(self, text: str):
         self.caption.setText(text)
+        self.setAccessibleDescription(text)
 
     def set_selected(self, selected: bool):
         self._selected = selected
@@ -898,3 +920,9 @@ class SeedThumb(QFrame):
 
     def mouseReleaseEvent(self, e):  # noqa: N802
         self.clicked.emit(self.seed)
+
+    def keyPressEvent(self, e):  # noqa: N802 - (in the studio its RovingFocus handles the keys first)
+        if e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not e.modifiers():
+            self.clicked.emit(self.seed)
+        else:
+            super().keyPressEvent(e)

@@ -287,23 +287,6 @@ jobs:
           Get-Content "$env:RUNNER_TEMP\selftest_runtime\selftest.log" -Tail 40 -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "self-test with the add-on failed" }
           Remove-Item -Recurse -Force $rt
-      - name: PyInstaller (onefile portable exe)
-        if: env.SKIP != 'true' && matrix.edition == 'cpu'
-        shell: pwsh
-        env:
-          MODE: onefile
-          PYTHONHASHSEED: "0"  # (the same exe from build to build: small updates)
-        run: |
-          Remove-Item -Recurse -Force build\onedir -ErrorAction SilentlyContinue
-          pyinstaller --noconfirm --workpath build\onefile --distpath dist packaging\clipasso_studio.spec
-      - name: Self-test (portable exe)
-        if: env.SKIP != 'true' && matrix.edition == 'cpu'
-        shell: pwsh
-        run: |
-          $p = Start-Process -FilePath "dist\CLIPassoStudio-CPU-Portable.exe" -ArgumentList "--selftest", "$env:RUNNER_TEMP\selftest_onefile" -Wait -PassThru -NoNewWindow
-          Get-Content "$env:RUNNER_TEMP\selftest_onefile\selftest.log" -ErrorAction SilentlyContinue | Select-Object -Last 120
-          Get-Content "$env:RUNNER_TEMP\selftest_onefile\selftest.json" -ErrorAction SilentlyContinue
-          if ($p.ExitCode -ne 0) { throw "portable self-test failed with exit code $($p.ExitCode)" }
       - name: Inno Setup installer
         if: env.SKIP != 'true'
         shell: pwsh
@@ -446,12 +429,17 @@ jobs:
             if ls CLIPassoStudio-$ed-* >/dev/null 2>&1; then sha256sum CLIPassoStudio-$ed-* > SHA256SUMS-$ed.txt; fi
           done
           ls -la
+      - name: Release text – which file to download first, then the notes
+        run: |
+          version="${TAG#v}"
+          sed "s/{version}/$version/g" packaging/downloads.md > release_body.md
+          cat packaging/release_notes.md >> release_body.md
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
           name: CLIPasso Studio ${{ env.TAG }}
-          body_path: packaging/release_notes.md
+          body_path: release_body.md
           files: artifacts/*
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease }}
           make_latest: ${{ !(github.event_name == 'workflow_dispatch' && inputs.prerelease) }}

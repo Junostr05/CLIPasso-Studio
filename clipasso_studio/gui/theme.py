@@ -179,6 +179,10 @@ QLabel[role="badge"] {{
     background: {p.accent_soft}; color: {p.accent_text}; border-radius: {rb}px; padding: 2px 8px;
     font-size: 11px; font-weight: 600;
 }}
+QLabel[role="count"] {{
+    background: {p.accent_soft}; color: {p.accent_text_hover}; border-radius: {rb}px; padding: 1px 7px;
+    font-size: 11px; font-weight: 600;
+}}
 QLabel[role="badge-success"] {{
     background: {p.success}; color: {p.on_status}; border-radius: {rb}px; padding: 2px 8px; font-size: 11px;
     font-weight: 600;
@@ -200,6 +204,11 @@ QFrame#Divider {{ background: {p.border}; max-height: 1px; min-height: 1px; bord
 QFrame#MethodCard {{ background: transparent; border: 1px solid {p.border}; border-radius: {rd}px; }}
 QFrame#MethodCard:hover {{ background: {p.surface2}; }}
 QFrame#MethodCard[selected="true"] {{ background: {p.accent_soft}; border: 1.5px solid {p.accent}; }}
+QFrame#Column {{ background: {p.surface}; border: none; }}
+QFrame#Column[side="left"] {{ border-right: 1px solid {p.border}; }}
+QFrame#Column[side="right"] {{ border-left: 1px solid {p.border}; }}
+QFrame#Chip {{ background: transparent; border: none; }}
+QFrame#Chip[framed="true"] {{ background: {p.surface2}; border: 1px solid {p.control}; border-radius: {rb}px; }}
 QFrame#Banner {{ background: {p.accent_soft}; border: 1px solid {p.accent}; border-radius: {rd}px; }}
 QFrame#BannerWarn {{ background: {p.surface2}; border: 1px solid {p.warning}; border-radius: {rd}px; }}
 QLabel#WebcamView {{ background: {p.surface2}; border-radius: {rd}px; }}

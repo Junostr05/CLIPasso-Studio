@@ -34,7 +34,10 @@ def test_version_info_template_is_filled_like_the_spec():
     # ... and byte for byte the same from build to build: a fixed build time, a fixed hash seed (splash file list)
     assert 'os.environ.setdefault("SOURCE_DATE_EPOCH", str(EXE_TIMESTAMP))' in spec
     workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
-    assert workflow.count('PYTHONHASHSEED: "0"') == 2
+    assert workflow.count('PYTHONHASHSEED: "0"') == 1  # (4.0: the onedir build only – installer and portable ZIP)
+    assert "onefile" not in workflow and "body_path: release_body.md" in workflow  # (which file to download first)
+    downloads = (ROOT / "packaging" / "downloads.md").read_text(encoding="utf-8")
+    assert "{version}" in downloads and "CLIPassoStudio-CPU-Setup.exe" in downloads and "Portable.exe" not in downloads
 
 
 def _pins(path: Path) -> dict[str, str]:
