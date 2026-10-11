@@ -75,6 +75,9 @@ def main() -> int:
     from clipasso_studio.gui.main_window import MainWindow
 
     w = MainWindow()
+    from clipasso_studio.gui import hardware
+
+    w.header.set_hardware(hardware.cached() or {"cuda": False})  # (not "checking …": the probe takes a while)
     if args.queue:
         from clipasso_studio import settings_schema as schema
 

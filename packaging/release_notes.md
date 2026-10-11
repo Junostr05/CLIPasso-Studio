@@ -5,7 +5,8 @@ The fifth step of 4.0 (betas are for Windows only; with *Also offer beta version
 - **Gallery:** a column on the left with the search, the methods, *Favourites*, the albums with their number of
   results (drop results on an album to add them) and the tags. Below the title how many results there are – and how
   many are shown. Mark several results and a bar floats at the bottom: *View large, Compare* (two), *Favourite, Export*
-  and *Delete*. *Open folder* and *Refresh* are icons now (with their names as tooltips).
+  and *Delete*. *Slideshow, Export shown, Open folder* and *Refresh* are icons now (their names in the
+  tooltips) – room for the sort, also on Windows.
 - **Settings:** their parts on the left – *Appearance, Files, Behaviour, Watched folder, Phone & messages, Storage,
   System, Experimental*; a click scrolls there, and the column shows where you are. The cards are no wider than
   820 px.
@@ -15,6 +16,7 @@ The fifth step of 4.0 (betas are for Windows only; with *Also offer beta version
 - **Numbers in German** have a decimal comma: CLIP 29,4, 1,2 GB, a loss of 0,250 (studio, gallery, comparison,
   self-test, the Telegram message).
 - **Tab** runs from the header through the studio – left, middle, right, footer – and round to the header again.
+- The mask row below the image keeps its text in one piece: *Download* got a line of its own.
 - Fixed: resetting the studio's view could fail after a while (a menu's entries lost their link to Python); the
   guide is tested at the smallest window in German.
 

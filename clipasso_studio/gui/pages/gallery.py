@@ -1111,13 +1111,12 @@ class GalleryPage(QWidget):
         self.sort.blockSignals(False)
         if self.tag_filter.count():
             self.tag_filter.setItemText(0, tr("ui.gallery.all_tags"))
-        for b, key in ((self.folder_btn, "ui.open_folder"), (self.refresh_btn, "ui.refresh")):  # (icons only)
-            b.setToolTip(tr(key))
-            b.setAccessibleName(tr(key))
-        self.export_btn.setText(tr("ui.batch.export_shown"))
-        self.export_btn.setToolTip(tr("ui.batch.export_shown_tip"))
-        self.slideshow_btn.setText(tr("ui.viewer.slideshow"))
-        self.slideshow_btn.setToolTip(tr("ui.viewer.slideshow_gallery_tip"))
+        # the head: the sort and these as icons – their names in the tooltip (as in the design: room for the sort)
+        for b, name, tip in ((self.slideshow_btn, "ui.viewer.slideshow", "ui.viewer.slideshow_gallery_tip"),
+                             (self.export_btn, "ui.batch.export_shown", "ui.batch.export_shown_tip"),
+                             (self.folder_btn, "ui.open_folder", None), (self.refresh_btn, "ui.refresh", None)):
+            b.setToolTip(tr(name) + (": " + tr(tip) if tip else ""))
+            b.setAccessibleName(tr(name))
         self.sel_view_btn.setText(tr("ui.viewer.show"))
         self.sel_compare_btn.setText(tr("ui.viewer.compare"))
         self.sel_compare_btn.setToolTip(tr("ui.viewer.compare_tip"))
