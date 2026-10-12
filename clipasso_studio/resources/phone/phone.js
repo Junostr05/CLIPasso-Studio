@@ -363,7 +363,7 @@ $("from-pc").onclick = async () => {
   }
 };
 
-// ------------------------------------------------------------------ method, presets, budget
+// ------------------------------------------------------------------ method, presets
 function renderMethods() {
   const box = $("methods");
   if (box.dataset.sig !== JSON.stringify(S.methods) + S.method) {
@@ -394,15 +394,6 @@ function renderMethods() {
 }
 $("download").onclick = () => act("download_models");
 $("download-cancel").onclick = () => act("cancel_download");
-
-$("budget").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-min]");
-  if (b) act("budget", {minutes: Number(b.dataset.min)}).then((a) => { if (a.ok) toast(a.estimate); });
-});
-$("budget-go").onclick = () => {
-  const n = Number($("budget-min").value);
-  if (n > 0) act("budget", {minutes: n}).then((a) => { if (a.ok) toast(a.estimate); });
-};
 
 // own presets (the same as in the studio's "My presets" menu): one of another method switches to it
 function renderUserPresets() {

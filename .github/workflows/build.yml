@@ -27,6 +27,10 @@ on:
         description: "Run the quality and speed benchmark (tools/benchmark.py)"
         type: boolean
         default: true
+      patch_from:
+        description: "Also small updates from these releases (tags, comma-separated, e.g. v3.8.1)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -316,6 +320,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
+          PATCH_FROM: ${{ inputs.patch_from }}  # (an input: read as text, never run)
         run: |
           $ed = "${{ matrix.edition }}".ToUpper()
           $version = (python -c "import clipasso_studio; print(clipasso_studio.__version__)")
@@ -327,8 +332,23 @@ jobs:
           # (a final release: also a patch from the newest beta before it – who tried the betas updates small, too)
           python tools/manifest.py previous --edition $ed --tag $env:TAG --repo "${{ github.repository }}" --out build\prev.json --beta-out build\prev-beta.json
           if ($LASTEXITCODE -ne 0) { throw "reading the previous release failed" }
-          foreach ($prev in @("build\prev.json", "build\prev-beta.json")) {
+          # (and from versions further back that many still have – the input patch_from, e.g. v3.8.1)
+          $bases = @("build\prev.json", "build\prev-beta.json")
+          $n = 0
+          foreach ($t in ("$env:PATCH_FROM" -split ",")) {
+            $t = $t.Trim()
+            if (-not $t) { continue }
+            $n++
+            python tools/manifest.py release --edition $ed --tag $t --repo "${{ github.repository }}" --out "build\prev-extra-$n.json"
+            if ($LASTEXITCODE -ne 0) { throw "reading the release $t failed" }
+            $bases += "build\prev-extra-$n.json"
+          }
+          $done = @()
+          foreach ($prev in $bases) {
             if (-not (Test-Path $prev)) { continue }
+            $from = (Get-Content $prev -Raw | ConvertFrom-Json).version
+            if ($done -contains $from) { continue }
+            $done += $from
             Remove-Item -Recurse -Force build\patch, build\patchzip, build\patch-removed.iss -ErrorAction SilentlyContinue
             $info = python tools/manifest.py patch $prev "release\CLIPassoStudio-$ed-manifest.json" dist\CLIPassoStudio build\patch | ConvertFrom-Json
             $info | Format-List

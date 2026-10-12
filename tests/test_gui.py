@@ -25,6 +25,9 @@ def window(tmp_path_factory):
     theme.apply(app, "dark")
     from clipasso_studio.gui.main_window import MainWindow
 
+    # (no real hardware probe: it runs a child process and lands whenever that is done – a test that shows a graphics
+    # card in the header itself raced it and could find "Processor · 4 cores" instead)
+    env.setattr(MainWindow, "_probe_hardware", lambda self: None)
     w = MainWindow()
     w.show()
     yield w
@@ -987,23 +990,6 @@ def test_saved_steps_and_simplify_in_the_studio(window, tmp_path, monkeypatch):
     assert toasts == [tr("ui.edit_bar.simplify_hint")] and app_settings().get("simplify_tip_shown") is True
 
 
-def test_time_budget_in_the_studio(window, monkeypatch):
-    from clipasso_studio.gui import methods_ui
-
-    monkeypatch.setattr(methods_ui, "_cuda", False)
-    studio = window.studio
-    studio.picker.select("clipasso") if hasattr(studio.picker, "select") else None
-    studio.params.fields["device"].set_value("cpu", emit=True)
-    toasts = []
-    studio.toast.connect(lambda text, kind: toasts.append(kind))
-    changes = studio.fit_to_budget(15)
-    s = studio.params.settings()
-    assert all(s[k] == v for k, v in changes.items())
-    assert methods_ui.estimate_seconds(s, False) <= 15 * 60 * 1.05 or toasts[-1] == "info"
-    assert toasts and studio.budget_actions[60].text()
-    studio.params.fields["device"].set_value("auto", emit=True)
-
-
 def test_detail_brush_button_in_the_studio(window, tmp_path, monkeypatch):
     import numpy as np
     from PIL import Image
@@ -1104,14 +1090,14 @@ def test_phone_controls_the_studio(window, tmp_path, monkeypatch):
         assert all(p["label"] for g in sc["groups"] for p in g["params"])
         choice = next(p for g in sc["groups"] for p in g["params"] if p["kind"] == "choice")
         assert all(c["label"] for c in choice["choices"])
-    # method, a setting, a preset, the budget
+    # method, a setting, a preset (4.2.2: the time budget is gone)
     assert call("do_method", {"method": "clipasso"})["ok"] and studio.params.method() == "clipasso"
     assert call("do_set", {"key": "num_iter", "value": "301"})["ok"] and studio.params.settings()["num_iter"] == 301
     assert call("do_set", {"key": "mask_object", "value": True})["ok"] and studio.params.settings()["mask_object"]
     assert call("do_set", {"key": "num_iter", "value": "many"})["ok"] is False
     assert call("do_set", {"key": "path_svg", "value": "/etc/passwd"})["ok"] is False
     assert call("do_preset", {"preset": "fast"})["ok"] and studio.params._preset == "fast"
-    assert call("do_budget", {"minutes": 15})["ok"]
+    assert call("do_budget", {"minutes": 15}) == {"ok": False, "error": "unknown action"}
     # a sample picture from the computer, then the studio's state
     images = call("get_images", {})
     assert images["samples"] and call("do_image", {"src": "sample", "i": 0})["ok"] and studio.image_path

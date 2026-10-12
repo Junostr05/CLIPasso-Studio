@@ -102,7 +102,7 @@ class PhoneLink(QObject):
         texts = {k[len(PAGE_TEXTS):]: tr(k) for k in i18n.keys(PAGE_TEXTS)}
         texts.update({f"style_{k}": tr(f"ui.brush.{k}") for k in brush.STYLES})
         texts.update({f"paper_{k}": tr(f"ui.paper.{k}") for k in paper.KINDS})
-        texts.update(budget=tr("ui.budget.label"), detail_title=tr("ui.detail.title"), detail_hint=tr("ui.detail.hint"),
+        texts.update(detail_title=tr("ui.detail.title"), detail_hint=tr("ui.detail.hint"),
                      tool_more=tr("ui.detail.tool_more"), tool_normal=tr("ui.detail.tool_normal"),
                      tool_less=tr("ui.detail.tool_less"), face=tr("ui.detail.face"), rate_up=tr("ui.rate.up"),
                      rate_down=tr("ui.rate.down"), estimate_none="")

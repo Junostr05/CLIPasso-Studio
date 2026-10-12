@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -141,6 +142,29 @@ def previous_manifest(repo: str, edition: str, tag: str, token: str = "", beta: 
         return json.load(resp)
 
 
+def release_manifest(repo: str, edition: str, tag: str, token: str = "") -> dict | None:
+    """The manifest of the release ``tag`` (None: no such release, or it has no manifest) – for a small update from
+    a version further back, e.g. the one many still have (4.2.2: from 3.8.1)."""
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "CLIPassoStudio-CI"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases/tags/{tag}", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            release = json.load(resp)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+    name = f"CLIPassoStudio-{edition.upper()}-manifest.json"
+    asset = next((a for a in release.get("assets", []) if a["name"] == name), None)
+    if asset is None:
+        return None
+    req = urllib.request.Request(asset["browser_download_url"], headers={"User-Agent": "CLIPassoStudio-CI"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.load(resp)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -155,6 +179,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--repo", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--beta-out", default="", help="also the newest beta before a final release (its own patch)")
+    r = sub.add_parser("release")
+    r.add_argument("--edition", required=True)
+    r.add_argument("--tag", required=True)
+    r.add_argument("--repo", required=True)
+    r.add_argument("--out", required=True)
     m = sub.add_parser("patch")
     m.add_argument("old")
     m.add_argument("new")
@@ -190,6 +219,14 @@ def main(argv: list[str] | None = None) -> int:
             if beta is not None:
                 Path(args.beta_out).write_text(json.dumps(beta), encoding="utf-8")
                 print(f"manifest: and the beta before it {beta.get('version')}")
+        return 0
+    if args.cmd == "release":
+        data = release_manifest(args.repo, args.edition, args.tag, os.environ.get("GITHUB_TOKEN", ""))
+        if data is None:
+            print(f"manifest: {args.tag} has none – no patch from it")
+        else:
+            Path(args.out).write_text(json.dumps(data), encoding="utf-8")
+            print(f"manifest: release {data.get('version')}")
         return 0
     old = json.loads(Path(args.old).read_text(encoding="utf-8"))
     new = json.loads(Path(args.new).read_text(encoding="utf-8"))

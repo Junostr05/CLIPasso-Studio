@@ -256,7 +256,7 @@ class StudioPage(QWidget):
         self.experimental_btn.setVisible(False)
         ll.addWidget(self.experimental_btn)
 
-        # step 3: the preset – the summary, "Anpassen" (the parameters in this column), the time budget
+        # step 3: the preset – the summary and "Anpassen" (the parameters in this column)
         self.preset_step = QWidget()
         self.preset_step.body = QVBoxLayout(self.preset_step)
         self.preset_step.body.setContentsMargins(0, 0, 0, 0)
@@ -280,27 +280,6 @@ class StudioPage(QWidget):
             r.addWidget(sw)
             self.quick_rows.addLayout(r)
             self.quick[key] = (lbl, sw)
-        # time budget: the settings that give the best sketch in that time on this computer
-        r = QHBoxLayout()
-        self.budget_label = label("", None)
-        self.budget_btn = button("", "clock", "ghost", size="sm")
-        self.budget_menu = QMenu(self)
-        self.budget_actions = {}
-        for minutes in methods_ui.BUDGET_MINUTES:
-            action = QAction(self)
-            self.budget_menu.addAction(action)
-            action.triggered.connect(lambda _=False, m=minutes: self.fit_to_budget(m))
-            self.budget_actions[minutes] = action
-        self.budget_menu.addSeparator()
-        self.budget_other = QAction(self)
-        self.budget_menu.addAction(self.budget_other)
-        self.budget_other.triggered.connect(lambda: self.fit_to_budget(None))
-        self.budget_btn.setMenu(self.budget_menu)
-        r.addWidget(self.budget_label)
-        r.addStretch(1)
-        r.addWidget(self.budget_btn)
-        self.budget_row = r
-
         # 4.0: the ways out are actions – the export dialog (Exportieren …) lists them, Ctrl+E opens it
         self.export_btns: dict[str, QAction] = {}
         for fmt, text in (("svg", "SVG"), ("png", "PNG"), ("gif", "GIF"), ("mp4", "MP4"), ("webp", "WebP"),
@@ -623,7 +602,6 @@ class StudioPage(QWidget):
         sl.addWidget(self.summary, 1)
         sl.addWidget(self.adjust_btn, 0, Qt.AlignTop)
         self.preset_step.body.addWidget(summary)
-        self.preset_step.body.addLayout(self.budget_row)
         self.input_card.body.insertWidget(self.input_card.body.indexOf(self.hint_box), self.quick_box)
         ll.addStretch(1)
 
@@ -1864,34 +1842,6 @@ class StudioPage(QWidget):
         self.params.refresh_hints()
         self.picker.refresh_status(self.params.all_settings())
 
-    def fit_to_budget(self, minutes: int | None) -> dict | None:
-        """Change the settings so the job takes about ``minutes`` (None: ask) with the best expected sketch."""
-        from PySide6.QtWidgets import QInputDialog
-
-        if minutes is None:
-            minutes, ok = QInputDialog.getInt(self, tr("ui.budget.title"), tr("ui.budget.ask"), 30, 1, 24 * 60, 5)
-            if not ok:
-                return None
-        s = self.params.settings()
-        gpu = s["device"] == "cuda" or (s["device"] == "auto" and methods_ui.has_cuda())
-        changes, secs = methods_ui.fit_to_budget(s, minutes * 60, gpu)
-        for key, value in changes.items():
-            if key in self.params.fields:
-                self.params.fields[key].set_value(value, emit=True)
-        self._update_estimate()
-        if secs > minutes * 60 * 1.05:
-            self.toast.emit(tr("ui.budget.too_short", time=imaging.eta_string(secs)), "info")
-        elif changes:
-            parts = []
-            for key, value in changes.items():
-                name = tr(param_text_key(self.params.method(), key, "label"))
-                value = tr("ui.resources.on" if value else "ui.resources.off") if isinstance(value, bool) else value
-                parts.append(f"{name}: {value}")
-            self.toast.emit(tr("ui.budget.done", changes=", ".join(parts), time=imaging.eta_string(secs)), "success")
-        else:
-            self.toast.emit(tr("ui.budget.fits", time=imaging.eta_string(secs)), "success")
-        return changes
-
     def _update_estimate(self):
         s = self.params.settings()
         gpu = s["device"] == "cuda" or (s["device"] == "auto" and ("GPU" in self.device_text
@@ -2294,13 +2244,6 @@ class StudioPage(QWidget):
         for key, (lbl, _) in self.quick.items():
             lbl.setText(tr(param_text_key(self.params.method(), key, "label")))
             lbl.setToolTip(tr(param_text_key(self.params.method(), key, "help")))
-        self.budget_label.setText(tr("ui.budget.label"))
-        self.budget_btn.setText(tr("ui.budget.button"))
-        self.budget_btn.setToolTip(tr("ui.budget.tip"))
-        for minutes, action in self.budget_actions.items():
-            action.setText(tr("ui.budget.minutes", n=minutes) if minutes < 60 else
-                           tr("ui.budget.hours", n=minutes // 60))
-        self.budget_other.setText(tr("ui.budget.other"))
         self.export_btns["svg1"].setText(tr("ui.export_svg1"))
         self.export_btns["svg1"].setToolTip(tr("ui.export_svg1_tip"))
         self.export_btns["webp"].setToolTip(tr("ui.export_webp_tip"))

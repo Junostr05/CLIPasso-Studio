@@ -1,3 +1,13 @@
+## CLIPasso Studio 4.2.2 – the mouse wheel only scrolls
+
+A small update from 4.2.1 – and, new, from 3.8.1, too (also from the phone).
+
+- **The wheel scrolls the page, never a value:** over a slider, a number field or a drop-down the mouse wheel used to
+  change it – scrolling down the parameters changed every slider on the way. Now the wheel scrolls the column around
+  it (with nothing to scroll it does nothing); click or drag to change a value, or use the keyboard.
+- **The time budget is gone** – the *5 / 15 / 60 min* menu in step 3 and its row on the phone.
+- **A small update from 3.8.1:** who skipped the 4.x releases does not download the whole app again.
+
 ## CLIPasso Studio 4.2.1 – the left column can be drawn wider, the sketch has its tab again
 
 A small update from 4.2.0 (also from the phone).

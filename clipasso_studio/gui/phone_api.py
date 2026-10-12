@@ -1,7 +1,7 @@
 """What the phone page can do in the studio – almost everything the studio itself offers: the picture (photo, file,
-recent pictures, samples), the method, presets, every parameter, the time budget, the detail brush and portrait
-mode, start / queue / pause / cancel, the sketches of the shown job with their numbers, thumbs, brush style and
-paper, downloads, the recent results and the queue.
+recent pictures, samples), the method, presets, every parameter, the detail brush and portrait mode, start / queue /
+pause / cancel, the sketches of the shown job with their numbers, thumbs, brush style and paper, downloads, the
+recent results and the queue.
 
 ``PhoneApi.handle(action, data)`` runs in the GUI thread (the server threads ask through ``RemoteBridge.call``) and
 never opens a dialog on the computer: questions (memory short, models missing) go back to the phone as answers."""
@@ -1573,14 +1573,6 @@ class PhoneApi:
     def do_reset(self, data: dict) -> dict:
         self.studio.params.reset_all_fields()
         return {"ok": True}
-
-    def do_budget(self, data: dict) -> dict:
-        try:
-            minutes = max(1, min(int(float(data.get("minutes", 0))), 24 * 60))
-        except (TypeError, ValueError):
-            raise PhoneError(tr("ui.phone.page.bad_value")) from None
-        self.studio.fit_to_budget(minutes)
-        return {"ok": True, "estimate": self.studio.estimate.text()}
 
     def do_style(self, data: dict) -> dict:
         from . import brush

@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QMainW
                                QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, __version__, paths
-from . import a11y, background, dialogs, focus_ring, icons, methods_ui, power, remote_update, shortcuts, theme, updates
+from . import (a11y, background, dialogs, focus_ring, icons, methods_ui, power, remote_update, shortcuts, theme,
+               updates, wheel_guard)
 from .app_settings import app_settings
 from .drop import dropped_images, has_images
 from .controller import JobController
@@ -124,6 +125,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         focus_ring.install()  # 4.0: the keyboard focus ring (one tracker for the app, also after a theme change)
+        wheel_guard.install()  # 4.2.2: the wheel scrolls the page, never a slider, a spin box or a drop-down
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(QIcon(str(paths.resource("app_icon.png"))))
         self.setMinimumSize(MIN_WIDTH, 660)  # (the studio's three columns side by side)

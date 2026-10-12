@@ -23,6 +23,9 @@ before `phone.css`; Inter comes from `/fonts/…`, the icons are the studio's Lu
 `--on-paper` text on the white sketch paper. `test_design_tokens.py` keeps colour literals and px radii out of
 `phone.css`; `test_theme_contrast.py` checks the phone's pairs.
 
+The mouse wheel scrolls, it never changes a value (4.2.2, `gui/wheel_guard.py`): over a slider, a spin box or a
+drop-down it scrolls the nearest column that can – `tests/test_wheel_guard.py`.
+
 Phone page semantics: a chosen tab / segment / toggle is set with `setOn(el, on)` in `phone.js` (the class `on` plus
 `aria-selected` for tabs, `aria-pressed` otherwise); a control without visible text gets its name from
 `data-label="<text name>"` (or `aria-labelledby`); glyphs inside buttons sit in `<span aria-hidden="true">`, icons

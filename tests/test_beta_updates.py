@@ -151,3 +151,49 @@ def test_a_beta_is_patched_from_the_beta_before(monkeypatch):
     assert manifest.previous_manifest("o/r", "cpu", "v4.0.0", beta=True) == {"version": "v4.0.0b2"}
     assert manifest.previous_manifest("o/r", "cpu", "v4.0.0b3", beta=True) is None  # (a beta: one patch)
     assert manifest.previous_manifest("o/r", "cpu", "v3.8.2", beta=True) is None  # (no beta after 3.8.1)
+
+
+def test_a_small_update_from_a_version_further_back(monkeypatch):
+    """4.2.2: a release can also carry small updates from versions further back that many still have (the
+    workflow's input patch_from, e.g. v3.8.1) – the manifest of exactly that release; none when it is not there."""
+    import importlib.util
+    import io
+    import urllib.error
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("manifest_tool", Path(__file__).resolve().parents[1] / "tools"
+                                                  / "manifest.py")
+    manifest = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(manifest)
+
+    class _Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    asked = []
+
+    def urlopen(req, timeout=0):
+        url = req.full_url
+        asked.append(url)
+        if url.endswith("/releases/tags/v3.8.1"):
+            return _Resp(json.dumps({"tag_name": "v3.8.1", "assets": [
+                {"name": "CLIPassoStudio-GPU-manifest.json", "browser_download_url": "https://x.invalid/gpu-381"},
+                {"name": "CLIPassoStudio-CPU-manifest.json", "browser_download_url": "https://x.invalid/cpu-381"}]}
+            ).encode())
+        if url.endswith("/releases/tags/v1.0.0"):
+            return _Resp(json.dumps({"tag_name": "v1.0.0", "assets": []}).encode())  # (before manifests)
+        if url.endswith("/cpu-381"):
+            return _Resp(json.dumps({"version": "3.8.1", "files": {}}).encode())
+        raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+
+    monkeypatch.setattr(manifest.urllib.request, "urlopen", urlopen)
+    assert manifest.release_manifest("o/r", "cpu", "v3.8.1") == {"version": "3.8.1", "files": {}}
+    assert asked[0] == "https://api.github.com/repos/o/r/releases/tags/v3.8.1"
+    assert manifest.release_manifest("o/r", "cpu", "v1.0.0") is None
+    assert manifest.release_manifest("o/r", "cpu", "v9.9.9") is None
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    assert "patch_from:" in workflow and "PATCH_FROM: ${{ inputs.patch_from }}" in workflow
+    assert "manifest.py release" in workflow
