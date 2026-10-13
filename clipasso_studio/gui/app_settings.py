@@ -10,7 +10,7 @@ from typing import Any
 from .. import paths
 
 # 2: "language" defaults to "auto" (2.0.1)
-SETTINGS_VERSION = 2
+SETTINGS_VERSION = 3  # 3 (4.2.4): the remote over Tailscale, too – on for everyone once
 
 DEFAULTS: dict[str, Any] = {
     "tour_done": False,  # the first-start guide was shown
@@ -53,7 +53,7 @@ DEFAULTS: dict[str, Any] = {
     "remote_on": False,  # control from a phone in the home network (gui/remote.py)
     "remote_port": 8765,
     "remote_token": "",
-    "remote_tailscale": False,  # also phones in the user's tailnet (Tailscale, 100.64.0.0/10)
+    "remote_tailscale": True,  # also phones in the user's tailnet (Tailscale, 100.64.0.0/10) – 4.2.4: by default
     "remote_pin": "",  # six digits: signing in on the phone without the QR code (made when first needed)
     "user_presets": [],  # the user's own presets (gui/user_presets.py)
     "hints_off": [],  # the kinds of quality hints about the photo not to show any more (gui/image_hints.py)
@@ -82,6 +82,11 @@ class AppSettings:
                 # up to 2.0.0 German was the fixed default and got written to the file with every
                 # other setting, so a stored "de" was usually never chosen → follow the system language
                 stored["language"] = "auto"
+            version = stored.get("settings_version")
+            if not isinstance(version, int) or version < 3:
+                # 4.2.4: Tailscale is the default – the settings file holds every value, so the "off" of an older
+                # version was the old default: switched on once (who does not want it switches it off again)
+                stored["remote_tailscale"] = True
             self.data.update(stored)
             self.data["settings_version"] = SETTINGS_VERSION
             if "tour_done" not in stored:  # used before the guide existed: only on request (About)

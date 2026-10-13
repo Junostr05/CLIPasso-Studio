@@ -70,7 +70,7 @@ class PhoneCard(Card):
         self.ts_on.toggled.connect(self._tailscale_toggled)
         tb.addLayout(_row(self.ts_label, self.ts_on))
         self.net = SegmentedControl([("lan", ""), ("tailscale", "")])
-        self.net.set_current("lan")
+        self.net.set_current("tailscale" if st.get("remote_tailscale") else "lan")  # 4.2.4: Tailscale first
         self.net.changed.connect(lambda _k: self.refresh())
         tb.addWidget(self.net, 0, Qt.AlignLeft)
         self.ts_hint = label("", "faint", wrap=True)

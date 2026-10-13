@@ -491,23 +491,51 @@ def test_tailscale(qapp, user_data, monkeypatch):
     monkeypatch.setattr(remote.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("100.88.1.2", 0)),
                                                                      (2, 1, 6, "", ("192.168.1.5", 0))])
     assert remote.tailscale_address() == "100.88.1.2"
-    # the card: the switch where Tailscale runs, then a QR code of the tailnet address
+    # the card (4.2.4: Tailscale on by default): where Tailscale runs, the QR code of the tailnet address first
     settings_module._instance = None
     app_settings().data.update(remote_on=True)
+    assert app_settings().get("remote_tailscale") is True
     card = PhoneCard()
     card.set_link(SimpleNamespace(running=lambda: True, server=SimpleNamespace(port=8765), error="",
                                   apply_settings=lambda: ""))
-    assert card.ts_box.isVisibleTo(card) and not card.net.isVisibleTo(card) and "100.88" not in card.url.text()
-    card.ts_on.setChecked(True)
-    assert app_settings().get("remote_tailscale") and card.net.isVisibleTo(card)
+    assert card.ts_on.isChecked() and card.ts_box.isVisibleTo(card) and card.net.isVisibleTo(card)
+    assert card.net.current() == "tailscale"
     assert "http://100.88.1.2:8765/?t=" in card.url.text() and card.ts_hint.isVisibleTo(card)
-    card.net.set_current("lan")
+    card.net.set_current("lan")  # the home network's address on request
     card.refresh()
     assert "100.88.1.2" not in card.url.text()
+    # switched off: only the home network – the switch stays (Tailscale runs here)
+    card.ts_on.setChecked(False)
+    assert app_settings().get("remote_tailscale") is False and card.ts_box.isVisibleTo(card)
+    assert not card.net.isVisibleTo(card) and "100.88" not in card.url.text()
+    card.ts_on.setChecked(True)
+    assert card.net.current() == "tailscale" and "http://100.88.1.2:8765/?t=" in card.url.text()
     monkeypatch.setattr(remote, "tailscale_address", lambda: "")  # Tailscale stopped: a hint, the home address
     card.refresh()
     assert not card.net.isVisibleTo(card) and card.ts_hint.text() and "100.88" not in card.url.text()
     settings_module._instance = None
+
+
+@pytest.mark.parametrize("stored, expected", [
+    (None, True),  # the first start
+    ({"remote_tailscale": False}, True),  # a file of ≤ 2.0.0 (no version)
+    ({"settings_version": 2, "remote_tailscale": False}, True),  # up to 4.2.3 "off" was the default: on once
+    ({"settings_version": 3, "remote_tailscale": False}, False),  # switched off with 4.2.4 or later: stays off
+    ({"settings_version": 3, "remote_tailscale": True}, True),
+])
+def test_tailscale_is_the_default(monkeypatch, tmp_path, stored, expected):
+    """4.2.4: the remote also over Tailscale by default – switched on once by the update, then as the user sets it."""
+    from clipasso_studio.gui import app_settings as app_settings_mod
+
+    path = tmp_path / "settings.json"
+    if stored is not None:
+        path.write_text(json.dumps(stored), encoding="utf-8")
+    monkeypatch.setattr(app_settings_mod.paths, "app_settings_file", lambda: path)
+    s = app_settings_mod.AppSettings()
+    assert s.get("remote_tailscale") is expected
+    s.set("notify", False)
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["remote_tailscale"] is expected and saved["settings_version"] == app_settings_mod.SETTINGS_VERSION == 3
 
 
 # ----------------------------------------------------------------------------- live updates (3.5)

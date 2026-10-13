@@ -1,3 +1,15 @@
+## CLIPasso Studio 4.2.4 – the phone over Tailscale by default
+
+A small update from 4.2.3 – and from 4.2.2 and 3.8.1, too (also from the phone).
+
+- **Tailscale is the default:** *Also over Tailscale* (the phone remote also lets in the devices of your tailnet,
+  100.64.0.0/10) is on for new installations – and switched on once by this update (the settings file kept the old
+  default "off" like a choice; switch it off again under *Phone* if you do not want it).
+- **The Tailscale address first:** when Tailscale runs on this PC, the phone card's QR code and fixed address are
+  the tailnet's; *Wi-Fi* next to it gives the home network's address.
+- Signing in stays as it was: the access code of the QR code, or the PIN (five wrong tries from one address, then it
+  has to wait).
+
 ## CLIPasso Studio 4.2.3 – select several results on the phone
 
 A small update from 4.2.2 – and from 3.8.1, too (also from the phone).

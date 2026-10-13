@@ -1,5 +1,6 @@
 ## New in 4.2: the phone in the style of 4.0
 
+- **4.2.4 – Tailscale is the default:** the phone remote now lets in the devices of your Tailscale network from the start (*Also over Tailscale* is on – after the update once for everyone). When Tailscale runs on the PC, the QR code shows the Tailscale address first; *Wi-Fi* next to it gives the home network's address. The phone still has to sign in (QR code or PIN). Who does not want it switches it off under *Phone*.
 - **4.2.3 – several results at once (phone):** in the gallery tap *Select*, then the results you want (a tick marks them; *Select all* takes every shown one). The bar below puts them *Into an album …* in one go (a new one, too) or starts a *Slideshow* of just them. Every slideshow starts again after the last result instead of stopping.
 - **4.2.2 – the mouse wheel only scrolls:** over a slider, a number field or a drop-down the wheel no longer changes a value – it scrolls the column you are in. The *time budget* is gone (on the PC and on the phone). Who still has 3.8.1 gets 4.2.2 as a small update.
 - **4.2.1 – the sketch a tab of its own again:** on the phone the sketch has its own tab again (*Studio · Sketch · Gallery · Queue · App*) – the studio stays clear. On a computer or a tablet held across it stays in the middle of the studio.
