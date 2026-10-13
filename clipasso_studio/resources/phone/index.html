@@ -266,9 +266,23 @@
         <button id="album-rename" class="small" data-t="album_rename" hidden></button>
         <button id="album-delete" class="small" data-t="album_delete" hidden></button>
       </div>
-      <div id="results-count" class="muted small-text"></div>
+      <div class="row between results-head">
+        <div id="results-count" class="muted small-text"></div>
+        <button id="select-mode" class="small" data-t="select"></button>
+      </div>
       <div id="results" class="results"></div>
       <button id="more" class="wide" data-t="more" hidden></button>
+      <!-- 4.2.3: several results at once – into an album, or a slideshow of just them -->
+      <div id="select-bar" class="select-bar" hidden>
+        <div class="row between">
+          <b id="select-count" class="small-text" aria-live="polite"></b>
+          <button id="select-all" class="small"></button>
+        </div>
+        <div class="row">
+          <select id="select-album" class="grow" data-label="select_album"></select>
+          <button id="select-show" class="primary" data-t="slideshow"></button>
+        </div>
+      </div>
     </div>
   </section>
 

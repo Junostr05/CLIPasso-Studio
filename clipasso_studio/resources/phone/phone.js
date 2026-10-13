@@ -1067,7 +1067,9 @@ async function pollExport(id, misses) {
 // ------------------------------------------------------------------ gallery and queue
 // the gallery: every result, searched and filtered, page by page; a result large (swipe to the next one)
 const G = {items: [], total: 0, q: "", method: "", album: "", tag: "", sort: "newest", fav: false, at: -1,
-           busy: false, albums: [], pair: null};
+           busy: false, albums: [], pair: null,
+           picking: false, picked: new Set(), only: null};  // 4.2.3: choosing several (their folders); the viewer
+                                                            // going through only those (a slideshow of the chosen)
 $("search").placeholder = T.search;
 $("filter-method").title = T.filter_method;
 $("filter-album").title = T.filter_album;
@@ -1104,6 +1106,69 @@ $("album-delete").onclick = async () => {
 };
 $("more").onclick = () => loadResults(true);
 
+// 4.2.3: choosing several results – a tap marks one; the bar puts them into an album or shows them as a slideshow
+$("select-mode").onclick = () => setPicking(!G.picking);
+function setPicking(on) {
+  G.picking = on;
+  G.picked.clear();
+  renderResults();
+}
+function togglePick(r) {
+  if (G.picked.has(r.dir)) G.picked.delete(r.dir); else G.picked.add(r.dir);
+  renderResults();
+}
+function pickedItems() { return G.items.filter((r) => G.picked.has(r.dir)); }  // (in the gallery's order)
+$("select-all").onclick = () => {
+  const all = G.items.length && G.items.every((r) => G.picked.has(r.dir));
+  G.picked.clear();
+  if (!all) for (const r of G.items) G.picked.add(r.dir);
+  renderResults();
+};
+function renderSelectBar() {
+  $("select-mode").textContent = G.picking ? T.select_done : T.select;
+  setOn($("select-mode"), G.picking);
+  $("results").classList.toggle("selecting", G.picking);
+  $("select-bar").hidden = !G.picking;
+  if (!G.picking) return;
+  const n = G.picked.size;
+  $("select-count").textContent = n ? t("select_count", {n}) : T.select_hint;
+  $("select-all").textContent = G.items.length && G.items.every((r) => G.picked.has(r.dir)) ? T.select_none : T.select_all;
+  const sel = $("select-album");
+  sel.replaceChildren(el("option", {value: "", text: T.select_album}),
+    ...G.albums.map((a) => el("option", {value: a, text: a})),
+    el("option", {value: "+", text: T.album_new_option}));
+  sel.value = "";
+  sel.disabled = !n;
+  $("select-show").disabled = n < 2;
+}
+// the chosen ones into an album (a new one, too) – at once
+$("select-album").onchange = async (e) => {
+  const items = pickedItems();
+  let name = e.target.value;
+  e.target.value = "";
+  if (!items.length || !name) return;
+  if (name === "+") name = (prompt(T.album_name_ask) || "").trim();
+  if (!name) return;
+  const a = await act("album", {op: G.albums.includes(name) ? "add" : "new", name, dirs: items.map((r) => r.dir)});
+  if (!a.ok) return;
+  name = a.name || name;
+  for (const r of items) if (!(r.albums || []).includes(name)) r.albums = (r.albums || []).concat(name);
+  if (!G.albums.includes(name)) {
+    G.albums = G.albums.concat(name);  // (a new album comes last, as in the app)
+    fillSelect($("filter-album"), G.albums.map((x) => ({key: x, name: x})), T.all_albums, G.album);
+  }
+  toast(t(items.length === 1 ? "select_album_added_one" : "select_album_added", {n: items.length, name}));
+  setPicking(false);
+};
+// a slideshow of just the chosen ones (it goes round, like every slideshow)
+$("select-show").onclick = () => {
+  const items = pickedItems();
+  if (items.length < 2) return;
+  G.only = items.map((r) => r.dir);
+  openViewer(G.items.indexOf(items[0]));
+  startShow();
+};
+
 function fillSelect(sel, items, all, current) {
   const sig = JSON.stringify(items);
   if (sel.dataset.sig !== sig) {
@@ -1125,6 +1190,7 @@ async function loadResults(more) {
   if (!list || list.ok === false) return;
   G.items = more ? G.items.concat(list.results) : list.results;
   G.total = list.total;
+  if (!more) for (const d of [...G.picked]) if (!G.items.some((r) => r.dir === d)) G.picked.delete(d);  // (only shown)
   fillSelect($("filter-method"), list.methods, T.all_methods, G.method);
   fillSelect($("filter-album"), list.albums.map((a) => ({key: a, name: a})), T.all_albums, G.album);
   fillSelect($("filter-tag"), (list.tags || []).map((x) => ({key: x, name: x})), T.all_tags, G.tag);
@@ -1142,7 +1208,19 @@ async function loadResults(more) {
 
 function renderResults() {
   const box = $("results");
-  box.replaceChildren(...G.items.map((r, k) => el("div", {class: "result", onclick: () => openViewer(k)},
+  const pick = (r) => (e) => {
+    if (e.type === "keydown" && e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    togglePick(r);
+    const again = $("results").querySelector(`.result[data-dir="${CSS.escape(r.dir)}"]`);
+    if (again && e.type === "keydown") again.focus();  // (the list is drawn anew: the keyboard stays on it)
+  };
+  box.replaceChildren(...G.items.map((r, k) => el("div", {
+      class: "result" + (G.picking && G.picked.has(r.dir) ? " picked" : ""), "data-dir": r.dir,
+      onclick: G.picking ? pick(r) : () => openViewer(k),
+      // while choosing, each result is a check box for screen readers and the keyboard
+      role: G.picking ? "checkbox" : null, "aria-checked": G.picking ? String(G.picked.has(r.dir)) : null,
+      "aria-label": G.picking ? r.name : null, tabindex: G.picking ? "0" : null, onkeydown: G.picking ? pick(r) : null},
     el("button", {class: "fav" + (r.fav ? " on" : ""), title: T.filter_fav, "aria-label": T.filter_fav,
                   text: r.fav ? "★" : "☆", onclick: (e) => { e.stopPropagation(); toggleFav(r); }}),
     el("button", {class: "del", title: T.delete, "aria-label": T.delete, text: "🗑",
@@ -1153,6 +1231,7 @@ function renderResults() {
   if (!G.items.length) box.append(el("div", {class: "muted", text: T.empty}));
   $("results-count").textContent = G.total ? t("results_count", {n: G.items.length, total: G.total}) : "";
   $("more").hidden = G.items.length >= G.total;
+  renderSelectBar();
 }
 
 async function toggleFav(r) {
@@ -1178,8 +1257,10 @@ function renderViewer() {
   const r = G.items[G.at];
   if ($("viewer").hidden || !r) return;
   $("viewer-name").textContent = r.name;
+  const ks = viewerList();
   $("viewer-info").textContent = [r.method, r.score !== null ? "CLIP " + r.score : "", (r.created || "").slice(0, 16),
-                                  t("of", {i: G.at + 1, n: G.total})].filter(Boolean).join(" · ");
+                                  ks ? t("of", {i: ks.indexOf(G.at) + 1, n: ks.length}) : t("of", {i: G.at + 1, n: G.total})]
+    .filter(Boolean).join(" · ");
   const src = `/api/file/result?d=${encodeURIComponent(r.dir)}`;
   if ($("viewer-img").dataset.src !== src) {
     $("viewer-img").dataset.src = src;
@@ -1255,22 +1336,40 @@ $("viewer-pair").onclick = () => {
 };
 $("pair-split").addEventListener("input", () => { $("pair-b").style.clipPath = `inset(0 0 0 ${$("pair-split").value}%)`; });
 $("pair-close").onclick = () => { $("pair").hidden = true; };
-// a slideshow of the shown results (3 s each)
+// a slideshow of the shown results – or of the chosen ones (4.2.3) – 3 s each; after the last it starts again
 let show = 0;
 function stopShow() { clearInterval(show); show = 0; $("viewer-show").textContent = T.slideshow; }
-$("viewer-show").onclick = () => {
-  if (show) { stopShow(); return; }
+function startShow() {
+  stopShow();
   $("viewer-show").textContent = T.slideshow_stop;
   show = setInterval(async () => {
     if ($("viewer").hidden) { stopShow(); return; }
-    if (G.at + 1 >= G.total) { stopShow(); return; }
-    await stepViewer(1);
+    await stepViewer(1, true);
   }, 3000);
-};
-function closeViewer() { $("viewer").hidden = true; G.at = -1; stopShow(); $("info-form").hidden = true; }
-async function stepViewer(d) {
-  const k = G.at + d;
+}
+$("viewer-show").onclick = () => { if (show) stopShow(); else startShow(); };
+function closeViewer() { $("viewer").hidden = true; G.at = -1; G.only = null; stopShow(); $("info-form").hidden = true; }
+// the places in G.items the viewer goes through when only the chosen ones are shown (null: all of them)
+function viewerList() {
+  return G.only ? G.only.map((d) => G.items.findIndex((r) => r.dir === d)).filter((k) => k >= 0) : null;
+}
+// the next (d = 1) or previous result; ``loop``: after the last comes the first again (the slideshow)
+async function stepViewer(d, loop) {
+  const ks = viewerList();
+  if (ks) {
+    if (!ks.length) return;
+    let p = ks.indexOf(G.at) + d;
+    if (p < 0 || p >= ks.length) {
+      if (!loop) return;
+      p = (p + ks.length) % ks.length;
+    }
+    G.at = ks[p];
+    renderViewer();
+    return;
+  }
+  let k = G.at + d;
   if (k >= G.items.length && G.items.length < G.total) await loadResults(true);
+  if (loop && k >= G.items.length && G.items.length >= G.total) k = 0;
   if (k < 0 || k >= G.items.length) return;
   G.at = k;
   renderViewer();

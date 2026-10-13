@@ -243,6 +243,79 @@ def test_gallery_search_favourite_and_viewer(signed_in):
     assert signed_in.width() == 390 and signed_in.errors == []
 
 
+def test_select_several_for_an_album_or_a_slideshow_that_goes_round(signed_in):
+    """4.2.3: "Select" in the gallery – a tap marks a result instead of opening it; the chosen ones go into an album
+    at once (a new one, too) or are a slideshow of their own. Every slideshow starts again after the last result."""
+    page = signed_in.page
+    base = page.url.split("/?")[0].rstrip("/")
+    picked = "document.querySelectorAll('#results .result.picked').length"
+    name_is_not = "document.querySelector('#viewer-name').textContent !== {!r}"
+    signed_in.tab("gallery")
+    signed_in.wait_js("document.querySelectorAll('#results .result').length === 3")  # scene, camel, zebra
+    assert page.is_hidden("#select-bar")
+    page.click("#select-mode")
+    page.wait_for_selector("#select-bar:not([hidden])")
+    assert page.get_attribute("#select-mode", "aria-pressed") == "true"
+    assert page.text_content("#select-mode") == page.evaluate("T.select_done")
+    assert page.text_content("#select-count") == page.evaluate("T.select_hint")
+    assert page.is_hidden("#results .result >> nth=0 >> .fav")  # (no star, no bin while choosing)
+    assert page.is_disabled("#select-album") and page.is_disabled("#select-show")
+    # a tap marks one – the large view stays closed; a slideshow needs two
+    page.click("#results .result:has-text('camel')")
+    signed_in.wait_js(f"{picked} === 1")
+    assert page.is_hidden("#viewer")
+    assert page.get_attribute("#results .result:has-text('camel')", "aria-checked") == "true"
+    assert page.is_enabled("#select-album") and page.is_disabled("#select-show")
+    page.click("#results .result:has-text('zebra')")
+    signed_in.wait_js(f"{picked} === 2")
+    assert page.text_content("#select-count") == page.evaluate("t('select_count', {n: 2})")
+    if os.environ.get("PHONE_SHOTS"):
+        page.screenshot(path=os.path.join(os.environ["PHONE_SHOTS"], "gallery_select.png"))
+    # the keyboard: Space marks the result it is on (and unmarks it again)
+    page.focus("#results .result:has-text('scene')")
+    page.keyboard.press(" ")
+    signed_in.wait_js(f"{picked} === 3")
+    page.keyboard.press(" ")
+    signed_in.wait_js(f"{picked} === 2")
+    # both into a new album, at once – then choosing ends
+    page.once("dialog", lambda d: d.accept("Zoo"))
+    page.select_option("#select-album", "+")
+    page.wait_for_selector("#select-bar", state="hidden")
+    zoo = page.request.get(base + "/api/get/results?album=Zoo").json()["results"]
+    assert sorted(r["dir"] for r in zoo) == ["camel_e2e", "zebra_e2e"]
+    assert "Zoo" in page.eval_on_selector_all("#filter-album option", "os => os.map(o => o.value)")
+    assert page.evaluate(picked) == 0
+    # a slideshow of just the chosen two: camel, zebra and camel again (the scene between them is left out)
+    page.click("#select-mode")
+    page.click("#results .result:has-text('camel')")
+    page.click("#results .result:has-text('zebra')")
+    signed_in.wait_js(f"{picked} === 2")
+    page.click("#select-show")
+    page.wait_for_selector("#viewer:not([hidden])")
+    assert page.text_content("#viewer-show") == page.evaluate("T.slideshow_stop")
+    names = [page.text_content("#viewer-name")]
+    assert page.text_content("#viewer-info").endswith(page.evaluate("t('of', {i: 1, n: 2})"))
+    for _ in range(2):
+        signed_in.wait_js(name_is_not.format(names[-1]), 8)
+        names.append(page.text_content("#viewer-name"))
+    assert ["camel" in names[0], "zebra" in names[1], "camel" in names[2]] == [True] * 3, names
+    assert page.text_content("#viewer-info").endswith(page.evaluate("t('of', {i: 1, n: 2})"))
+    page.click("#viewer-close")
+    assert page.evaluate("show") == 0 and page.evaluate("G.only") is None
+    page.click("#select-mode")  # (done: the gallery as before)
+    assert page.is_hidden("#select-bar") and page.evaluate(picked) == 0
+    # the slideshow of all shown results goes round, too: after the last one (zebra) the first one (the scene)
+    page.click("#results .result >> nth=2")
+    page.wait_for_selector("#viewer:not([hidden])")
+    last = page.text_content("#viewer-name")
+    assert "zebra" in last
+    page.click("#viewer-show")
+    signed_in.wait_js(name_is_not.format(last), 8)
+    assert "scene" in page.text_content("#viewer-name")
+    page.click("#viewer-close")
+    assert signed_in.errors == []
+
+
 def test_queue_several_photos_drag_and_remove(signed_in, tmp_path):
     from PIL import Image
 

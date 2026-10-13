@@ -1,3 +1,18 @@
+## CLIPasso Studio 4.2.3 – select several results on the phone
+
+A small update from 4.2.2 – and from 3.8.1, too (also from the phone).
+
+- **Select in the phone's gallery:** *Select* next to the number of results turns a tap on a result into a tick
+  (instead of opening it); *Select all* / *Select none*, and *Done* ends it. While selecting, the star and the bin of
+  each result step aside. The keyboard works, too (Space or Enter on a result), and screen readers hear each result
+  as a check box.
+- **Into an album at once:** the bar below the results puts every selected result *Into an album …* – an existing
+  one or a new one (*+ New album …*).
+- **A slideshow of just them:** *Slideshow* in the same bar shows only the selected results, one after another
+  (3 s each; *1 of 2* counts them); swiping stays among them, too.
+- **Slideshows go round:** after the last result the slideshow starts again from the first one – the one of the
+  selected results and the one of all shown results (it used to stop at the end).
+
 ## CLIPasso Studio 4.2.2 – the mouse wheel only scrolls
 
 A small update from 4.2.1 – and, new, from 3.8.1, too (also from the phone).

@@ -1,4 +1,4 @@
-"""The app for the browser tests of the phone page: offscreen, with folders of its own and one finished result,
+"""The app for the browser tests of the phone page: offscreen, with folders of its own and three finished results,
 the remote switched on at a free port. Prints the address (with the access code) and the PIN; quits when its
 standard input closes. Optional: a port (the same one again after a "restart"), and CLIPASSO_E2E_VERSION – the app
 then says it is that version (an update from the phone, faked)."""
@@ -42,6 +42,8 @@ def main():
     if not os.path.isdir(os.path.join(out, "camel_e2e")):  # (started again: the results are there)
         fake_job(out, "camel_e2e", os.path.join(data, "camel_e2e.png"), 31.0)
         fake_scene_job(out, "scene_e2e", os.path.join(data, "scene_e2e.png"))
+        # (4.2.3: a third, older one – a slideshow of two chosen results is not one of all of them)
+        fake_job(out, "zebra_e2e", os.path.join(data, "zebra_e2e.png"), 27.0, created="2026-09-28 12:00:00")
     from clipasso_studio.gui import dialogs, remote
     from clipasso_studio.gui.main_window import MainWindow
 

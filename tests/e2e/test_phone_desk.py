@@ -69,8 +69,17 @@ def test_the_studio_on_a_computer(screen):
         ph.tab(tab)
         assert page.is_hidden("#desk") and ph.width() == 1440, tab
     _shot(ph, "desk_app")
-    # a result opened from the gallery: in the middle column
+    # 4.2.3: selecting in the gallery – the bar stays above the footer
     ph.tab("gallery")
+    page.click("#select-mode")
+    page.click("#results .result:has-text('camel')")
+    ph.wait_js("document.querySelectorAll('#results .result.picked').length === 1")
+    bar = page.eval_on_selector("#select-bar", "e => e.getBoundingClientRect().bottom")
+    assert 0 < bar <= 900 - 76
+    _shot(ph, "desk_gallery_select")
+    page.click("#select-mode")
+    ph.wait_js("document.querySelector('#select-bar').hidden")
+    # a result opened from the gallery: in the middle column
     page.click("#results .result:has-text('camel')")
     page.wait_for_selector("#viewer:not([hidden])")
     page.click("#viewer-open")
