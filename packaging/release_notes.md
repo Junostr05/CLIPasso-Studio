@@ -1,6 +1,7 @@
 ## CLIPasso Studio 4.2.4 – the phone over Tailscale by default
 
-A small update from 4.2.3 – and from 4.2.2 and 3.8.1, too (also from the phone).
+A small update from 4.2.2 – and from 3.8.1, too (also from the phone). It brings 4.2.3 along (below; it was
+not published on its own).
 
 - **Tailscale is the default:** *Also over Tailscale* (the phone remote also lets in the devices of your tailnet,
   100.64.0.0/10) is on for new installations – and switched on once by this update (the settings file kept the old
@@ -12,7 +13,7 @@ A small update from 4.2.3 – and from 4.2.2 and 3.8.1, too (also from the phone
 
 ## CLIPasso Studio 4.2.3 – select several results on the phone
 
-A small update from 4.2.2 – and from 3.8.1, too (also from the phone).
+Published together with 4.2.4.
 
 - **Select in the phone's gallery:** *Select* next to the number of results turns a tap on a result into a tick
   (instead of opening it); *Select all* / *Select none*, and *Done* ends it. While selecting, the star and the bin of

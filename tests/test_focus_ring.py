@@ -180,7 +180,9 @@ def test_a_deleted_target_takes_the_ring_along(tracker):
         ring = _ring(win)
         assert ring.isVisible()
         b.deleteLater()
-        QTest.qWait(20)
+        QTest.qWait(20)  # (the deletion is the last step of a pass of the wait …)
+        _settle()  # (… the ring follows a zero timer it queues: on Windows one pass – its sleep a 15.6 ms tick –
+        #             can take all of the 20 ms, and the timer then needs the next wait)
         assert ring.target is not b and (not ring.isVisible() or ring.target is a)
     finally:
         win.close()
