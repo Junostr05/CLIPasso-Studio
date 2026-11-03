@@ -2,7 +2,7 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · start · pause · resume · cancel · shutdown
+ops: hello · devices · schema · models · required_models · convert_model · start · pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import BinaryIO, Callable
 
 from .. import __version__
 from .. import settings_schema as schema
+from ..engine.errors import UserError
 from . import export
 from .protocol import PROTOCOL_VERSION, IterationThrottle, ProtocolError, Writer, decode
 
@@ -79,6 +80,8 @@ class EngineServer:
             return {"id": rid, "ok": True, "result": fn(req.get("args") or {})}
         except _Fail as exc:
             return {"id": rid, "ok": False, "error": {"code": exc.code, "message": exc.message}}
+        except UserError as exc:  # (the app shows its text ui.err.<code> with the params)
+            return {"id": rid, "ok": False, "error": {"code": exc.code, "message": str(exc), **exc.params}}
         except Exception as exc:  # a fault here must not end the server
             traceback.print_exc(file=sys.stderr)
             return {"id": rid, "ok": False, "error": {"code": "internal", "message": f"{type(exc).__name__}: {exc}"}}
@@ -105,6 +108,17 @@ class EngineServer:
             raise _Fail("bad_request", "settings is a JSON object")
         required = list(methods.required_models(schema.normalize(settings)))
         return {"required": required, "missing": [k for k in required if not model_store.is_available(k)]}
+
+    def op_convert_model(self, args: dict) -> dict:
+        """A model the Mac app downloaded into ``dest_root``'s partial folder, converted (model_store)."""
+        from pathlib import Path
+
+        from ..engine import model_store
+
+        key, root = _text(args, "key"), _text(args, "dest_root")
+        if key not in model_store.SPECS:
+            raise _Fail("not_found", f"unknown model {key}")
+        return {"path": str(model_store.convert_downloaded(key, Path(root)))}
 
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")

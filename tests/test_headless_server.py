@@ -261,3 +261,25 @@ def test_probe_devices_asks_pytorch_in_a_child_process():
     assert found == {"torch": torch.__version__.split("+")[0], "cuda": torch.cuda.is_available(),
                      "mps": bool(torch.backends.mps.is_available())}
     assert "torch" in sys.modules  # (this test imported it – the server itself does not)
+
+
+def test_convert_model(monkeypatch, tmp_path):
+    from clipasso_studio.engine import model_store
+    from clipasso_studio.engine.errors import UserError
+
+    calls = []
+
+    def convert(key, root):
+        calls.append((key, root))
+        if key == "lama":
+            raise UserError("not_downloaded", "lama is not downloaded", model=key)
+        return root / "x.pt"
+
+    monkeypatch.setattr(model_store, "convert_downloaded", convert)
+    server, _ = _server()
+    answer = server.handle(_req(1, "convert_model", key="clip:RN101", dest_root=str(tmp_path)))
+    assert answer["result"] == {"path": str(tmp_path / "x.pt")} and calls == [("clip:RN101", tmp_path)]
+    error = server.handle(_req(2, "convert_model", key="lama", dest_root=str(tmp_path)))["error"]
+    assert error == {"code": "not_downloaded", "message": "lama is not downloaded", "model": "lama"}
+    assert server.handle(_req(4, "convert_model", key="nope", dest_root=str(tmp_path)))["error"]["code"] == "not_found"
+    assert server.handle(_req(3, "convert_model", key="", dest_root=""))["error"]["code"] == "bad_request"

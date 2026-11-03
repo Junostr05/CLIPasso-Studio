@@ -1449,6 +1449,7 @@
  "ui.err.gdrive_no_start": "Google Drive did not start the download. Try again later.",
  "ui.err.download_failed": "{name} could not be downloaded. Check the internet connection and try again.\n\nDetails:\n{details}",
  "ui.err.download_size": "{name} could not be downloaded completely ({file} has the wrong size). Please try again.",
+ "ui.err.not_downloaded": "{model} is not downloaded completely yet – download it again.",
  "ui.err.update_no_files": "This release has no files for your edition.",
  "ui.err.update_no_checksum": "The checksum of {file} is missing in the release – the update was not installed.",
  "ui.err.update_checksum": "{file} was damaged during the download (the checksum does not match). Please try again.",

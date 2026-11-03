@@ -1449,6 +1449,7 @@
  "ui.err.gdrive_no_start": "Google Drive hat den Download nicht gestartet. Versuche es später noch einmal.",
  "ui.err.download_failed": "{name} konnte nicht heruntergeladen werden. Prüfe die Internetverbindung und versuche es noch einmal.\n\nDetails:\n{details}",
  "ui.err.download_size": "{name} wurde nicht vollständig heruntergeladen ({file} hat die falsche Größe). Bitte versuche es noch einmal.",
+ "ui.err.not_downloaded": "{model} ist noch nicht vollständig heruntergeladen – lade es noch einmal.",
  "ui.err.update_no_files": "Dieses Release enthält keine Dateien für deine Edition.",
  "ui.err.update_no_checksum": "Die Prüfsumme von {file} fehlt im Release – das Update wurde nicht installiert.",
  "ui.err.update_checksum": "{file} wurde beim Herunterladen beschädigt (die Prüfsumme stimmt nicht). Bitte versuche es noch einmal.",
