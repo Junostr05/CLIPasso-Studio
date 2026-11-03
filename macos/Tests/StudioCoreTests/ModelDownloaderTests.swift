@@ -55,8 +55,14 @@ final class FakeTransport: HTTPTransport {
 }
 
 @Suite struct ModelDownloaderTests {
+    /// n made-up bytes (the same rule as range_server.py, with seed 0)
     static func bytes(_ n: Int, seed: Int = 1) -> Data {
-        Data((0..<n).map { UInt8(($0 * 7 + $0 / 251 + seed) % 256) })
+        var out = Data(count: n)
+        for i in 0..<n {
+            let value: Int = (i * 7 + i / 251 + seed) % 256
+            out[i] = UInt8(value)
+        }
+        return out
     }
 
     static func root() throws -> URL {
@@ -317,7 +323,7 @@ final class FakeTransport: HTTPTransport {
             portLine.append(out.fileHandleForReading.availableData)
         }
         let port = try #require(Int(String(decoding: portLine, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)))
-        let expected = Data((0..<300_000).map { UInt8(($0 * 7 + $0 / 251) % 256) })
+        let expected = Self.bytes(300_000, seed: 0)
         for path in ["file", "norange"] {
             let root = try Self.root()
             let url = "http://127.0.0.1:\(port)/\(path)"
