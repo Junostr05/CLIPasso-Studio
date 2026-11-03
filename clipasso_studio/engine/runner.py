@@ -93,16 +93,31 @@ class _QueueReporter:
         self.q.put((kind, data))
 
 
+PARENT_CHECK = 1.0  # s – how often a worker looks whether the process that started it is still there
+
+
 class _EventControl:
+    """Pause / cancel of a worker – and a stop when the process that started it is gone (killed, crashed): an orphan
+    must not go on computing and holding its memory."""
+
     def __init__(self, stop_event, pause_event):
         self.stop_event = stop_event
         self.pause_event = pause_event
+        self._parent = mp.parent_process()  # None in the main process (tests)
+        self._checked = 0.0
+        self._orphan = False
 
     def should_stop(self):
-        return self.stop_event.is_set()
+        if self.stop_event.is_set():
+            return True
+        now = time.monotonic()
+        if self._parent is not None and not self._orphan and now - self._checked >= PARENT_CHECK:
+            self._checked = now
+            self._orphan = not self._parent.is_alive()
+        return self._orphan
 
     def wait_if_paused(self):
-        while self.pause_event.is_set() and not self.stop_event.is_set():
+        while self.pause_event.is_set() and not self.should_stop():
             time.sleep(0.1)
 
 
