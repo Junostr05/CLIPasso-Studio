@@ -61,6 +61,37 @@ jobs:
       - name: Python reads the job files Swift wrote
         run: python tools/check_swift_meta.py "${{ runner.temp }}/studiocore-export"
 
+  app:
+    name: The app (macOS, unsigned)
+    runs-on: macos-26
+    needs: core
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: The newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i -E "beta|release_candidate|_rc" | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: xcodebuild (the app and its tests)
+        working-directory: macos
+        run: |
+          xcodebuild -scheme CLIPassoStudio -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd build
+          xcodebuild -scheme StudioCore-Package -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd test
+      - name: CLIPasso Studio.app
+        run: macos/scripts/make_app.sh build/app | tee app.txt
+      - name: Size of the app
+        run: '{ echo "## The app"; echo; tail -2 app.txt | head -1; } >> "$GITHUB_STEP_SUMMARY"'
+      - name: Pack the app
+        run: ditto -c -k --keepParent "build/app/CLIPasso Studio.app" "build/CLIPasso-Studio-mac.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CLIPasso-Studio-mac
+          path: build/CLIPasso-Studio-mac.zip
+
   engine:
     name: Engine (macOS, Apple Silicon)
     runs-on: macos-26

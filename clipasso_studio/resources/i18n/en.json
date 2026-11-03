@@ -1612,5 +1612,8 @@
  "ui.oom.text": "“{name}” stopped because the memory ran out.",
  "ui.oom.info": "It can be computed again – on the CPU (slower, but with the computer's memory) or with settings that need less memory. Sketches that are already finished are kept.",
  "ui.oom.cpu": "Again on the CPU",
- "ui.oom.smaller": "Again with smaller settings"
+ "ui.oom.smaller": "Again with smaller settings",
+ "ui.mac.engine_starting": "Starting the sketch engine …",
+ "ui.mac.engine_restarting": "The sketch engine ended unexpectedly and is starting again …",
+ "ui.mac.engine_unavailable": "The sketch engine could not be started – without it no sketch can be made. Details: {details}"
 }

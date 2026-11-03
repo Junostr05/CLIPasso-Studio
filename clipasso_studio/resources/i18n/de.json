@@ -1612,5 +1612,8 @@
  "ui.oom.text": "„{name}“ wurde abgebrochen, weil der Speicher nicht gereicht hat.",
  "ui.oom.info": "Der Auftrag kann noch einmal gerechnet werden – auf der CPU (langsamer, aber mit dem Arbeitsspeicher des Computers) oder mit Einstellungen, die weniger Speicher brauchen. Bereits fertige Skizzen bleiben erhalten.",
  "ui.oom.cpu": "Auf der CPU wiederholen",
- "ui.oom.smaller": "Mit kleineren Einstellungen wiederholen"
+ "ui.oom.smaller": "Mit kleineren Einstellungen wiederholen",
+ "ui.mac.engine_starting": "Das Rechenmodul startet …",
+ "ui.mac.engine_restarting": "Das Rechenmodul wurde unerwartet beendet und startet neu …",
+ "ui.mac.engine_unavailable": "Das Rechenmodul ließ sich nicht starten – ohne es entsteht keine Skizze. Details: {details}"
 }
