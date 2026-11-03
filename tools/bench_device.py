@@ -5,8 +5,8 @@
 
 Every (method, device, image, repeat) is one job of the method's "fast" preset with one sketch (``--iters``: the
 iterations of the methods that optimise). Written as JSON rows ``{method, device, image, repeat, seconds,
-sec_per_iter, iterations, clip_score, error}`` and printed as a table. A device that is not there is a row with
-``error: "unavailable"`` – it is never left out. ``settings_schema.MPS_AUTO`` (which methods "auto" computes on the
+sec_per_iter, iterations, clip_score, error, traceback}`` and printed as a table. A device that is not there is a row
+with ``error: "unavailable"`` – it is never left out. ``settings_schema.MPS_AUTO`` (which methods "auto" computes on the
 Apple GPU) is filled from these numbers, not from guesses.
 """
 
@@ -17,6 +17,7 @@ import json
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -84,7 +85,8 @@ def run_one(method: str, device: str, image: Path, iters: int, work: Path) -> di
     from clipasso_studio.engine import pipeline
     from clipasso_studio.engine.model_store import ModelMissingError
 
-    row = {"seconds": None, "sec_per_iter": None, "iterations": None, "clip_score": None, "error": None}
+    row = {"seconds": None, "sec_per_iter": None, "iterations": None, "clip_score": None, "error": None,
+           "traceback": None}
     if not available(device):
         row["error"] = "unavailable"
         return row
@@ -96,8 +98,9 @@ def run_one(method: str, device: str, image: Path, iters: int, work: Path) -> di
     except ModelMissingError as exc:
         row["error"] = f"model_missing: {exc.spec_key}"
         return row
-    except Exception as exc:  # reported in the row, the other runs go on
+    except Exception as exc:  # reported in the row (with where it happened), the other runs go on
         row["error"] = f"{type(exc).__name__}: {exc}"
+        row["traceback"] = traceback.format_exc()[-6000:]
         return row
     row["seconds"] = round(time.perf_counter() - started, 2)
     row["iterations"] = len(timer.elapsed)

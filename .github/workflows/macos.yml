@@ -76,6 +76,7 @@ jobs:
           tests/test_headless_server.py tests/test_headless_e2e.py tests/test_runner_orphans.py
           tests/test_device_mps.py tests/test_bench_device.py tests/test_settings.py
       - name: Measure the CPU against the Apple GPU
+        if: success() || failure()  # (the numbers help most when a test failed)
         run: |
           python tools/bench_device.py --methods "${{ inputs.bench_methods || 'clipasso,swiftsketch' }}" \
             --devices cpu,mps --repeats "${{ inputs.bench_repeats || 1 }}" --iters 200 --out bench.json > bench.md

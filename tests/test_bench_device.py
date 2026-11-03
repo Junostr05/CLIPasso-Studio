@@ -25,11 +25,13 @@ def test_bench_runs_tiny_cpu(tmp_path):
     assert {r["device"] for r in rows} == {"cpu", "mps"}
     cpu = next(r for r in rows if r["device"] == "cpu")
     assert cpu["method"] == "clipasso" and cpu["image"] == "camel.png" and cpu["repeat"] == 1
-    assert cpu["error"] is None and cpu["iterations"] == 3 and cpu["seconds"] > 0 and cpu["sec_per_iter"] > 0
+    assert cpu["error"] is None and cpu["traceback"] is None, cpu["traceback"]
+    assert cpu["iterations"] == 3 and cpu["seconds"] > 0 and cpu["sec_per_iter"] > 0
     assert cpu["clip_score"] is not None and 0 < cpu["clip_score"] <= 100
     mps = next(r for r in rows if r["device"] == "mps")
     if torch.backends.mps.is_available():
-        assert mps["error"] is None and mps["iterations"] == 3
+        assert mps["error"] is None, mps["traceback"]
+        assert mps["iterations"] == 3
     else:
-        assert mps["error"] == "unavailable" and mps["seconds"] is None
+        assert mps["error"] == "unavailable" and mps["seconds"] is None and mps["traceback"] is None
     assert "| clipasso | cpu |" in done.stdout and "| clipasso | mps |" in done.stdout  # the table
