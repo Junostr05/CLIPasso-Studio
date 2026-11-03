@@ -235,7 +235,7 @@ class DeformableConv2d(nn.Module):
     def forward(self, x):
         offset = self.offset_conv(x)
         modulator = 2.0 * torch.sigmoid(self.modulator_conv(x))
-        if x.device.type == "cpu":
+        if x.device.type in ("cpu", "mps"):  # (torchvision has no Apple GPU kernel for it)
             return deform_conv2d_cpu(x, offset, self.regular_conv.weight, modulator, self.padding)
         return deform_conv2d(x, offset, self.regular_conv.weight, self.regular_conv.bias,
                              padding=(self.padding, self.padding), mask=modulator)

@@ -60,7 +60,7 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
             model = build_model(state_dict).to(device)
-        if torch.device(device).type == "cpu":
+        if torch.device(device).type != "cuda":  # (half precision only on an NVIDIA card)
             model.float()
         model.requires_grad_(False)
         model.eval()

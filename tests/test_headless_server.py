@@ -28,9 +28,9 @@ class FakeRunner:
         self.cancelled = 0
         self.killed = 0
 
-    def start(self, settings, target, output_root, job_dir="", auto_parallel=False, cuda=False, gpus=()):
+    def start(self, settings, target, output_root, job_dir="", auto_parallel=False, cuda=False, gpus=(), mps=False):
         self.started.append({"settings": settings, "target": target, "output_root": output_root,
-                             "job_dir": job_dir, "auto_parallel": auto_parallel})
+                             "job_dir": job_dir, "auto_parallel": auto_parallel, "cuda": cuda, "mps": mps})
         self.running = True
         return SimpleNamespace(job_dir=job_dir or os.path.join(output_root, "job_1"))
 
@@ -68,9 +68,9 @@ class LockedBuffer(io.BytesIO):
         return [json.loads(line) for line in self.getvalue().split(b"\n") if line]
 
 
-def _server(runner=None, **kw):
+def _server(runner=None, mps=False, **kw):
     out = LockedBuffer()
-    probe = lambda: {"torch": "2.11.0", "cuda": False, "mps": False}  # noqa: E731
+    probe = lambda: {"torch": "2.11.0", "cuda": False, "mps": mps}  # noqa: E731
     return EngineServer(Writer(out), runner=runner or FakeRunner(), devices_probe=probe, **kw), out
 
 
@@ -126,6 +126,14 @@ def test_start_continues_a_job_folder(tmp_path):
     folder.mkdir(parents=True)
     answer = server.handle(_req(1, "start", resume_dir=str(folder), **_start_args(tmp_path)))
     assert answer["result"]["job_dir"] == str(folder) and runner.started[0]["job_dir"] == str(folder)
+
+
+def test_start_passes_the_devices_found(tmp_path):
+    for mps in (False, True):
+        runner = FakeRunner()
+        server, _ = _server(runner, mps=mps)
+        server.handle(_req(1, "start", **_start_args(tmp_path)))
+        assert runner.started[0]["mps"] is mps and runner.started[0]["cuda"] is False
 
 
 def test_start_needs_the_image(tmp_path):

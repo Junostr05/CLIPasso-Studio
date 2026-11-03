@@ -62,7 +62,7 @@ def _add_param(parser: argparse.ArgumentParser, p: schema.Param) -> None:
     kwargs = {"dest": p.key, "default": None}
     if p.key == "device":
         # auto / cpu / cuda, or a GPU index like SwiftSketch's --device <n>
-        kwargs.update(type=str, metavar="{auto,cpu,cuda,<gpu index>}")
+        kwargs.update(type=str, metavar="{auto,cpu,cuda,mps,<gpu index>}")
     elif p.kind in ("bool", "int"):
         kwargs["type"] = int
     elif p.kind == "float":

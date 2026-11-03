@@ -107,11 +107,23 @@ def cuda_arch_supported(idx: int) -> bool:
     return False
 
 
+def mps_available() -> bool:
+    """Is the Apple GPU (Metal Performance Shaders) usable by this PyTorch?"""
+    mps = getattr(torch.backends, "mps", None)
+    return bool(mps is not None and mps.is_available())
+
+
 def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
-    """-> (device, warning)."""
+    """-> (device, warning). "auto": an NVIDIA card, else the Apple GPU for the methods in ``schema.MPS_AUTO``, else
+    the CPU."""
     wanted = settings.get("device", "auto")
     if wanted == "cpu":
         return torch.device("cpu"), None
+    if wanted == "mps":
+        if mps_available():
+            return torch.device("mps"), None
+        return torch.device("cpu"), ("mps_unavailable:The Apple GPU (MPS) is not available – running on the CPU "
+                                     "instead.")
     if torch.cuda.is_available() and torch.cuda.device_count() > 0:
         idx = min(int(settings.get("gpunum", 0)), torch.cuda.device_count() - 1)
         if not cuda_arch_supported(idx):
@@ -122,6 +134,8 @@ def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
     if wanted == "cuda":
         return torch.device("cpu"), ("cuda_unavailable:CUDA is not available – running on the CPU instead "
                                      "(much slower).")
+    if schema.method_of(settings) in schema.MPS_AUTO and mps_available():
+        return torch.device("mps"), None
     return torch.device("cpu"), None
 
 

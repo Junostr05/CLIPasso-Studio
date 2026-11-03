@@ -139,7 +139,7 @@ class ParamField(QWidget):
             self.spin.valueChanged.connect(self._spin_changed)
         elif kind == "choice":
             self.combo = QComboBox()
-            for c in p.choices:
+            for c in schema.offered_choices(p):
                 self.combo.addItem(str(c), c)
             self.combo.currentIndexChanged.connect(lambda i: self._emit(self.combo.itemData(i)))
             self.control_row.addWidget(self.combo, 1)

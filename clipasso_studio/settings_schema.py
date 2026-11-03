@@ -102,6 +102,14 @@ SKETCH_GUIDE_METHODS = ("clipasso", "scenesketch")
 SKETCH_GUIDE = Param("sketch_guide", False, "bool", "strokes", hidden=True)
 
 
+# Where a job computes: "auto" (an NVIDIA card when there is one), the CPU, an NVIDIA card (CUDA) or the Apple GPU (MPS,
+# Mac only – offered there only, but known everywhere, so a job from a Mac opens on Windows too)
+DEVICES = ("auto", "cpu", "cuda", "mps")
+# the methods for which "auto" computes on the Apple GPU: only where it was measured faster with results as good
+# (tools/bench_device.py) – empty until there are measurements
+MPS_AUTO: tuple[str, ...] = ()
+
+
 def _best_by() -> Param:
     return Param("best_by", "faithful", "choice", "basics", choices=BEST_BY, advanced=False,
                  enabled_if=All(Gt("num_sketches", 1), Off("turbo")))
@@ -190,7 +198,7 @@ PARAMS: tuple[Param, ...] = (
     Param("noise_thresh", 0.5, "float", "augment", cli="noise_thresh", minimum=0.0, maximum=1.0, step=0.05,
           decimals=2, enabled_if=Has("augemntations", "noise")),
     # ---------------------------------------------------------------- hardware
-    Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
+    Param("device", "auto", "choice", "hardware", choices=DEVICES, advanced=False),
     Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
           enabled_if=Ne("device", "cpu")),
     Param("multiprocess", False, "bool", "hardware", cli="multiprocess"),
@@ -236,7 +244,7 @@ def _hardware(multiprocess: bool = True) -> tuple[Param, ...]:
     """Device options; ``multiprocess`` (parallel sketches in several worker processes) is not offered for
     ControlSketch, where every process would hold its own copy of Stable Diffusion."""
     return tuple(p for p in (
-        Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
+        Param("device", "auto", "choice", "hardware", choices=DEVICES, advanced=False),
         Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
               enabled_if=Ne("device", "cpu")),
         Param("multiprocess", False, "bool", "hardware", cli="multiprocess") if multiprocess else None,
@@ -737,6 +745,15 @@ def normalize(settings: dict[str, Any]) -> dict[str, Any]:
         if key in by_key:
             out[key] = coerce(by_key[key], value)
     return out
+
+
+def offered_choices(param: Param) -> tuple:
+    """The choices of a parameter this computer offers: the Apple GPU only on a Mac."""
+    import sys
+
+    if param.key == "device" and sys.platform != "darwin":
+        return tuple(c for c in param.choices if c != "mps")
+    return param.choices
 
 
 def is_enabled(param: Param, settings: dict[str, Any]) -> bool:

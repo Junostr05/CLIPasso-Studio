@@ -118,9 +118,10 @@ class EngineServer:
             raise _Fail("not_found", f"the image does not exist: {target}")
         if resume_dir and not os.path.isdir(resume_dir):
             raise _Fail("not_found", f"the job folder does not exist: {resume_dir}")
-        cuda = bool(self.op_devices({}).get("cuda"))
+        devices = self.op_devices({})
         job = self.runner.start(settings, target, output_root, job_dir=resume_dir,
-                                auto_parallel=bool(args.get("auto_parallel", True)), cuda=cuda)
+                                auto_parallel=bool(args.get("auto_parallel", True)), cuda=bool(devices.get("cuda")),
+                                mps=bool(devices.get("mps")))
         self._count += 1
         self.job = f"j{self._count}"
         return {"job": self.job, "job_dir": job.job_dir}
