@@ -128,3 +128,27 @@ def test_cli_writes_files_without_torch_or_qt(tmp_path):
     assert out.stdout.split() == ["0", "False", "False"], out.stderr
     assert json.loads(schema_file.read_text(encoding="utf-8")) == export.export_schema()
     assert json.loads(models_file.read_text(encoding="utf-8")) == export.export_models()
+
+
+def test_strokes_rule_matches_num_strokes():
+    """The Mac app counts the strokes of a job (the gallery's sort) from the exported rule – the same number as
+    settings_schema.num_strokes."""
+    data = export.export_schema()
+    rng = random.Random(0)
+    for method in schema.METHODS:
+        rule = data["method"][method]["strokes"]
+        assert set(rule) == {"key", "fixed", "one_line"}
+        for _ in range(200):
+            s = schema.default_settings(method)
+            for key in ("num_paths", "num_strokes"):
+                if key in s:
+                    s[key] = rng.randint(1, 256)
+            if "one_line" in s:
+                s["one_line"] = rng.random() < 0.5
+            if rule["fixed"] is not None:
+                got = rule["fixed"]
+            elif rule["one_line"] and s.get(rule["one_line"]):
+                got = 1
+            else:
+                got = int(s[rule["key"]])
+            assert got == schema.num_strokes(s), (method, s)

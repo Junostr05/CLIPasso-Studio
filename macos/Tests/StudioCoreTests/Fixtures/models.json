@@ -1,0 +1,919 @@
+{
+ "format": 1,
+ "partial_dir": ".partial",
+ "models": [
+  {
+   "key": "clip:RN101",
+   "filename": "clip/RN101.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/8fa8567bab74a42d41c5915025a8e4538c3bdbe8804a470a72f30b0d94fab599/RN101.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/8fa8567bab74a42d41c5915025a8e4538c3bdbe8804a470a72f30b0d94fab599/RN101.pt"
+   ],
+   "sha256": "8fa8567bab74a42d41c5915025a8e4538c3bdbe8804a470a72f30b0d94fab599",
+   "download_size": 291791292,
+   "stored_size_mb": 290,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:ViT-B/32",
+   "filename": "clip/ViT-B-32.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt"
+   ],
+   "sha256": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
+   "download_size": 353976522,
+   "stored_size_mb": 350,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:RN50",
+   "filename": "clip/RN50.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/afeb0e10f9e5a86da6080e35cf09123aca3b358a0c3e3b6c78a7b63bc04b6762/RN50.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/afeb0e10f9e5a86da6080e35cf09123aca3b358a0c3e3b6c78a7b63bc04b6762/RN50.pt"
+   ],
+   "sha256": "afeb0e10f9e5a86da6080e35cf09123aca3b358a0c3e3b6c78a7b63bc04b6762",
+   "download_size": 255827503,
+   "stored_size_mb": 255,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:RN50x4",
+   "filename": "clip/RN50x4.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/7e526bd135e493cef0776de27d5f42653e6b4c8bf9e0f653bb11773263205fdd/RN50x4.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/7e526bd135e493cef0776de27d5f42653e6b4c8bf9e0f653bb11773263205fdd/RN50x4.pt"
+   ],
+   "sha256": "7e526bd135e493cef0776de27d5f42653e6b4c8bf9e0f653bb11773263205fdd",
+   "download_size": 421854225,
+   "stored_size_mb": 420,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:RN50x16",
+   "filename": "clip/RN50x16.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/52378b407f34354e150460fe41077663dd5b39c54cd0bfd2b27167a4a06ec9aa/RN50x16.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/52378b407f34354e150460fe41077663dd5b39c54cd0bfd2b27167a4a06ec9aa/RN50x16.pt"
+   ],
+   "sha256": "52378b407f34354e150460fe41077663dd5b39c54cd0bfd2b27167a4a06ec9aa",
+   "download_size": 661125706,
+   "stored_size_mb": 660,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:ViT-B/16",
+   "filename": "clip/ViT-B-16.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt"
+   ],
+   "sha256": "5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f",
+   "download_size": 350837078,
+   "stored_size_mb": 350,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "clip:ViT-L/14",
+   "filename": "clip/ViT-L-14.pt",
+   "urls": [
+    "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
+    "https://openaipublic.blob.core.windows.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt"
+   ],
+   "sha256": "b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836",
+   "download_size": 932768134,
+   "stored_size_mb": 890,
+   "kind": "clip",
+   "mac_bundled": false,
+   "extra": {
+    "purpose": "benchmark"
+   }
+  },
+  {
+   "key": "u2net",
+   "filename": "u2net/u2net_fp16.pt",
+   "urls": [
+    "https://huggingface.co/flashingtt/U-2-Net/resolve/main/u2net.pth",
+    "gdrive:1ao1ovG1Qtx4b7EoskHXmi2E9rp5CHLcZ"
+   ],
+   "sha256": "10025a17f49cd3208afc342b589890e402ee63123d6f2d289a4a0903695cce58",
+   "download_size": 176290937,
+   "stored_size_mb": 88,
+   "kind": "u2net",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "dino",
+   "filename": "dino/dino_vits8_fp16.pt",
+   "urls": [
+    "https://dl.fbaipublicfiles.com/dino/dino_deitsmall8_pretrain/dino_deitsmall8_pretrain.pth"
+   ],
+   "sha256": "55c8b267f479b614ec20858947ce361ba804846c193e20be74263a096bb6d75e",
+   "download_size": 86728949,
+   "stored_size_mb": 44,
+   "kind": "dino",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "swiftsketch:diffusion",
+   "filename": "swiftsketch/sketch_diffusion.pt",
+   "urls": [
+    "gdrive:19FryO99dCmz-Dw1jzeZITUI0uuksiOA-"
+   ],
+   "sha256": "d1be95d1de0e35806b31ac854edf0833cceb720afdaf145c3f3ad9b2f4fb5fde",
+   "download_size": 357580707,
+   "stored_size_mb": 144,
+   "kind": "swiftsketch",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "swiftsketch:refine",
+   "filename": "swiftsketch/refinement_network.pt",
+   "urls": [
+    "gdrive:1OrLzwaJXZ4SlDw3hqn71Yg1L01ytLv2x"
+   ],
+   "sha256": "c4af9d11b8116e122b03ad5804f4a81eaf02fc6ec6f189b88ad09ae7ee02e17a",
+   "download_size": 356303267,
+   "stored_size_mb": 144,
+   "kind": "swiftsketch",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "lama",
+   "filename": "scenesketch/big-lama_fp16.pt",
+   "urls": [
+    "https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt"
+   ],
+   "sha256": "344c77bbcb158f17dd143070d1e789f38a66c04202311ae3a258ef66667a9ea9",
+   "download_size": 205669692,
+   "stored_size_mb": 103,
+   "kind": "lama",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "vgg16",
+   "filename": "vgg/vgg16_features_fp16.pt",
+   "urls": [
+    "https://download.pytorch.org/models/vgg16-397923af.pth"
+   ],
+   "sha256": "397923af8e79cdbb6a7127f12361acd7a2f83e06b05044ddf496e83de57a5bf0",
+   "download_size": 553433881,
+   "stored_size_mb": 30,
+   "kind": "vgg",
+   "mac_bundled": false,
+   "extra": {}
+  },
+  {
+   "key": "sd15",
+   "filename": "controlsketch/sd15/manifest.json",
+   "urls": [
+    "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5"
+   ],
+   "sha256": null,
+   "download_size": 2132605510,
+   "stored_size_mb": 2135,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "stable-diffusion-v1-5/stable-diffusion-v1-5",
+    "revision": "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+    "files": [
+     {
+      "remote": "scheduler/scheduler_config.json",
+      "local": "scheduler/scheduler_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder/config.json",
+      "local": "text_encoder/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder/model.fp16.safetensors",
+      "local": "text_encoder/model.safetensors",
+      "size": 246144864,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/merges.txt",
+      "local": "tokenizer/merges.txt",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/special_tokens_map.json",
+      "local": "tokenizer/special_tokens_map.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/tokenizer_config.json",
+      "local": "tokenizer/tokenizer_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/vocab.json",
+      "local": "tokenizer/vocab.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "unet/config.json",
+      "local": "unet/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "unet/diffusion_pytorch_model.fp16.safetensors",
+      "local": "unet/diffusion_pytorch_model.safetensors",
+      "size": 1719125304,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "vae/config.json",
+      "local": "vae/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "vae/diffusion_pytorch_model.fp16.safetensors",
+      "local": "vae/diffusion_pytorch_model.safetensors",
+      "size": 167335342,
+      "fp16": false,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:depth",
+   "filename": "controlsketch/controlnet-depth/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-depth"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-depth",
+    "revision": "35e42a3ea49845b3c76f202f145f257b9fb1b7d4",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:canny",
+   "filename": "controlsketch/controlnet-canny/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-canny"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-canny",
+    "revision": "7f2f69197050967007f6bbd23ab5e52f0384162a",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:hed",
+   "filename": "controlsketch/controlnet-hed/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-hed"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-hed",
+    "revision": "04473d9334ab44908daa66107bbfb6f710aa056d",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:scribble",
+   "filename": "controlsketch/controlnet-scribble/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-scribble"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-scribble",
+    "revision": "864edcd5ccc6ee2695eeebea5b4512100c83e7b3",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:seg",
+   "filename": "controlsketch/controlnet-seg/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-seg"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-seg",
+    "revision": "ecdcb5645b5099c9a7500a504fb9ab3f743c4d96",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "controlnet:normal",
+   "filename": "controlsketch/controlnet-normal/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/sd-controlnet-normal"
+   ],
+   "sha256": null,
+   "download_size": 1445157124,
+   "stored_size_mb": 723,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/sd-controlnet-normal",
+    "revision": "1cbed9b3ca84422e4a2f23c14b9f5a114742b31d",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 1445157124,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "taesd",
+   "filename": "controlsketch/taesd/manifest.json",
+   "urls": [
+    "https://huggingface.co/madebyollin/taesd"
+   ],
+   "sha256": null,
+   "download_size": 9793292,
+   "stored_size_mb": 10,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "madebyollin/taesd",
+    "revision": "614f76814bbe30edbe2e627ace1c2234c81a2c0e",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "diffusion_pytorch_model.safetensors",
+      "local": "diffusion_pytorch_model.safetensors",
+      "size": 9793292,
+      "fp16": false,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "dpt-hybrid",
+   "filename": "controlsketch/dpt-hybrid-midas/manifest.json",
+   "urls": [
+    "https://huggingface.co/Intel/dpt-hybrid-midas"
+   ],
+   "sha256": null,
+   "download_size": 489648389,
+   "stored_size_mb": 245,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "Intel/dpt-hybrid-midas",
+    "revision": "11eaf7a1cf4bd70740697dbc216f98980c0aeb03",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "pytorch_model.bin",
+      "local": "model.safetensors",
+      "size": 489648389,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "hed",
+   "filename": "controlsketch/hed/manifest.json",
+   "urls": [
+    "https://huggingface.co/lllyasviel/Annotators"
+   ],
+   "sha256": null,
+   "download_size": 29444406,
+   "stored_size_mb": 29,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "lllyasviel/Annotators",
+    "revision": "982e7edaec38759d914a963c48c4726685de7d96",
+    "files": [
+     {
+      "remote": "ControlNetHED.pth",
+      "local": "ControlNetHED.safetensors",
+      "size": 29444406,
+      "fp16": false,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "upernet",
+   "filename": "controlsketch/upernet-convnext-small/manifest.json",
+   "urls": [
+    "https://huggingface.co/openmmlab/upernet-convnext-small"
+   ],
+   "sha256": null,
+   "download_size": 327701893,
+   "stored_size_mb": 164,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "openmmlab/upernet-convnext-small",
+    "revision": "550b68d291f9a7e4874065c6eec0676b2ba821e6",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "pytorch_model.bin",
+      "local": "model.safetensors",
+      "size": 327701893,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "blip",
+   "filename": "controlsketch/blip-image-captioning-large/manifest.json",
+   "urls": [
+    "https://huggingface.co/Salesforce/blip-image-captioning-large"
+   ],
+   "sha256": null,
+   "download_size": 1879014680,
+   "stored_size_mb": 940,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "Salesforce/blip-image-captioning-large",
+    "revision": "353689b859fcf0523410b1806dace5fb46ecdf41",
+    "files": [
+     {
+      "remote": "config.json",
+      "local": "config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "preprocessor_config.json",
+      "local": "preprocessor_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "special_tokens_map.json",
+      "local": "special_tokens_map.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer.json",
+      "local": "tokenizer.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer_config.json",
+      "local": "tokenizer_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "vocab.txt",
+      "local": "vocab.txt",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "model.safetensors",
+      "local": "model.safetensors",
+      "size": 1879014680,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "sdxl",
+   "filename": "controlsketch/sdxl-base-1.0/manifest.json",
+   "urls": [
+    "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
+   ],
+   "sha256": null,
+   "download_size": 6938011430,
+   "stored_size_mb": 6940,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "stabilityai/stable-diffusion-xl-base-1.0",
+    "revision": "462165984030d82259a11f4367a4eed129e94a7b",
+    "files": [
+     {
+      "remote": "model_index.json",
+      "local": "model_index.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "scheduler/scheduler_config.json",
+      "local": "scheduler/scheduler_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder/config.json",
+      "local": "text_encoder/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder/model.fp16.safetensors",
+      "local": "text_encoder/model.safetensors",
+      "size": 246144152,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder_2/config.json",
+      "local": "text_encoder_2/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "text_encoder_2/model.fp16.safetensors",
+      "local": "text_encoder_2/model.safetensors",
+      "size": 1389382176,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/merges.txt",
+      "local": "tokenizer/merges.txt",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/special_tokens_map.json",
+      "local": "tokenizer/special_tokens_map.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/tokenizer_config.json",
+      "local": "tokenizer/tokenizer_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer/vocab.json",
+      "local": "tokenizer/vocab.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer_2/merges.txt",
+      "local": "tokenizer_2/merges.txt",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer_2/special_tokens_map.json",
+      "local": "tokenizer_2/special_tokens_map.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer_2/tokenizer_config.json",
+      "local": "tokenizer_2/tokenizer_config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "tokenizer_2/vocab.json",
+      "local": "tokenizer_2/vocab.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "unet/config.json",
+      "local": "unet/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "unet/diffusion_pytorch_model.fp16.safetensors",
+      "local": "unet/diffusion_pytorch_model.safetensors",
+      "size": 5135149760,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "vae/config.json",
+      "local": "vae/config.json",
+      "size": null,
+      "fp16": false,
+      "prefix": ""
+     },
+     {
+      "remote": "vae/diffusion_pytorch_model.fp16.safetensors",
+      "local": "vae/diffusion_pytorch_model.safetensors",
+      "size": 167335342,
+      "fp16": false,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "birefnet",
+   "filename": "masking/birefnet/manifest.json",
+   "urls": [
+    "https://huggingface.co/ZhengPeng7/BiRefNet"
+   ],
+   "sha256": null,
+   "download_size": 444473596,
+   "stored_size_mb": 444,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "ZhengPeng7/BiRefNet",
+    "revision": "e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4",
+    "files": [
+     {
+      "remote": "model.safetensors",
+      "local": "model.safetensors",
+      "size": 444473596,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "birefnet-lite",
+   "filename": "masking/birefnet-lite/manifest.json",
+   "urls": [
+    "https://huggingface.co/ZhengPeng7/BiRefNet_lite"
+   ],
+   "sha256": null,
+   "download_size": 177634392,
+   "stored_size_mb": 89,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "ZhengPeng7/BiRefNet_lite",
+    "revision": "aa62cd87eafb9cc43056d08ef3615a14628b831d",
+    "files": [
+     {
+      "remote": "model.safetensors",
+      "local": "model.safetensors",
+      "size": 177634392,
+      "fp16": true,
+      "prefix": ""
+     }
+    ]
+   }
+  },
+  {
+   "key": "semantic:openclip-b16",
+   "filename": "semantic/openclip-vit-b-16-laion2b/manifest.json",
+   "urls": [
+    "https://huggingface.co/laion/CLIP-ViT-B-16-laion2B-s34B-b88K"
+   ],
+   "sha256": null,
+   "download_size": 598516980,
+   "stored_size_mb": 172,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "laion/CLIP-ViT-B-16-laion2B-s34B-b88K",
+    "revision": "7288da5a0d6f0b51c4a2b27c624837a9236d0112",
+    "files": [
+     {
+      "remote": "open_clip_model.safetensors",
+      "local": "model.safetensors",
+      "size": 598516980,
+      "fp16": true,
+      "prefix": "visual."
+     }
+    ],
+    "experimental": true
+   }
+  },
+  {
+   "key": "semantic:siglip-b16",
+   "filename": "semantic/siglip-base-patch16-224/manifest.json",
+   "urls": [
+    "https://huggingface.co/google/siglip-base-patch16-224"
+   ],
+   "sha256": null,
+   "download_size": 812672320,
+   "stored_size_mb": 186,
+   "kind": "hf",
+   "mac_bundled": false,
+   "extra": {
+    "repo": "google/siglip-base-patch16-224",
+    "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+    "files": [
+     {
+      "remote": "model.safetensors",
+      "local": "model.safetensors",
+      "size": 812672320,
+      "fp16": true,
+      "prefix": "vision_model."
+     }
+    ],
+    "experimental": true
+   }
+  },
+  {
+   "key": "blazeface",
+   "filename": "blazeface/blazeface.pt",
+   "urls": [
+    "https://raw.githubusercontent.com/hollance/BlazeFace-PyTorch/852bfd8e3d44ed6775761105bdcead4ef389a538/blazeface.pth"
+   ],
+   "sha256": "54ecff653feaaaf1f7d44b6aff28fd2fc50e483a4e847563b6dd261369c43ba4",
+   "download_size": 420224,
+   "stored_size_mb": 1,
+   "kind": "blazeface",
+   "mac_bundled": true,
+   "extra": {}
+  }
+ ]
+}

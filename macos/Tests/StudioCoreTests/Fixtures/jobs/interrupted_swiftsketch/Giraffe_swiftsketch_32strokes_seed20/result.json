@@ -1,0 +1,14 @@
+{
+  "seed": 20,
+  "run_name": "Giraffe_swiftsketch_32strokes_seed20",
+  "run_dir": "/Users/studio/Documents/CLIPasso Studio/interrupted_swiftsketch/Giraffe_swiftsketch_32strokes_seed20",
+  "best_loss": 0.0,
+  "best_iter": 400,
+  "iterations_done": 501,
+  "best_svg": "/Users/studio/Documents/CLIPasso Studio/interrupted_swiftsketch/Giraffe_swiftsketch_32strokes_seed20/best_iter.svg",
+  "status": "done",
+  "method": "swiftsketch",
+  "clip_score": 28.75,
+  "seconds": 12.5,
+  "pruned": false
+}

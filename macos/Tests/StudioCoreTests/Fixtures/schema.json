@@ -1,0 +1,3739 @@
+{
+ "format": 1,
+ "app_version": "fixture",
+ "methods": [
+  "clipasso",
+  "swiftsketch",
+  "controlsketch",
+  "scenesketch"
+ ],
+ "default_method": "clipasso",
+ "devices": [
+  "auto",
+  "cpu",
+  "cuda",
+  "mps"
+ ],
+ "method": {
+  "clipasso": {
+   "name": "CLIPasso",
+   "icon": "pencil-line",
+   "text": {
+    "tagline": "method.clipasso.tagline",
+    "desc": "method.clipasso.desc",
+    "speed": "method.clipasso.speed"
+   },
+   "groups": [
+    "basics",
+    "image",
+    "strokes",
+    "init",
+    "loss",
+    "optim",
+    "augment",
+    "hardware"
+   ],
+   "group_text": {
+    "basics": "group.basics",
+    "image": "group.image",
+    "strokes": "group.strokes",
+    "init": "group.init",
+    "loss": "group.loss",
+    "optim": "group.optim",
+    "augment": "group.augment",
+    "hardware": "group.hardware"
+   },
+   "presets": {
+    "fast": {
+     "num_iter": 501,
+     "num_sketches": 1
+    },
+    "standard": {
+     "num_iter": 2001,
+     "num_sketches": 3
+    },
+    "quality": {
+     "num_iter": 3001,
+     "num_sketches": 5
+    }
+   },
+   "preset_order": [
+    "fast",
+    "standard",
+    "quality"
+   ],
+   "preset_text": {
+    "fast": "ui.preset.fast",
+    "standard": "ui.preset.standard",
+    "quality": "ui.preset.quality"
+   },
+   "defaults": {
+    "num_paths": 16,
+    "num_iter": 2001,
+    "num_sketches": 3,
+    "seed": 0,
+    "best_by": "faithful",
+    "mask_object": false,
+    "mask_model": "birefnet",
+    "frame_object": true,
+    "fix_scale": false,
+    "image_scale": 224,
+    "one_line": false,
+    "one_line_segments": 48,
+    "width": 1.5,
+    "sketch_guide": false,
+    "num_segments": 1,
+    "control_points_per_seg": 4,
+    "path_svg": "none",
+    "attention_init": true,
+    "saliency_model": "clip",
+    "saliency_clip_model": "ViT-B/32",
+    "xdog_intersec": true,
+    "mask_object_attention": "auto",
+    "softmax_temp": 0.3,
+    "text_target": "none",
+    "clip_model_name": "RN101",
+    "clip_conv_loss": true,
+    "clip_conv_loss_type": "L2",
+    "clip_conv_layer_weights": "0,0,1.0,1.0,0",
+    "clip_fc_loss_weight": 0.1,
+    "semantic_model": "clip",
+    "train_with_clip": false,
+    "clip_weight": 0.0,
+    "start_clip": 0,
+    "include_target_in_aug": false,
+    "clip_text_guide": 0.0,
+    "percep_loss": "none",
+    "perceptual_weight": 0.0,
+    "turbo": false,
+    "lr": 1.0,
+    "lr_scheduler": false,
+    "force_sparse": false,
+    "color_lr": 0.01,
+    "color_vars_threshold": 0.0,
+    "num_stages": 1,
+    "eval_interval": 10,
+    "save_interval": 10,
+    "augemntations": "affine",
+    "num_aug_clip": 4,
+    "augment_both": true,
+    "aug_scale_min": 0.8,
+    "noise_thresh": 0.5,
+    "device": "auto",
+    "gpunum": 0,
+    "multiprocess": false,
+    "num_threads": 0,
+    "method": "clipasso"
+   },
+   "params": [
+    {
+     "key": "num_paths",
+     "kind": "int",
+     "default": 16,
+     "group": "basics",
+     "cli": "num_paths",
+     "min": 1,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "off",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.num_paths.label",
+      "choices": {},
+      "help": "param.num_paths.help"
+     }
+    },
+    {
+     "key": "num_iter",
+     "kind": "int",
+     "default": 2001,
+     "group": "basics",
+     "cli": "num_iter",
+     "min": 1,
+     "max": 20000,
+     "step": 100,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_iter.label",
+      "choices": {},
+      "help": "param.num_iter.help"
+     }
+    },
+    {
+     "key": "num_sketches",
+     "kind": "int",
+     "default": 3,
+     "group": "basics",
+     "cli": "num_sketches",
+     "min": 1,
+     "max": 16,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_sketches.label",
+      "choices": {},
+      "help": "param.num_sketches.help"
+     }
+    },
+    {
+     "key": "seed",
+     "kind": "int",
+     "default": 0,
+     "group": "basics",
+     "cli": "seed",
+     "min": 0,
+     "max": 10000000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.seed.label",
+      "choices": {},
+      "help": "param.seed.help"
+     }
+    },
+    {
+     "key": "best_by",
+     "kind": "choice",
+     "default": "faithful",
+     "group": "basics",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "faithful",
+      "beautiful",
+      "mine"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "gt",
+        "key": "num_sketches",
+        "value": 1
+       },
+       {
+        "op": "off",
+        "key": "turbo"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.best_by.label",
+      "choices": {
+       "faithful": "param.best_by.choice.faithful",
+       "beautiful": "param.best_by.choice.beautiful",
+       "mine": "param.best_by.choice.mine"
+      },
+      "help": "param.best_by.help"
+     }
+    },
+    {
+     "key": "mask_object",
+     "kind": "bool",
+     "default": false,
+     "group": "image",
+     "cli": "mask_object",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.mask_object.label",
+      "choices": {},
+      "help": "param.mask_object.help"
+     }
+    },
+    {
+     "key": "mask_model",
+     "kind": "choice",
+     "default": "birefnet",
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "birefnet",
+      "birefnet-lite",
+      "u2net"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "any",
+      "of": [
+       {
+        "op": "on",
+        "key": "mask_object"
+       },
+       {
+        "op": "eq",
+        "key": "mask_object_attention",
+        "value": "on",
+        "default": "auto"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.mask_model.label",
+      "choices": {
+       "birefnet": "param.mask_model.choice.birefnet",
+       "birefnet-lite": "param.mask_model.choice.birefnet-lite",
+       "u2net": "param.mask_model.choice.u2net"
+      },
+      "help": "param.mask_model.help"
+     }
+    },
+    {
+     "key": "frame_object",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "mask_object"
+     },
+     "text": {
+      "label": "param.frame_object.label",
+      "choices": {},
+      "help": "param.frame_object.help"
+     }
+    },
+    {
+     "key": "fix_scale",
+     "kind": "bool",
+     "default": false,
+     "group": "image",
+     "cli": "fix_scale",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.fix_scale.label",
+      "choices": {},
+      "help": "param.fix_scale.help"
+     }
+    },
+    {
+     "key": "image_scale",
+     "kind": "int",
+     "default": 224,
+     "group": "image",
+     "cli": "image_scale",
+     "min": 64,
+     "max": 1024,
+     "step": 32,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.image_scale.label",
+      "choices": {},
+      "help": "param.image_scale.help"
+     }
+    },
+    {
+     "key": "one_line",
+     "kind": "bool",
+     "default": false,
+     "group": "strokes",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.one_line.label",
+      "choices": {},
+      "help": "param.one_line.help"
+     }
+    },
+    {
+     "key": "one_line_segments",
+     "kind": "int",
+     "default": 48,
+     "group": "strokes",
+     "cli": null,
+     "min": 8,
+     "max": 128,
+     "step": 8,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.one_line_segments.label",
+      "choices": {},
+      "help": "param.one_line_segments.help"
+     }
+    },
+    {
+     "key": "width",
+     "kind": "float",
+     "default": 1.5,
+     "group": "strokes",
+     "cli": "width",
+     "min": 0.1,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.width.label",
+      "choices": {},
+      "help": "param.width.help"
+     }
+    },
+    {
+     "key": "sketch_guide",
+     "kind": "bool",
+     "default": false,
+     "group": "strokes",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": true,
+     "enabled_if": null,
+     "text": {
+      "label": "param.sketch_guide.label",
+      "choices": {},
+      "help": "param.sketch_guide.help"
+     }
+    },
+    {
+     "key": "num_segments",
+     "kind": "int",
+     "default": 1,
+     "group": "strokes",
+     "cli": "num_segments",
+     "min": 1,
+     "max": 16,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "off",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.num_segments.label",
+      "choices": {},
+      "help": "param.num_segments.help"
+     }
+    },
+    {
+     "key": "control_points_per_seg",
+     "kind": "choice",
+     "default": 4,
+     "group": "strokes",
+     "cli": "control_points_per_seg",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      2,
+      3,
+      4
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "off",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.control_points_per_seg.label",
+      "choices": {
+       "2": "param.control_points_per_seg.choice.2",
+       "3": "param.control_points_per_seg.choice.3",
+       "4": "param.control_points_per_seg.choice.4"
+      },
+      "help": "param.control_points_per_seg.help"
+     }
+    },
+    {
+     "key": "path_svg",
+     "kind": "path",
+     "default": "none",
+     "group": "strokes",
+     "cli": "path_svg",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.path_svg.label",
+      "choices": {},
+      "help": "param.path_svg.help"
+     }
+    },
+    {
+     "key": "attention_init",
+     "kind": "bool",
+     "default": true,
+     "group": "init",
+     "cli": "attention_init",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.attention_init.label",
+      "choices": {},
+      "help": "param.attention_init.help"
+     }
+    },
+    {
+     "key": "saliency_model",
+     "kind": "choice",
+     "default": "clip",
+     "group": "init",
+     "cli": "saliency_model",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "clip",
+      "dino"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "attention_init"
+     },
+     "text": {
+      "label": "param.saliency_model.label",
+      "choices": {
+       "clip": "param.saliency_model.choice.clip",
+       "dino": "param.saliency_model.choice.dino"
+      },
+      "help": "param.saliency_model.help"
+     }
+    },
+    {
+     "key": "saliency_clip_model",
+     "kind": "choice",
+     "default": "ViT-B/32",
+     "group": "init",
+     "cli": "saliency_clip_model",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "RN50",
+      "RN101",
+      "RN50x4",
+      "RN50x16",
+      "ViT-B/32",
+      "ViT-B/16"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.saliency_clip_model.label",
+      "choices": {},
+      "help": "param.saliency_clip_model.help"
+     }
+    },
+    {
+     "key": "xdog_intersec",
+     "kind": "bool",
+     "default": true,
+     "group": "init",
+     "cli": "xdog_intersec",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.xdog_intersec.label",
+      "choices": {},
+      "help": "param.xdog_intersec.help"
+     }
+    },
+    {
+     "key": "mask_object_attention",
+     "kind": "choice",
+     "default": "auto",
+     "group": "init",
+     "cli": "mask_object_attention",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "auto",
+      "on",
+      "off"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "attention_init"
+     },
+     "text": {
+      "label": "param.mask_object_attention.label",
+      "choices": {
+       "auto": "param.mask_object_attention.choice.auto",
+       "on": "param.mask_object_attention.choice.on",
+       "off": "param.mask_object_attention.choice.off"
+      },
+      "help": "param.mask_object_attention.help"
+     }
+    },
+    {
+     "key": "softmax_temp",
+     "kind": "float",
+     "default": 0.3,
+     "group": "init",
+     "cli": "softmax_temp",
+     "min": 0.01,
+     "max": 10.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.softmax_temp.label",
+      "choices": {},
+      "help": "param.softmax_temp.help"
+     }
+    },
+    {
+     "key": "text_target",
+     "kind": "text",
+     "default": "none",
+     "group": "init",
+     "cli": "text_target",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.text_target.label",
+      "choices": {},
+      "help": "param.text_target.help"
+     }
+    },
+    {
+     "key": "clip_model_name",
+     "kind": "choice",
+     "default": "RN101",
+     "group": "loss",
+     "cli": "clip_model_name",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "RN50",
+      "RN101",
+      "RN50x4",
+      "RN50x16",
+      "ViT-B/32",
+      "ViT-B/16"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.clip_model_name.label",
+      "choices": {},
+      "help": "param.clip_model_name.help"
+     }
+    },
+    {
+     "key": "clip_conv_loss",
+     "kind": "bool",
+     "default": true,
+     "group": "loss",
+     "cli": "clip_conv_loss",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.clip_conv_loss.label",
+      "choices": {},
+      "help": "param.clip_conv_loss.help"
+     }
+    },
+    {
+     "key": "clip_conv_loss_type",
+     "kind": "choice",
+     "default": "L2",
+     "group": "loss",
+     "cli": "clip_conv_loss_type",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "L2",
+      "Cos",
+      "L1"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "clip_conv_loss"
+     },
+     "text": {
+      "label": "param.clip_conv_loss_type.label",
+      "choices": {},
+      "help": "param.clip_conv_loss_type.help"
+     }
+    },
+    {
+     "key": "clip_conv_layer_weights",
+     "kind": "layers",
+     "default": "0,0,1.0,1.0,0",
+     "group": "loss",
+     "cli": "clip_conv_layer_weights",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "clip_conv_loss"
+     },
+     "text": {
+      "label": "param.clip_conv_layer_weights.label",
+      "choices": {},
+      "help": "param.clip_conv_layer_weights.help"
+     }
+    },
+    {
+     "key": "clip_fc_loss_weight",
+     "kind": "float",
+     "default": 0.1,
+     "group": "loss",
+     "cli": "clip_fc_loss_weight",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.05,
+     "decimals": 3,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "clip_conv_loss"
+     },
+     "text": {
+      "label": "param.clip_fc_loss_weight.label",
+      "choices": {},
+      "help": "param.clip_fc_loss_weight.help"
+     }
+    },
+    {
+     "key": "semantic_model",
+     "kind": "choice",
+     "default": "clip",
+     "group": "loss",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "clip",
+      "openclip_b16",
+      "siglip_b16"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "clip_conv_loss"
+       },
+       {
+        "op": "gt",
+        "key": "clip_fc_loss_weight",
+        "value": 0
+       }
+      ]
+     },
+     "text": {
+      "label": "param.semantic_model.label",
+      "choices": {
+       "clip": "param.semantic_model.choice.clip",
+       "openclip_b16": "param.semantic_model.choice.openclip_b16",
+       "siglip_b16": "param.semantic_model.choice.siglip_b16"
+      },
+      "help": "param.semantic_model.help"
+     }
+    },
+    {
+     "key": "train_with_clip",
+     "kind": "bool",
+     "default": false,
+     "group": "loss",
+     "cli": "train_with_clip",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.train_with_clip.label",
+      "choices": {},
+      "help": "param.train_with_clip.help"
+     }
+    },
+    {
+     "key": "clip_weight",
+     "kind": "float",
+     "default": 0.0,
+     "group": "loss",
+     "cli": "clip_weight",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 3,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "train_with_clip"
+     },
+     "text": {
+      "label": "param.clip_weight.label",
+      "choices": {},
+      "help": "param.clip_weight.help"
+     }
+    },
+    {
+     "key": "start_clip",
+     "kind": "int",
+     "default": 0,
+     "group": "loss",
+     "cli": "start_clip",
+     "min": 0,
+     "max": 20000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "train_with_clip"
+     },
+     "text": {
+      "label": "param.start_clip.label",
+      "choices": {},
+      "help": "param.start_clip.help"
+     }
+    },
+    {
+     "key": "include_target_in_aug",
+     "kind": "bool",
+     "default": false,
+     "group": "loss",
+     "cli": "include_target_in_aug",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "train_with_clip"
+     },
+     "text": {
+      "label": "param.include_target_in_aug.label",
+      "choices": {},
+      "help": "param.include_target_in_aug.help"
+     }
+    },
+    {
+     "key": "clip_text_guide",
+     "kind": "float",
+     "default": 0.0,
+     "group": "loss",
+     "cli": "clip_text_guide",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 3,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.clip_text_guide.label",
+      "choices": {},
+      "help": "param.clip_text_guide.help"
+     }
+    },
+    {
+     "key": "percep_loss",
+     "kind": "choice",
+     "default": "none",
+     "group": "loss",
+     "cli": "percep_loss",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "none",
+      "L2",
+      "LPIPS"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.percep_loss.label",
+      "choices": {
+       "none": "param.percep_loss.choice.none",
+       "L2": "param.percep_loss.choice.L2",
+       "LPIPS": "param.percep_loss.choice.LPIPS"
+      },
+      "help": "param.percep_loss.help"
+     }
+    },
+    {
+     "key": "perceptual_weight",
+     "kind": "float",
+     "default": 0.0,
+     "group": "loss",
+     "cli": "perceptual_weight",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 3,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "ne",
+      "key": "percep_loss",
+      "value": "none",
+      "default": "none"
+     },
+     "text": {
+      "label": "param.perceptual_weight.label",
+      "choices": {},
+      "help": "param.perceptual_weight.help"
+     }
+    },
+    {
+     "key": "turbo",
+     "kind": "bool",
+     "default": false,
+     "group": "optim",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.turbo.label",
+      "choices": {},
+      "help": "param.turbo.help"
+     }
+    },
+    {
+     "key": "lr",
+     "kind": "float",
+     "default": 1.0,
+     "group": "optim",
+     "cli": "lr",
+     "min": 0.0001,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 4,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.lr.label",
+      "choices": {},
+      "help": "param.lr.help"
+     }
+    },
+    {
+     "key": "lr_scheduler",
+     "kind": "bool",
+     "default": false,
+     "group": "optim",
+     "cli": "lr_scheduler",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.lr_scheduler.label",
+      "choices": {},
+      "help": "param.lr_scheduler.help"
+     }
+    },
+    {
+     "key": "force_sparse",
+     "kind": "bool",
+     "default": false,
+     "group": "optim",
+     "cli": "force_sparse",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "off",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.force_sparse.label",
+      "choices": {},
+      "help": "param.force_sparse.help"
+     }
+    },
+    {
+     "key": "color_lr",
+     "kind": "float",
+     "default": 0.01,
+     "group": "optim",
+     "cli": "color_lr",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.005,
+     "decimals": 4,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "force_sparse"
+     },
+     "text": {
+      "label": "param.color_lr.label",
+      "choices": {},
+      "help": "param.color_lr.help"
+     }
+    },
+    {
+     "key": "color_vars_threshold",
+     "kind": "float",
+     "default": 0.0,
+     "group": "optim",
+     "cli": "color_vars_threshold",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "force_sparse"
+     },
+     "text": {
+      "label": "param.color_vars_threshold.label",
+      "choices": {},
+      "help": "param.color_vars_threshold.help"
+     }
+    },
+    {
+     "key": "num_stages",
+     "kind": "int",
+     "default": 1,
+     "group": "optim",
+     "cli": "num_stages",
+     "min": 1,
+     "max": 16,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "off",
+      "key": "one_line"
+     },
+     "text": {
+      "label": "param.num_stages.label",
+      "choices": {},
+      "help": "param.num_stages.help"
+     }
+    },
+    {
+     "key": "eval_interval",
+     "kind": "int",
+     "default": 10,
+     "group": "optim",
+     "cli": "eval_interval",
+     "min": 1,
+     "max": 1000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.eval_interval.label",
+      "choices": {},
+      "help": "param.eval_interval.help"
+     }
+    },
+    {
+     "key": "save_interval",
+     "kind": "int",
+     "default": 10,
+     "group": "basics",
+     "cli": "save_interval",
+     "min": 1,
+     "max": 1000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.save_interval.label",
+      "choices": {},
+      "help": "param.save_interval.help"
+     }
+    },
+    {
+     "key": "augemntations",
+     "kind": "flags",
+     "default": "affine",
+     "group": "augment",
+     "cli": "augemntations",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "affine",
+      "noise"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.augemntations.label",
+      "choices": {
+       "affine": "param.augemntations.choice.affine",
+       "noise": "param.augemntations.choice.noise"
+      },
+      "help": "param.augemntations.help"
+     }
+    },
+    {
+     "key": "num_aug_clip",
+     "kind": "int",
+     "default": 4,
+     "group": "augment",
+     "cli": "num_aug_clip",
+     "min": 0,
+     "max": 32,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_aug_clip.label",
+      "choices": {},
+      "help": "param.num_aug_clip.help"
+     }
+    },
+    {
+     "key": "augment_both",
+     "kind": "bool",
+     "default": true,
+     "group": "augment",
+     "cli": "augment_both",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.augment_both.label",
+      "choices": {},
+      "help": "param.augment_both.help"
+     }
+    },
+    {
+     "key": "aug_scale_min",
+     "kind": "float",
+     "default": 0.8,
+     "group": "augment",
+     "cli": "aug_scale_min",
+     "min": 0.1,
+     "max": 1.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.aug_scale_min.label",
+      "choices": {},
+      "help": "param.aug_scale_min.help"
+     }
+    },
+    {
+     "key": "noise_thresh",
+     "kind": "float",
+     "default": 0.5,
+     "group": "augment",
+     "cli": "noise_thresh",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "has",
+      "key": "augemntations",
+      "value": "noise"
+     },
+     "text": {
+      "label": "param.noise_thresh.label",
+      "choices": {},
+      "help": "param.noise_thresh.help"
+     }
+    },
+    {
+     "key": "device",
+     "kind": "choice",
+     "default": "auto",
+     "group": "hardware",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "auto",
+      "cpu",
+      "cuda",
+      "mps"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.device.label",
+      "choices": {
+       "auto": "param.device.choice.auto",
+       "cpu": "param.device.choice.cpu",
+       "cuda": "param.device.choice.cuda",
+       "mps": "param.device.choice.mps"
+      },
+      "help": "param.device.help"
+     }
+    },
+    {
+     "key": "gpunum",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": "gpunum",
+     "min": 0,
+     "max": 15,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "ne",
+      "key": "device",
+      "value": "cpu"
+     },
+     "text": {
+      "label": "param.gpunum.label",
+      "choices": {},
+      "help": "param.gpunum.help"
+     }
+    },
+    {
+     "key": "multiprocess",
+     "kind": "bool",
+     "default": false,
+     "group": "hardware",
+     "cli": "multiprocess",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.multiprocess.label",
+      "choices": {},
+      "help": "param.multiprocess.help"
+     }
+    },
+    {
+     "key": "num_threads",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": null,
+     "min": 0,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_threads.label",
+      "choices": {},
+      "help": "param.num_threads.help"
+     }
+    }
+   ],
+   "strokes": {
+    "key": "num_paths",
+    "fixed": null,
+    "one_line": "one_line"
+   }
+  },
+  "swiftsketch": {
+   "name": "SwiftSketch",
+   "icon": "zap",
+   "text": {
+    "tagline": "method.swiftsketch.tagline",
+    "desc": "method.swiftsketch.desc",
+    "speed": "method.swiftsketch.speed"
+   },
+   "groups": [
+    "basics",
+    "image",
+    "diffusion",
+    "strokes",
+    "hardware"
+   ],
+   "group_text": {
+    "basics": "group.basics",
+    "image": "group.image",
+    "diffusion": "group.diffusion",
+    "strokes": "group.strokes",
+    "hardware": "group.hardware"
+   },
+   "presets": {
+    "fast": {
+     "num_sketches": 1
+    },
+    "standard": {
+     "num_sketches": 4
+    },
+    "quality": {
+     "num_sketches": 12
+    }
+   },
+   "preset_order": [
+    "fast",
+    "standard",
+    "quality"
+   ],
+   "preset_text": {
+    "fast": "ui.preset.fast",
+    "standard": "ui.preset.standard",
+    "quality": "ui.preset.quality"
+   },
+   "defaults": {
+    "num_sketches": 1,
+    "seed": 20,
+    "best_by": "faithful",
+    "mask_object": true,
+    "mask_model": "birefnet",
+    "frame_object": true,
+    "fix_scale": false,
+    "guidance_param": 2.5,
+    "use_refine": true,
+    "save_diffusion_sketch": false,
+    "width": 2.0,
+    "device": "auto",
+    "gpunum": 0,
+    "multiprocess": false,
+    "num_threads": 0,
+    "method": "swiftsketch"
+   },
+   "params": [
+    {
+     "key": "num_sketches",
+     "kind": "int",
+     "default": 1,
+     "group": "basics",
+     "cli": null,
+     "min": 1,
+     "max": 32,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_sketches.label",
+      "choices": {},
+      "help": "param.swiftsketch.num_sketches.help"
+     }
+    },
+    {
+     "key": "seed",
+     "kind": "int",
+     "default": 20,
+     "group": "basics",
+     "cli": "seed",
+     "min": 0,
+     "max": 10000000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.seed.label",
+      "choices": {},
+      "help": "param.swiftsketch.seed.help"
+     }
+    },
+    {
+     "key": "best_by",
+     "kind": "choice",
+     "default": "faithful",
+     "group": "basics",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "faithful",
+      "beautiful",
+      "mine"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "gt",
+        "key": "num_sketches",
+        "value": 1
+       },
+       {
+        "op": "off",
+        "key": "turbo"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.best_by.label",
+      "choices": {
+       "faithful": "param.best_by.choice.faithful",
+       "beautiful": "param.best_by.choice.beautiful",
+       "mine": "param.best_by.choice.mine"
+      },
+      "help": "param.best_by.help"
+     }
+    },
+    {
+     "key": "mask_object",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.mask_object.label",
+      "choices": {},
+      "help": "param.swiftsketch.mask_object.help"
+     }
+    },
+    {
+     "key": "mask_model",
+     "kind": "choice",
+     "default": "birefnet",
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "birefnet",
+      "birefnet-lite",
+      "u2net"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "mask_object"
+     },
+     "text": {
+      "label": "param.mask_model.label",
+      "choices": {
+       "birefnet": "param.mask_model.choice.birefnet",
+       "birefnet-lite": "param.mask_model.choice.birefnet-lite",
+       "u2net": "param.mask_model.choice.u2net"
+      },
+      "help": "param.mask_model.help"
+     }
+    },
+    {
+     "key": "frame_object",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "mask_object"
+     },
+     "text": {
+      "label": "param.frame_object.label",
+      "choices": {},
+      "help": "param.frame_object.help"
+     }
+    },
+    {
+     "key": "fix_scale",
+     "kind": "bool",
+     "default": false,
+     "group": "image",
+     "cli": "fix_scale",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.fix_scale.label",
+      "choices": {},
+      "help": "param.fix_scale.help"
+     }
+    },
+    {
+     "key": "guidance_param",
+     "kind": "float",
+     "default": 2.5,
+     "group": "diffusion",
+     "cli": "guidance_param",
+     "min": 1.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.guidance_param.label",
+      "choices": {},
+      "help": "param.guidance_param.help"
+     }
+    },
+    {
+     "key": "use_refine",
+     "kind": "bool",
+     "default": true,
+     "group": "diffusion",
+     "cli": "use_refine",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.use_refine.label",
+      "choices": {},
+      "help": "param.use_refine.help"
+     }
+    },
+    {
+     "key": "save_diffusion_sketch",
+     "kind": "bool",
+     "default": false,
+     "group": "diffusion",
+     "cli": "save_diffusion_sketch_in_dict",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.save_diffusion_sketch.label",
+      "choices": {},
+      "help": "param.save_diffusion_sketch.help"
+     }
+    },
+    {
+     "key": "width",
+     "kind": "float",
+     "default": 2.0,
+     "group": "strokes",
+     "cli": null,
+     "min": 0.1,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.width.label",
+      "choices": {},
+      "help": "param.swiftsketch.width.help"
+     }
+    },
+    {
+     "key": "device",
+     "kind": "choice",
+     "default": "auto",
+     "group": "hardware",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "auto",
+      "cpu",
+      "cuda",
+      "mps"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.device.label",
+      "choices": {
+       "auto": "param.device.choice.auto",
+       "cpu": "param.device.choice.cpu",
+       "cuda": "param.device.choice.cuda",
+       "mps": "param.device.choice.mps"
+      },
+      "help": "param.device.help"
+     }
+    },
+    {
+     "key": "gpunum",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": "gpunum",
+     "min": 0,
+     "max": 15,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "ne",
+      "key": "device",
+      "value": "cpu"
+     },
+     "text": {
+      "label": "param.gpunum.label",
+      "choices": {},
+      "help": "param.gpunum.help"
+     }
+    },
+    {
+     "key": "multiprocess",
+     "kind": "bool",
+     "default": false,
+     "group": "hardware",
+     "cli": "multiprocess",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.multiprocess.label",
+      "choices": {},
+      "help": "param.multiprocess.help"
+     }
+    },
+    {
+     "key": "num_threads",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": null,
+     "min": 0,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_threads.label",
+      "choices": {},
+      "help": "param.num_threads.help"
+     }
+    }
+   ],
+   "strokes": {
+    "key": null,
+    "fixed": 32,
+    "one_line": null
+   }
+  },
+  "controlsketch": {
+   "name": "ControlSketch",
+   "icon": "wand-sparkles",
+   "text": {
+    "tagline": "method.controlsketch.tagline",
+    "desc": "method.controlsketch.desc",
+    "speed": "method.controlsketch.speed"
+   },
+   "groups": [
+    "basics",
+    "image",
+    "strokes",
+    "init",
+    "sds",
+    "optim",
+    "hardware"
+   ],
+   "group_text": {
+    "basics": "group.basics",
+    "image": "group.image",
+    "strokes": "group.strokes",
+    "init": "group.init",
+    "sds": "group.sds",
+    "optim": "group.optim",
+    "hardware": "group.hardware"
+   },
+   "presets": {
+    "fast": {
+     "num_iter": 500,
+     "num_sketches": 1
+    },
+    "standard": {
+     "num_iter": 2000,
+     "num_sketches": 1
+    },
+    "quality": {
+     "num_iter": 3000,
+     "num_sketches": 3
+    }
+   },
+   "preset_order": [
+    "fast",
+    "standard",
+    "quality"
+   ],
+   "preset_text": {
+    "fast": "ui.preset.fast",
+    "standard": "ui.preset.standard",
+    "quality": "ui.preset.quality"
+   },
+   "defaults": {
+    "num_strokes": 32,
+    "num_iter": 2000,
+    "num_sketches": 1,
+    "seed": 0,
+    "best_by": "faithful",
+    "caption": "none",
+    "mask_object": true,
+    "mask_model": "birefnet",
+    "fix_scale": false,
+    "object_size_ratio": 0.75,
+    "render_size": 512,
+    "output_svg_size": 512,
+    "width": 2.5,
+    "num_segments": 1,
+    "control_points_per_seg": 4,
+    "sort_final_sketch": true,
+    "use_init_method": true,
+    "attn_model": "clip",
+    "object_name": "none",
+    "sdxl_place": "offload",
+    "condition": "depth",
+    "conditioning_scale": 0.15,
+    "diffusion_guidance_scale": 100,
+    "diffusion_timesteps": 1000,
+    "turbo": false,
+    "lr": 0.8,
+    "save_interval": 100,
+    "device": "auto",
+    "gpunum": 0,
+    "num_threads": 0,
+    "method": "controlsketch"
+   },
+   "params": [
+    {
+     "key": "num_strokes",
+     "kind": "int",
+     "default": 32,
+     "group": "basics",
+     "cli": "num_strokes",
+     "min": 1,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_strokes.label",
+      "choices": {},
+      "help": "param.num_strokes.help"
+     }
+    },
+    {
+     "key": "num_iter",
+     "kind": "int",
+     "default": 2000,
+     "group": "basics",
+     "cli": "num_iter",
+     "min": 1,
+     "max": 20000,
+     "step": 100,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_iter.label",
+      "choices": {},
+      "help": "param.controlsketch.num_iter.help"
+     }
+    },
+    {
+     "key": "num_sketches",
+     "kind": "int",
+     "default": 1,
+     "group": "basics",
+     "cli": null,
+     "min": 1,
+     "max": 16,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_sketches.label",
+      "choices": {},
+      "help": "param.controlsketch.num_sketches.help"
+     }
+    },
+    {
+     "key": "seed",
+     "kind": "int",
+     "default": 0,
+     "group": "basics",
+     "cli": "seed",
+     "min": 0,
+     "max": 10000000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.seed.label",
+      "choices": {},
+      "help": "param.controlsketch.seed.help"
+     }
+    },
+    {
+     "key": "best_by",
+     "kind": "choice",
+     "default": "faithful",
+     "group": "basics",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "faithful",
+      "beautiful",
+      "mine"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "gt",
+        "key": "num_sketches",
+        "value": 1
+       },
+       {
+        "op": "off",
+        "key": "turbo"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.best_by.label",
+      "choices": {
+       "faithful": "param.best_by.choice.faithful",
+       "beautiful": "param.best_by.choice.beautiful",
+       "mine": "param.best_by.choice.mine"
+      },
+      "help": "param.best_by.help"
+     }
+    },
+    {
+     "key": "caption",
+     "kind": "text",
+     "default": "none",
+     "group": "basics",
+     "cli": "caption",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.caption.label",
+      "choices": {},
+      "help": "param.caption.help"
+     }
+    },
+    {
+     "key": "mask_object",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.mask_object.label",
+      "choices": {},
+      "help": "param.controlsketch.mask_object.help"
+     }
+    },
+    {
+     "key": "mask_model",
+     "kind": "choice",
+     "default": "birefnet",
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "birefnet",
+      "birefnet-lite",
+      "u2net"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "mask_object"
+     },
+     "text": {
+      "label": "param.mask_model.label",
+      "choices": {
+       "birefnet": "param.mask_model.choice.birefnet",
+       "birefnet-lite": "param.mask_model.choice.birefnet-lite",
+       "u2net": "param.mask_model.choice.u2net"
+      },
+      "help": "param.mask_model.help"
+     }
+    },
+    {
+     "key": "fix_scale",
+     "kind": "bool",
+     "default": false,
+     "group": "image",
+     "cli": "fix_scale",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.fix_scale.label",
+      "choices": {},
+      "help": "param.controlsketch.fix_scale.help"
+     }
+    },
+    {
+     "key": "object_size_ratio",
+     "kind": "float",
+     "default": 0.75,
+     "group": "image",
+     "cli": "object_size_ratio",
+     "min": 0.1,
+     "max": 1.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "mask_object"
+     },
+     "text": {
+      "label": "param.object_size_ratio.label",
+      "choices": {},
+      "help": "param.object_size_ratio.help"
+     }
+    },
+    {
+     "key": "render_size",
+     "kind": "int",
+     "default": 512,
+     "group": "image",
+     "cli": "render_size",
+     "min": 256,
+     "max": 1024,
+     "step": 64,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.render_size.label",
+      "choices": {},
+      "help": "param.render_size.help"
+     }
+    },
+    {
+     "key": "output_svg_size",
+     "kind": "int",
+     "default": 512,
+     "group": "image",
+     "cli": "output_svg_size",
+     "min": 64,
+     "max": 4096,
+     "step": 64,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.output_svg_size.label",
+      "choices": {},
+      "help": "param.output_svg_size.help"
+     }
+    },
+    {
+     "key": "width",
+     "kind": "float",
+     "default": 2.5,
+     "group": "strokes",
+     "cli": "width",
+     "min": 0.1,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.width.label",
+      "choices": {},
+      "help": "param.controlsketch.width.help"
+     }
+    },
+    {
+     "key": "num_segments",
+     "kind": "int",
+     "default": 1,
+     "group": "strokes",
+     "cli": "num_segments",
+     "min": 1,
+     "max": 16,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_segments.label",
+      "choices": {},
+      "help": "param.num_segments.help"
+     }
+    },
+    {
+     "key": "control_points_per_seg",
+     "kind": "choice",
+     "default": 4,
+     "group": "strokes",
+     "cli": "control_points_per_seg",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      2,
+      3,
+      4
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.control_points_per_seg.label",
+      "choices": {
+       "2": "param.control_points_per_seg.choice.2",
+       "3": "param.control_points_per_seg.choice.3",
+       "4": "param.control_points_per_seg.choice.4"
+      },
+      "help": "param.control_points_per_seg.help"
+     }
+    },
+    {
+     "key": "sort_final_sketch",
+     "kind": "bool",
+     "default": true,
+     "group": "strokes",
+     "cli": "sort_final_sketch",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.sort_final_sketch.label",
+      "choices": {},
+      "help": "param.sort_final_sketch.help"
+     }
+    },
+    {
+     "key": "use_init_method",
+     "kind": "bool",
+     "default": true,
+     "group": "init",
+     "cli": "use_init_method",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.use_init_method.label",
+      "choices": {},
+      "help": "param.use_init_method.help"
+     }
+    },
+    {
+     "key": "attn_model",
+     "kind": "choice",
+     "default": "clip",
+     "group": "init",
+     "cli": "attn_model",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "clip",
+      "diffusion"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "use_init_method"
+     },
+     "text": {
+      "label": "param.attn_model.label",
+      "choices": {
+       "clip": "param.attn_model.choice.clip",
+       "diffusion": "param.attn_model.choice.diffusion"
+      },
+      "help": "param.attn_model.help"
+     }
+    },
+    {
+     "key": "object_name",
+     "kind": "text",
+     "default": "none",
+     "group": "init",
+     "cli": "object_name",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "use_init_method"
+       },
+       {
+        "op": "eq",
+        "key": "attn_model",
+        "value": "diffusion"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.object_name.label",
+      "choices": {},
+      "help": "param.object_name.help"
+     }
+    },
+    {
+     "key": "sdxl_place",
+     "kind": "choice",
+     "default": "offload",
+     "group": "init",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "offload",
+      "cpu"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "use_init_method"
+       },
+       {
+        "op": "eq",
+        "key": "attn_model",
+        "value": "diffusion"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.sdxl_place.label",
+      "choices": {
+       "offload": "param.sdxl_place.choice.offload",
+       "cpu": "param.sdxl_place.choice.cpu"
+      },
+      "help": "param.sdxl_place.help"
+     }
+    },
+    {
+     "key": "condition",
+     "kind": "choice",
+     "default": "depth",
+     "group": "sds",
+     "cli": "condition",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "depth",
+      "canny",
+      "hed",
+      "scribble",
+      "seg",
+      "normal"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.condition.label",
+      "choices": {
+       "depth": "param.condition.choice.depth",
+       "canny": "param.condition.choice.canny",
+       "hed": "param.condition.choice.hed",
+       "scribble": "param.condition.choice.scribble",
+       "seg": "param.condition.choice.seg",
+       "normal": "param.condition.choice.normal"
+      },
+      "help": "param.condition.help"
+     }
+    },
+    {
+     "key": "conditioning_scale",
+     "kind": "float",
+     "default": 0.15,
+     "group": "sds",
+     "cli": "conditioning_scale",
+     "min": 0.0,
+     "max": 2.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.conditioning_scale.label",
+      "choices": {},
+      "help": "param.conditioning_scale.help"
+     }
+    },
+    {
+     "key": "diffusion_guidance_scale",
+     "kind": "int",
+     "default": 100,
+     "group": "sds",
+     "cli": "diffusion_guidance_scale",
+     "min": 1,
+     "max": 200,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.diffusion_guidance_scale.label",
+      "choices": {},
+      "help": "param.diffusion_guidance_scale.help"
+     }
+    },
+    {
+     "key": "diffusion_timesteps",
+     "kind": "int",
+     "default": 1000,
+     "group": "sds",
+     "cli": "diffusion_timesteps",
+     "min": 100,
+     "max": 1000,
+     "step": 50,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.diffusion_timesteps.label",
+      "choices": {},
+      "help": "param.diffusion_timesteps.help"
+     }
+    },
+    {
+     "key": "turbo",
+     "kind": "bool",
+     "default": false,
+     "group": "optim",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.turbo.label",
+      "choices": {},
+      "help": "param.controlsketch.turbo.help"
+     }
+    },
+    {
+     "key": "lr",
+     "kind": "float",
+     "default": 0.8,
+     "group": "optim",
+     "cli": "lr",
+     "min": 0.0001,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 4,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.lr.label",
+      "choices": {},
+      "help": "param.controlsketch.lr.help"
+     }
+    },
+    {
+     "key": "save_interval",
+     "kind": "int",
+     "default": 100,
+     "group": "basics",
+     "cli": "save_interval",
+     "min": 1,
+     "max": 1000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.save_interval.label",
+      "choices": {},
+      "help": "param.controlsketch.save_interval.help"
+     }
+    },
+    {
+     "key": "device",
+     "kind": "choice",
+     "default": "auto",
+     "group": "hardware",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "auto",
+      "cpu",
+      "cuda",
+      "mps"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.device.label",
+      "choices": {
+       "auto": "param.device.choice.auto",
+       "cpu": "param.device.choice.cpu",
+       "cuda": "param.device.choice.cuda",
+       "mps": "param.device.choice.mps"
+      },
+      "help": "param.device.help"
+     }
+    },
+    {
+     "key": "gpunum",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": "gpunum",
+     "min": 0,
+     "max": 15,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "ne",
+      "key": "device",
+      "value": "cpu"
+     },
+     "text": {
+      "label": "param.gpunum.label",
+      "choices": {},
+      "help": "param.gpunum.help"
+     }
+    },
+    {
+     "key": "num_threads",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": null,
+     "min": 0,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_threads.label",
+      "choices": {},
+      "help": "param.num_threads.help"
+     }
+    }
+   ],
+   "strokes": {
+    "key": "num_strokes",
+    "fixed": null,
+    "one_line": null
+   }
+  },
+  "scenesketch": {
+   "name": "SceneSketch",
+   "icon": "mountain",
+   "text": {
+    "tagline": "method.scenesketch.tagline",
+    "desc": "method.scenesketch.desc",
+    "speed": "method.scenesketch.speed"
+   },
+   "groups": [
+    "basics",
+    "image",
+    "fidelity",
+    "simplify",
+    "strokes",
+    "init",
+    "loss",
+    "optim",
+    "hardware"
+   ],
+   "group_text": {
+    "basics": "group.basics",
+    "image": "group.image",
+    "fidelity": "group.fidelity",
+    "simplify": "group.simplify",
+    "strokes": "group.strokes",
+    "init": "group.init",
+    "loss": "group.loss",
+    "optim": "group.optim",
+    "hardware": "group.hardware"
+   },
+   "presets": {
+    "fast": {
+     "layers": "8",
+     "simplicity_levels": 0,
+     "num_sketches": 1,
+     "num_iter": 501,
+     "object_num_iter": 500,
+     "min_eval_iter": 300
+    },
+    "standard": {
+     "layers": "8",
+     "simplicity_levels": 4,
+     "num_sketches": 1,
+     "num_iter": 1001,
+     "object_num_iter": 800,
+     "min_eval_iter": 400,
+     "simplify_num_iter": 401
+    },
+    "quality": {
+     "layers": "2_8_11",
+     "simplicity_levels": 8,
+     "num_sketches": 2,
+     "num_iter": 1501,
+     "object_num_iter": 1000,
+     "min_eval_iter": 400,
+     "simplify_num_iter": 401
+    }
+   },
+   "preset_order": [
+    "fast",
+    "standard",
+    "quality"
+   ],
+   "preset_text": {
+    "fast": "ui.preset.fast",
+    "standard": "ui.preset.standard",
+    "quality": "ui.preset.quality"
+   },
+   "defaults": {
+    "layers": "2_8_11",
+    "simplicity_levels": 8,
+    "simplicity_pick": "1_2_3_4_5_6_7_8",
+    "num_strokes": 64,
+    "object_num_strokes": 0,
+    "num_sketches": 2,
+    "seed": 0,
+    "split_scene": true,
+    "mask_model": "birefnet",
+    "resize_obj": true,
+    "fix_scale": false,
+    "num_iter": 1501,
+    "object_num_iter": 1000,
+    "eval_interval": 50,
+    "min_eval_iter": 400,
+    "simplify_num_iter": 401,
+    "background_divs": "2:0.35,3:0.45,4:0.45,7:0.45,8:0.5,11:0.85",
+    "object_divs": "2:0.4,3:0.45,4:0.45,7:0.4,8:0.5,11:0.9",
+    "width_loss_weight": 1.0,
+    "width_lr": 5e-05,
+    "gumbel_temp": 0.2,
+    "width": 1.5,
+    "control_points_per_seg": 4,
+    "sketch_guide": false,
+    "attention_init": true,
+    "saliency_model": "clip",
+    "saliency_clip_model": "ViT-B/32",
+    "xdog_intersec": true,
+    "softmax_temp": 0.3,
+    "mask_object_attention": false,
+    "clip_conv_loss_type": "L2",
+    "num_aug_clip": 4,
+    "turbo": false,
+    "lr": 0.0001,
+    "save_interval": 100,
+    "device": "auto",
+    "gpunum": 0,
+    "num_threads": 0,
+    "method": "scenesketch"
+   },
+   "params": [
+    {
+     "key": "layers",
+     "kind": "flags",
+     "default": "2_8_11",
+     "group": "basics",
+     "cli": "layers",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "2",
+      "3",
+      "4",
+      "7",
+      "8",
+      "11"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.layers.label",
+      "choices": {
+       "2": "param.scenesketch.layers.choice.2",
+       "3": "param.scenesketch.layers.choice.3",
+       "4": "param.scenesketch.layers.choice.4",
+       "7": "param.scenesketch.layers.choice.7",
+       "8": "param.scenesketch.layers.choice.8",
+       "11": "param.scenesketch.layers.choice.11"
+      },
+      "help": "param.scenesketch.layers.help"
+     }
+    },
+    {
+     "key": "simplicity_levels",
+     "kind": "int",
+     "default": 8,
+     "group": "basics",
+     "cli": null,
+     "min": 0,
+     "max": 8,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.simplicity_levels.label",
+      "choices": {},
+      "help": "param.scenesketch.simplicity_levels.help"
+     }
+    },
+    {
+     "key": "simplicity_pick",
+     "kind": "flags",
+     "default": "1_2_3_4_5_6_7_8",
+     "group": "basics",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.simplicity_pick.label",
+      "choices": {},
+      "help": "param.scenesketch.simplicity_pick.help"
+     }
+    },
+    {
+     "key": "num_strokes",
+     "kind": "int",
+     "default": 64,
+     "group": "basics",
+     "cli": "num_strokes",
+     "min": 4,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.num_strokes.label",
+      "choices": {},
+      "help": "param.scenesketch.num_strokes.help"
+     }
+    },
+    {
+     "key": "object_num_strokes",
+     "kind": "int",
+     "default": 0,
+     "group": "basics",
+     "cli": null,
+     "min": 0,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "split_scene"
+     },
+     "text": {
+      "label": "param.scenesketch.object_num_strokes.label",
+      "choices": {},
+      "help": "param.scenesketch.object_num_strokes.help"
+     }
+    },
+    {
+     "key": "num_sketches",
+     "kind": "int",
+     "default": 2,
+     "group": "basics",
+     "cli": "num_sketches",
+     "min": 1,
+     "max": 8,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_sketches.label",
+      "choices": {},
+      "help": "param.scenesketch.num_sketches.help"
+     }
+    },
+    {
+     "key": "seed",
+     "kind": "int",
+     "default": 0,
+     "group": "basics",
+     "cli": "seed",
+     "min": 0,
+     "max": 10000000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.seed.label",
+      "choices": {},
+      "help": "param.scenesketch.seed.help"
+     }
+    },
+    {
+     "key": "split_scene",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.split_scene.label",
+      "choices": {},
+      "help": "param.scenesketch.split_scene.help"
+     }
+    },
+    {
+     "key": "mask_model",
+     "kind": "choice",
+     "default": "birefnet",
+     "group": "image",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "birefnet",
+      "birefnet-lite",
+      "u2net"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "split_scene"
+     },
+     "text": {
+      "label": "param.mask_model.label",
+      "choices": {
+       "birefnet": "param.mask_model.choice.birefnet",
+       "birefnet-lite": "param.mask_model.choice.birefnet-lite",
+       "u2net": "param.mask_model.choice.u2net"
+      },
+      "help": "param.mask_model.help"
+     }
+    },
+    {
+     "key": "resize_obj",
+     "kind": "bool",
+     "default": true,
+     "group": "image",
+     "cli": "resize_obj",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "split_scene"
+     },
+     "text": {
+      "label": "param.scenesketch.resize_obj.label",
+      "choices": {},
+      "help": "param.scenesketch.resize_obj.help"
+     }
+    },
+    {
+     "key": "fix_scale",
+     "kind": "bool",
+     "default": false,
+     "group": "image",
+     "cli": "fix_scale",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.fix_scale.label",
+      "choices": {},
+      "help": "param.scenesketch.fix_scale.help"
+     }
+    },
+    {
+     "key": "num_iter",
+     "kind": "int",
+     "default": 1501,
+     "group": "fidelity",
+     "cli": "num_iter",
+     "min": 1,
+     "max": 20000,
+     "step": 100,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.num_iter.label",
+      "choices": {},
+      "help": "param.scenesketch.num_iter.help"
+     }
+    },
+    {
+     "key": "object_num_iter",
+     "kind": "int",
+     "default": 1000,
+     "group": "fidelity",
+     "cli": null,
+     "min": 1,
+     "max": 20000,
+     "step": 100,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "split_scene"
+     },
+     "text": {
+      "label": "param.scenesketch.object_num_iter.label",
+      "choices": {},
+      "help": "param.scenesketch.object_num_iter.help"
+     }
+    },
+    {
+     "key": "eval_interval",
+     "kind": "int",
+     "default": 50,
+     "group": "fidelity",
+     "cli": "eval_interval",
+     "min": 1,
+     "max": 1000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.eval_interval.label",
+      "choices": {},
+      "help": "param.scenesketch.eval_interval.help"
+     }
+    },
+    {
+     "key": "min_eval_iter",
+     "kind": "int",
+     "default": 400,
+     "group": "fidelity",
+     "cli": "min_eval_iter",
+     "min": 0,
+     "max": 20000,
+     "step": 50,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.min_eval_iter.label",
+      "choices": {},
+      "help": "param.scenesketch.min_eval_iter.help"
+     }
+    },
+    {
+     "key": "simplify_num_iter",
+     "kind": "int",
+     "default": 401,
+     "group": "simplify",
+     "cli": null,
+     "min": 1,
+     "max": 10000,
+     "step": 50,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.simplify_num_iter.label",
+      "choices": {},
+      "help": "param.scenesketch.simplify_num_iter.help"
+     }
+    },
+    {
+     "key": "background_divs",
+     "kind": "text",
+     "default": "2:0.35,3:0.45,4:0.45,7:0.45,8:0.5,11:0.85",
+     "group": "simplify",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.background_divs.label",
+      "choices": {},
+      "help": "param.scenesketch.background_divs.help"
+     }
+    },
+    {
+     "key": "object_divs",
+     "kind": "text",
+     "default": "2:0.4,3:0.45,4:0.45,7:0.4,8:0.5,11:0.9",
+     "group": "simplify",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "gt",
+        "key": "simplicity_levels",
+        "value": 0
+       },
+       {
+        "op": "on",
+        "key": "split_scene"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.scenesketch.object_divs.label",
+      "choices": {},
+      "help": "param.scenesketch.object_divs.help"
+     }
+    },
+    {
+     "key": "width_loss_weight",
+     "kind": "float",
+     "default": 1.0,
+     "group": "simplify",
+     "cli": "width_loss_weight",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.width_loss_weight.label",
+      "choices": {},
+      "help": "param.scenesketch.width_loss_weight.help"
+     }
+    },
+    {
+     "key": "width_lr",
+     "kind": "float",
+     "default": 5e-05,
+     "group": "simplify",
+     "cli": "width_lr",
+     "min": 1e-07,
+     "max": 0.1,
+     "step": 1e-05,
+     "decimals": 6,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.width_lr.label",
+      "choices": {},
+      "help": "param.scenesketch.width_lr.help"
+     }
+    },
+    {
+     "key": "gumbel_temp",
+     "kind": "float",
+     "default": 0.2,
+     "group": "simplify",
+     "cli": "gumbel_temp",
+     "min": 0.01,
+     "max": 5.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "gt",
+      "key": "simplicity_levels",
+      "value": 0
+     },
+     "text": {
+      "label": "param.scenesketch.gumbel_temp.label",
+      "choices": {},
+      "help": "param.scenesketch.gumbel_temp.help"
+     }
+    },
+    {
+     "key": "width",
+     "kind": "float",
+     "default": 1.5,
+     "group": "strokes",
+     "cli": "width",
+     "min": 0.1,
+     "max": 20.0,
+     "step": 0.1,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.width.label",
+      "choices": {},
+      "help": "param.scenesketch.width.help"
+     }
+    },
+    {
+     "key": "control_points_per_seg",
+     "kind": "choice",
+     "default": 4,
+     "group": "strokes",
+     "cli": "control_points_per_seg",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      2,
+      3,
+      4
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.control_points_per_seg.label",
+      "choices": {
+       "2": "param.control_points_per_seg.choice.2",
+       "3": "param.control_points_per_seg.choice.3",
+       "4": "param.control_points_per_seg.choice.4"
+      },
+      "help": "param.control_points_per_seg.help"
+     }
+    },
+    {
+     "key": "sketch_guide",
+     "kind": "bool",
+     "default": false,
+     "group": "strokes",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": true,
+     "enabled_if": null,
+     "text": {
+      "label": "param.sketch_guide.label",
+      "choices": {},
+      "help": "param.sketch_guide.help"
+     }
+    },
+    {
+     "key": "attention_init",
+     "kind": "bool",
+     "default": true,
+     "group": "init",
+     "cli": "attention_init",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.attention_init.label",
+      "choices": {},
+      "help": "param.attention_init.help"
+     }
+    },
+    {
+     "key": "saliency_model",
+     "kind": "choice",
+     "default": "clip",
+     "group": "init",
+     "cli": "saliency_model",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "clip",
+      "dino"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "on",
+      "key": "attention_init"
+     },
+     "text": {
+      "label": "param.saliency_model.label",
+      "choices": {
+       "clip": "param.saliency_model.choice.clip",
+       "dino": "param.saliency_model.choice.dino"
+      },
+      "help": "param.saliency_model.help"
+     }
+    },
+    {
+     "key": "saliency_clip_model",
+     "kind": "choice",
+     "default": "ViT-B/32",
+     "group": "init",
+     "cli": "saliency_clip_model",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "RN50",
+      "RN101",
+      "RN50x4",
+      "RN50x16",
+      "ViT-B/32",
+      "ViT-B/16"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.saliency_clip_model.label",
+      "choices": {},
+      "help": "param.saliency_clip_model.help"
+     }
+    },
+    {
+     "key": "xdog_intersec",
+     "kind": "bool",
+     "default": true,
+     "group": "init",
+     "cli": "xdog_intersec",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.xdog_intersec.label",
+      "choices": {},
+      "help": "param.xdog_intersec.help"
+     }
+    },
+    {
+     "key": "softmax_temp",
+     "kind": "float",
+     "default": 0.3,
+     "group": "init",
+     "cli": "softmax_temp",
+     "min": 0.01,
+     "max": 10.0,
+     "step": 0.05,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "eq",
+        "key": "saliency_model",
+        "value": "clip"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.softmax_temp.label",
+      "choices": {},
+      "help": "param.softmax_temp.help"
+     }
+    },
+    {
+     "key": "mask_object_attention",
+     "kind": "bool",
+     "default": false,
+     "group": "init",
+     "cli": "mask_object_attention",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "all",
+      "of": [
+       {
+        "op": "on",
+        "key": "attention_init"
+       },
+       {
+        "op": "on",
+        "key": "split_scene"
+       }
+      ]
+     },
+     "text": {
+      "label": "param.mask_object_attention.label",
+      "choices": {},
+      "help": "param.scenesketch.mask_object_attention.help"
+     }
+    },
+    {
+     "key": "clip_conv_loss_type",
+     "kind": "choice",
+     "default": "L2",
+     "group": "loss",
+     "cli": "clip_conv_loss_type",
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "L2",
+      "Cos",
+      "L1"
+     ],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.clip_conv_loss_type.label",
+      "choices": {},
+      "help": "param.clip_conv_loss_type.help"
+     }
+    },
+    {
+     "key": "num_aug_clip",
+     "kind": "int",
+     "default": 4,
+     "group": "loss",
+     "cli": "num_aug_clip",
+     "min": 0,
+     "max": 32,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_aug_clip.label",
+      "choices": {},
+      "help": "param.num_aug_clip.help"
+     }
+    },
+    {
+     "key": "turbo",
+     "kind": "bool",
+     "default": false,
+     "group": "optim",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.turbo.label",
+      "choices": {},
+      "help": "param.scenesketch.turbo.help"
+     }
+    },
+    {
+     "key": "lr",
+     "kind": "float",
+     "default": 0.0001,
+     "group": "optim",
+     "cli": "lr",
+     "min": 1e-07,
+     "max": 1.0,
+     "step": 5e-05,
+     "decimals": 6,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.scenesketch.lr.label",
+      "choices": {},
+      "help": "param.scenesketch.lr.help"
+     }
+    },
+    {
+     "key": "save_interval",
+     "kind": "int",
+     "default": 100,
+     "group": "basics",
+     "cli": "save_interval",
+     "min": 1,
+     "max": 1000,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.save_interval.label",
+      "choices": {},
+      "help": "param.scenesketch.save_interval.help"
+     }
+    },
+    {
+     "key": "device",
+     "kind": "choice",
+     "default": "auto",
+     "group": "hardware",
+     "cli": null,
+     "min": null,
+     "max": null,
+     "step": null,
+     "decimals": 2,
+     "choices": [
+      "auto",
+      "cpu",
+      "cuda",
+      "mps"
+     ],
+     "advanced": false,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.device.label",
+      "choices": {
+       "auto": "param.device.choice.auto",
+       "cpu": "param.device.choice.cpu",
+       "cuda": "param.device.choice.cuda",
+       "mps": "param.device.choice.mps"
+      },
+      "help": "param.device.help"
+     }
+    },
+    {
+     "key": "gpunum",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": "gpunum",
+     "min": 0,
+     "max": 15,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": {
+      "op": "ne",
+      "key": "device",
+      "value": "cpu"
+     },
+     "text": {
+      "label": "param.gpunum.label",
+      "choices": {},
+      "help": "param.gpunum.help"
+     }
+    },
+    {
+     "key": "num_threads",
+     "kind": "int",
+     "default": 0,
+     "group": "hardware",
+     "cli": null,
+     "min": 0,
+     "max": 256,
+     "step": null,
+     "decimals": 2,
+     "choices": [],
+     "advanced": true,
+     "hidden": false,
+     "enabled_if": null,
+     "text": {
+      "label": "param.num_threads.label",
+      "choices": {},
+      "help": "param.num_threads.help"
+     }
+    }
+   ],
+   "strokes": {
+    "key": "num_strokes",
+    "fixed": null,
+    "one_line": null
+   }
+  }
+ }
+}

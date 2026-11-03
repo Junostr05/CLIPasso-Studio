@@ -1,0 +1,185 @@
+[
+ {
+  "value": null,
+  "compact": "null",
+  "pretty": "null"
+ },
+ {
+  "value": true,
+  "compact": "true",
+  "pretty": "true"
+ },
+ {
+  "value": false,
+  "compact": "false",
+  "pretty": "false"
+ },
+ {
+  "value": 0,
+  "compact": "0",
+  "pretty": "0"
+ },
+ {
+  "value": -7,
+  "compact": "-7",
+  "pretty": "-7"
+ },
+ {
+  "value": 9007199254740992,
+  "compact": "9007199254740992",
+  "pretty": "9007199254740992"
+ },
+ {
+  "value": 12345678901234567890,
+  "compact": "12345678901234567890",
+  "pretty": "12345678901234567890"
+ },
+ {
+  "value": 0.1,
+  "compact": "0.1",
+  "pretty": "0.1"
+ },
+ {
+  "value": -2.5,
+  "compact": "-2.5",
+  "pretty": "-2.5"
+ },
+ {
+  "value": 100.0,
+  "compact": "100.0",
+  "pretty": "100.0"
+ },
+ {
+  "value": 1e-05,
+  "compact": "1e-05",
+  "pretty": "1e-05"
+ },
+ {
+  "value": 0.0001,
+  "compact": "0.0001",
+  "pretty": "0.0001"
+ },
+ {
+  "value": 1000000000000000.0,
+  "compact": "1000000000000000.0",
+  "pretty": "1000000000000000.0"
+ },
+ {
+  "value": 1234567890123456.0,
+  "compact": "1234567890123456.0",
+  "pretty": "1234567890123456.0"
+ },
+ {
+  "value": 1e+16,
+  "compact": "1e+16",
+  "pretty": "1e+16"
+ },
+ {
+  "value": 1.2345678901234567e+19,
+  "compact": "1.2345678901234567e+19",
+  "pretty": "1.2345678901234567e+19"
+ },
+ {
+  "value": 5e-324,
+  "compact": "5e-324",
+  "pretty": "5e-324"
+ },
+ {
+  "value": 1.7976931348623157e+308,
+  "compact": "1.7976931348623157e+308",
+  "pretty": "1.7976931348623157e+308"
+ },
+ {
+  "value": 3.141592653589793,
+  "compact": "3.141592653589793",
+  "pretty": "3.141592653589793"
+ },
+ {
+  "value": 123456789.123,
+  "compact": "123456789.123",
+  "pretty": "123456789.123"
+ },
+ {
+  "value": 1.5e-07,
+  "compact": "1.5e-07",
+  "pretty": "1.5e-07"
+ },
+ {
+  "value": "",
+  "compact": "\"\"",
+  "pretty": "\"\""
+ },
+ {
+  "value": "Bild Ä ö ü ß",
+  "compact": "\"Bild Ä ö ü ß\"",
+  "pretty": "\"Bild Ä ö ü ß\""
+ },
+ {
+  "value": "Emoji ✏️🦒",
+  "compact": "\"Emoji ✏️🦒\"",
+  "pretty": "\"Emoji ✏️🦒\""
+ },
+ {
+  "value": "„Tiere“ and \"quotes\" \\ / \n\t\r\b\f \u0001 \u001f   ",
+  "compact": "\"„Tiere“ and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f   \"",
+  "pretty": "\"„Tiere“ and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f   \""
+ },
+ {
+  "value": [],
+  "compact": "[]",
+  "pretty": "[]"
+ },
+ {
+  "value": {},
+  "compact": "{}",
+  "pretty": "{}"
+ },
+ {
+  "value": [
+   1,
+   [
+    2,
+    [
+     3,
+     {}
+    ]
+   ]
+  ],
+  "compact": "[1, [2, [3, {}]]]",
+  "pretty": "[\n  1,\n  [\n    2,\n    [\n      3,\n      {}\n    ]\n  ]\n]"
+ },
+ {
+  "value": {
+   "b": 1,
+   "a": [
+    true,
+    null
+   ],
+   "ü": {
+    "x": ""
+   }
+  },
+  "compact": "{\"b\": 1, \"a\": [true, null], \"ü\": {\"x\": \"\"}}",
+  "pretty": "{\n  \"b\": 1,\n  \"a\": [\n    true,\n    null\n  ],\n  \"ü\": {\n    \"x\": \"\"\n  }\n}"
+ },
+ {
+  "value": {
+   "favourite": true,
+   "title": "Kamel am Abend – Skizze ✏️",
+   "notes": "Zeile 1\nZeile 2",
+   "tags": [
+    "Tier",
+    "Wüste"
+   ],
+   "albums": [
+    "Tiere"
+   ],
+   "ratings": {
+    "Kamel_16strokes_seed0": 1,
+    "Kamel_16strokes_seed1000": -1
+   }
+  },
+  "compact": "{\"favourite\": true, \"title\": \"Kamel am Abend – Skizze ✏️\", \"notes\": \"Zeile 1\\nZeile 2\", \"tags\": [\"Tier\", \"Wüste\"], \"albums\": [\"Tiere\"], \"ratings\": {\"Kamel_16strokes_seed0\": 1, \"Kamel_16strokes_seed1000\": -1}}",
+  "pretty": "{\n  \"favourite\": true,\n  \"title\": \"Kamel am Abend – Skizze ✏️\",\n  \"notes\": \"Zeile 1\\nZeile 2\",\n  \"tags\": [\n    \"Tier\",\n    \"Wüste\"\n  ],\n  \"albums\": [\n    \"Tiere\"\n  ],\n  \"ratings\": {\n    \"Kamel_16strokes_seed0\": 1,\n    \"Kamel_16strokes_seed1000\": -1\n  }\n}"
+ }
+]

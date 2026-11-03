@@ -1,0 +1,14 @@
+{
+  "seed": 0,
+  "run_name": "Giraffe_16strokes_seed0",
+  "run_dir": "C:\\Users\\J\u00fcrgen\\Documents\\CLIPasso Studio\\windows_paths\\Giraffe_16strokes_seed0",
+  "best_loss": 0.4,
+  "best_iter": 400,
+  "iterations_done": 501,
+  "best_svg": "C:\\Users\\J\u00fcrgen\\Documents\\CLIPasso Studio\\windows_paths\\Giraffe_16strokes_seed0\\best_iter.svg",
+  "status": "done",
+  "method": "clipasso",
+  "clip_score": null,
+  "seconds": 12.5,
+  "pruned": false
+}

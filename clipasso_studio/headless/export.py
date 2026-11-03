@@ -46,6 +46,14 @@ def _param(method: str, p: schema.Param) -> dict:
             "enabled_if": p.enabled_if.to_json() if p.enabled_if is not None else None, "text": text}
 
 
+# how many strokes a job's sketches have (settings_schema.num_strokes, for the gallery's sort): the value of ``key``,
+# 1 when ``one_line`` is on, or always ``fixed`` (SwiftSketch's checkpoints are trained for 32)
+STROKES = {"clipasso": {"key": "num_paths", "fixed": None, "one_line": "one_line"},
+           "swiftsketch": {"key": None, "fixed": 32, "one_line": None},
+           "controlsketch": {"key": "num_strokes", "fixed": None, "one_line": None},
+           "scenesketch": {"key": "num_strokes", "fixed": None, "one_line": None}}
+
+
 def _method(method: str) -> dict:
     groups = list(schema.METHOD_GROUPS[method])
     return {
@@ -56,6 +64,7 @@ def _method(method: str) -> dict:
         "preset_text": {p: f"ui.preset.{p}" for p in PRESET_ORDER},
         "defaults": schema.default_settings(method),
         "params": [_param(method, p) for p in schema.params_for(method)],
+        "strokes": dict(STROKES[method]),
     }
 
 
