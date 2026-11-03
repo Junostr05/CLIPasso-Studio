@@ -7,6 +7,7 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``schema.json``, ``models.json`` – the exports of ``clipasso_studio.headless`` (the app version as "fixture")
 - ``conditions.json`` – settings (a method's defaults with ``changes``) and what Python decides for them: the
   parameters' rules (``enabled``, one "1" / "0" per parameter in ``ruled``) and ``num_strokes``
+- ``settings.json`` – the app settings as the Python app writes them
 - ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
   ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
 - ``jobs/`` – job folders built with engine/jobs.py, their paths as they would be on a Mac
@@ -106,6 +107,19 @@ def conditions() -> dict:
             cases.append({"method": method, "changes": changes, "num_strokes": schema.num_strokes(s),
                           "enabled": enabled})
     return {"ruled": ruled, "cases": cases}
+
+
+def settings_file() -> str:
+    """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
+    a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
+    them)."""
+    data = {"settings_version": 3, "language": "de", "theme": "light",
+            "output_dir": "/Users/Jürgen/Documents/CLIPasso Studio", "models_dir": "",
+            "telegram_token": "123:made-up", "remote_token": "made-up-token", "remote_pin": "000000",
+            "albums": ["Tiere", "Wüste"], "user_presets": [{"name": "Mein Stil", "method": "clipasso"}],
+            "queue": [{"target": "/Users/Jürgen/Pictures/Kamel.png", "settings": {"method": "clipasso"}}],
+            "a_key_of_a_newer_version": {"x": 1.5}}
+    return json.dumps(data, indent=2)
 
 
 def pyjson() -> list[dict]:
@@ -341,6 +355,7 @@ def build(out: Path) -> None:
     write_json(out / "models.json", export.export_models())
     write_json(out / "conditions.json", conditions(), indent=None)
     write_json(out / "pyjson.json", pyjson())
+    (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \

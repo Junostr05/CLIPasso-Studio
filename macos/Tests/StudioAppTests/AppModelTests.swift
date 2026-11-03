@@ -15,8 +15,21 @@ import StudioCore
                             models: fixtures.appending(path: "models.json"), engine: engine)
     }
 
+    /// A settings file of its own in a new folder, with the language set.
+    static func store(language: String, _ more: JSONObject = [:]) throws -> SettingsStore {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "app-\(UUID().uuidString)")
+        let store = SettingsStore(url: dir.appending(path: "settings.json"), home: dir)
+        var settings = store.load()
+        settings.language = language
+        for (key, value) in more {
+            settings[key] = value
+        }
+        try store.save(settings)
+        return store
+    }
+
     @Test func loadsTextsAndSchema() throws {
-        let model = try AppModel(resources: Self.resources(engine: nil), language: "de")
+        let model = try AppModel(resources: Self.resources(engine: nil), store: Self.store(language: "de"))
         #expect(model.texts.tr("ui.start") == "Skizze erstellen")
         #expect(model.schema.methods.count == 4 && model.catalog.spec("blazeface")?.macBundled == true)
         #expect(model.engineStatus == .starting)
@@ -24,7 +37,7 @@ import StudioCore
 
     @Test func startsWithoutEngine() async throws {
         let missing = EngineLaunch(executable: URL(filePath: "/nonexistent/python3"), arguments: [])
-        let model = try AppModel(resources: Self.resources(engine: missing), language: "de")
+        let model = try AppModel(resources: Self.resources(engine: missing), store: Self.store(language: "de"))
         await model.startEngine()
         guard case .unavailable(let text) = model.engineStatus else {
             Issue.record("expected unavailable, got \(model.engineStatus)")
@@ -35,7 +48,7 @@ import StudioCore
     }
 
     @Test func noEngineAtAll() async throws {
-        let model = try AppModel(resources: Self.resources(engine: nil), language: "en")
+        let model = try AppModel(resources: Self.resources(engine: nil), store: Self.store(language: "en"))
         await model.startEngine()
         guard case .unavailable(let text) = model.engineStatus else {
             Issue.record("expected unavailable, got \(model.engineStatus)")
@@ -50,10 +63,29 @@ import StudioCore
                                   environment: ["PYTHONPATH": Self.repo.path,
                                                 "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"],
                                   workingDirectory: Self.repo)
-        let model = try AppModel(resources: Self.resources(engine: launch), language: "en")
+        let model = try AppModel(resources: Self.resources(engine: launch), store: Self.store(language: "en"))
         await model.startEngine()
         #expect(model.engineStatus == .ready)
         await model.stopEngine()
+    }
+
+    /// The settings decide the language and the folder the engine downloads its models to; a changed language is
+    /// saved at once (like AppSettings.set).
+    @Test func settingsDecideLanguageAndModelFolder() throws {
+        let launch = EngineLaunch(executable: URL(filePath: "/usr/bin/env"), arguments: [], environment: ["PATH": "/usr/bin"])
+        let store = try Self.store(language: "de", ["models_dir": "/Volumes/Archiv/Modelle"])
+        let model = try AppModel(resources: Self.resources(engine: launch), store: store)
+        #expect(model.texts.language == "de")
+        #expect(model.engineLaunch?.environment?["CLIPASSO_DOWNLOADS_DIR"] == "/Volumes/Archiv/Modelle")
+        #expect(model.engineLaunch?.environment?["PATH"] == "/usr/bin")
+        try model.setLanguage("en")
+        #expect(model.texts.tr("ui.start") == "Create sketch")
+        #expect(store.load().language == "en" && store.load().modelsDir?.path == "/Volumes/Archiv/Modelle")
+
+        let plain = try Self.store(language: "auto")
+        let standard = try AppModel(resources: Self.resources(engine: launch), store: plain)
+        #expect(standard.modelsDir == plain.defaultModelsDir)  // beside settings.json, as paths.default_models_dir
+        #expect(standard.engineLaunch?.environment?["CLIPASSO_DOWNLOADS_DIR"] == standard.modelsDir.path)
     }
 
     @Test func bundledResourcesLayout() {

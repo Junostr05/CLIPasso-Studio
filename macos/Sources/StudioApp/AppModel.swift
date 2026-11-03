@@ -2,8 +2,9 @@ import Foundation
 import Observation
 import StudioCore
 
-/// The app as a whole: its texts, the parameter schema, the model list, and the engine process with the job queue on
-/// it. Views read it from the environment; the engine's work happens in StudioCore's actors.
+/// The app as a whole: its settings (the Python app's settings.json), texts, the parameter schema, the model list,
+/// and the engine process with the job queue on it. Views read it from the environment; the engine's work happens in
+/// StudioCore's actors.
 @Observable
 public final class AppModel {
     public enum EngineStatus: Equatable, Sendable {
@@ -14,17 +15,42 @@ public final class AppModel {
     }
 
     public private(set) var engineStatus: EngineStatus = .starting
+    public private(set) var settings: AppSettings
     public private(set) var texts: Texts
     public let schema: ParamSchema
     public let catalog: ModelCatalog
     @ObservationIgnored public private(set) var engine: EngineClient?
     @ObservationIgnored private let resources: AppResources
+    @ObservationIgnored public let store: SettingsStore
 
-    public init(resources: AppResources, language: String) throws {
+    public init(resources: AppResources, store: SettingsStore = .standard()) throws {
         self.resources = resources
-        texts = try Texts(directory: resources.i18n, language: Texts.resolve(language))
+        self.store = store
+        let loaded = store.load()
+        settings = loaded
+        texts = try Texts(directory: resources.i18n, language: Texts.resolve(loaded.language))
         schema = try ParamSchema.load(resources.schema)
         catalog = try ModelCatalog.load(resources.models)
+    }
+
+    /// Change the settings and save them at once (AppSettings.set); false when the file could not be written – the
+    /// change still holds until the app ends.
+    @discardableResult
+    public func updateSettings(_ change: (inout AppSettings) -> Void) -> Bool {
+        change(&settings)
+        return (try? store.save(settings)) != nil
+    }
+
+    /// Where the downloaded models are: the folder chosen in the settings, else beside settings.json.
+    public var modelsDir: URL { settings.modelsDir ?? store.defaultModelsDir }
+
+    /// How the engine starts: as the resources say, downloading its models to `modelsDir`.
+    var engineLaunch: EngineLaunch? {
+        guard var launch = resources.engine else { return nil }
+        var environment = launch.environment ?? ProcessInfo.processInfo.environment
+        environment["CLIPASSO_DOWNLOADS_DIR"] = modelsDir.path
+        launch.environment = environment
+        return launch
     }
 
     /// The status as the window shows it.
@@ -37,13 +63,15 @@ public final class AppModel {
         }
     }
 
+    /// "auto", "de" or "en" – shown at once and saved.
     public func setLanguage(_ setting: String) throws {
         texts = try Texts(directory: resources.i18n, language: Texts.resolve(setting))
+        updateSettings { $0.language = setting }
     }
 
     /// Start the engine; when it cannot start, the status says why (with what it wrote).
     public func startEngine() async {
-        guard let launch = resources.engine else {
+        guard let launch = engineLaunch else {
             engineStatus = .unavailable(texts.tr("ui.mac.engine_unavailable", ["details": "no engine in the app"]))
             return
         }

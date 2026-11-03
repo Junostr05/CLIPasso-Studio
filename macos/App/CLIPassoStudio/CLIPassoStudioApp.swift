@@ -9,7 +9,7 @@ struct CLIPassoStudioApp: App {
 
     init() {
         do {
-            _model = State(initialValue: try AppModel(resources: .current(), language: "auto"))
+            _model = State(initialValue: try AppModel(resources: .current()))
         } catch {
             _problem = State(initialValue: String(describing: error))
         }

@@ -19,13 +19,12 @@ public struct AppResources: Sendable {
     }
 
     /// The app's own Python (`Resources/python`) runs the engine (`Resources/engine`) with a clean environment:
-    /// nothing of the user's Python settings, no secrets.
-    public static func bundled(resources: URL, modelsDir: URL? = nil) -> AppResources {
+    /// nothing of the user's Python settings, no secrets (the models folder is added by AppModel.engineLaunch).
+    public static func bundled(resources: URL) -> AppResources {
         var environment = ["PYTHONPATH": resources.appending(path: "engine").path, "PYTHONNOUSERSITE": "1",
                            "PYTHONIOENCODING": "utf-8", "PYTORCH_ENABLE_MPS_FALLBACK": "1",
                            "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "LANG": "en_US.UTF-8"]
         if let home = ProcessInfo.processInfo.environment["HOME"] { environment["HOME"] = home }
-        if let modelsDir { environment["CLIPASSO_DOWNLOADS_DIR"] = modelsDir.path }
         let engine = EngineLaunch(executable: resources.appending(path: "python/bin/python3"),
                                   arguments: ["-s", "-m", "clipasso_studio.headless"], environment: environment,
                                   workingDirectory: resources)
