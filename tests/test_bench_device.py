@@ -28,6 +28,8 @@ def test_bench_runs_tiny_cpu(tmp_path):
     assert cpu["error"] is None and cpu["traceback"] is None, cpu["traceback"]
     assert cpu["iterations"] == 3 and cpu["seconds"] > 0 and cpu["sec_per_iter"] > 0
     assert cpu["clip_score"] is not None and 0 < cpu["clip_score"] <= 100
+    # every sketch also judged by the same scorer on the CPU (a device's own score is not comparable)
+    assert cpu["cpu_clip_score"] == cpu["clip_score"] and cpu["nan_in_svg"] is False
     mps = next(r for r in rows if r["device"] == "mps")
     if torch.backends.mps.is_available():
         assert mps["error"] is None, mps["traceback"]

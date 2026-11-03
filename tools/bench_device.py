@@ -5,7 +5,9 @@
 
 Every (method, device, image, repeat) is one job of the method's "fast" preset with one sketch (``--iters``: the
 iterations of the methods that optimise). Written as JSON rows ``{method, device, image, repeat, seconds,
-sec_per_iter, iterations, clip_score, error, traceback}`` and printed as a table. A device that is not there is a row
+sec_per_iter, iterations, clip_score, cpu_clip_score, nan_in_svg, error, traceback}`` and printed as a table;
+``cpu_clip_score`` judges every sketch with the same scorer on the CPU, so the devices compare (``clip_score`` is the
+one the job computed on its own device). A device that is not there is a row
 with ``error: "unavailable"`` – it is never left out. ``settings_schema.MPS_AUTO`` (which methods "auto" computes on the
 Apple GPU) is filled from these numbers, not from guesses.
 """
@@ -85,8 +87,8 @@ def run_one(method: str, device: str, image: Path, iters: int, work: Path) -> di
     from clipasso_studio.engine import pipeline
     from clipasso_studio.engine.model_store import ModelMissingError
 
-    row = {"seconds": None, "sec_per_iter": None, "iterations": None, "clip_score": None, "error": None,
-           "traceback": None}
+    row = {"seconds": None, "sec_per_iter": None, "iterations": None, "clip_score": None, "cpu_clip_score": None,
+           "nan_in_svg": None, "error": None, "traceback": None}
     if not available(device):
         row["error"] = "unavailable"
         return row
@@ -110,15 +112,26 @@ def run_one(method: str, device: str, image: Path, iters: int, work: Path) -> di
         row["sec_per_iter"] = round(timer.elapsed[0], 4)
     score = summary.get("clip_score") if isinstance(summary, dict) else None
     row["clip_score"] = round(float(score), 2) if score is not None else None
+    best = summary.get("best_svg") if isinstance(summary, dict) else None
+    if best and Path(best).is_file():
+        # the same judge for every device: CLIP on the CPU, against the input the run prepared (as the job's own score)
+        from clipasso_studio.engine import imaging, scoring
+
+        text = Path(best).read_text(encoding="utf-8")
+        row["nan_in_svg"] = "nan" in text.lower()
+        prepared = Path(best).parent / str(summary.get("best_run") or "") / "input.png"
+        target = imaging.load_rgb(str(prepared if prepared.is_file() else image))
+        row["cpu_clip_score"] = round(scoring.clip_score(best, target, device="cpu"), 2)
     return row
 
 
 def table(rows: list[dict]) -> str:
-    head = "| method | device | image | repeat | seconds | s/iter | iterations | CLIP score | error |"
-    lines = [head, "|" + "---|" * 9]
+    head = ("| method | device | image | repeat | seconds | s/iter | iterations | CLIP score | CLIP score (CPU) | "
+            "NaN | error |")
+    lines = [head, "|" + "---|" * 11]
     for r in rows:
         cells = [r["method"], r["device"], r["image"], r["repeat"], r["seconds"], r["sec_per_iter"], r["iterations"],
-                 r["clip_score"], r["error"] or ""]
+                 r["clip_score"], r["cpu_clip_score"], r["nan_in_svg"], r["error"] or ""]
         lines.append("| " + " | ".join("" if c is None else str(c) for c in cells) + " |")
     return "\n".join(lines)
 

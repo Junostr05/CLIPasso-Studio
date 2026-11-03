@@ -95,3 +95,12 @@ def test_mps_texts_in_both_languages():
     for lang in ("en", "de"):
         texts = json.loads((root / f"{lang}.json").read_text(encoding="utf-8"))
         assert texts["param.device.choice.mps"] and texts["ui.warn.mps_unavailable"]
+
+
+def test_channels_last_only_where_measured():
+    """CLIP's convolutions in channels-last layout were measured 1.4x faster on a CPU; on the Apple GPU its backward
+    pass fails (\"view size is not compatible …\", seen on the macOS runner), so it is not used there."""
+    from clipasso_studio.engine.clip_ import clip
+
+    assert clip.channels_last_ok(torch.device("cpu")) and clip.channels_last_ok(torch.device("cuda", 0))
+    assert not clip.channels_last_ok(torch.device("mps"))
