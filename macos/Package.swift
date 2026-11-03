@@ -14,7 +14,7 @@ let package = Package(
         .testTarget(
             name: "StudioCoreTests",
             dependencies: ["StudioCore"],
-            resources: [.copy("Fixtures"), .copy("Support/fake_engine.py")]
+            resources: [.copy("Fixtures"), .copy("Support/fake_engine.py"), .copy("Support/range_server.py")]
         ),
     ],
     swiftLanguageModes: [.v6]
