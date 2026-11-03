@@ -2,142 +2,170 @@
  {
   "value": null,
   "compact": "null",
-  "pretty": "null"
+  "pretty": "null",
+  "pretty_ascii": "null"
  },
  {
   "value": true,
   "compact": "true",
-  "pretty": "true"
+  "pretty": "true",
+  "pretty_ascii": "true"
  },
  {
   "value": false,
   "compact": "false",
-  "pretty": "false"
+  "pretty": "false",
+  "pretty_ascii": "false"
  },
  {
   "value": 0,
   "compact": "0",
-  "pretty": "0"
+  "pretty": "0",
+  "pretty_ascii": "0"
  },
  {
   "value": -7,
   "compact": "-7",
-  "pretty": "-7"
+  "pretty": "-7",
+  "pretty_ascii": "-7"
  },
  {
   "value": 9007199254740992,
   "compact": "9007199254740992",
-  "pretty": "9007199254740992"
+  "pretty": "9007199254740992",
+  "pretty_ascii": "9007199254740992"
  },
  {
   "value": -9223372036854775808,
   "compact": "-9223372036854775808",
-  "pretty": "-9223372036854775808"
+  "pretty": "-9223372036854775808",
+  "pretty_ascii": "-9223372036854775808"
  },
  {
   "value": 9223372036854775807,
   "compact": "9223372036854775807",
-  "pretty": "9223372036854775807"
+  "pretty": "9223372036854775807",
+  "pretty_ascii": "9223372036854775807"
  },
  {
   "value": 0.1,
   "compact": "0.1",
-  "pretty": "0.1"
+  "pretty": "0.1",
+  "pretty_ascii": "0.1"
  },
  {
   "value": -2.5,
   "compact": "-2.5",
-  "pretty": "-2.5"
+  "pretty": "-2.5",
+  "pretty_ascii": "-2.5"
  },
  {
   "value": 100.0,
   "compact": "100.0",
-  "pretty": "100.0"
+  "pretty": "100.0",
+  "pretty_ascii": "100.0"
  },
  {
   "value": 1e-05,
   "compact": "1e-05",
-  "pretty": "1e-05"
+  "pretty": "1e-05",
+  "pretty_ascii": "1e-05"
  },
  {
   "value": 0.0001,
   "compact": "0.0001",
-  "pretty": "0.0001"
+  "pretty": "0.0001",
+  "pretty_ascii": "0.0001"
  },
  {
   "value": 1000000000000000.0,
   "compact": "1000000000000000.0",
-  "pretty": "1000000000000000.0"
+  "pretty": "1000000000000000.0",
+  "pretty_ascii": "1000000000000000.0"
  },
  {
   "value": 1234567890123456.0,
   "compact": "1234567890123456.0",
-  "pretty": "1234567890123456.0"
+  "pretty": "1234567890123456.0",
+  "pretty_ascii": "1234567890123456.0"
  },
  {
   "value": 1e+16,
   "compact": "1e+16",
-  "pretty": "1e+16"
+  "pretty": "1e+16",
+  "pretty_ascii": "1e+16"
  },
  {
   "value": 1.2345678901234567e+19,
   "compact": "1.2345678901234567e+19",
-  "pretty": "1.2345678901234567e+19"
+  "pretty": "1.2345678901234567e+19",
+  "pretty_ascii": "1.2345678901234567e+19"
  },
  {
   "value": 5e-324,
   "compact": "5e-324",
-  "pretty": "5e-324"
+  "pretty": "5e-324",
+  "pretty_ascii": "5e-324"
  },
  {
   "value": 1.7976931348623157e+308,
   "compact": "1.7976931348623157e+308",
-  "pretty": "1.7976931348623157e+308"
+  "pretty": "1.7976931348623157e+308",
+  "pretty_ascii": "1.7976931348623157e+308"
  },
  {
   "value": 3.141592653589793,
   "compact": "3.141592653589793",
-  "pretty": "3.141592653589793"
+  "pretty": "3.141592653589793",
+  "pretty_ascii": "3.141592653589793"
  },
  {
   "value": 123456789.123,
   "compact": "123456789.123",
-  "pretty": "123456789.123"
+  "pretty": "123456789.123",
+  "pretty_ascii": "123456789.123"
  },
  {
   "value": 1.5e-07,
   "compact": "1.5e-07",
-  "pretty": "1.5e-07"
+  "pretty": "1.5e-07",
+  "pretty_ascii": "1.5e-07"
  },
  {
   "value": "",
   "compact": "\"\"",
-  "pretty": "\"\""
+  "pretty": "\"\"",
+  "pretty_ascii": "\"\""
  },
  {
   "value": "Bild Ä ö ü ß",
   "compact": "\"Bild Ä ö ü ß\"",
-  "pretty": "\"Bild Ä ö ü ß\""
+  "pretty": "\"Bild Ä ö ü ß\"",
+  "pretty_ascii": "\"Bild \\u00c4 \\u00f6 \\u00fc \\u00df\""
  },
  {
   "value": "Emoji ✏️🦒",
   "compact": "\"Emoji ✏️🦒\"",
-  "pretty": "\"Emoji ✏️🦒\""
+  "pretty": "\"Emoji ✏️🦒\"",
+  "pretty_ascii": "\"Emoji \\u270f\\ufe0f\\ud83e\\udd92\""
  },
  {
   "value": "„Tiere“ and \"quotes\" \\ / \n\t\r\b\f \u0001 \u001f   ",
   "compact": "\"„Tiere“ and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f   \"",
-  "pretty": "\"„Tiere“ and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f   \""
+  "pretty": "\"„Tiere“ and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f   \"",
+  "pretty_ascii": "\"\\u201eTiere\\u201c and \\\"quotes\\\" \\\\ / \\n\\t\\r\\b\\f \\u0001 \\u001f \\u007f \\u2028\""
  },
  {
   "value": [],
   "compact": "[]",
-  "pretty": "[]"
+  "pretty": "[]",
+  "pretty_ascii": "[]"
  },
  {
   "value": {},
   "compact": "{}",
-  "pretty": "{}"
+  "pretty": "{}",
+  "pretty_ascii": "{}"
  },
  {
   "value": [
@@ -151,7 +179,8 @@
    ]
   ],
   "compact": "[1, [2, [3, {}]]]",
-  "pretty": "[\n  1,\n  [\n    2,\n    [\n      3,\n      {}\n    ]\n  ]\n]"
+  "pretty": "[\n  1,\n  [\n    2,\n    [\n      3,\n      {}\n    ]\n  ]\n]",
+  "pretty_ascii": "[\n  1,\n  [\n    2,\n    [\n      3,\n      {}\n    ]\n  ]\n]"
  },
  {
   "value": {
@@ -165,7 +194,8 @@
    }
   },
   "compact": "{\"b\": 1, \"a\": [true, null], \"ü\": {\"x\": \"\"}}",
-  "pretty": "{\n  \"b\": 1,\n  \"a\": [\n    true,\n    null\n  ],\n  \"ü\": {\n    \"x\": \"\"\n  }\n}"
+  "pretty": "{\n  \"b\": 1,\n  \"a\": [\n    true,\n    null\n  ],\n  \"ü\": {\n    \"x\": \"\"\n  }\n}",
+  "pretty_ascii": "{\n  \"b\": 1,\n  \"a\": [\n    true,\n    null\n  ],\n  \"\\u00fc\": {\n    \"x\": \"\"\n  }\n}"
  },
  {
   "value": {
@@ -185,6 +215,7 @@
    }
   },
   "compact": "{\"favourite\": true, \"title\": \"Kamel am Abend – Skizze ✏️\", \"notes\": \"Zeile 1\\nZeile 2\", \"tags\": [\"Tier\", \"Wüste\"], \"albums\": [\"Tiere\"], \"ratings\": {\"Kamel_16strokes_seed0\": 1, \"Kamel_16strokes_seed1000\": -1}}",
-  "pretty": "{\n  \"favourite\": true,\n  \"title\": \"Kamel am Abend – Skizze ✏️\",\n  \"notes\": \"Zeile 1\\nZeile 2\",\n  \"tags\": [\n    \"Tier\",\n    \"Wüste\"\n  ],\n  \"albums\": [\n    \"Tiere\"\n  ],\n  \"ratings\": {\n    \"Kamel_16strokes_seed0\": 1,\n    \"Kamel_16strokes_seed1000\": -1\n  }\n}"
+  "pretty": "{\n  \"favourite\": true,\n  \"title\": \"Kamel am Abend – Skizze ✏️\",\n  \"notes\": \"Zeile 1\\nZeile 2\",\n  \"tags\": [\n    \"Tier\",\n    \"Wüste\"\n  ],\n  \"albums\": [\n    \"Tiere\"\n  ],\n  \"ratings\": {\n    \"Kamel_16strokes_seed0\": 1,\n    \"Kamel_16strokes_seed1000\": -1\n  }\n}",
+  "pretty_ascii": "{\n  \"favourite\": true,\n  \"title\": \"Kamel am Abend \\u2013 Skizze \\u270f\\ufe0f\",\n  \"notes\": \"Zeile 1\\nZeile 2\",\n  \"tags\": [\n    \"Tier\",\n    \"W\\u00fcste\"\n  ],\n  \"albums\": [\n    \"Tiere\"\n  ],\n  \"ratings\": {\n    \"Kamel_16strokes_seed0\": 1,\n    \"Kamel_16strokes_seed1000\": -1\n  }\n}"
  }
 ]

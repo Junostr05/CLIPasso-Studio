@@ -4,7 +4,8 @@ import Foundation
 /// app wrote them:
 ///
 /// - `dump(value)` is `json.dumps(value, ensure_ascii=False)`, `dump(value, indent: 2)` is
-///   `json.dumps(value, indent=2, ensure_ascii=False)` – byte for byte, floats as Python's `repr` writes them.
+///   `json.dumps(value, indent=2, ensure_ascii=False)` – byte for byte, floats as Python's `repr` writes them;
+///   `asciiOnly: true` is Python's default `ensure_ascii=True` (job.json, job_state.json, result.json).
 /// - `parse` keeps the order of an object's keys and tells whole numbers (`int`) from floats, and reads the
 ///   `NaN` / `Infinity` / `-Infinity` that `json.dump` writes by default.
 public enum PyJSON {
@@ -223,19 +224,19 @@ public enum PyJSON {
 
     // MARK: - writing
 
-    public static func dump(_ value: JSONValue, indent: Int? = nil) -> String {
+    public static func dump(_ value: JSONValue, indent: Int? = nil, asciiOnly: Bool = false) -> String {
         var out = ""
-        write(value, indent: indent, level: 0, into: &out)
+        write(value, indent: indent, level: 0, ascii: asciiOnly, into: &out)
         return out
     }
 
-    private static func write(_ value: JSONValue, indent: Int?, level: Int, into out: inout String) {
+    private static func write(_ value: JSONValue, indent: Int?, level: Int, ascii: Bool, into out: inout String) {
         switch value {
         case .null: out += "null"
         case .bool(let b): out += b ? "true" : "false"
         case .int(let i): out += String(i)
         case .double(let d): out += pythonRepr(d)
-        case .string(let s): writeString(s, into: &out)
+        case .string(let s): writeString(s, ascii: ascii, into: &out)
         case .array(let items):
             guard !items.isEmpty else {
                 out += "[]"
@@ -245,7 +246,7 @@ public enum PyJSON {
             for (i, item) in items.enumerated() {
                 if i > 0 { out += indent == nil ? ", " : "," }
                 newline(indent, level + 1, &out)
-                write(item, indent: indent, level: level + 1, into: &out)
+                write(item, indent: indent, level: level + 1, ascii: ascii, into: &out)
             }
             newline(indent, level, &out)
             out += "]"
@@ -258,9 +259,9 @@ public enum PyJSON {
             for (i, (key, item)) in object.enumerated() {
                 if i > 0 { out += indent == nil ? ", " : "," }
                 newline(indent, level + 1, &out)
-                writeString(key, into: &out)
+                writeString(key, ascii: ascii, into: &out)
                 out += ": "
-                write(item, indent: indent, level: level + 1, into: &out)
+                write(item, indent: indent, level: level + 1, ascii: ascii, into: &out)
             }
             newline(indent, level, &out)
             out += "}"
@@ -272,8 +273,13 @@ public enum PyJSON {
         out += "\n" + String(repeating: " ", count: indent * level)
     }
 
-    /// As `json.dumps(…, ensure_ascii=False)`: only `"`, `\` and the control characters are escaped.
-    private static func writeString(_ s: String, into out: inout String) {
+    /// As `json.dumps(…, ensure_ascii=False)`: only `"`, `\` and the control characters are escaped; with `ascii`
+    /// (Python's default) also everything outside space … `~`, as `\u00fc` (a surrogate pair above U+FFFF).
+    private static func writeString(_ s: String, ascii: Bool, into out: inout String) {
+        func escape(_ unit: UInt32, _ out: inout String) {
+            let hex = String(unit, radix: 16)
+            out += "\\u" + String(repeating: "0", count: 4 - hex.count) + hex
+        }
         out += "\""
         for scalar in s.unicodeScalars {
             switch scalar {
@@ -285,8 +291,15 @@ public enum PyJSON {
             case "\u{08}": out += "\\b"
             case "\u{0C}": out += "\\f"
             case let c where c.value < 0x20:
-                let hex = String(c.value, radix: 16)
-                out += "\\u" + String(repeating: "0", count: 4 - hex.count) + hex
+                escape(c.value, &out)
+            case let c where ascii && c.value > 0x7E:
+                if c.value > 0xFFFF {
+                    let v = c.value - 0x10000
+                    escape(0xD800 + (v >> 10), &out)
+                    escape(0xDC00 + (v & 0x3FF), &out)
+                } else {
+                    escape(c.value, &out)
+                }
             default:
                 out.unicodeScalars.append(scalar)
             }

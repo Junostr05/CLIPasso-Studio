@@ -7,7 +7,8 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``schema.json``, ``models.json`` – the exports of ``clipasso_studio.headless`` (the app version as "fixture")
 - ``conditions.json`` – settings (a method's defaults with ``changes``) and what Python decides for them: the
   parameters' rules (``enabled``, one "1" / "0" per parameter in ``ruled``) and ``num_strokes``
-- ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``)
+- ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
+  ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
 - ``jobs/`` – job folders built with engine/jobs.py, their paths as they would be on a Mac
   (``/Users/studio/…``) or on Windows (``C:\\Users\\Jürgen\\…``), and ``jobs_expected.json``: what
   ``jobs.job_summary`` reads from each (paths inside the fixtures as ``{jobs}/…``)
@@ -108,7 +109,8 @@ def conditions() -> dict:
 
 def pyjson() -> list[dict]:
     return [{"value": v, "compact": json.dumps(v, ensure_ascii=False),
-             "pretty": json.dumps(v, indent=2, ensure_ascii=False)} for v in PYJSON_VALUES]
+             "pretty": json.dumps(v, indent=2, ensure_ascii=False),
+             "pretty_ascii": json.dumps(v, indent=2)} for v in PYJSON_VALUES]
 
 
 # ---------------------------------------------------------------------------------------------------- sketches

@@ -50,9 +50,16 @@ jobs:
           swift --version
       - name: swift build and swift test
         working-directory: macos
+        env:
+          STUDIOCORE_EXPORT_DIR: ${{ runner.temp }}/studiocore-export  # what Swift wrote, for Python to read
         run: |
           swift build
           swift test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Python reads the job files Swift wrote
+        run: python tools/check_swift_meta.py "${{ runner.temp }}/studiocore-export"
 
   engine:
     name: Engine (macOS, Apple Silicon)

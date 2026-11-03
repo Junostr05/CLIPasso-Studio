@@ -9,6 +9,7 @@ import Testing
         let value: JSONValue
         let compact: String
         let pretty: String
+        let prettyASCII: String
     }
 
     static func cases() throws -> [Case] {
@@ -18,9 +19,10 @@ import Testing
         }
         return items.compactMap { item in
             guard case .object(let o) = item, let value = o["value"],
-                  case .string(let compact)? = o["compact"], case .string(let pretty)? = o["pretty"]
+                  case .string(let compact)? = o["compact"], case .string(let pretty)? = o["pretty"],
+                  case .string(let prettyASCII)? = o["pretty_ascii"]
             else { return nil }
-            return Case(value: value, compact: compact, pretty: pretty)
+            return Case(value: value, compact: compact, pretty: pretty, prettyASCII: prettyASCII)
         }
     }
 
@@ -30,6 +32,8 @@ import Testing
         for c in cases {
             #expect(PyJSON.dump(c.value) == c.compact)
             #expect(PyJSON.dump(c.value, indent: 2) == c.pretty)
+            #expect(PyJSON.dump(c.value, indent: 2, asciiOnly: true) == c.prettyASCII)
+            #expect(try PyJSON.parse(Data(c.prettyASCII.utf8)) == c.value)
             #expect(try PyJSON.parse(Data(c.pretty.utf8)) == c.value)
             #expect(try PyJSON.parse(Data(c.compact.utf8)) == c.value)
         }
