@@ -1,0 +1,18 @@
+# The engine of the Mac app (python -m clipasso_studio.headless) – what the .app's own Python gets. No Qt: the
+# window is SwiftUI. torch from PyPI: its macOS wheels (Apple Silicon only since 2.3) include the Apple GPU (MPS).
+torch==2.11.0
+torchvision==0.26.0
+numpy>=1.26,<3
+pillow>=10
+# HEIC / HEIF images (decoder only; the engine reads the job's input copy)
+pi-heif>=1.0
+ftfy>=6.1
+regex>=2023.0
+psutil
+# ControlSketch (Stable Diffusion 1.5 + ControlNet, condition detectors, captioning)
+diffusers==0.40.0
+transformers==5.17.0
+tokenizers==0.23.2
+safetensors==0.8.0
+huggingface_hub==1.33.0
+accelerate==1.15.0

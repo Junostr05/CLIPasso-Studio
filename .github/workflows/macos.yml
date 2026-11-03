@@ -1,0 +1,91 @@
+name: macOS
+
+# The Mac app (docs/macos/plan.md): its engine on Apple Silicon – tests and the measurement of the CPU against the
+# Apple GPU (MPS). The Windows build (build.yml) is not touched by this workflow.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "clipasso_studio/**"
+      - "macos/**"
+      - "tests/**"
+      - "tools/bench_device.py"
+      - "tools/fetch_models.py"
+      - "requirements/macos.txt"
+      - ".github/workflows/macos.yml"
+  workflow_dispatch:
+    inputs:
+      bench_methods:
+        description: "Methods to measure (comma-separated)"
+        type: string
+        default: "clipasso,swiftsketch"
+      bench_repeats:
+        description: "Repeats per method, device and image"
+        type: number
+        default: 1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  engine:
+    name: Engine (macOS, Apple Silicon)
+    runs-on: macos-26
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/macos.txt
+      - name: Install the engine (and the test tools)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements/macos.txt
+          python -m pip install "$(grep -E '^pytest-timeout==' requirements/dev.txt)" "pytest>=8" \
+            "$(grep -E '^PySide6-Essentials==' requirements/app.txt)"
+      - name: The machine and its devices
+        run: |
+          sw_vers
+          sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize
+          python -c "import platform, torch; print(platform.platform(), platform.machine()); print('torch', torch.__version__, '· MPS built', torch.backends.mps.is_built(), '· MPS available', torch.backends.mps.is_available())"
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: macos-models-v1-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
+          restore-keys: macos-models-v1-
+      - name: Download models
+        run: |
+          python tools/fetch_models.py
+          python tools/fetch_models.py --only swiftsketch:diffusion,swiftsketch:refine,birefnet
+      - name: Tests of the engine for the Mac app
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: >-
+          python -m pytest -q --durations=15
+          tests/test_schema_conditions.py tests/test_headless_export.py tests/test_headless_protocol.py
+          tests/test_headless_server.py tests/test_headless_e2e.py tests/test_runner_orphans.py
+          tests/test_device_mps.py tests/test_bench_device.py tests/test_settings.py
+      - name: Measure the CPU against the Apple GPU
+        run: |
+          python tools/bench_device.py --methods "${{ inputs.bench_methods || 'clipasso,swiftsketch' }}" \
+            --devices cpu,mps --repeats "${{ inputs.bench_repeats || 1 }}" --iters 200 --out bench.json > bench.md
+          cat bench.md
+          { echo "## CPU against the Apple GPU (MPS)"; echo; cat bench.md; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-macos
+          path: |
+            bench.json
+            bench.md
+          if-no-files-found: ignore
