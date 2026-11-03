@@ -90,7 +90,7 @@ Warteschlange, Galerie, Modellen und Einstellungen. Der erste Stand ist der in `
 - **Neu:**
   - `macos/scripts/build_python.sh`: python-build-standalone 3.12 (Version und SHA-256 festgeschrieben),
     `pip install -r requirements/macos.txt --require-hashes` (aus `requirements/lock-macos.txt`, erzeugt mit
-    `pip-compile` auf dem Runner), dann verkleinern (`torch/include`, `torch/testing/_internal`, `torch/bin`,
+    `tools/lock_macos.py` – `uv pip compile` für aarch64-apple-darwin, von jedem Rechner aus), dann verkleinern (`torch/include`, `torch/testing/_internal`, `torch/bin`,
     `__pycache__`) und `compileall`
   - `macos/scripts/make_app.sh`: kopiert `python/` und `engine/clipasso_studio` (ohne `gui/` außer `methods_ui.py`),
     die Exporte `schema.json` und `models.json`, `resources/i18n`, BlazeFace. Danach ad hoc signieren, von innen
@@ -101,7 +101,8 @@ Warteschlange, Galerie, Modellen und Einstellungen. Der erste Stand ist der in `
   einen Rückfall: `python3` aus dem Repository, wenn `CLIPASSO_DEV_REPO` gesetzt ist.
 - **CI:**
   - `.app` bauen, Größe messen (in die Zusammenfassung)
-  - in der `.app` einen echten Mini-Auftrag rechnen (`hello`, `start` mit 5 Iterationen, `job_done`)
+  - in der `.app` einen echten Mini-Auftrag rechnen: `CLIPassoStudio --self-test BILD AUSGABE --models ORDNER`
+    (`hello`, `start` mit 5 Iterationen, `job_done`, die Skizze hat Striche)
   - DMG als Artefakt
 - **Test:** `EngineLaunchTests.bundledPathsAndEnvironment` (Umgebung ohne Geheimnisse, ohne Benutzer-`PYTHONPATH`)
 

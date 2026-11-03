@@ -19,10 +19,13 @@ public struct AppResources: Sendable {
     }
 
     /// The app's own Python (`Resources/python`) runs the engine (`Resources/engine`) with a clean environment:
-    /// nothing of the user's Python settings, no secrets (the models folder is added by AppModel.engineLaunch).
+    /// nothing of the user's Python settings, no secrets; the models that come with the app (BlazeFace) are in
+    /// `Resources/models`, the downloaded ones where the settings say (added by AppModel.engineLaunch). Python never
+    /// writes into the signed app (its code is compiled when the app is built).
     public static func bundled(resources: URL) -> AppResources {
         var environment = ["PYTHONPATH": resources.appending(path: "engine").path, "PYTHONNOUSERSITE": "1",
-                           "PYTHONIOENCODING": "utf-8", "PYTORCH_ENABLE_MPS_FALLBACK": "1",
+                           "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8",
+                           "PYTORCH_ENABLE_MPS_FALLBACK": "1", "CLIPASSO_MODELS_DIR": resources.appending(path: "models").path,
                            "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "LANG": "en_US.UTF-8"]
         if let home = ProcessInfo.processInfo.environment["HOME"] { environment["HOME"] = home }
         let engine = EngineLaunch(executable: resources.appending(path: "python/bin/python3"),

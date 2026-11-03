@@ -12,6 +12,7 @@ on:
       - "tools/bench_device.py"
       - "tools/fetch_models.py"
       - "requirements/macos.txt"
+      - "requirements/lock-macos.txt"
       - ".github/workflows/macos.yml"
   workflow_dispatch:
     inputs:
@@ -33,6 +34,10 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"
+
+defaults:
+  run:
+    shell: bash  # (= bash -eo pipefail: a step piped into tee fails when its command fails)
 
 jobs:
   core:
@@ -65,7 +70,7 @@ jobs:
     name: The app (macOS, unsigned)
     runs-on: macos-26
     needs: core
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - name: The newest Xcode
@@ -73,7 +78,7 @@ jobs:
           XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i -E "beta|release_candidate|_rc" | sort -V | tail -1)
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5  # (only for the build scripts: the app gets its own Python)
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: xcodebuild (the app and its tests)
@@ -81,16 +86,42 @@ jobs:
         run: |
           xcodebuild -scheme CLIPassoStudio -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd build
           xcodebuild -scheme StudioCore-Package -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd test
+      - name: Cache the Python download
+        uses: actions/cache@v4
+        with:
+          path: build/app/.cache
+          key: macos-pbs-${{ hashFiles('macos/scripts/build_python.sh') }}
+      - name: The app's own Python with the engine
+        run: macos/scripts/build_python.sh build/app
       - name: CLIPasso Studio.app
         run: macos/scripts/make_app.sh build/app | tee app.txt
-      - name: Size of the app
-        run: '{ echo "## The app"; echo; tail -2 app.txt | head -1; } >> "$GITHUB_STEP_SUMMARY"'
-      - name: Pack the app
-        run: ditto -c -k --keepParent "build/app/CLIPasso Studio.app" "build/CLIPasso-Studio-mac.zip"
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: macos-models-v1-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
+          restore-keys: macos-models-v1-
+      - name: Models for the self-test (downloaded as a user's app would)
+        run: PYTHONPATH="$PWD" build/app/python/bin/python3 tools/fetch_models.py
+      - name: Self-test of the app (a small CLIPasso job, the engine started as the window starts it)
+        run: |
+          "build/app/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio" --self-test \
+            clipasso_studio/resources/samples/camel.png "$RUNNER_TEMP/selftest" --models "$PWD/models" | tee selftest.txt
+      - name: Disk image
+        run: macos/scripts/make_dmg.sh build/app | tee dmg.txt
+      - name: Sizes and self-test in the summary
+        run: |
+          {
+            echo "## The app"; echo
+            echo "- .app: $(tail -2 app.txt | head -1 | cut -f1)"
+            echo "- disk image: $(head -1 dmg.txt)"
+            echo; echo '```'; cat selftest.txt; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: CLIPasso-Studio-mac
-          path: build/CLIPasso-Studio-mac.zip
+          path: build/app/CLIPasso-Studio-*-mac.dmg
+          if-no-files-found: error
 
   engine:
     name: Engine (macOS, Apple Silicon)

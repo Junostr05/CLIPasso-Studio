@@ -2,7 +2,30 @@ import StudioApp
 import StudioCore
 import SwiftUI
 
+/// The window app – or, with `--self-test`, the check of a built app without a window (SelfTest).
 @main
+enum Launcher {
+    static func main() {
+        let arguments = CommandLine.arguments
+        guard SelfTest.Options.requested(in: arguments) else {
+            CLIPassoStudioApp.main()
+            return
+        }
+        Task { @MainActor in
+            do {
+                let options = try SelfTest.Options(arguments: arguments)
+                let outcome = await SelfTest.run(options, resources: .current())
+                print(outcome.lines.joined(separator: "\n"))
+                exit(outcome.ok ? 0 : 1)
+            } catch {
+                print(error)
+                exit(2)
+            }
+        }
+        dispatchMain()
+    }
+}
+
 struct CLIPassoStudioApp: App {
     @State private var model: AppModel?
     @State private var problem: String?

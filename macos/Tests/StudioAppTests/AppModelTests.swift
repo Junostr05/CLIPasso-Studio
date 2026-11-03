@@ -97,7 +97,9 @@ import StudioCore
         #expect(engine?.arguments == ["-s", "-m", "clipasso_studio.headless"])
         let env = engine?.environment ?? [:]
         #expect(env["PYTHONPATH"]?.hasSuffix("Contents/Resources/engine") == true)
-        #expect(env["PYTORCH_ENABLE_MPS_FALLBACK"] == "1")
+        #expect(env["PYTORCH_ENABLE_MPS_FALLBACK"] == "1" && env["PYTHONDONTWRITEBYTECODE"] == "1")
+        #expect(env["CLIPASSO_MODELS_DIR"]?.hasSuffix("Contents/Resources/models") == true)  // BlazeFace
+        #expect(env["PYTHONHOME"] == nil && env["PYTHONSTARTUP"] == nil)
         #expect(!env.keys.contains { $0.lowercased().contains("token") || $0.lowercased().contains("pin") })
     }
 }
