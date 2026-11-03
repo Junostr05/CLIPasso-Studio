@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
+
+from .conditions import All, AnyOf, Cond, Eq, Gt, Has, Ne, Off, On
 
 CLIP_MODELS = ("RN50", "RN101", "RN50x4", "RN50x16", "ViT-B/32", "ViT-B/16")
 # 3.7, experimental: the model of CLIPasso's semantic loss ("clip": the conv model's own embedding, as in the
@@ -42,18 +44,19 @@ class Param:
     decimals: int = 2
     choices: tuple = ()
     advanced: bool = True
-    # enabled only when ``enabled_if(settings)`` is true (UI greys the field out)
-    enabled_if: Callable[[dict], bool] | None = None
+    # enabled only when ``enabled_if(settings)`` is true (UI greys the field out) – a declarative rule
+    # (conditions.py), so it can be exported for the Mac app
+    enabled_if: Cond | None = None
     # not among the studio's parameters: set from elsewhere (a switch in the app's settings), kept with the job
     hidden: bool = False
 
 
-def _on(key: str) -> Callable[[dict], bool]:
-    return lambda s: bool(s.get(key))
+def _on(key: str) -> Cond:
+    return On(key)
 
 
-def _off(key: str) -> Callable[[dict], bool]:
-    return lambda s: not s.get(key)
+def _off(key: str) -> Cond:
+    return Off(key)
 
 
 # Network for the object mask (engine/masking.py): BiRefNet (default since 2.4), its lite version, or
@@ -62,10 +65,16 @@ MASK_MODELS = ("birefnet", "birefnet-lite", "u2net")
 DEFAULT_MASK_MODEL = "birefnet"
 
 
+# CLIPasso masks the input (mask_object) or the attention map (mask_object_attention "on")
+CLIPASSO_USES_MASK = AnyOf(On("mask_object"), Eq("mask_object_attention", "on", "auto"))
+
+
 def clipasso_uses_mask(s: dict) -> bool:
     """A CLIPasso run uses the object mask for the input (mask_object) or the attention map."""
-    attention = s.get("mask_object_attention", "auto")
-    return bool(s.get("mask_object")) or attention == "on"
+    return CLIPASSO_USES_MASK(s)
+
+# the saliency of the CLIP attention (its options): attention init with the CLIP model
+_CLIP_SALIENCY = All(On("attention_init"), Eq("saliency_model", "clip"))
 
 
 def uses_mask(method: str, s: dict) -> bool:
@@ -77,7 +86,7 @@ def uses_mask(method: str, s: dict) -> bool:
     return bool(s.get("mask_object"))
 
 
-def _mask_model(enabled_if: Callable[[dict], bool]) -> Param:
+def _mask_model(enabled_if: Cond) -> Param:
     return Param("mask_model", DEFAULT_MASK_MODEL, "choice", "image", choices=MASK_MODELS, advanced=False,
                  enabled_if=enabled_if)
 
@@ -95,7 +104,7 @@ SKETCH_GUIDE = Param("sketch_guide", False, "bool", "strokes", hidden=True)
 
 def _best_by() -> Param:
     return Param("best_by", "faithful", "choice", "basics", choices=BEST_BY, advanced=False,
-                 enabled_if=lambda s: int(s.get("num_sketches", 1) or 1) > 1 and not s.get("turbo"))
+                 enabled_if=All(Gt("num_sketches", 1), Off("turbo")))
 
 
 PARAMS: tuple[Param, ...] = (
@@ -108,7 +117,7 @@ PARAMS: tuple[Param, ...] = (
     _best_by(),
     # ------------------------------------------------------------------- image
     Param("mask_object", False, "bool", "image", cli="mask_object", advanced=False),
-    _mask_model(lambda s: clipasso_uses_mask(s)),
+    _mask_model(CLIPASSO_USES_MASK),
     # not in the original: small objects are enlarged to fill the canvas (needs the masked input)
     Param("frame_object", True, "bool", "image", advanced=False, enabled_if=_on("mask_object")),
     Param("fix_scale", False, "bool", "image", cli="fix_scale", advanced=False),
@@ -129,13 +138,13 @@ PARAMS: tuple[Param, ...] = (
     Param("saliency_model", "clip", "choice", "init", cli="saliency_model", choices=("clip", "dino"),
           enabled_if=_on("attention_init")),
     Param("saliency_clip_model", "ViT-B/32", "choice", "init", cli="saliency_clip_model", choices=CLIP_MODELS,
-          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          enabled_if=_CLIP_SALIENCY),
     Param("xdog_intersec", True, "bool", "init", cli="xdog_intersec",
-          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          enabled_if=_CLIP_SALIENCY),
     Param("mask_object_attention", "auto", "choice", "init", cli="mask_object_attention",
           choices=("auto", "on", "off"), enabled_if=_on("attention_init")),
     Param("softmax_temp", 0.3, "float", "init", cli="softmax_temp", minimum=0.01, maximum=10.0, step=0.05,
-          decimals=2, enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          decimals=2, enabled_if=_CLIP_SALIENCY),
     Param("text_target", "none", "text", "init", cli="text_target"),
     # -------------------------------------------------------------------- loss
     Param("clip_model_name", "RN101", "choice", "loss", cli="clip_model_name", choices=CLIP_MODELS),
@@ -147,7 +156,7 @@ PARAMS: tuple[Param, ...] = (
     Param("clip_fc_loss_weight", 0.1, "float", "loss", cli="clip_fc_loss_weight", minimum=0.0, maximum=10.0,
           step=0.05, decimals=3, enabled_if=_on("clip_conv_loss")),
     Param("semantic_model", "clip", "choice", "loss", choices=SEMANTIC_MODELS,
-          enabled_if=lambda s: bool(s.get("clip_conv_loss")) and float(s.get("clip_fc_loss_weight") or 0) > 0),
+          enabled_if=All(On("clip_conv_loss"), Gt("clip_fc_loss_weight", 0))),
     Param("train_with_clip", False, "bool", "loss", cli="train_with_clip"),
     Param("clip_weight", 0.0, "float", "loss", cli="clip_weight", minimum=0.0, maximum=10.0, step=0.1,
           decimals=3, enabled_if=_on("train_with_clip")),
@@ -159,7 +168,7 @@ PARAMS: tuple[Param, ...] = (
           decimals=3),
     Param("percep_loss", "none", "choice", "loss", cli="percep_loss", choices=("none", "L2", "LPIPS")),
     Param("perceptual_weight", 0.0, "float", "loss", cli="perceptual_weight", minimum=0.0, maximum=10.0,
-          step=0.1, decimals=3, enabled_if=lambda s: s.get("percep_loss", "none") != "none"),
+          step=0.1, decimals=3, enabled_if=Ne("percep_loss", "none", "none")),
     # ------------------------------------------------------------------- optim
     Param("turbo", False, "bool", "optim", advanced=False),
     Param("lr", 1.0, "float", "optim", cli="lr", minimum=0.0001, maximum=20.0, step=0.1, decimals=4),
@@ -179,11 +188,11 @@ PARAMS: tuple[Param, ...] = (
     Param("aug_scale_min", 0.8, "float", "augment", cli="aug_scale_min", minimum=0.1, maximum=1.0, step=0.05,
           decimals=2),
     Param("noise_thresh", 0.5, "float", "augment", cli="noise_thresh", minimum=0.0, maximum=1.0, step=0.05,
-          decimals=2, enabled_if=lambda s: "noise" in str(s.get("augemntations", ""))),
+          decimals=2, enabled_if=Has("augemntations", "noise")),
     # ---------------------------------------------------------------- hardware
     Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
     Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
-          enabled_if=lambda s: s.get("device") != "cpu"),
+          enabled_if=Ne("device", "cpu")),
     Param("multiprocess", False, "bool", "hardware", cli="multiprocess"),
     Param("num_threads", 0, "int", "hardware", minimum=0, maximum=256),
 )
@@ -229,7 +238,7 @@ def _hardware(multiprocess: bool = True) -> tuple[Param, ...]:
     return tuple(p for p in (
         Param("device", "auto", "choice", "hardware", choices=("auto", "cpu", "cuda"), advanced=False),
         Param("gpunum", 0, "int", "hardware", cli="gpunum", minimum=0, maximum=15,
-              enabled_if=lambda s: s.get("device") != "cpu"),
+              enabled_if=Ne("device", "cpu")),
         Param("multiprocess", False, "bool", "hardware", cli="multiprocess") if multiprocess else None,
         Param("num_threads", 0, "int", "hardware", minimum=0, maximum=256),
     ) if p is not None)
@@ -308,10 +317,10 @@ CONTROL_PARAMS: tuple[Param, ...] = (
     Param("attn_model", "clip", "choice", "init", cli="attn_model", choices=("clip", "diffusion"),
           enabled_if=_on("use_init_method")),
     Param("object_name", "none", "text", "init", cli="object_name",
-          enabled_if=lambda s: bool(s.get("use_init_method")) and s.get("attn_model") == "diffusion"),
+          enabled_if=All(On("use_init_method"), Eq("attn_model", "diffusion"))),
     # where SDXL runs on a graphics card with less than 8 GB: piece by piece on the card, or the CPU
     Param("sdxl_place", "offload", "choice", "init", choices=("offload", "cpu"),
-          enabled_if=lambda s: bool(s.get("use_init_method")) and s.get("attn_model") == "diffusion"),
+          enabled_if=All(On("use_init_method"), Eq("attn_model", "diffusion"))),
     Param("condition", "depth", "choice", "sds", cli="condition", choices=CONTROL_CONDITIONS),
     Param("conditioning_scale", 0.15, "float", "sds", cli="conditioning_scale", minimum=0.0, maximum=2.0, step=0.05,
           decimals=2),
@@ -380,8 +389,7 @@ def parse_scene_divs(value: str, defaults: dict[int, float]) -> dict[int, float]
     return out
 
 
-def _scene_simplify(s: dict) -> bool:
-    return int(s.get("simplicity_levels", 0)) > 0
+_scene_simplify = Gt("simplicity_levels", 0)
 
 
 SCENE_PARAMS: tuple[Param, ...] = (
@@ -408,7 +416,7 @@ SCENE_PARAMS: tuple[Param, ...] = (
     Param("background_divs", format_scene_divs(SCENE_BACKGROUND_DIVS), "text", "simplify",
           enabled_if=_scene_simplify),
     Param("object_divs", format_scene_divs(SCENE_OBJECT_DIVS), "text", "simplify",
-          enabled_if=lambda s: _scene_simplify(s) and bool(s.get("split_scene"))),
+          enabled_if=All(_scene_simplify, On("split_scene"))),
     Param("width_loss_weight", 1.0, "float", "simplify", cli="width_loss_weight", minimum=0.0, maximum=10.0, step=0.1,
           decimals=2, enabled_if=_scene_simplify),
     Param("width_lr", 0.00005, "float", "simplify", cli="width_lr", minimum=0.0000001, maximum=0.1, step=0.00001,
@@ -422,13 +430,13 @@ SCENE_PARAMS: tuple[Param, ...] = (
     Param("saliency_model", "clip", "choice", "init", cli="saliency_model", choices=("clip", "dino"),
           enabled_if=_on("attention_init")),
     Param("saliency_clip_model", "ViT-B/32", "choice", "init", cli="saliency_clip_model", choices=CLIP_MODELS,
-          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          enabled_if=_CLIP_SALIENCY),
     Param("xdog_intersec", True, "bool", "init", cli="xdog_intersec",
-          enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          enabled_if=_CLIP_SALIENCY),
     Param("softmax_temp", 0.3, "float", "init", cli="softmax_temp", minimum=0.01, maximum=10.0, step=0.05,
-          decimals=2, enabled_if=lambda s: bool(s.get("attention_init")) and s.get("saliency_model") == "clip"),
+          decimals=2, enabled_if=_CLIP_SALIENCY),
     Param("mask_object_attention", False, "bool", "init", cli="mask_object_attention",
-          enabled_if=lambda s: bool(s.get("attention_init")) and bool(s.get("split_scene"))),
+          enabled_if=All(On("attention_init"), On("split_scene"))),
     Param("clip_conv_loss_type", "L2", "choice", "loss", cli="clip_conv_loss_type", choices=("L2", "Cos", "L1")),
     Param("num_aug_clip", 4, "int", "loss", cli="num_aug_clip", minimum=0, maximum=32),
     Param("turbo", False, "bool", "optim", advanced=False),
