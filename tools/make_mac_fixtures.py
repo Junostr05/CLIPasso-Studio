@@ -40,7 +40,7 @@ WIN_OUTPUT, WIN_PICTURES = "C:\\Users\\Jürgen\\Documents\\CLIPasso Studio", "C:
 CONDITION_CASES = 200  # per method
 
 PYJSON_VALUES = [
-    None, True, False, 0, -7, 2 ** 53, 12345678901234567890,
+    None, True, False, 0, -7, 2 ** 53, -(2 ** 63), 2 ** 63 - 1,
     0.1, -2.5, 100.0, 1e-05, 0.0001, 1e15, 1234567890123456.0, 1e16, 12345678901234567890.0, 5e-324,
     1.7976931348623157e308, 3.141592653589793, 123456789.123, 1.5e-07,
     "", "Bild Ä ö ü ß", "Emoji ✏️🦒", "„Tiere“ and \"quotes\" \\ / \n\t\r\b\f \u0001 \u001f \u007f \u2028",

@@ -11,3 +11,7 @@ dist/
 /_selftest_out/
 *.spec.bak
 clipasso_studio/gui/_build_info.py
+
+# the Swift package (macos/): build output
+macos/.build/
+macos/.swiftpm/

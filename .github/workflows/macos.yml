@@ -29,12 +29,31 @@ permissions:
 
 concurrency:
   group: macos-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false  # a run under way (e.g. a measurement) finishes; only one waits behind it
 
 env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  core:
+    name: StudioCore (Swift package, macOS)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: The newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i -E "beta|release_candidate|_rc" | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          swift --version
+      - name: swift build and swift test
+        working-directory: macos
+        run: |
+          swift build
+          swift test
+
   engine:
     name: Engine (macOS, Apple Silicon)
     runs-on: macos-26
