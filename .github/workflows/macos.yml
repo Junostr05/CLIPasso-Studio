@@ -48,6 +48,9 @@ jobs:
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
           swift --version
+      - uses: actions/setup-python@v5  # (the tests start the real engine: python3 -m clipasso_studio.headless)
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: swift build and swift test
         working-directory: macos
         env:
@@ -55,9 +58,6 @@ jobs:
         run: |
           swift build
           swift test
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Python reads the job files Swift wrote
         run: python tools/check_swift_meta.py "${{ runner.temp }}/studiocore-export"
 
