@@ -369,7 +369,18 @@ schneller ist und die Ergebnisse gleich gut bleiben.
 
 ---
 
-## 11. Entscheidungen, die du treffen musst
+## 11. Entscheidungen
+
+**Getroffen am 3. November 2026, Plan freigegeben:**
+- **macOS:** Ziel macOS 26, nur Apple Silicon. Gebaut wird mit dem 27-SDK, sobald der Runner Xcode 27 hat, sonst
+  mit Xcode 26. APIs, die es erst ab 27 gibt, laufen hinter `#available`.
+- **Signieren:** Kein Account. Die App bleibt unsigniert (ad hoc), mit Hinweis zu Gatekeeper. Updates: Die App
+  meldet die neue Version und öffnet den Download.
+- **Erster Stand:** größer als vorgeschlagen, also Abschnitt 10 und dazu die Seiten **Warteschlange** und
+  **Modelle**.
+- **Modelle:** Keine mitliefern, nur BlazeFace. Alle anderen lädt die App beim ersten Gebrauch.
+
+Die ursprünglichen Fragen und Optionen:
 
 1. **Mindest-Version von macOS.** Ich stimme deinem Vorschlag zu: **macOS 26, nur Apple Silicon.**
    - Es geht ohnehin nicht anders: PyTorch baut seit 2.3 nichts mehr für Intel-Macs. Die 2.11-Wheels gibt es nur
