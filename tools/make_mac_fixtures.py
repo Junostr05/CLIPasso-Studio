@@ -195,10 +195,19 @@ def sketches(out: Path) -> None:
 
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
-    from PIL import Image
+    """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
+    same on every platform whatever zlib it has."""
+    import struct
+    import zlib
 
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    raw = b"".join(b"\0" + bytes(colour) * 8 for _ in range(8))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 8, 8, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw, 0)) + chunk(b"IEND", b""))
     path.parent.mkdir(parents=True, exist_ok=True)
-    Image.new("RGB", (8, 8), colour).save(path, format="PNG")
+    path.write_bytes(png)
     return path
 
 
@@ -280,7 +289,7 @@ def _swap(value, swaps):
     if isinstance(value, str):
         for old, new, windows in swaps:
             if value.startswith(old):
-                rest = value[len(old):]
+                rest = value[len(old):].replace("\\", "/")  # (made on Windows: its separators)
                 return new + (rest.replace("/", "\\") if windows else rest)
     return value
 

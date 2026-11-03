@@ -18,6 +18,11 @@ def claim_stdout() -> BinaryIO:
     sys.stdout.flush()
     fd = os.dup(1)
     os.dup2(2, 1)
+    if sys.platform == "win32":  # child processes inherit the Windows standard handle, not the C runtime's fd 1
+        import ctypes
+        import msvcrt
+
+        ctypes.windll.kernel32.SetStdHandle(-11, msvcrt.get_osfhandle(2))  # STD_OUTPUT_HANDLE → stderr
     sys.stdout = sys.stderr
     return os.fdopen(fd, "wb", buffering=0)
 
