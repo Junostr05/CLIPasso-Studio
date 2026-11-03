@@ -12,7 +12,8 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``jobs/`` – job folders built with engine/jobs.py, their paths as they would be on a Mac
   (``/Users/studio/…``) or on Windows (``C:\\Users\\Jürgen\\…``), and ``jobs_expected.json``: what
   ``jobs.job_summary`` reads from each (paths inside the fixtures as ``{jobs}/…``)
-- ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them
+- ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them;
+  ``paths_expected.json``: path data and what engine/svg_path.py reads from it
 
 ``tests/test_mac_fixtures.py`` checks that the committed files are current.
 """
@@ -165,6 +166,21 @@ def read_svg(text: str) -> dict:
             "strokes": strokes}
 
 
+PATH_CASES = (
+    "M 10 20 L 30 40", "M10,20l5,5h10v-3H0V1z", "M 0 0 C 1 2 3 4 5 6 S 7 8 9 10", "M 0 0 Q 1 1 2 0 T 4 0 t 2 0",
+    "M 0 0 A 5 5 0 0 1 10 0", "M 0 0 A 5 10 30 1 0 10 10", "M 1 1 L 2 2 Z M 5 5 L 6 6", "M 0 0 L 1 0 L 1 1 Z",
+    "M 3 3 4 4 5 5", "m 1 1 2 2 c 1 1 2 2 3 3 z", "M.5-.5L1e1 2E-1", "M 0 0 S 1 1 2 0 T 3 3",
+)
+
+
+def path_cases() -> list[dict]:
+    """Path data with what engine/svg_path.parse_path_d makes of it (subpaths of segments of points)."""
+    from clipasso_studio.engine.svg_path import parse_path_d
+
+    return [{"d": d, "subpaths": [{"segments": [[list(p) for p in seg] for seg in segs], "closed": bool(closed)}
+                                  for segs, closed in parse_path_d(d)]} for d in PATH_CASES]
+
+
 def sketches(out: Path) -> None:
     expected = {}
     for name, kind, background in (("lines.svg", "lines", None), ("cubic.svg", "cubic", None),
@@ -174,6 +190,7 @@ def sketches(out: Path) -> None:
         (out / "svg" / name).write_bytes(text.encode("utf-8"))
         expected[name] = read_svg(text)
     write_json(out / "svg_expected.json", expected)
+    write_json(out / "paths_expected.json", path_cases())
 
 
 # --------------------------------------------------------------------------------------------------------- jobs
