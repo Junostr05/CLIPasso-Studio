@@ -205,22 +205,27 @@ class EngineServer:
 
         threading.Thread(target=read, name="requests", daemon=True).start()
         busy = False
-        while True:
-            try:
-                line = lines.get_nowait() if busy else lines.get(timeout=REQUEST_WAIT)
-            except queue.Empty:
-                line = b""
-            if line is None:
-                break
-            if line.strip():
+        code = 0
+        try:
+            while True:
                 try:
-                    self.writer.send(self.handle(decode(line)))
-                except ProtocolError as exc:
-                    self.writer.send({"id": exc.request_id, "ok": False,
-                                      "error": {"code": exc.code, "message": exc.message}})
-                if self._stopping:
+                    line = lines.get_nowait() if busy else lines.get(timeout=REQUEST_WAIT)
+                except queue.Empty:
+                    line = b""
+                if line is None:
                     break
-                continue  # requests first: an answer never waits behind a flood of events
-            busy = self.pump() > 0
-        self.runner.kill()
-        return 0
+                if line.strip():
+                    try:
+                        self.writer.send(self.handle(decode(line)))
+                    except ProtocolError as exc:
+                        self.writer.send({"id": exc.request_id, "ok": False,
+                                          "error": {"code": exc.code, "message": exc.message}})
+                    if self._stopping:
+                        break
+                    continue  # requests first: an answer never waits behind a flood of events
+                busy = self.pump() > 0
+        except BrokenPipeError:  # the app is gone (stdout closed)
+            code = 1
+        finally:
+            self.runner.kill()  # the job stops and is marked interrupted, whatever ended the loop
+        return code

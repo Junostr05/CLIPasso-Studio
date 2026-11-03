@@ -121,6 +121,19 @@ import Testing
         await engine.stop()
     }
 
+    @Test func startingTwiceKeepsOneProcess() async throws {
+        let engine = EngineClient(launch: Self.fake("echo"))
+        try await engine.start()
+        let pid = try #require(await engine.processIdentifier)
+        await #expect(throws: EngineFailure(code: "already_running", message: "the engine already runs")) {
+            try await engine.start()
+        }
+        let after = await engine.processIdentifier
+        let state = await engine.state
+        #expect(after == pid && kill(pid, 0) == 0 && state == .running)
+        await engine.stop()
+    }
+
     @Test func stopEndsTheProcess() async throws {
         let engine = EngineClient(launch: Self.fake("echo"))
         try await engine.start()

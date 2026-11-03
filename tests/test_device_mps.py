@@ -19,6 +19,8 @@ def no_cuda(monkeypatch):
 
 
 def _mps(monkeypatch, available: bool):
+    """A Mac whose Apple GPU is (not) usable."""
+    monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(torch.backends.mps, "is_available", lambda: available)
 
 
@@ -104,3 +106,16 @@ def test_channels_last_only_where_measured():
 
     assert clip.channels_last_ok(torch.device("cpu")) and clip.channels_last_ok(torch.device("cuda", 0))
     assert not clip.channels_last_ok(torch.device("mps"))
+
+
+def test_mps_job_on_another_computer_is_automatic(monkeypatch):
+    """A job made on a Mac and continued on Windows (or Linux) asks for "mps": there it computes as "auto" would – on
+    the NVIDIA card when there is one – without a warning."""
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(pipeline, "cuda_arch_supported", lambda idx: True)
+    assert pipeline.resolve_device({"method": "clipasso", "device": "mps"}) == (torch.device("cuda:0"), None)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 0)
+    assert pipeline.resolve_device({"method": "clipasso", "device": "mps"}) == (torch.device("cpu"), None)

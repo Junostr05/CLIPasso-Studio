@@ -12,6 +12,7 @@ import json
 import math
 import os
 import random
+import sys
 import time
 from types import SimpleNamespace
 from typing import Any
@@ -117,6 +118,8 @@ def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
     """-> (device, warning). "auto": an NVIDIA card, else the Apple GPU for the methods in ``schema.MPS_AUTO``, else
     the CPU."""
     wanted = settings.get("device", "auto")
+    if wanted == "mps" and sys.platform != "darwin":
+        wanted = "auto"  # a job from a Mac continued on another computer: there it computes as "auto" would
     if wanted == "cpu":
         return torch.device("cpu"), None
     if wanted == "mps":

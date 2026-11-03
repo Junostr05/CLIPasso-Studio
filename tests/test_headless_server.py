@@ -283,3 +283,15 @@ def test_convert_model(monkeypatch, tmp_path):
     assert error == {"code": "not_downloaded", "message": "lama is not downloaded", "model": "lama"}
     assert server.handle(_req(4, "convert_model", key="nope", dest_root=str(tmp_path)))["error"]["code"] == "not_found"
     assert server.handle(_req(3, "convert_model", key="", dest_root=""))["error"]["code"] == "bad_request"
+
+
+def test_a_lost_stdout_still_stops_the_job():
+    """When the app is gone, writing an answer fails (broken pipe): the job is stopped and marked interrupted anyway."""
+    class Broken(io.BytesIO):
+        def write(self, data):
+            raise BrokenPipeError(32, "Broken pipe")
+
+    runner = FakeRunner()
+    server = EngineServer(Writer(Broken()), runner=runner, devices_probe=lambda: {"cuda": False, "mps": False})
+    assert server.serve(io.BytesIO(encode(_req(1, "hello")))) == 1
+    assert runner.killed == 1

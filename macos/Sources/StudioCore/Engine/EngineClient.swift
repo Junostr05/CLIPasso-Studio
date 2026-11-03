@@ -51,6 +51,9 @@ public actor EngineClient: EngineControlling {
 
     /// Start the engine and greet it: it must speak this package's protocol.
     public func start(timeout: Duration = .seconds(120)) async throws {
+        guard running == nil else {
+            throw EngineFailure(code: "already_running", message: "the engine already runs")
+        }
         stopping = false
         crashes = []
         state = .starting
