@@ -27,6 +27,10 @@ public final class AppModel {
     public private(set) var gallery: GalleryModel
     /// The queue page (once the engine runs).
     public private(set) var queuePage: QueueModel?
+    /// The countdown before the Mac sleeps or shuts down, once the queue ran out with that chosen.
+    public private(set) var countdown: WhenDoneCountdown?
+    @ObservationIgnored private let power: any PowerActions
+    @ObservationIgnored private let whenDoneTiming: (seconds: Int, tick: Duration)
     /// The queue as it was last reported (nil before the engine runs).
     public private(set) var queueSnapshot: QueueSnapshot?
     @ObservationIgnored public private(set) var engine: EngineClient?
@@ -38,10 +42,13 @@ public final class AppModel {
     @ObservationIgnored public let store: SettingsStore
 
     public init(resources: AppResources, store: SettingsStore = .standard(),
-                transport: any HTTPTransport = URLSessionTransport()) throws
+                transport: any HTTPTransport = URLSessionTransport(), power: any PowerActions = MacPower(),
+                whenDoneTiming: (seconds: Int, tick: Duration) = (60, .seconds(1))) throws
     {
         self.resources = resources
         self.transport = transport
+        self.power = power
+        self.whenDoneTiming = whenDoneTiming
         self.store = store
         let loaded = store.load()
         settings = loaded
@@ -127,8 +134,17 @@ public final class AppModel {
     private func apply(_ snapshot: QueueSnapshot) {
         let finished = { (s: QueueSnapshot?) in s?.jobs.filter { $0.status == .done }.count ?? 0 }
         let newResult = finished(snapshot) > finished(queueSnapshot)
+        let ranOut = snapshot.finished != nil && queueSnapshot?.finished == nil
         queueSnapshot = snapshot
         queuePage?.apply(snapshot)
+        if ranOut, let action = snapshot.finished, action != .nothing {
+            // once: the choice goes back to "nothing" (as in the studio), then the countdown
+            Task { await queuePage?.setWhenDone(.nothing) }
+            let countdown = WhenDoneCountdown(action: action, seconds: whenDoneTiming.seconds,
+                                              tick: whenDoneTiming.tick, power: power)
+            self.countdown = countdown
+            countdown.start()
+        }
         studio.live.update(from: snapshot)
         if newResult {
             Task { await gallery.refresh() }  // (a finished job is a new result)

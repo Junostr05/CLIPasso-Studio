@@ -56,5 +56,13 @@ struct RootView: View {
             ModelSheet()
                 .environment(model)
         }
+        // the queue ran out with "when done" chosen
+        .sheet(isPresented: Binding(get: { model.countdown.map { !$0.finished } ?? false },
+                                    set: { if !$0 { model.countdown?.cancel() } })) {
+            if let countdown = model.countdown {
+                CountdownSheet(countdown: countdown)
+                    .environment(model)
+            }
+        }
     }
 }
