@@ -41,7 +41,10 @@ struct RootView: View {
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 260)
         } detail: {
-            PageView(page: page ?? .studio)
+            switch page ?? .studio {
+            case .studio: StudioView()
+            case let other: PageView(page: other)
+            }
         }
     }
 }

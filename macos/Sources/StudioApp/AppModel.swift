@@ -19,7 +19,13 @@ public final class AppModel {
     public private(set) var texts: Texts
     public let schema: ParamSchema
     public let catalog: ModelCatalog
+    /// The studio page (its settings and the job it started).
+    public let studio: StudioModel
+    /// The queue as it was last reported (nil before the engine runs).
+    public private(set) var queueSnapshot: QueueSnapshot?
     @ObservationIgnored public private(set) var engine: EngineClient?
+    @ObservationIgnored public private(set) var queue: JobQueue?
+    @ObservationIgnored private var queueListener: Task<Void, Never>?
     @ObservationIgnored private let resources: AppResources
     @ObservationIgnored public let store: SettingsStore
 
@@ -29,8 +35,10 @@ public final class AppModel {
         let loaded = store.load()
         settings = loaded
         texts = try Texts(directory: resources.i18n, language: Texts.resolve(loaded.language))
-        schema = try ParamSchema.load(resources.schema)
+        let schema = try ParamSchema.load(resources.schema)
+        self.schema = schema
         catalog = try ModelCatalog.load(resources.models)
+        studio = StudioModel(schema: schema)
     }
 
     /// Change the settings and save them at once (AppSettings.set); false when the file could not be written – the
@@ -81,6 +89,13 @@ public final class AppModel {
         do {
             try await client.start()
             engineStatus = .ready
+            let queue = JobQueue(engine: client, outputRoot: settings.outputDir)
+            self.queue = queue
+            queueListener = Task { [weak self] in
+                for await snapshot in queue.updates {
+                    self?.apply(snapshot)
+                }
+            }
         } catch {
             let log = await client.stderrTail().suffix(5).joined(separator: "\n")
             let details = log.isEmpty ? String(describing: error) : "\(error)\n\(log)"
@@ -89,6 +104,40 @@ public final class AppModel {
     }
 
     public func stopEngine() async {
+        queueListener?.cancel()
+        queueListener = nil
         await engine?.stop()
+    }
+
+    private func apply(_ snapshot: QueueSnapshot) {
+        queueSnapshot = snapshot
+        studio.live.update(from: snapshot)
+    }
+
+    // MARK: - the studio's job
+
+    /// *Create sketch*: the studio's image with its settings into the queue (it starts when nothing runs).
+    public func startSketch() async {
+        guard let queue else { return }
+        await studio.start(on: queue)
+        apply(await queue.snapshot())
+    }
+
+    /// *Pause* / *Resume* of the running job.
+    public func pauseOrResume() async {
+        guard let queue else { return }
+        if studio.live.status == .paused {
+            try? await queue.resume()
+        } else {
+            try? await queue.pause()
+        }
+        apply(await queue.snapshot())
+    }
+
+    /// *Cancel*: the job stops; its best sketch so far is kept.
+    public func cancelJob() async {
+        guard let queue else { return }
+        try? await queue.cancel()
+        apply(await queue.snapshot())
     }
 }

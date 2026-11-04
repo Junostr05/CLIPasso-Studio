@@ -88,6 +88,27 @@ import StudioCore
         #expect(standard.engineLaunch?.environment?["CLIPASSO_DOWNLOADS_DIR"] == standard.modelsDir.path)
     }
 
+    /// The studio's job goes through the queue on the engine; the studio follows it to its end.
+    @Test func aStudioJobRunsThroughTheQueue() async throws {
+        let done = SelfTestTests.fixtures.appending(path: "jobs/done_clipasso")
+        let out = FileManager.default.temporaryDirectory.appending(path: "studio-\(UUID().uuidString)")
+        let store = try Self.store(language: "en", ["output_dir": .string(out.path)])
+        let model = try AppModel(resources: Self.resources(engine: SelfTestTests.fake(["job", done.path])), store: store)
+        model.studio.image = URL(filePath: "/Bilder/Kamel.png")
+        await model.startSketch()  // (no engine yet: nothing happens)
+        #expect(model.queueSnapshot == nil)
+        await model.startEngine()
+        await model.startSketch()
+        let deadline = ContinuousClock.now + .seconds(30)
+        while model.studio.live.status != .done, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.studio.live.status == .done && model.studio.canStart)
+        #expect(model.queueSnapshot?.jobs.count == 1)
+        #expect(model.studio.live.jobDir?.path.hasPrefix(out.path) == true)  // the output folder of the settings
+        await model.stopEngine()
+    }
+
     @Test func bundledResourcesLayout() {
         let contents = URL(filePath: "/Applications/CLIPasso Studio.app/Contents")
         let r = AppResources.bundled(resources: contents.appending(path: "Resources"))
