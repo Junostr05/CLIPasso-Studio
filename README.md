@@ -42,6 +42,28 @@ Once installed, the app offers new versions itself and downloads only the files 
 
 > Windows SmartScreen may warn about an “unknown publisher” (the exe is not signed) → *More info* → *Run anyway*.
 
+### Mac (Apple Silicon) – in development
+
+A native Mac app (SwiftUI) with the same four methods is being built: the sketches are computed by the same Python
+engine, which the app brings along with its own Python and PyTorch. It needs a Mac with **Apple Silicon (M1 or newer)
+and macOS 26**. Until its first release, every push builds a disk image in the
+[macOS workflow](.github/workflows/macos.yml) (artefact `CLIPasso-Studio-mac`).
+
+- **Install:** open the disk image and drag *CLIPasso Studio* onto *Applications*.
+- **First start:** the app is not signed by Apple (that needs a paid developer account), so macOS stops the first
+  start. Open the app, click *Done*, then *System Settings → Privacy & Security*, scroll to the note about CLIPasso
+  Studio and click *Open Anyway* (confirm with your password); open the app again and click *Open*. The read me in
+  the disk image says the same in German and English.
+- **Models:** only BlazeFace comes with the app. A method downloads its models the first time it needs them – the app
+  says which and how big first; the *Models* page lists them all. They are stored in
+  `~/Library/Application Support/CLIPassoStudio/models` (another folder can be chosen in *Settings*).
+- **Results and settings:** results go to `~/Documents/CLIPasso Studio`, in the same folder format as the Windows app
+  (job folders, `meta.json`, favourites, titles), so they can move between the two. The settings are
+  `~/Library/Application Support/CLIPassoStudio/settings.json`.
+- **Apple GPU:** each job can choose the device *mps*. *Auto* stays on the processor for now: measured on an Apple
+  Silicon runner, SwiftSketch is 2–3× faster on the Apple GPU but its sketches scored a little lower, and CLIPasso
+  needs one operation that falls back to the processor there.
+
 ## The four methods
 
 Pick the method at the top of the studio with one click. Parameters, presets, time estimate and hints adapt to it, and the settings of each method are remembered. **My presets** (bookmark button next to the presets, 3.4.2) keep your own settings under a name – in the studio and on the phone.
@@ -183,6 +205,18 @@ python -m pytest -q                                       # tests (SwiftSketch/C
 python -m clipasso_studio --selftest out                  # short run of all three methods
 set MODE=onefile&& pyinstaller packaging\clipasso_studio.spec   # portable exe
 ```
+
+**Mac app** (on a Mac with Apple Silicon; `swift test` also runs on Linux):
+
+```bash
+cd macos && swift test                                     # StudioCore and the app's models, with Python fixtures
+macos/scripts/build_python.sh build/app                    # the app's own Python with the engine (lock-macos.txt)
+macos/scripts/make_app.sh build/app                        # CLIPasso Studio.app, signed ad hoc
+"build/app/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio" --self-test image.png out --models models
+macos/scripts/make_dmg.sh build/app                        # the disk image with its read me
+```
+
+The plan and the decisions behind it are in [`docs/macos`](docs/macos).
 
 The complete Windows build (both editions, installers, self-test of the exe and the release) runs in [`.github/workflows/build.yml`](.github/workflows/build.yml). A manual run (*Run workflow* with a `release_tag`) creates a release; the `cpu` and `gpu` switches build the editions separately.
 
