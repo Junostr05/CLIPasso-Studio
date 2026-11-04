@@ -130,6 +130,38 @@ def run_one(method: str, device: str, image: Path, iters: int, work: Path) -> di
     return row
 
 
+def clip_agreement(device: str, images: list[Path]) -> list[dict]:
+    """How alike CLIP ViT-B/32 sees each image on ``device`` and on the CPU: the cosine of the two embeddings (1.0:
+    the same; the scorer and CLIPasso's loss compute on the device) and, per device, how alike it sees the images to
+    each other (the mean cosine of all pairs – near 1.0 means the embeddings collapsed)."""
+    import torch
+    from PIL import Image
+    from torchvision import transforms
+
+    from clipasso_studio.engine.scoring import ClipScorer
+
+    if not available(device):
+        return [{"check": "clip_embedding", "device": device, "error": "unavailable"}]
+    tensors = [transforms.ToTensor()(Image.open(p).convert("RGB"))[None] for p in images]
+    embeds = {}
+    for dev in ("cpu", device):
+        scorer = ClipScorer(dev)
+        embeds[dev] = torch.cat([scorer._embed(t.float()).cpu() for t in tensors])
+    rows = []
+    for i, p in enumerate(images):
+        rows.append({"check": "clip_embedding", "device": device, "image": p.name,
+                     "cosine_to_cpu": round(float((embeds["cpu"][i] * embeds[device][i]).sum()), 4)})
+
+    def mean_pair(e):
+        n = len(e)
+        sims = [float((e[i] * e[j]).sum()) for i in range(n) for j in range(i + 1, n)]
+        return round(sum(sims) / len(sims), 4) if sims else None
+
+    rows.append({"check": "clip_pairs", "device": device, "cpu_mean_pair": mean_pair(embeds["cpu"]),
+                 "device_mean_pair": mean_pair(embeds[device])})
+    return rows
+
+
 def table(rows: list[dict]) -> str:
     head = ("| method | device | image | repeat | seconds | s/iter | iterations | CLIP score | CLIP score (CPU) | "
             "NaN | error |")
@@ -170,8 +202,17 @@ def main(argv: list[str] | None = None) -> int:
                     print(json.dumps(row), file=sys.stderr, flush=True)
                     if row["error"] == "unavailable":
                         break  # (the same for every repeat)
-    Path(args.out).write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    checks = []
+    for device in [d for d in args.devices.split(",") if d and d != "cpu"]:
+        checks += clip_agreement(device, images)
+    for row in checks:
+        print(json.dumps(row), file=sys.stderr, flush=True)
+    Path(args.out).write_text(json.dumps(rows + checks, indent=1), encoding="utf-8")
     print(table(rows))
+    if checks:
+        print("\nCLIP ViT-B/32 on the device against the CPU (cosine of the embeddings; 1.0 = the same):\n")
+        for row in checks:
+            print("- " + ", ".join(f"{k}: {v}" for k, v in row.items() if k != "check"))
     return 0
 
 

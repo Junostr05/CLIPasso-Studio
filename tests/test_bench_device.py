@@ -37,3 +37,18 @@ def test_bench_runs_tiny_cpu(tmp_path):
     else:
         assert mps["error"] == "unavailable" and mps["seconds"] is None and mps["traceback"] is None
     assert "| clipasso | cpu |" in done.stdout and "| clipasso | mps |" in done.stdout  # the table
+
+
+def test_clip_agreement_on_the_cpu():
+    """The check of the embeddings: the CPU against itself agrees exactly; a missing device is reported."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("bench_device", ROOT / "tools" / "bench_device.py")
+    bench = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bench)
+    rows = bench.clip_agreement("cpu", [SAMPLE, SAMPLE])
+    assert [r["cosine_to_cpu"] for r in rows if r["check"] == "clip_embedding"] == [1.0, 1.0]
+    pairs = next(r for r in rows if r["check"] == "clip_pairs")
+    assert pairs["cpu_mean_pair"] == pairs["device_mean_pair"] == 1.0  # (the same image twice)
+    assert bench.clip_agreement("no-such-device", [SAMPLE]) == [
+        {"check": "clip_embedding", "device": "no-such-device", "error": "unavailable"}]
