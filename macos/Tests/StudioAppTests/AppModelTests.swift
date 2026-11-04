@@ -107,7 +107,7 @@ import StudioCore
         #expect(model.queueSnapshot?.jobs.count == 1)
         #expect(model.studio.live.jobDir?.path.hasPrefix(out.path) == true)  // the output folder of the settings
         #expect(model.queuePage?.jobs.count == 1)
-        let deadline2 = ContinuousClock.now + .seconds(10)
+        let deadline2 = ContinuousClock.now + .seconds(60)  // (a guard against a hang, far above any stall)
         while model.gallery.items.isEmpty, ContinuousClock.now < deadline2 {
             try await Task.sleep(for: .milliseconds(20))
         }

@@ -59,7 +59,7 @@ actor FakeEngine: EngineControlling {
     static func until(_ queue: JobQueue, _ what: String = "",
                       _ condition: @Sendable (QueueSnapshot) -> Bool) async throws -> QueueSnapshot
     {
-        let deadline = ContinuousClock.now + .seconds(10)
+        let deadline = ContinuousClock.now + .seconds(60)  // (a guard against a hang, far above any stall)
         while ContinuousClock.now < deadline {
             let snapshot = await queue.snapshot()
             if condition(snapshot) { return snapshot }

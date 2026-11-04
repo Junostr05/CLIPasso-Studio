@@ -305,6 +305,20 @@ final class FakeTransport: HTTPTransport {
         #expect(try Data(contentsOf: root.appending(path: ".partial/test_single.part")).count == 3000)  // kept
     }
 
+    /// The first line a process writes – read in a detached task: a read of a pipe blocks its thread until Python
+    /// (seconds on a cold runner) writes, and the tests share the main actor. Ends early when the pipe does.
+    static func firstLine(_ handle: FileHandle) async -> String {
+        await Task.detached {
+            var line = Data()
+            while !line.contains(0x0A) {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }  // (the process is gone)
+                line.append(chunk)
+            }
+            return String(decoding: line, as: UTF8.self)
+        }.value
+    }
+
     @Test func realURLSessionWithRangeServer() async throws {
         let script = try #require(Bundle.module.url(forResource: "range_server", withExtension: "py"))
         let server = Process()
@@ -318,11 +332,8 @@ final class FakeTransport: HTTPTransport {
             try? input.fileHandleForWriting.close()
             server.terminate()
         }
-        var portLine = Data()
-        while !portLine.contains(0x0A) {
-            portLine.append(out.fileHandleForReading.availableData)
-        }
-        let port = try #require(Int(String(decoding: portLine, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)))
+        let portLine = await Self.firstLine(out.fileHandleForReading)
+        let port = try #require(Int(portLine.trimmingCharacters(in: .whitespacesAndNewlines)), "the server said \(portLine)")
         let expected = Self.bytes(300_000, seed: 0)
         for path in ["file", "norange"] {
             let root = try Self.root()
