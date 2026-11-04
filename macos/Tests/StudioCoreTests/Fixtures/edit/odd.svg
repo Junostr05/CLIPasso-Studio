@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300px" height="200px" viewBox="-10, 5 300 200">
+  <!-- a comment -->
+  <rect width="100%" height="100%" fill="#fff8e7" />
+  <path d="M 0 10 L 100 10 M 120 10 L 200 60" stroke="rgb(0, 0, 0)" />
+  <g><g transform="none">
+    <path d="M 20 150 C 60 100 100 200 140 150" stroke-width=" 4 " stroke="rgb(0, 0, 0)"><title>t</title></path>
+  </g>
+  <path d="M 250 20 Q 260 150 270 190 Z" stroke-width="2.5" data-fixed="true" stroke="rgb(0, 0, 0)" />
+  </g>
+</svg>

@@ -107,7 +107,7 @@ public enum SketchExport {
     }
 
     /// The index after the `>` that ends the tag at `start` (quotes respected).
-    private static func tagEnd(_ text: String, from start: String.Index) -> String.Index {
+    static func tagEnd(_ text: String, from start: String.Index) -> String.Index {
         var quote: Character?
         var i = text.index(after: start)
         while i < text.endIndex {
@@ -126,7 +126,7 @@ public enum SketchExport {
 
     /// A start tag with its attributes as written (quotes and spacing kept); changed ones are set in place, new ones
     /// added at the end (as ElementTree's `set` does).
-    private struct StartTag {
+    struct StartTag {
         struct Attribute {
             var name: String
             var raw: String  // the value as written (still escaped)
@@ -173,8 +173,18 @@ public enum SketchExport {
             }
         }
 
+        /// The tag's name as written, with its namespace prefix ("svg:path").
+        var qualifiedName: String { String(head.dropFirst()) }
+
         func value(_ key: String) -> String? {
             parts.first { $0.attribute.name == key }.map { unescape($0.attribute.raw) }
+        }
+
+        /// ElementTree's `attrib.pop(key, None)`.
+        mutating func remove(_ key: String) {
+            guard let at = parts.firstIndex(where: { $0.attribute.name == key }) else { return }
+            parts.remove(at: at)
+            changed = true
         }
 
         mutating func set(_ key: String, _ value: String) {

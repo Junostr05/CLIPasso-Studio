@@ -10,6 +10,8 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
   whose values all match, else none – "custom")
 - ``versions.json`` – version pairs and what gui/updates.is_newer decides for them
+- ``edit/`` – ``strokes.json``: what gui/strokes.py (the eraser and the pen) makes of the ``svg/`` sketches and of
+  ``odd.svg`` and ``empty.svg``
 - ``image_files.json`` – a folder of pictures and the images gui/drop.py takes from it (the folder, with its
   subfolders, and as dropped)
 - ``settings.json`` – the app settings as the Python app writes them
@@ -31,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import random
 import shutil
@@ -334,6 +337,69 @@ def image_file_cases() -> dict:
                 "dropped": relative(drop.dropped_images(mime))}
 
 
+# --------------------------------------------------------------------------------------------- editing sketches
+EDIT_ODD = (  # a sketch as hand-written SVG may be: shifted viewBox, sizes in px, nested groups, a path in the root
+    '<svg xmlns="http://www.w3.org/2000/svg" width="300px" height="200px" viewBox="-10, 5 300 200">\n'
+    '  <!-- a comment -->\n'
+    '  <rect width="100%" height="100%" fill="#fff8e7" />\n'
+    '  <path d="M 0 10 L 100 10 M 120 10 L 200 60" stroke="rgb(0, 0, 0)" />\n'
+    '  <g><g transform="none">\n'
+    '    <path d="M 20 150 C 60 100 100 200 140 150" stroke-width=" 4 " stroke="rgb(0, 0, 0)"><title>t</title></path>\n'
+    '  </g>\n'
+    '  <path d="M 250 20 Q 260 150 270 190 Z" stroke-width="2.5" data-fixed="true" stroke="rgb(0, 0, 0)" />\n'
+    '  </g>\n'
+    '</svg>\n')
+EDIT_EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224"><defs /></svg>'
+EDIT_STROKES = (  # (points, width, fixed)
+    ([(20 + 9 * i, 100 + 15 * (i % 2)) for i in range(20)], None, True),
+    ([(10 + 4 * i, 50 + 0.3 * math.sin(i)) for i in range(40)], None, True),
+    ([(10, 10), (10, 10), (40.5, 40.25), (40.5, 40.25), (70.125, 10)], None, True),
+    ([(5, 5), (5, 5)], None, True),
+    ([(15.3333, 80.6667), (150.75, 120.125)], 2.5, False),
+)
+
+
+def edit_cases(out: Path) -> list[dict]:
+    """gui/strokes.py on the ``svg/`` sketches and two odd ones (``edit/``): their count, fixed strokes and viewBox,
+    the stroke hit at points of a grid and at each stroke's start, strokes removed, strokes drawn with the pen, and
+    every stroke freed again."""
+    from clipasso_studio.gui import brush, strokes
+
+    (out / "edit").mkdir(parents=True, exist_ok=True)
+    (out / "edit" / "odd.svg").write_text(EDIT_ODD, encoding="utf-8")
+    (out / "edit" / "empty.svg").write_text(EDIT_EMPTY, encoding="utf-8")
+    cases = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "edit/empty.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        x0, y0, w, h = strokes.view_box(svg)
+        index = strokes.StrokeIndex(svg)
+        points = [(x0 + w * i / 8, y0 + h * j / 8, tol) for i in range(9) for j in range(9) for tol in (2.0, 9.0)]
+        for line in index.lines:
+            if line and line[0]:
+                points.append((line[0][0][0] + 0.25, line[0][0][1] - 0.5, 1.0))
+        n = len(index)
+        cases.append({
+            "svg": name, "count": strokes.count(svg), "fixed": strokes.fixed_count(svg), "view_box": [x0, y0, w, h],
+            "samples": [brush.sample(el, per_segment=12) for el in _path_ds(svg)],
+            "hits": [{"x": x, "y": y, "tolerance": t, "index": index.hit(x, y, t)} for x, y, t in points],
+            "removes": [{"indices": list(drop), "output": strokes.remove_strokes(svg, drop)}
+                        for drop in ([0], [n - 1], list(range(n)), [n + 5]) if n],
+            "appends": [{"points": [list(p) for p in pts], "width": width, "fixed": fixed,
+                         "output": strokes.append_stroke(svg, pts, width, fixed)}
+                        for pts, width, fixed in EDIT_STROKES],
+            "unfixed": strokes.unfix(svg),
+        })
+    return cases
+
+
+def _path_ds(svg: str) -> list[str]:
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(svg)
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+    return [el.get("d") or "" for el in root.iter(f"{ns}path")]
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -488,6 +554,7 @@ def build(out: Path) -> None:
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
     exports(out)
+    write_json(out / "edit" / "strokes.json", edit_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
