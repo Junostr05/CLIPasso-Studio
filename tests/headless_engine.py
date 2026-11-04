@@ -59,7 +59,7 @@ class Engine:
         try:
             msg = self.messages.get(timeout=max(0.0, deadline - time.monotonic()))
         except queue.Empty:
-            raise TimeoutError(f"no message from the engine – its log:\n{self.stderr()[-4000:]}") from None
+            raise TimeoutError(f"no message from the engine – its log:\n{self.stderr()[-30000:]}") from None
         if msg is not None and "event" in msg:
             self.events.append(msg)
         return msg

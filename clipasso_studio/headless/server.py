@@ -33,6 +33,58 @@ _PROBE = ("import json, torch; mps = getattr(torch.backends, 'mps', None); "
           "'mps': bool(mps is not None and mps.is_available())}))")
 
 
+PIPE_POLL = 0.02  # s – how often a Windows pipe is looked at when nothing came
+
+
+def _windows_pipe(inp) -> int | None:
+    """The OS handle of ``inp`` when it is a pipe on Windows (else None)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import msvcrt
+
+        import _winapi
+
+        handle = msvcrt.get_osfhandle(inp.fileno())
+        _winapi.PeekNamedPipe(handle, 0)
+        return handle
+    except (OSError, ValueError, AttributeError, ImportError):
+        return None
+
+
+def read_lines(inp, put: Callable[[bytes | None], None]) -> None:
+    """Pass every line of ``inp`` to ``put``, then None at its end.
+
+    On Windows a pipe is never read blockingly: while a thread waits in a synchronous read of a pipe, every other
+    use of that pipe waits too – importing numpy in the main thread hung there (its DLLs look at the standard
+    handles), as did child processes that got the pipe as their stdin. So the thread asks how much is there
+    (PeekNamedPipe) and reads only that."""
+    handle = _windows_pipe(inp)
+    if handle is None:
+        for line in iter(inp.readline, b""):
+            put(line)
+        put(None)
+        return
+    import _winapi
+
+    fd, pending = inp.fileno(), b""
+    while True:
+        try:
+            available = _winapi.PeekNamedPipe(handle, 0)[0]
+        except OSError:  # the writer closed it (ERROR_BROKEN_PIPE): the end
+            break
+        if not available:
+            time.sleep(PIPE_POLL)
+            continue
+        pending += os.read(fd, available)
+        *complete, pending = pending.split(b"\n")
+        for line in complete:
+            put(line + b"\n")
+    if pending:
+        put(pending)
+    put(None)
+
+
 def probe_devices() -> dict:
     """Which devices PyTorch can use – asked in a child process, so this one does not hold PyTorch. The child gets
     no stdin: on Windows one that inherits this process's stdin pipe – which the request thread is reading – hangs
@@ -223,13 +275,7 @@ class EngineServer:
         """Answer requests from ``inp`` until ``shutdown`` or its end; the running job is stopped then (and marked
         interrupted, so it can be continued). Returns the exit code."""
         lines: queue.Queue = queue.Queue()
-
-        def read():
-            for line in iter(inp.readline, b""):
-                lines.put(line)
-            lines.put(None)
-
-        threading.Thread(target=read, name="requests", daemon=True).start()
+        threading.Thread(target=read_lines, args=(inp, lines.put), name="requests", daemon=True).start()
         self.begin_probe()
         busy = False
         code = 0

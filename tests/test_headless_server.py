@@ -409,3 +409,48 @@ def test_hang_dump_is_armed_only_when_asked(monkeypatch):
     monkeypatch.setenv("CLIPASSO_HANG_DUMP", "100")
     entry.dump_when_hung()
     assert armed == [100.0]
+
+
+def test_read_lines_gives_every_line_then_the_end():
+    from clipasso_studio.headless.server import read_lines
+
+    got = []
+    read_lines(io.BytesIO(b'{"id": 1}\n{"id": 2}\nlast without newline'), got.append)
+    assert got == [b'{"id": 1}\n', b'{"id": 2}\n', b"last without newline", None]
+
+
+def test_read_lines_on_a_windows_pipe(monkeypatch):
+    """On a Windows pipe the lines come from what PeekNamedPipe says is there – never a blocking read; pieces of a
+    line are put together, the closed pipe is the end."""
+    import sys
+    import types
+
+    from clipasso_studio.headless import server
+
+    chunks = [b'{"id": 1}\n{"i', b'd": 2}\n', b"", b"tail"]
+    sizes = [len(c) for c in chunks if c]
+    reads = []
+    fake_winapi = types.SimpleNamespace()
+
+    def peek(handle, size):
+        while chunks and chunks[0] == b"":
+            chunks.pop(0)
+            return (0, 0)
+        if not chunks:
+            raise BrokenPipeError(109, "the pipe has been ended")
+        return (len(chunks[0]), 0)
+
+    fake_winapi.PeekNamedPipe = peek
+    monkeypatch.setitem(sys.modules, "_winapi", fake_winapi)
+    monkeypatch.setattr(server, "_windows_pipe", lambda inp: 7)
+    monkeypatch.setattr(server.os, "read", lambda fd, n: reads.append(n) or chunks.pop(0))
+    monkeypatch.setattr(server, "PIPE_POLL", 0)
+
+    class Inp:
+        def fileno(self):
+            return 3
+
+    got = []
+    server.read_lines(Inp(), got.append)
+    assert got == [b'{"id": 1}\n', b'{"id": 2}\n', b"tail", None]
+    assert reads == sizes  # exactly what was there each time
