@@ -48,9 +48,11 @@ def swift() -> str:
                  "RADIUS_FLOAT"):
         swift_name = name.split("_", 1)[1].lower()
         lines.append(f"    public static let {swift_name}: Double = {getattr(theme, name)}")
-    lines += ["}", "", "/// The colour pairs tests/test_theme_contrast.py measures: (palette, what, foreground, background, the "
+    lines += ["}", "",
+              "/// The colour pairs tests/test_theme_contrast.py measures: (palette, what, foreground, background, the "
               "lowest contrast allowed).", "public enum ContrastPairs {",
-              "    public static let all: [(palette: String, what: String, fg: String, bg: String, minimum: Double)] = ["]
+              "    public static let all: [(palette: String, what: String, fg: String, bg: String, "
+              "minimum: Double)] = ["]
     for p in (theme.DARK, theme.LIGHT):
         for minimum, pairs in ((contrast.AA, contrast.pairs(p)), (3.0, contrast.ui_pairs(p))):
             for what, fg, bg in pairs:
