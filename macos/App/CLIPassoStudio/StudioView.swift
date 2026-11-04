@@ -24,11 +24,6 @@ struct StudioView: View {
                 .padding(.vertical, Spacing.spaceM)
         }
         .navigationTitle(model.texts.tr("nav.studio"))
-        .sheet(isPresented: Binding(get: { model.models.stage != .idle },
-                                    set: { if !$0 { model.cancelDownload() } })) {
-            ModelSheet()
-                .environment(model)
-        }
     }
 }
 

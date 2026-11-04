@@ -186,3 +186,24 @@ def test_models_carry_the_studios_names():
     names = {m["key"]: m["name"] for m in export.export_models()["models"]}
     assert names["clip:RN101"] == "CLIP RN101" and names["blazeface"] == "BlazeFace"
     assert all(names[k] == methods_ui.model_display_name(k) for k in names)
+
+
+def test_models_groups_on_a_mac():
+    """Only BlazeFace comes with the Mac app; the models the Windows studio includes are "basic" there. Every model
+    of the Models page has a group with texts in both languages and a purpose text."""
+    import json as _json
+
+    from clipasso_studio import paths
+
+    data = export.export_models()
+    groups = {g["id"]: g for g in data["groups"]}
+    assert list(groups)[:2] == ["bundled", "basic"]
+    by_key = {m["key"]: m for m in data["models"]}
+    assert by_key["blazeface"]["group"] == "bundled" and by_key["clip:RN101"]["group"] == "basic"
+    assert {m["group"] for m in data["models"] if m["group"] != "benchmark"} <= set(groups)
+    for code in ("en", "de"):
+        texts = _json.loads((paths.resource("i18n", f"{code}.json")).read_text(encoding="utf-8"))
+        for g in groups.values():
+            assert g["title"] in texts and g["hint"] in texts, (code, g)
+        for m in data["models"]:
+            assert m["purpose"] in texts and all(v in texts for v in m["purpose_params"].values()), (code, m["key"])

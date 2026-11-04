@@ -7,7 +7,8 @@ MODE: echo · crash_after N (ends with exit code 3 after N answers) · garbage (
 (answers after 2 s) · stderr_secret (writes a secret to stderr) · protocol2 (speaks another protocol) · job DIR
 (``start`` "computes" by copying the finished job folder DIR into output_root) · job_fails (``start`` ends with
 job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEYS as missing until ``convert_model``
-found each downloaded in dest_root's partial folder; ``start`` as in job DIR). Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
+found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR).
+Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
 
@@ -56,12 +57,16 @@ for raw in sys.stdin.buffer:
     elif op == "fail":
         send({"id": rid, "ok": False, "error": {"code": "busy", "message": "a job is already running"}})
     elif op == "required_models":
-        send({"id": rid, "ok": True, "result": {"required": needed, "missing": [k for k in needed if k not in converted]}})
+        missing = [k for k in needed if k not in converted]
+        send({"id": rid, "ok": True, "result": {"required": needed, "missing": missing}})
     elif op == "convert_model" and mode == "needs":
         part = os.path.join(args["dest_root"], ".partial", args["key"] + ".part")
-        if os.path.isfile(part):
+        if os.path.isfile(part):  # (as model_store.convert_downloaded: the model in place, the download gone)
             converted.add(args["key"])
-            send({"id": rid, "ok": True, "result": {"path": os.path.join(args["dest_root"], args["key"])}})
+            model = os.path.join(args["dest_root"], args["key"], args["key"] + ".pt")
+            os.makedirs(os.path.dirname(model), exist_ok=True)
+            shutil.move(part, model)
+            send({"id": rid, "ok": True, "result": {"path": model}})
         else:
             send({"id": rid, "ok": False, "error": {"code": "not_downloaded", "message": f"no {part}"}})
     elif op == "start" and mode in ("job", "job_fails", "needs"):

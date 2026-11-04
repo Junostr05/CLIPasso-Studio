@@ -134,6 +134,7 @@ public final class AppModel {
             missing = answer.objectValue?["missing"]?.arrayValue?.compactMap(\.stringValue) ?? []
         }  // (when the engine cannot say, the job itself reports a missing model)
         guard missing.isEmpty else {
+            models.startsJob = true
             models.stage = .asking(missing)
             return
         }
@@ -156,6 +157,7 @@ public final class AppModel {
                 models.stage = .converting(key)
                 _ = try await engine.request("convert_model", ["key": .string(key), "dest_root": .string(modelsDir.path)],
                                              timeout: .seconds(3600))
+                models.revision += 1
             } catch is CancellationError {
                 models.stage = .idle
                 return
@@ -165,7 +167,35 @@ public final class AppModel {
             }
         }
         models.stage = .idle
-        await startSketch()
+        if models.startsJob { await startSketch() }
+    }
+
+    // MARK: - the Models page
+
+    public enum ModelState: Equatable, Sendable {
+        /// comes with the app
+        case included
+        case installed
+        case missing
+    }
+
+    public func modelState(_ key: String) -> ModelState {
+        _ = models.revision  // (observed: a download or a removal changes it)
+        if let bundled = resources.bundledModels, catalog.installedURL(key, dirs: [bundled]) != nil { return .included }
+        return catalog.installedURL(key, dirs: [modelsDir]) != nil ? .installed : .missing
+    }
+
+    /// *Download* on the Models page: asked as before a job, but no job follows.
+    public func downloadModels(_ keys: [String]) {
+        guard !keys.isEmpty else { return }
+        models.startsJob = false
+        models.stage = .asking(keys)
+    }
+
+    /// *Remove* on the Models page (after its question): the model's file, or its folder.
+    public func removeModel(_ key: String) throws {
+        try catalog.uninstall(key, root: modelsDir)
+        models.revision += 1
     }
 
     /// The question's *Download* button.
@@ -176,6 +206,7 @@ public final class AppModel {
 
     /// *Cancel* in the question or while downloading: what came so far stays for the next time.
     public func cancelDownload() {
+        guard models.stage != .idle else { return }  // (the sheet closing after a finished download is no cancel)
         download?.cancel()
         download = nil
         if case .asking = models.stage { models.stage = .idle }

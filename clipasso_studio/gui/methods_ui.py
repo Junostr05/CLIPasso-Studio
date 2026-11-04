@@ -206,3 +206,46 @@ def model_display_name(key: str) -> str:
     if key.startswith("controlnet:"):
         return f"ControlNet · {key.split(':', 1)[1]}"
     return MODEL_NAMES.get(key, key)
+
+
+# The groups and purposes of the models on the Models page
+MODEL_PURPOSE = {
+    "clip:RN101": "ui.models.purpose.rn101", "clip:ViT-B/32": "ui.models.purpose.vitb32",
+    "u2net": "ui.models.purpose.u2net", "dino": "ui.models.purpose.dino", "vgg16": "ui.models.purpose.vgg16",
+    "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
+    "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
+    "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
+    "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
+    "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
+    "blazeface": "ui.models.purpose.blazeface",
+    "semantic:openclip-b16": "ui.models.purpose.openclip_b16", "semantic:siglip-b16": "ui.models.purpose.siglip_b16",
+}
+
+
+MODEL_GROUP_ORDER = ("bundled", "masking", "clipasso", "experimental", "swiftsketch", "controlsketch", "scenesketch")
+
+
+def model_group(key: str) -> str:
+    spec = model_store.SPECS[key]
+    if spec.extra.get("purpose") == "benchmark":
+        return "benchmark"  # (not on the models page)
+    if spec.bundled:
+        return "bundled"
+    if spec.extra.get("experimental"):
+        return "experimental"
+    if key.startswith("birefnet"):
+        return "masking"
+    if key.startswith("clip:"):
+        return "clipasso"
+    if key.startswith("swiftsketch:"):
+        return "swiftsketch"
+    if key == "lama":
+        return "scenesketch"
+    return "controlsketch"
+
+
+def model_purpose(key: str) -> tuple[str, dict[str, str]]:
+    """The text key of what a model is for, with the text keys of its placeholders."""
+    if key.startswith("controlnet:"):
+        return "ui.models.purpose.controlnet", {"condition": f"param.condition.choice.{key.split(':', 1)[1]}"}
+    return MODEL_PURPOSE.get(key, "ui.models.purpose.clip_extra"), {}

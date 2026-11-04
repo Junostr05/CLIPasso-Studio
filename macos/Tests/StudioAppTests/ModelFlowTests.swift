@@ -82,9 +82,10 @@ final class OneFileTransport: HTTPTransport {
         #expect(model.models.stage == .asking(["tiny"]))
         #expect(model.queueSnapshot?.jobs.isEmpty ?? true)  // nothing started yet
         #expect(model.models.question(model.texts).contains("Tiny"))  // the names and the size, as the studio asks
-        await model.downloadMissingAndStart()
-        #expect(model.models.stage == .idle)
-        #expect(FileManager.default.fileExists(atPath: modelsDir.appending(path: ".partial/tiny.part").path))
+        model.confirmDownload()
+        try await Self.wait("the download") { model.models.stage == .idle }
+        model.cancelDownload()  // (what the sheet's binding does when it closes by itself – no cancel then)
+        #expect(FileManager.default.fileExists(atPath: modelsDir.appending(path: "tiny/tiny.pt").path))  // converted
         try await Self.wait("the job") { model.studio.live.status == .done }
         await model.stopEngine()
     }
@@ -106,5 +107,42 @@ final class OneFileTransport: HTTPTransport {
         #expect(size > 0 && size < Self.payload.count)  // what came so far stays for the next time
         #expect(model.queueSnapshot?.jobs.isEmpty ?? true)
         await model.stopEngine()
+    }
+
+    @Test func theModelsPage() async throws {
+        let (model, _) = try Self.setup(OneFileTransport(Self.payload))
+        await model.startEngine()
+        #expect(model.modelState("tiny") == .missing)
+        model.downloadModels(["tiny"])
+        #expect(model.models.stage == .asking(["tiny"]))
+        await model.downloadMissingAndStart()
+        #expect(model.models.stage == .idle && model.modelState("tiny") == .installed)
+        #expect(model.queueSnapshot?.jobs.isEmpty ?? true)  // a download from the Models page starts no job
+        try model.removeModel("tiny")
+        #expect(model.modelState("tiny") == .missing)
+        await model.stopEngine()
+    }
+
+    @Test func groupsAsExported() throws {
+        let catalog = try ModelCatalog.load(SelfTestTests.fixtures.appending(path: "models.json"))
+        #expect(catalog.groups.map(\.id).prefix(2) == ["bundled", "basic"])
+        #expect(catalog.spec("blazeface")?.group == "bundled" && catalog.spec("clip:RN101")?.group == "basic")
+        #expect(catalog.spec("clip:RN101")?.purpose == "ui.models.purpose.rn101")
+        let depth = try #require(catalog.models.first { $0.key.hasPrefix("controlnet:") })
+        #expect(depth.purpose == "ui.models.purpose.controlnet" && depth.purposeParams["condition"]?.hasPrefix("param.") == true)
+        #expect(catalog.groups.allSatisfy { $0.title.hasPrefix("ui.models.group.") })
+    }
+
+    @Test func includedComesWithTheApp() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "bundled-\(UUID().uuidString)")
+        let face = dir.appending(path: "blazeface/blazeface.pt")
+        try FileManager.default.createDirectory(at: face.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data([1, 2, 3]).write(to: face)
+        let base = AppModelTests.resources(engine: nil)
+        let resources = AppResources(i18n: base.i18n, schema: base.schema, models: base.models, engine: nil,
+                                     bundledModels: dir)
+        let model = try AppModel(resources: resources, store: AppModelTests.store(language: "en"))
+        #expect(model.modelState("blazeface") == .included)
+        #expect(model.modelState("clip:RN101") == .missing)
     }
 }

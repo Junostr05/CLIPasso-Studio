@@ -43,8 +43,15 @@ struct RootView: View {
         } detail: {
             switch page ?? .studio {
             case .studio: StudioView()
+            case .models: ModelsView()
             case let other: PageView(page: other)
             }
+        }
+        // the models a job or the Models page asked for (one sheet for the window)
+        .sheet(isPresented: Binding(get: { model.models.stage != .idle },
+                                    set: { if !$0 { model.cancelDownload() } })) {
+            ModelSheet()
+                .environment(model)
         }
     }
 }

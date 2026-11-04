@@ -23,6 +23,11 @@ public struct ModelSpec: Sendable, Hashable, Identifiable {
     public let key: String
     /// as the studio names it (methods_ui.model_display_name)
     public let name: String
+    /// its group on the Models page (export.mac_group) and what it is for: a text key with the text keys of its
+    /// placeholders
+    public let group: String
+    public let purpose: String
+    public let purposeParams: [String: String]
     /// relative to a models folder; for a Hugging Face model its manifest.json
     public let filename: String
     public let urls: [String]
@@ -35,14 +40,19 @@ public struct ModelSpec: Sendable, Hashable, Identifiable {
     public let revision: String?
     public let files: [HFFile]
     public let experimental: Bool
-    public let purpose: String?
+    /// "benchmark" for the measurement's judge (model_store's extra purpose)
+    public let usage: String?
 
     public init(key: String, filename: String, urls: [String], sha256: String?, downloadSize: Int64, storedSizeMB: Int,
                 kind: String, macBundled: Bool = false, repo: String? = nil, revision: String? = nil,
-                files: [HFFile] = [], experimental: Bool = false, purpose: String? = nil, name: String? = nil)
+                files: [HFFile] = [], experimental: Bool = false, purpose: String? = nil, name: String? = nil,
+                group: String = "", purposeText: String = "", purposeParams: [String: String] = [:])
     {
         self.key = key
         self.name = name ?? key
+        self.group = group
+        self.purpose = purposeText
+        self.purposeParams = purposeParams
         self.filename = filename
         self.urls = urls
         self.sha256 = sha256
@@ -54,19 +64,29 @@ public struct ModelSpec: Sendable, Hashable, Identifiable {
         self.revision = revision
         self.files = files
         self.experimental = experimental
-        self.purpose = purpose
+        usage = purpose
     }
+}
+
+/// A group of the Models page with its title and hint (text keys).
+public struct ModelGroup: Sendable, Hashable, Identifiable {
+    public let id: String
+    public let title: String
+    public let hint: String
 }
 
 /// Every model of the engine, read from models.json (exported from engine/model_store.py).
 public struct ModelCatalog: Sendable {
     public let models: [ModelSpec]
     public let partialDir: String
+    /// the groups of the Models page, in order
+    public let groups: [ModelGroup]
     private let byKey: [String: ModelSpec]
 
-    public init(models: [ModelSpec], partialDir: String = ".partial") {
+    public init(models: [ModelSpec], partialDir: String = ".partial", groups: [ModelGroup] = []) {
         self.models = models
         self.partialDir = partialDir
+        self.groups = groups
         byKey = Dictionary(models.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
@@ -90,9 +110,17 @@ public struct ModelCatalog: Sendable {
                              macBundled: m["mac_bundled"]?.boolValue ?? false, repo: extra["repo"]?.stringValue,
                              revision: extra["revision"]?.stringValue, files: files,
                              experimental: extra["experimental"]?.truthy ?? false,
-                             purpose: extra["purpose"]?.stringValue, name: m["name"]?.stringValue)
+                             purpose: extra["purpose"]?.stringValue, name: m["name"]?.stringValue,
+                             group: m["group"]?.stringValue ?? "", purposeText: m["purpose"]?.stringValue ?? "",
+                             purposeParams: (m["purpose_params"]?.objectValue ?? [:]).reduce(into: [:]) {
+                                 $0[$1.key] = $1.value.stringValue
+                             })
         }
-        return ModelCatalog(models: models, partialDir: o["partial_dir"]?.stringValue ?? ".partial")
+        let groups = (o["groups"]?.arrayValue ?? []).compactMap { g -> ModelGroup? in
+            guard let g = g.objectValue, let id = g["id"]?.stringValue else { return nil }
+            return ModelGroup(id: id, title: g["title"]?.stringValue ?? id, hint: g["hint"]?.stringValue ?? "")
+        }
+        return ModelCatalog(models: models, partialDir: o["partial_dir"]?.stringValue ?? ".partial", groups: groups)
     }
 
     public func spec(_ key: String) -> ModelSpec? { byKey[key] }

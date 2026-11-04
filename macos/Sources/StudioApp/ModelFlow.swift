@@ -18,6 +18,10 @@ public final class ModelFlow {
     }
 
     public internal(set) var stage: Stage = .idle
+    /// what follows the download: the studio's job (from Create sketch) or nothing (from the Models page)
+    public internal(set) var startsJob = true
+    /// counts every change to the installed models (the Models page reads the files again)
+    public internal(set) var revision = 0
     let catalog: ModelCatalog
 
     init(catalog: ModelCatalog) {

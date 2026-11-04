@@ -1,6 +1,48 @@
 {
  "format": 1,
  "partial_dir": ".partial",
+ "groups": [
+  {
+   "id": "bundled",
+   "title": "ui.models.group.bundled",
+   "hint": "ui.models.group_hint.mac_bundled"
+  },
+  {
+   "id": "basic",
+   "title": "ui.models.group.basic",
+   "hint": "ui.models.group_hint.basic"
+  },
+  {
+   "id": "masking",
+   "title": "ui.models.group.masking",
+   "hint": "ui.models.group_hint.masking"
+  },
+  {
+   "id": "clipasso",
+   "title": "ui.models.group.clipasso",
+   "hint": "ui.models.group_hint.clipasso"
+  },
+  {
+   "id": "experimental",
+   "title": "ui.models.group.experimental",
+   "hint": "ui.models.group_hint.experimental"
+  },
+  {
+   "id": "swiftsketch",
+   "title": "ui.models.group.swiftsketch",
+   "hint": "ui.models.group_hint.swiftsketch"
+  },
+  {
+   "id": "controlsketch",
+   "title": "ui.models.group.controlsketch",
+   "hint": "ui.models.group_hint.controlsketch"
+  },
+  {
+   "id": "scenesketch",
+   "title": "ui.models.group.scenesketch",
+   "hint": "ui.models.group_hint.scenesketch"
+  }
+ ],
  "models": [
   {
    "key": "clip:RN101",
@@ -15,6 +57,9 @@
    "stored_size_mb": 290,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "basic",
+   "purpose": "ui.models.purpose.rn101",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -30,6 +75,9 @@
    "stored_size_mb": 350,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "basic",
+   "purpose": "ui.models.purpose.vitb32",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -45,6 +93,9 @@
    "stored_size_mb": 255,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "clipasso",
+   "purpose": "ui.models.purpose.clip_extra",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -60,6 +111,9 @@
    "stored_size_mb": 420,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "clipasso",
+   "purpose": "ui.models.purpose.clip_extra",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -75,6 +129,9 @@
    "stored_size_mb": 660,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "clipasso",
+   "purpose": "ui.models.purpose.clip_extra",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -90,6 +147,9 @@
    "stored_size_mb": 350,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "clipasso",
+   "purpose": "ui.models.purpose.clip_extra",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -105,6 +165,9 @@
    "stored_size_mb": 890,
    "kind": "clip",
    "mac_bundled": false,
+   "group": "benchmark",
+   "purpose": "ui.models.purpose.clip_extra",
+   "purpose_params": {},
    "extra": {
     "purpose": "benchmark"
    }
@@ -122,6 +185,9 @@
    "stored_size_mb": 88,
    "kind": "u2net",
    "mac_bundled": false,
+   "group": "basic",
+   "purpose": "ui.models.purpose.u2net",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -136,6 +202,9 @@
    "stored_size_mb": 44,
    "kind": "dino",
    "mac_bundled": false,
+   "group": "basic",
+   "purpose": "ui.models.purpose.dino",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -150,6 +219,9 @@
    "stored_size_mb": 144,
    "kind": "swiftsketch",
    "mac_bundled": false,
+   "group": "swiftsketch",
+   "purpose": "ui.models.purpose.ss_diffusion",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -164,6 +236,9 @@
    "stored_size_mb": 144,
    "kind": "swiftsketch",
    "mac_bundled": false,
+   "group": "swiftsketch",
+   "purpose": "ui.models.purpose.ss_refine",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -178,6 +253,9 @@
    "stored_size_mb": 103,
    "kind": "lama",
    "mac_bundled": false,
+   "group": "scenesketch",
+   "purpose": "ui.models.purpose.lama",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -192,6 +270,9 @@
    "stored_size_mb": 30,
    "kind": "vgg",
    "mac_bundled": false,
+   "group": "basic",
+   "purpose": "ui.models.purpose.vgg16",
+   "purpose_params": {},
    "extra": {}
   },
   {
@@ -206,6 +287,9 @@
    "stored_size_mb": 2135,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.sd15",
+   "purpose_params": {},
    "extra": {
     "repo": "stable-diffusion-v1-5/stable-diffusion-v1-5",
     "revision": "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
@@ -302,6 +386,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.depth"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-depth",
     "revision": "35e42a3ea49845b3c76f202f145f257b9fb1b7d4",
@@ -335,6 +424,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.canny"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-canny",
     "revision": "7f2f69197050967007f6bbd23ab5e52f0384162a",
@@ -368,6 +462,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.hed"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-hed",
     "revision": "04473d9334ab44908daa66107bbfb6f710aa056d",
@@ -401,6 +500,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.scribble"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-scribble",
     "revision": "864edcd5ccc6ee2695eeebea5b4512100c83e7b3",
@@ -434,6 +538,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.seg"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-seg",
     "revision": "ecdcb5645b5099c9a7500a504fb9ab3f743c4d96",
@@ -467,6 +576,11 @@
    "stored_size_mb": 723,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.controlnet",
+   "purpose_params": {
+    "condition": "param.condition.choice.normal"
+   },
    "extra": {
     "repo": "lllyasviel/sd-controlnet-normal",
     "revision": "1cbed9b3ca84422e4a2f23c14b9f5a114742b31d",
@@ -500,6 +614,9 @@
    "stored_size_mb": 10,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.taesd",
+   "purpose_params": {},
    "extra": {
     "repo": "madebyollin/taesd",
     "revision": "614f76814bbe30edbe2e627ace1c2234c81a2c0e",
@@ -533,6 +650,9 @@
    "stored_size_mb": 245,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.dpt",
+   "purpose_params": {},
    "extra": {
     "repo": "Intel/dpt-hybrid-midas",
     "revision": "11eaf7a1cf4bd70740697dbc216f98980c0aeb03",
@@ -566,6 +686,9 @@
    "stored_size_mb": 29,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.hed",
+   "purpose_params": {},
    "extra": {
     "repo": "lllyasviel/Annotators",
     "revision": "982e7edaec38759d914a963c48c4726685de7d96",
@@ -592,6 +715,9 @@
    "stored_size_mb": 164,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.upernet",
+   "purpose_params": {},
    "extra": {
     "repo": "openmmlab/upernet-convnext-small",
     "revision": "550b68d291f9a7e4874065c6eec0676b2ba821e6",
@@ -625,6 +751,9 @@
    "stored_size_mb": 940,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.blip",
+   "purpose_params": {},
    "extra": {
     "repo": "Salesforce/blip-image-captioning-large",
     "revision": "353689b859fcf0523410b1806dace5fb46ecdf41",
@@ -693,6 +822,9 @@
    "stored_size_mb": 6940,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "controlsketch",
+   "purpose": "ui.models.purpose.sdxl",
+   "purpose_params": {},
    "extra": {
     "repo": "stabilityai/stable-diffusion-xl-base-1.0",
     "revision": "462165984030d82259a11f4367a4eed129e94a7b",
@@ -838,6 +970,9 @@
    "stored_size_mb": 444,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "masking",
+   "purpose": "ui.models.purpose.birefnet",
+   "purpose_params": {},
    "extra": {
     "repo": "ZhengPeng7/BiRefNet",
     "revision": "e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4",
@@ -864,6 +999,9 @@
    "stored_size_mb": 89,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "masking",
+   "purpose": "ui.models.purpose.birefnet-lite",
+   "purpose_params": {},
    "extra": {
     "repo": "ZhengPeng7/BiRefNet_lite",
     "revision": "aa62cd87eafb9cc43056d08ef3615a14628b831d",
@@ -890,6 +1028,9 @@
    "stored_size_mb": 172,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "experimental",
+   "purpose": "ui.models.purpose.openclip_b16",
+   "purpose_params": {},
    "extra": {
     "repo": "laion/CLIP-ViT-B-16-laion2B-s34B-b88K",
     "revision": "7288da5a0d6f0b51c4a2b27c624837a9236d0112",
@@ -917,6 +1058,9 @@
    "stored_size_mb": 186,
    "kind": "hf",
    "mac_bundled": false,
+   "group": "experimental",
+   "purpose": "ui.models.purpose.siglip_b16",
+   "purpose_params": {},
    "extra": {
     "repo": "google/siglip-base-patch16-224",
     "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
@@ -944,6 +1088,9 @@
    "stored_size_mb": 1,
    "kind": "blazeface",
    "mac_bundled": true,
+   "group": "bundled",
+   "purpose": "ui.models.purpose.blazeface",
+   "purpose_params": {},
    "extra": {}
   }
  ]

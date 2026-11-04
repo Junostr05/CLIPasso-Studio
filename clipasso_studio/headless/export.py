@@ -87,12 +87,30 @@ def _extra(spec: model_store.ModelSpec) -> dict:
     return out
 
 
+# The groups of the Models page on a Mac: only BlazeFace comes with the app, so the models the Windows studio includes
+# (CLIP, U²-Net, …) are "basic" there – downloaded with the first sketch
+MAC_GROUP_ORDER = ("bundled", "basic") + methods_ui.MODEL_GROUP_ORDER[1:]
+MAC_GROUP_HINT = {"bundled": "ui.models.group_hint.mac_bundled", "basic": "ui.models.group_hint.basic"}
+
+
+def mac_group(key: str) -> str:
+    if key in MAC_BUNDLED:
+        return "bundled"
+    group = methods_ui.model_group(key)
+    return "basic" if group == "bundled" else group
+
+
 def export_models() -> dict:
     models = [{"key": s.key, "name": methods_ui.model_display_name(s.key), "filename": s.filename,
                "urls": list(s.urls), "sha256": s.download_sha256,
                "download_size": s.download_size, "stored_size_mb": s.stored_size_mb, "kind": s.kind,
-               "mac_bundled": s.key in MAC_BUNDLED, "extra": _extra(s)} for s in model_store.SPECS.values()]
-    return {"format": FORMAT, "partial_dir": model_store.partial_dir(Path(".")).name, "models": models}
+               "mac_bundled": s.key in MAC_BUNDLED, "group": mac_group(s.key),
+               "purpose": methods_ui.model_purpose(s.key)[0], "purpose_params": methods_ui.model_purpose(s.key)[1],
+               "extra": _extra(s)} for s in model_store.SPECS.values()]
+    groups = [{"id": g, "title": f"ui.models.group.{g}", "hint": MAC_GROUP_HINT.get(g, f"ui.models.group_hint.{g}")}
+              for g in MAC_GROUP_ORDER]
+    return {"format": FORMAT, "partial_dir": model_store.partial_dir(Path(".")).name, "groups": groups,
+            "models": models}
 
 
 def write_json(path: str, data: dict) -> None:
