@@ -13,6 +13,10 @@ OUT=${1:-$ROOT/macos/build}
 CONFIG=${CONFIG:-release}
 PYTHON=${PYTHON:-python3}
 MODELS=${MODELS:-$ROOT/models}
+# (folders given relative to where the script is called – it changes into macos/ to build)
+mkdir -p "$OUT" "$MODELS"
+OUT=$(cd "$OUT" && pwd)
+MODELS=$(cd "$MODELS" && pwd)
 APP="$OUT/CLIPasso Studio.app"
 
 cd "$ROOT/macos"
