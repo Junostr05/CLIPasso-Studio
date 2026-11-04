@@ -134,4 +134,11 @@ actor RecordingEngine: EngineControlling {
         let read = await Task.detached { (item.seed, item.svg) }.value
         #expect(read.0 == 1000 && read.1 == "<svg/>")
     }
+
+    /// The job's sketches below the canvas are read in a background task (EditSketch.ResultSketches).
+    @Test func resultRunInABackgroundTask() async {
+        let run = StudioResult.Run(name: "Kamel_16strokes_seed0", seed: 0, runDir: URL(filePath: "/tmp/run"))
+        let read = await Task.detached { (run.name, run.seed, run.runDir.path) }.value
+        #expect(read.0 == "Kamel_16strokes_seed0" && read.1 == 0 && read.2 == "/tmp/run")
+    }
 }

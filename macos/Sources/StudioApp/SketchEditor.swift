@@ -128,7 +128,7 @@ public final class SketchEditor {
 /// one chosen – which can be touched up. Each run keeps its own steps back while the job is shown.
 @Observable
 public final class StudioResult {
-    public struct Run: Sendable, Hashable, Identifiable {
+    public nonisolated struct Run: Sendable, Hashable, Identifiable {
         public var id: String { name }
         public let name: String
         public let seed: Int
