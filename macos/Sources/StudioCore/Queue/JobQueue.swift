@@ -117,7 +117,8 @@ public actor JobQueue {
         finished = nil
         publish()
         do {
-            let result = try await engine.request("start", args, timeout: .seconds(60))
+            // (the first start waits for the device probe – a child importing PyTorch, slow on a first launch)
+            let result = try await engine.request("start", args, timeout: .seconds(600))
             guard let k = index(of: job.id) else { return }
             jobs[k].engineJob = result.objectValue?["job"]?.stringValue
             jobs[k].jobDir = result.objectValue?["job_dir"]?.stringValue.map { URL(filePath: $0) }

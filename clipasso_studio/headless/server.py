@@ -71,6 +71,9 @@ class EngineServer:
         self._count = 0
         self._probe = devices_probe
         self._devices: dict | None = None
+        self._probe_error: BaseException | None = None
+        self._probe_thread: threading.Thread | None = None
+        self._probe_lock = threading.Lock()
         self._stopping = False
 
     # ------------------------------------------------------------------ requests
@@ -92,9 +95,29 @@ class EngineServer:
     def op_hello(self, args: dict) -> dict:
         return {"protocol": PROTOCOL_VERSION, "app_version": __version__, "python": platform.python_version()}
 
+    def begin_probe(self) -> None:
+        """Ask for the devices in the background (a child that imports PyTorch – slow on a Mac's first start, when
+        macOS checks every library), so the first job does not wait for it in the request loop."""
+        with self._probe_lock:
+            if self._probe_thread is not None or self._devices is not None:
+                return
+
+            def run():
+                try:
+                    self._devices = self._probe()
+                except BaseException as exc:  # (answered as an error by devices / start)
+                    self._probe_error = exc
+
+            self._probe_thread = threading.Thread(target=run, name="device-probe", daemon=True)
+            self._probe_thread.start()
+
     def op_devices(self, args: dict) -> dict:
+        self.begin_probe()
+        thread = self._probe_thread
+        if thread is not None:
+            thread.join(timeout=600)
         if self._devices is None:
-            self._devices = self._probe()
+            raise RuntimeError(str(self._probe_error or "the device probe did not finish"))
         return dict(self._devices)
 
     def op_schema(self, args: dict) -> dict:
@@ -207,6 +230,7 @@ class EngineServer:
             lines.put(None)
 
         threading.Thread(target=read, name="requests", daemon=True).start()
+        self.begin_probe()
         busy = False
         code = 0
         try:

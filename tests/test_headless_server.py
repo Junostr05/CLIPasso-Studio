@@ -346,3 +346,40 @@ def test_a_lost_stdout_still_stops_the_job():
     server = EngineServer(Writer(Broken()), runner=runner, devices_probe=lambda: {"cuda": False, "mps": False})
     assert server.serve(io.BytesIO(encode(_req(1, "hello")))) == 1
     assert runner.killed == 1
+
+
+def test_probe_runs_ahead_and_requests_do_not_wait():
+    """The device probe (a child importing PyTorch – slow on a Mac's first start) begins when the server serves;
+    hello is answered meanwhile, and devices waits for the probe under way instead of starting another."""
+    started, release = threading.Event(), threading.Event()
+    calls = []
+
+    def probe():
+        calls.append(1)
+        started.set()
+        release.wait(10)
+        return {"torch": "2.11.0", "cuda": False, "mps": True}
+
+    server = EngineServer(Writer(LockedBuffer()), runner=FakeRunner(), devices_probe=probe)
+    server.begin_probe()
+    assert started.wait(5)
+    t0 = time.monotonic()
+    assert server.handle(_req(1, "hello"))["ok"] and time.monotonic() - t0 < 1  # (not behind the probe)
+    answers = []
+    waiter = threading.Thread(target=lambda: answers.append(server.handle(_req(2, "devices"))))
+    waiter.start()
+    time.sleep(0.2)
+    assert answers == []  # waits for the probe under way
+    release.set()
+    waiter.join(5)
+    assert answers[0]["result"]["mps"] is True and calls == [1]  # one probe only
+
+
+def test_a_failed_probe_is_answered_as_an_error():
+    def probe():
+        raise RuntimeError("device probe failed: no torch")
+
+    server = EngineServer(Writer(LockedBuffer()), runner=FakeRunner(), devices_probe=probe)
+    server.begin_probe()
+    answer = server.handle(_req(1, "devices"))
+    assert answer["ok"] is False and "no torch" in answer["error"]["message"]
