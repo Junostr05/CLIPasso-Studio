@@ -56,8 +56,9 @@ def scene_to_svg(canvas_width, canvas_height, shapes, shape_groups, background: 
         "viewBox": f"0 0 {int(canvas_width)} {int(canvas_height)}",
     })
     ET.SubElement(root, "defs")
-    if background:
-        ET.SubElement(root, "rect", {"width": "100%", "height": "100%", "fill": background})
+    if background:  # (as big as the viewBox: Qt reads width="100%" on a rect as 100 user units)
+        ET.SubElement(root, "rect", {"x": "0", "y": "0", "width": str(int(canvas_width)),
+                                     "height": str(int(canvas_height)), "fill": background})
     g = ET.SubElement(root, "g")
     for group in shape_groups:
         col = group.stroke_color.detach().cpu().tolist() if group.stroke_color is not None else [0, 0, 0, 1]

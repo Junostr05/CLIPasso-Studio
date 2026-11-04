@@ -18,21 +18,21 @@
   "stroke_color": null,
   "width_scale": 2.5,
   "background": "#ffffff",
-  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <rect width=\"100%\" height=\"100%\" fill=\"#ffffff\" data-bg=\"1\" /><defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"5.625\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"7.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>"
+  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#ffffff\" data-bg=\"1\" /><defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"5.625\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"7.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>"
  },
  {
   "svg": "closed_bg.svg",
   "stroke_color": "#ff0000",
   "width_scale": 0.5,
   "background": null,
-  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"#ff0000\" stroke-opacity=\"1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"#ff0000\" stroke-opacity=\"1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
  },
  {
   "svg": "closed_bg.svg",
   "stroke_color": null,
   "width_scale": 1.0,
   "background": "#000000",
-  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <rect width=\"100%\" height=\"100%\" fill=\"#000000\" data-bg=\"1\" /><defs />\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+  "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#000000\" data-bg=\"1\" /><defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
  },
  {
   "svg": "cubic.svg",

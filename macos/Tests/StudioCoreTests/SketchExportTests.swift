@@ -25,6 +25,14 @@ import Testing
 
     static func backgrounds(_ svg: String) -> Int { svg.components(separatedBy: "data-bg=\"1\"").count - 1 }
 
+    /// The background rect as written (nil: none).
+    static func backgroundTag(_ svg: String) -> String? {
+        guard let end = svg.range(of: "data-bg=\"1\" />"), let start = svg[..<end.lowerBound].range(of: "<rect",
+                                                                                                    options: .backwards)
+        else { return nil }
+        return String(svg[start.lowerBound..<end.upperBound])
+    }
+
     @Test func likePython() throws {
         let all = try Self.cases()
         #expect(all.count == 6)
@@ -35,6 +43,7 @@ import Testing
             #expect(try SketchSVG.parse(swift) == SketchSVG.parse(c.python), "\(c.svg) \(String(describing: c.color))")
             #expect(Self.widths(swift) == Self.widths(c.python), "\(c.svg) × \(c.scale)")
             #expect(Self.backgrounds(swift) == Self.backgrounds(c.python))
+            #expect(Self.backgroundTag(swift) == Self.backgroundTag(c.python), "\(c.svg) \(String(describing: c.background))")
         }
     }
 
@@ -59,6 +68,16 @@ import Testing
         #expect(Self.widths(out) == ["2", "6"])  // a path without a width counts as 1 (restyle_svg's default)
         #expect(out.contains(##"stroke="#a&amp;b""##) && out.contains("<!-- a <path> in a comment -->"))
         #expect(out.components(separatedBy: "stroke=\"#a&amp;b\"").count == 3)
+    }
+
+    /// Qt draws a rect of width="100%" as 100 × 100 user units: the background is as big as the viewBox, in numbers.
+    @Test func theBackgroundCoversTheViewBox() {
+        let svg = #"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="-2, 1 300.5 200"></svg>"#
+        #expect(Self.backgroundTag(SketchExport.restyleSVG(svg, background: "#101010"))
+            == #"<rect x="-2" y="1" width="300.5" height="200" fill="#101010" data-bg="1" />"#)
+        #expect(SketchExport.canvasBox(viewBox: nil, width: "300", height: "200")
+            == #"x="0" y="0" width="300" height="200""#)
+        #expect(SketchExport.canvasBox(viewBox: "0 0 1", width: "100%", height: nil) == #"width="100%" height="100%""#)
     }
 
     @Test func numbersAsPythonWritesThem() {

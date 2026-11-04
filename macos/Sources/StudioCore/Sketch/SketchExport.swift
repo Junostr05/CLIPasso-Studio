@@ -64,11 +64,34 @@ public enum SketchExport {
                 out += tag
             }
             if depth == 0, element.name == "svg", let background {
-                out += "<rect width=\"100%\" height=\"100%\" fill=\"\(escape(background))\" data-bg=\"1\" />"
+                let box = canvasBox(viewBox: element.value("viewBox"), width: element.value("width"),
+                                    height: element.value("height"))
+                out += "<rect \(box) fill=\"\(escape(background))\" data-bg=\"1\" />"
             }
             if !empty { depth += 1 }
         }
         return out
+    }
+
+    /// The attributes that make the background as big as the whole canvas (export._canvas_box): x, y, width and
+    /// height of the viewBox, else of the width and height – Qt's SVG renderer reads width="100%" on a rect as 100
+    /// user units, so the studio gives numbers; "100%" only when there are none.
+    static func canvasBox(viewBox: String?, width: String?, height: String?) -> String {
+        let parts = (viewBox ?? "").replacingOccurrences(of: ",", with: " ").split(whereSeparator: \.isWhitespace)
+        var box = parts.count == 4 ? parts.compactMap { Double($0) } : []
+        if box.count != 4, let w = width.flatMap({ Double($0) }), let h = height.flatMap({ Double($0) }) {
+            box = [0, 0, w, h]
+        }
+        guard box.count == 4 else { return "width=\"100%\" height=\"100%\"" }
+        let g = box.map { pythonG($0) }
+        return "x=\"\(g[0])\" y=\"\(g[1])\" width=\"\(g[2])\" height=\"\(g[3])\""
+    }
+
+    /// Python's `f"{value:g}"`.
+    static func pythonG(_ value: Double) -> String {
+        if value.isNaN { return "nan" }
+        if value.isInfinite { return value < 0 ? "-inf" : "inf" }
+        return String(format: "%g", value)
     }
 
     /// Python's `f"{value:.4g}"`.

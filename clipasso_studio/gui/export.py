@@ -39,9 +39,24 @@ def restyle_svg(svg: str, stroke_color: str | None = None, width_scale: float = 
     for old in [el for el in list(root) if el.tag == f"{ns}rect" and el.get("data-bg") == "1"]:
         root.remove(old)
     if background:
-        rect = ET.Element(f"{ns}rect", {"width": "100%", "height": "100%", "fill": background, "data-bg": "1"})
+        rect = ET.Element(f"{ns}rect", {**_canvas_box(root), "fill": background, "data-bg": "1"})
         root.insert(0, rect)
     return ET.tostring(root, encoding="unicode")
+
+
+def _canvas_box(root) -> dict[str, str]:
+    """x, y, width and height of the sketch's whole canvas (its viewBox) – a background rect with
+    width="100%" covers only 100 × 100 user units in Qt's SVG renderer (the PNG export, the preview)."""
+    parts = (root.get("viewBox") or "").replace(",", " ").split()
+    try:
+        x, y, w, h = (float(p) for p in parts)
+    except ValueError:
+        w_attr, h_attr = root.get("width", ""), root.get("height", "")
+        try:
+            x, y, w, h = 0.0, 0.0, float(w_attr), float(h_attr)
+        except ValueError:
+            return {"width": "100%", "height": "100%"}
+    return {"x": f"{x:g}", "y": f"{y:g}", "width": f"{w:g}", "height": f"{h:g}"}
 
 
 def _dims(renderer: QSvgRenderer, size: int) -> tuple[int, int]:
