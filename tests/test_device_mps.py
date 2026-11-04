@@ -119,3 +119,25 @@ def test_mps_job_on_another_computer_is_automatic(monkeypatch):
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     monkeypatch.setattr(torch.cuda, "device_count", lambda: 0)
     assert pipeline.resolve_device({"method": "clipasso", "device": "mps"}) == (torch.device("cpu"), None)
+
+
+def test_clip_score_is_computed_on_the_cpu_for_mps(monkeypatch):
+    """Measured on an Apple Silicon runner: the score a job computed on MPS was 90–96 for sketches the same CLIP
+    scores 50–68 on the CPU (docs/macos/plan.md §7) – and the score picks the best of several sketches. So the
+    scorer of an MPS job is the CPU's; other devices keep their own."""
+    from clipasso_studio.engine import scoring
+
+    made = []
+
+    class Scorer:
+        def __init__(self, device):
+            made.append(str(device))
+
+    monkeypatch.setattr(scoring, "ClipScorer", Scorer)
+    monkeypatch.setattr(scoring, "_scorers", {})
+    a = scoring.get_scorer("mps")
+    b = scoring.get_scorer(torch.device("mps")) if hasattr(torch, "device") else a
+    c = scoring.get_scorer("cpu")
+    assert made == ["cpu"] and a is b is c  # one CPU scorer for all three
+    scoring.get_scorer("cuda")
+    assert made == ["cpu", "cuda"]

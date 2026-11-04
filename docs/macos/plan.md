@@ -248,19 +248,21 @@ Zwischenstände (`checkpoint.pt`) fasst nur Python an.
 
   | Methode | CPU | MPS | CPU-Richter: CPU / MPS |
   |---|---|---|---|
-  | CLIPasso | 1,49–1,72 s/Iteration | anfangs Fehler im Rückwärtsschritt | 47–53 / – |
+  | CLIPasso | 1,37–1,72 s/Iteration | 3,80–9,21 s/Iteration (2,6–6,7× langsamer) | 47,0–53,1 / 49,8–53,1 |
   | SwiftSketch | 0,040–0,090 s/Schritt | 0,020–0,048 s/Schritt (2–3×) | 60,8–69,7 / 60,1–67,9 |
 
   - CLIPasso auf MPS: Der erste Fehler (`view size is not compatible …`) kam vom `channels_last`-Layout – CLIP
     nutzt es jetzt nur noch auf CPU und NVIDIA. Danach fehlt MPS eine Operation
     (`_upsample_bilinear2d_aa_backward`, die Ableitung der geglätteten Verkleinerung in den Augmentierungen); mit
-    `PYTORCH_ENABLE_MPS_FALLBACK=1` (setzt die Engine) rechnet sie auf der CPU – die Tests laufen damit, die Messung
-    zeigt, wie langsam (siehe unten).
+    `PYTORCH_ENABLE_MPS_FALLBACK=1` (setzt die Engine) rechnet sie auf der CPU – die Tests laufen damit, aber jede
+    Iteration wird 2,6–6,7× langsamer als auf der CPU allein.
   - SwiftSketch auf MPS: 2–3× schneller, aber der CPU-Richter bewertet die Skizzen auf allen drei Bildern etwas
     schlechter (−0,7 bis −5,7). Gleich gut ist das nicht.
   - **Auffällig:** Der CLIP-Score, den ein Auftrag auf MPS selbst berechnet, liegt bei 90–96 für Skizzen, die der
-    CPU-Richter mit 60–68 bewertet – als sähe CLIP auf MPS alle Bilder fast gleich. Die Messung vergleicht deshalb
-    jetzt die CLIP-Merkmale derselben Bilder auf MPS und CPU (Kosinus, `clip_embedding` / `clip_pairs`).
+    CPU-Richter mit 50–68 bewertet (CLIPasso 90,9 / 92,8 gegen 53,1 / 49,8) – als sähe CLIP auf MPS alle Bilder fast
+    gleich. Weil dieser Score unter mehreren Skizzen die beste auswählt, rechnet ihn die Engine bei einem MPS-Auftrag
+    jetzt auf der CPU (`scoring.get_scorer`). Die Messung vergleicht außerdem die CLIP-Merkmale derselben Bilder auf
+    MPS und CPU (Kosinus, `clip_embedding` / `clip_pairs`), damit sich die Ursache eingrenzen lässt.
   - **Folge:** `MPS_AUTO` bleibt leer – *Auto* rechnet auf dem Mac auf der CPU; *mps* lässt sich pro Auftrag
     wählen.
 

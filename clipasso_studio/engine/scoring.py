@@ -95,10 +95,12 @@ _scorers: dict[str, ClipScorer] = {}
 
 
 def get_scorer(device) -> ClipScorer:
-    """Scorer cached per device (a job scores every seed)."""
-    key = str(device)
+    """Scorer cached per device (a job scores every seed). On the Apple GPU (MPS) it is the CPU's: measured there,
+    the score of a sketch came out at 90–96 where the same CLIP on the CPU gave 50–68 (docs/macos/plan.md §7) –
+    and the score picks the best of several sketches."""
+    key = "cpu" if str(device).startswith("mps") else str(device)
     if key not in _scorers:
-        _scorers[key] = ClipScorer(device)
+        _scorers[key] = ClipScorer(key if key == "cpu" else device)
     return _scorers[key]
 
 
