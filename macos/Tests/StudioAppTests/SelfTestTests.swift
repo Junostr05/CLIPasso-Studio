@@ -62,3 +62,25 @@ import StudioCore
         #expect(!outcome.ok && outcome.lines.contains { $0.contains("could not be started") })
     }
 }
+
+@Suite struct ScreenshotOptionsTests {
+    @Test func commandLineAndShots() throws {
+        let options = try ScreenshotOptions(arguments: ["x", "--screenshots", "/tmp/shots", "--results", "/tmp/out"])
+        #expect(options.output.path == "/tmp/shots" && options.results?.path == "/tmp/out")
+        let shots = options.shots(pages: ["studio", "gallery"])
+        #expect(shots.count == 8)  // 2 pages × German, English × dark, light
+        #expect(shots.first?.file.lastPathComponent == "studio-de-dark.png")
+        #expect(Set(shots.map(\.file)).count == 8)
+        #expect(throws: SelfTest.UsageError.self) { try ScreenshotOptions(arguments: ["x", "--screenshots"]) }
+        #expect(ScreenshotOptions.requested(in: ["x", "--screenshots", "a"]))
+        #expect(!ScreenshotOptions.requested(in: ["x"]))
+    }
+
+    @Test func itsOwnSettings() throws {
+        let out = FileManager.default.temporaryDirectory.appending(path: "shots-\(UUID().uuidString)")
+        let options = try ScreenshotOptions(arguments: ["x", "--screenshots", out.path, "--results", "/Volumes/R"])
+        let store = try options.store()
+        #expect(store.url.deletingLastPathComponent().path == out.path)
+        #expect(store.load().outputDir.path == "/Volumes/R")
+    }
+}

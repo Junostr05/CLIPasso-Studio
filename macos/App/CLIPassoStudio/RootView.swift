@@ -50,6 +50,11 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(model.appearance == .system ? nil : model.appearance == .dark ? .dark : .light)
+        .task {
+            if let options = ScreenshotMode.options {
+                await ScreenshotMode.run(options, model: model) { page = $0 }
+            }
+        }
         // the models a job or the Models page asked for (one sheet for the window)
         .sheet(isPresented: Binding(get: { model.models.stage != .idle },
                                     set: { if !$0 { model.cancelDownload() } })) {

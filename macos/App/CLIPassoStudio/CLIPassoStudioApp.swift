@@ -2,11 +2,21 @@ import StudioApp
 import StudioCore
 import SwiftUI
 
-/// The window app – or, with `--self-test`, the check of a built app without a window (SelfTest).
+/// The window app – or, with `--self-test`, the check of a built app without a window (SelfTest); with
+/// `--screenshots` the window app draws its pages into files and ends (ScreenshotMode).
 @main
+@MainActor
 enum Launcher {
     static func main() {
         let arguments = CommandLine.arguments
+        if ScreenshotOptions.requested(in: arguments) {
+            do {
+                ScreenshotMode.options = try ScreenshotOptions(arguments: arguments)
+            } catch {
+                print(error)
+                exit(2)
+            }
+        }
         guard SelfTest.Options.requested(in: arguments) else {
             CLIPassoStudioApp.main()
             return
@@ -32,7 +42,8 @@ struct CLIPassoStudioApp: App {
 
     init() {
         do {
-            _model = State(initialValue: try AppModel(resources: .current()))
+            let store = try ScreenshotMode.options?.store() ?? .standard()  // (screenshots: settings of their own)
+            _model = State(initialValue: try AppModel(resources: .current(), store: store))
         } catch {
             _problem = State(initialValue: String(describing: error))
         }
@@ -51,5 +62,6 @@ struct CLIPassoStudioApp: App {
                                        description: Text(verbatim: problem ?? ""))
             }
         }
+        .defaultSize(width: 1280, height: 820)
     }
 }

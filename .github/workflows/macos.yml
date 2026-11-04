@@ -107,6 +107,20 @@ jobs:
         run: |
           "build/app/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio" --self-test \
             clipasso_studio/resources/samples/camel.png "$RUNNER_TEMP/selftest" --models "$PWD/models" | tee selftest.txt
+      - name: Screenshots of every page (German, English; dark, light)
+        if: success() || failure()
+        continue-on-error: true  # (needs the runner's window session; the app and its disk image do not)
+        timeout-minutes: 10
+        run: |
+          "build/app/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio" --screenshots "$RUNNER_TEMP/shots" \
+            --results "$RUNNER_TEMP/selftest"
+          ls "$RUNNER_TEMP/shots"
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: screenshots-mac
+          path: ${{ runner.temp }}/shots/*.png
+          if-no-files-found: warn
       - name: Disk image
         run: macos/scripts/make_dmg.sh build/app | tee dmg.txt
       - name: Sizes and self-test in the summary
