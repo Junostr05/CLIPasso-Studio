@@ -93,7 +93,23 @@ private struct GalleryCell: View {
                 .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
+        .onTapGesture(count: 2) { open() }  // (as the studio's gallery: a double-click continues in the studio)
         .contextMenu { menu }
+        // keyboard and VoiceOver reach every result: focus, Return opens it, the menu's actions by name
+        .focusable()
+        .onKeyPress(.return) {
+            open()
+            return .handled
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { open() }
+        .accessibilityAction(named: Text(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite"))) {
+            Task { await model.gallery.setFavourite(item, !item.favourite) }
+        }
+        .accessibilityAction(named: Text(model.texts.tr("ui.gallery.show_folder"))) {
+            NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
+        }
         .alert(model.texts.tr("ui.gallery.info_name"), isPresented: $renaming) {
             TextField(model.texts.tr("ui.gallery.info_name"), text: $title)
             Button(model.texts.tr("ui.cancel"), role: .cancel) {}
