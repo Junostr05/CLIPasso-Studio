@@ -88,7 +88,8 @@ def _extra(spec: model_store.ModelSpec) -> dict:
 
 
 def export_models() -> dict:
-    models = [{"key": s.key, "filename": s.filename, "urls": list(s.urls), "sha256": s.download_sha256,
+    models = [{"key": s.key, "name": methods_ui.model_display_name(s.key), "filename": s.filename,
+               "urls": list(s.urls), "sha256": s.download_sha256,
                "download_size": s.download_size, "stored_size_mb": s.stored_size_mb, "kind": s.kind,
                "mac_bundled": s.key in MAC_BUNDLED, "extra": _extra(s)} for s in model_store.SPECS.values()]
     return {"format": FORMAT, "partial_dir": model_store.partial_dir(Path(".")).name, "models": models}

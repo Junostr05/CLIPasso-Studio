@@ -21,6 +21,8 @@ public struct HFFile: Sendable, Hashable {
 public struct ModelSpec: Sendable, Hashable, Identifiable {
     public var id: String { key }
     public let key: String
+    /// as the studio names it (methods_ui.model_display_name)
+    public let name: String
     /// relative to a models folder; for a Hugging Face model its manifest.json
     public let filename: String
     public let urls: [String]
@@ -37,9 +39,10 @@ public struct ModelSpec: Sendable, Hashable, Identifiable {
 
     public init(key: String, filename: String, urls: [String], sha256: String?, downloadSize: Int64, storedSizeMB: Int,
                 kind: String, macBundled: Bool = false, repo: String? = nil, revision: String? = nil,
-                files: [HFFile] = [], experimental: Bool = false, purpose: String? = nil)
+                files: [HFFile] = [], experimental: Bool = false, purpose: String? = nil, name: String? = nil)
     {
         self.key = key
+        self.name = name ?? key
         self.filename = filename
         self.urls = urls
         self.sha256 = sha256
@@ -87,7 +90,7 @@ public struct ModelCatalog: Sendable {
                              macBundled: m["mac_bundled"]?.boolValue ?? false, repo: extra["repo"]?.stringValue,
                              revision: extra["revision"]?.stringValue, files: files,
                              experimental: extra["experimental"]?.truthy ?? false,
-                             purpose: extra["purpose"]?.stringValue)
+                             purpose: extra["purpose"]?.stringValue, name: m["name"]?.stringValue)
         }
         return ModelCatalog(models: models, partialDir: o["partial_dir"]?.stringValue ?? ".partial")
     }

@@ -178,3 +178,11 @@ def test_the_studio_starts_like_the_schema():
 
     for method in schema.METHODS:
         assert param_panel.start_settings(method) == schema.start_settings(method)
+
+
+def test_models_carry_the_studios_names():
+    from clipasso_studio.gui import methods_ui
+
+    names = {m["key"]: m["name"] for m in export.export_models()["models"]}
+    assert names["clip:RN101"] == "CLIP RN101" and names["blazeface"] == "BlazeFace"
+    assert all(names[k] == methods_ui.model_display_name(k) for k in names)

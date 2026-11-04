@@ -15,6 +15,7 @@ from ..engine import framing, model_store
 from . import brush, export, paper, theme
 from .app_settings import app_settings
 from .i18n import i18n, tr
+from .methods_ui import MODEL_NAMES, model_display_name  # noqa: F401 (Qt-free there: the Mac app exports them)
 from .widgets.common import button, label
 
 
@@ -1155,24 +1156,6 @@ class ModelDownloadDialog(QDialog):
         self.bar.setValue(0)
         QMessageBox.warning(self, tr("ui.error"), msg)
         self.start_btn.setEnabled(True)
-
-
-MODEL_NAMES = {
-    "u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)",
-    "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
-    "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
-    "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
-    "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite", "taesd": "TAESD", "blazeface": "BlazeFace",
-    "semantic:openclip-b16": "OpenCLIP ViT-B/16 (LAION-2B)", "semantic:siglip-b16": "SigLIP B/16",
-}
-
-
-def model_display_name(key: str) -> str:
-    if key.startswith("clip:"):
-        return f"CLIP {key.split(':', 1)[1]}"
-    if key.startswith("controlnet:"):
-        return f"ControlNet · {key.split(':', 1)[1]}"
-    return MODEL_NAMES.get(key, key)
 
 
 def ask_download_missing(parent: QWidget, keys: list[str]) -> bool:

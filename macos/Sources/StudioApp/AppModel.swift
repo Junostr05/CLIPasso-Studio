@@ -21,23 +21,32 @@ public final class AppModel {
     public let catalog: ModelCatalog
     /// The studio page (its settings and the job it started).
     public let studio: StudioModel
+    /// The models a job needs that are not there yet.
+    public let models: ModelFlow
     /// The queue as it was last reported (nil before the engine runs).
     public private(set) var queueSnapshot: QueueSnapshot?
     @ObservationIgnored public private(set) var engine: EngineClient?
     @ObservationIgnored public private(set) var queue: JobQueue?
     @ObservationIgnored private var queueListener: Task<Void, Never>?
+    @ObservationIgnored private let transport: any HTTPTransport
+    @ObservationIgnored private var download: Task<Void, Never>?
     @ObservationIgnored private let resources: AppResources
     @ObservationIgnored public let store: SettingsStore
 
-    public init(resources: AppResources, store: SettingsStore = .standard()) throws {
+    public init(resources: AppResources, store: SettingsStore = .standard(),
+                transport: any HTTPTransport = URLSessionTransport()) throws
+    {
         self.resources = resources
+        self.transport = transport
         self.store = store
         let loaded = store.load()
         settings = loaded
         texts = try Texts(directory: resources.i18n, language: Texts.resolve(loaded.language))
         let schema = try ParamSchema.load(resources.schema)
         self.schema = schema
-        catalog = try ModelCatalog.load(resources.models)
+        let catalog = try ModelCatalog.load(resources.models)
+        self.catalog = catalog
+        models = ModelFlow(catalog: catalog)
         studio = StudioModel(schema: schema)
     }
 
@@ -116,11 +125,69 @@ public final class AppModel {
 
     // MARK: - the studio's job
 
-    /// *Create sketch*: the studio's image with its settings into the queue (it starts when nothing runs).
+    /// *Create sketch*: the studio's image with its settings into the queue (it starts when nothing runs) – first
+    /// asking for the models it needs that are not there (`models`).
     public func startSketch() async {
-        guard let queue else { return }
+        guard let queue, let engine, studio.canStart else { return }
+        var missing: [String] = []
+        if let answer = try? await engine.request("required_models", ["settings": .object(studio.jobSettings)]) {
+            missing = answer.objectValue?["missing"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        }  // (when the engine cannot say, the job itself reports a missing model)
+        guard missing.isEmpty else {
+            models.stage = .asking(missing)
+            return
+        }
         await studio.start(on: queue)
         apply(await queue.snapshot())
+    }
+
+    /// *Download* in the question: the missing models one after the other, each converted by the engine, then the
+    /// job starts.
+    public func downloadMissingAndStart() async {
+        guard case .asking(let keys) = models.stage, let engine else { return }
+        let downloader = ModelDownloader(catalog: catalog, root: modelsDir, transport: transport)
+        for key in keys {
+            models.stage = .downloading(key: key, done: 0, total: catalog.spec(key)?.downloadSize ?? 0)
+            do {
+                _ = try await downloader.download(key) { [weak self] done, total in
+                    Task { @MainActor in self?.models.progress(key, done, total) }
+                }
+                try Task.checkCancellation()
+                models.stage = .converting(key)
+                _ = try await engine.request("convert_model", ["key": .string(key), "dest_root": .string(modelsDir.path)],
+                                             timeout: .seconds(3600))
+            } catch is CancellationError {
+                models.stage = .idle
+                return
+            } catch {
+                models.stage = Task.isCancelled ? .idle : .failed(problem(error, key: key))
+                return
+            }
+        }
+        models.stage = .idle
+        await startSketch()
+    }
+
+    /// The question's *Download* button.
+    public func confirmDownload() {
+        download?.cancel()
+        download = Task { [weak self] in await self?.downloadMissingAndStart() }
+    }
+
+    /// *Cancel* in the question or while downloading: what came so far stays for the next time.
+    public func cancelDownload() {
+        download?.cancel()
+        download = nil
+        if case .asking = models.stage { models.stage = .idle }
+        if case .failed = models.stage { models.stage = .idle }
+    }
+
+    private func problem(_ error: any Error, key: String) -> String {
+        let code = (error as? ModelDownloadError)?.code ?? (error as? EngineFailure)?.code ?? ""
+        let details = (error as? ModelDownloadError)?.details ?? String(describing: error)
+        let textKey = "ui.err.\(code)"
+        guard !code.isEmpty, texts.has(textKey) else { return String(describing: error) }
+        return texts.tr(textKey, ["model": models.name(key), "name": models.name(key), "details": details])
     }
 
     /// *Pause* / *Resume* of the running job.

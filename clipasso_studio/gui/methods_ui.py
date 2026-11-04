@@ -187,3 +187,22 @@ def small_card_for_sdxl(settings: dict) -> dict | None:
 
     card = job_gpu(settings)
     return card if card and sdxl_on_cpu(float(card.get("memory_gb") or 0)) else None
+
+
+# The names of the models as the studio shows them (dialogs, the Models page, the phone page, the Mac app)
+MODEL_NAMES = {
+    "u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)",
+    "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
+    "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
+    "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
+    "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite", "taesd": "TAESD", "blazeface": "BlazeFace",
+    "semantic:openclip-b16": "OpenCLIP ViT-B/16 (LAION-2B)", "semantic:siglip-b16": "SigLIP B/16",
+}
+
+
+def model_display_name(key: str) -> str:
+    if key.startswith("clip:"):
+        return f"CLIP {key.split(':', 1)[1]}"
+    if key.startswith("controlnet:"):
+        return f"ControlNet · {key.split(':', 1)[1]}"
+    return MODEL_NAMES.get(key, key)
