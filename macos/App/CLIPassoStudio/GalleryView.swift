@@ -144,10 +144,9 @@ private struct GalleryCell: View {
         }
     }
 
-    /// The result's image back in the studio, with the result's method.
+    /// The result back in the studio: its image, its method and its sketches (to touch up).
     private func open() {
-        model.studio.image = URL(filePath: item.summary.target)
-        model.studio.selectMethod(item.method)
+        model.studio.open(item)
     }
 
     /// export.export_svg / export_png (the plain style; PNG 1024 px on white).

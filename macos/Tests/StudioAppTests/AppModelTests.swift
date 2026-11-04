@@ -134,6 +134,12 @@ import StudioCore
         }
         #expect(model.gallery.items.count == 1)  // the finished job appears in the gallery
         #expect(model.gallery.countText(model.texts) == "1 result in the output folder")  // (not "1 results")
+        // the finished job is the studio's result, and a result of the gallery can be opened there
+        #expect(model.studio.result?.jobDir == model.studio.live.jobDir && model.studio.result?.runs.count == 3)
+        let item = try #require(model.gallery.items.first)
+        model.studio.open(item)
+        #expect(model.studio.opened == 1 && model.studio.result?.jobDir == item.jobDir)
+        #expect(model.studio.image?.lastPathComponent == URL(filePath: item.summary.target).lastPathComponent)
         await model.stopEngine()
     }
 

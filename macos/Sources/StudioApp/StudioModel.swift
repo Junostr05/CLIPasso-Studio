@@ -14,7 +14,14 @@ public final class StudioModel {
     public private(set) var settings: JSONObject
     /// The job the studio started: what changes many times a second, in an object of its own.
     public let live = LiveJob()
+    /// The finished job shown – the studio's own when it is done, or one opened from the gallery – whose sketches can
+    /// be touched up; nil while a job of the studio runs.
+    public private(set) var result: StudioResult?
+    /// Counts the results opened from the gallery: the window shows the studio after each.
+    public private(set) var opened = 0
     @ObservationIgnored private var perMethod: [String: JSONObject] = [:]
+    /// the studio's job whose result was shown when it finished (once: a result opened later stays)
+    @ObservationIgnored private var shownJob: QueuedJob.ID?
 
     public init(schema: ParamSchema) {
         self.schema = schema
@@ -76,11 +83,28 @@ public final class StudioModel {
     public func start(on queue: JobQueue) async -> QueuedJob.ID? {
         guard canStart, let image else { return nil }
         let settings = jobSettings
+        result = nil
         live.begin()
         let id = await queue.add(target: image, settings: settings)
         live.jobID = id
         live.update(from: await queue.snapshot())
         return id
+    }
+
+    /// The studio's job is done: its result is shown, once (AppModel calls this after each report of the queue).
+    public func showFinishedJob() {
+        guard live.status == .done, let id = live.jobID, shownJob != id, let jobDir = live.jobDir else { return }
+        shownJob = id
+        result = StudioResult(jobDir: jobDir)
+    }
+
+    /// A result of the gallery in the studio (gallery.py: "Open in the studio"): its image, its method and its
+    /// sketches – the best one shown, ready to be touched up.
+    public func open(_ item: GalleryItem) {
+        if !item.summary.target.isEmpty { image = URL(filePath: item.summary.target) }
+        selectMethod(item.method)
+        result = StudioResult(jobDir: item.jobDir)
+        opened += 1
     }
 
     /// What VoiceOver says about the canvas.

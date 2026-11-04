@@ -195,7 +195,7 @@ public enum JobFolder {
 
     // MARK: - writing
 
-    static func writeAtomically(_ text: String, to url: URL) throws {
+    public static func writeAtomically(_ text: String, to url: URL) throws {
         let tmp = url.appendingPathExtension("tmp")
         try Data(text.utf8).write(to: tmp)
         guard rename(tmp.path, url.path) == 0 else {

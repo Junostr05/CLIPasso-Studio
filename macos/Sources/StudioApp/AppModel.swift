@@ -148,6 +148,7 @@ public final class AppModel {
             countdown.start()
         }
         studio.live.update(from: snapshot)
+        studio.showFinishedJob()
         if newResult {
             Task { await gallery.refresh() }  // (a finished job is a new result)
         }

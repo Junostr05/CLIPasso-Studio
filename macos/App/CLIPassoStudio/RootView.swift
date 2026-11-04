@@ -56,6 +56,7 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(model.appearance == .system ? nil : model.appearance == .dark ? .dark : .light)
+        .onChange(of: model.studio.opened) { page = .studio }  // (a result opened from the gallery)
         .task {
             if let options = ScreenshotMode.options {
                 await ScreenshotMode.run(options, model: model) { page = $0 }
