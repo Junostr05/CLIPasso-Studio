@@ -23,6 +23,7 @@ from clipasso_studio.engine import jobs  # noqa: E402
 
 
 def main(argv: list[str]) -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")  # (a Windows console has cp1252: "✏️")
     root = Path(argv[0]) if argv else Path("")
     cases = sorted(p.parent for p in root.glob("*/expected.json")) if root.is_dir() else []
     if not cases:

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 import time
@@ -24,6 +25,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+# measured as the Mac app's engine computes (clipasso_studio/headless/__main__.py): an operation without an Apple GPU
+# kernel (e.g. the backward pass of antialiased resizing in CLIPasso's augmentations) runs on the CPU – set before
+# PyTorch is imported
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
 from clipasso_studio import settings_schema as schema  # noqa: E402
 

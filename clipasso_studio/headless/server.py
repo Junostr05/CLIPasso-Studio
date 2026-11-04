@@ -34,8 +34,11 @@ _PROBE = ("import json, torch; mps = getattr(torch.backends, 'mps', None); "
 
 
 def probe_devices() -> dict:
-    """Which devices PyTorch can use – asked in a child process, so this one does not hold PyTorch."""
-    out = subprocess.run([sys.executable, "-c", _PROBE], capture_output=True, text=True, timeout=300)
+    """Which devices PyTorch can use – asked in a child process, so this one does not hold PyTorch. The child gets
+    no stdin: on Windows one that inherits this process's stdin pipe – which the request thread is reading – hangs
+    when it starts until the next request comes (and the app waits for the answer)."""
+    out = subprocess.run([sys.executable, "-c", _PROBE], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                         timeout=300)
     if out.returncode != 0:
         raise RuntimeError(f"device probe failed: {out.stderr.strip()[-2000:]}")
     return json.loads(out.stdout.strip().splitlines()[-1])

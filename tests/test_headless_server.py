@@ -190,28 +190,48 @@ def test_shutdown_answers_then_ends():
     assert out.lines() == [{"id": 1, "ok": True, "result": {}}] and runner.killed == 1
 
 
+class FloodRunner(FakeRunner):
+    """Sends log lines, ``per_poll`` at a time, for as long as it is not paused (at most ``limit``); after the pause
+    one more batch and the job's end. So the flood is still under way whenever a request comes, however fast the
+    computer – and it ends only when the server took a request in during it."""
+
+    def __init__(self, per_poll=100, limit=2_000_000):
+        super().__init__([], per_poll)
+        self.sent, self.limit, self.ended = 0, limit, False
+
+    def poll(self, max_events=500):
+        if self.ended:
+            return []
+        batch = [("log", {"message": f"line {self.sent + i}"}) for i in range(self.per_poll)]
+        self.sent += self.per_poll
+        if self.paused or self.sent >= self.limit:
+            batch.append(("job_done", {"job_dir": "x", "paused": self.paused}))
+            self.ended, self.running = True, False
+        return [(kind, dict(data, token=1)) for kind, data in batch]
+
+
 def test_requests_answered_during_event_flood(tmp_path):
-    events = [("log", {"message": f"line {i}"}) for i in range(10_000)] + [("job_done", {"job_dir": "x"})]
-    runner = FakeRunner(events, per_poll=100)
+    runner = FloodRunner()
     server, out = _server(runner)
     r, w = os.pipe()
     with os.fdopen(r, "rb") as inp, os.fdopen(w, "wb", buffering=0) as feed:
         thread = threading.Thread(target=server.serve, args=(inp,), daemon=True)
         thread.start()
         feed.write(encode(_req(1, "start", **_start_args(tmp_path))))
-        deadline = time.monotonic() + 10
+        deadline = time.monotonic() + 30
         while not any(e.get("event") == "log" for e in out.lines()) and time.monotonic() < deadline:
             time.sleep(0.01)
         feed.write(encode(_req(2, "pause")))
-        while not any(e.get("event") == "job_done" for e in out.lines()) and time.monotonic() < deadline:
+        while not runner.ended and time.monotonic() < deadline:
             time.sleep(0.01)
     thread.join(timeout=10)
     lines = out.lines()
     pause_at = next(i for i, e in enumerate(lines) if e.get("id") == 2)
     done_at = next(i for i, e in enumerate(lines) if e.get("event") == "job_done")
     assert lines[pause_at]["ok"] and pause_at < done_at
+    assert lines[done_at]["data"]["paused"] is True  # (the flood ended because of the pause, not at its limit)
     logs = [e["data"]["message"] for e in lines if e.get("event") == "log"]
-    assert logs == [f"line {i}" for i in range(10_000)]
+    assert len(logs) >= 100 and logs == [f"line {i}" for i in range(len(logs))]  # every line, in order
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -261,6 +281,37 @@ def test_probe_devices_asks_pytorch_in_a_child_process():
     assert found == {"torch": torch.__version__.split("+")[0], "cuda": torch.cuda.is_available(),
                      "mps": bool(torch.backends.mps.is_available())}
     assert "torch" in sys.modules  # (this test imported it – the server itself does not)
+
+
+def test_probe_gets_no_stdin(monkeypatch):
+    """On Windows a child that inherits the engine's stdin pipe hangs at its start while the request thread reads
+    that pipe – the first job never got its answer there."""
+    import subprocess
+
+    from clipasso_studio.headless import server
+
+    seen = {}
+
+    def run(cmd, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(cmd, 0, stdout='{"torch": "2", "cuda": false, "mps": false}\n', stderr="")
+
+    monkeypatch.setattr(server.subprocess, "run", run)
+    assert server.probe_devices() == {"torch": "2", "cuda": False, "mps": False}
+    assert seen["stdin"] is subprocess.DEVNULL
+
+
+def test_devices_answer_while_the_app_waits(tmp_path):
+    """The real engine answers ``devices`` (its probe a child process) with no further request coming – the app
+    waits for the answer (on Windows the probe hung until the next line on stdin)."""
+    from tests.headless_engine import Engine
+
+    engine = Engine(tmp_path)
+    try:
+        answer = engine.request("devices", timeout=90)
+        assert answer["ok"] and set(answer["result"]) == {"torch", "cuda", "mps"}, answer
+    finally:
+        engine.close()
 
 
 def test_convert_model(monkeypatch, tmp_path):
