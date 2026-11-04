@@ -269,7 +269,7 @@ public enum SketchSVG {
     }
 
     /// svg_io._parse_color, as 0 … 255.
-    static func color(_ value: String?) -> RGB? {
+    public static func color(_ value: String?) -> RGB? {
         guard let value = value?.trimmingCharacters(in: .whitespaces), value != "none" else { return nil }
         func byte(_ unit: Double) -> Int { Int((min(max(unit, 0), 1) * 255).rounded()) }
         if value.hasPrefix("rgb("), value.hasSuffix(")") {
