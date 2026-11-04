@@ -15,6 +15,9 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
   ``jobs.job_summary`` reads from each (paths inside the fixtures as ``{jobs}/…``)
 - ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them;
   ``paths_expected.json``: path data and what engine/svg_path.py reads from it
+- ``export/`` – ``restyle.json``: SVGs as gui/export.restyle_svg changes them (colour, width, background), and
+  ``render/*.png``: the ``svg/`` sketches as the studio exports them (gui/export.export_png, 256 px, Qt). Qt's
+  pixels can differ by a step between platforms, so the test compares these by pixel, not by byte
 
 ``tests/test_mac_fixtures.py`` checks that the committed files are current.
 """
@@ -207,6 +210,36 @@ def sketches(out: Path) -> None:
     write_json(out / "paths_expected.json", path_cases())
 
 
+RESTYLE_CASES = (  # (sketch, stroke colour, width factor, background)
+    ("lines.svg", None, 1.0, None), ("lines.svg", "#1a2b3c", 1.0, None), ("cubic.svg", None, 2.5, "#ffffff"),
+    ("closed_bg.svg", "#ff0000", 0.5, None), ("closed_bg.svg", None, 1.0, "#000000"), ("cubic.svg", None, 0.3333, None),
+)
+RENDER_SIZE = 256
+
+
+def exports(out: Path) -> None:
+    """What the studio's export makes of the ``svg/`` sketches (needs PySide6: Qt draws the PNGs)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PIL import Image
+
+    from clipasso_studio.gui import export
+
+    folder = out / "export"
+    (folder / "render").mkdir(parents=True)
+    cases = []
+    for name, colour, scale, background in RESTYLE_CASES:
+        svg = (out / "svg" / name).read_text(encoding="utf-8")
+        cases.append({"svg": name, "stroke_color": colour, "width_scale": scale, "background": background,
+                      "output": export.restyle_svg(svg, colour, scale, background)})
+    write_json(folder / "restyle.json", cases)
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in ("lines.svg", "cubic.svg", "closed_bg.svg"):
+            qt = Path(tmp) / "qt.png"
+            export.export_png(str(out / "svg" / name), str(qt), size=RENDER_SIZE)  # (white behind it)
+            with Image.open(qt) as image:
+                image.convert("RGB").save(folder / "render" / name.replace(".svg", ".png"), optimize=False)
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -357,6 +390,7 @@ def build(out: Path) -> None:
     write_json(out / "pyjson.json", pyjson())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
+    exports(out)
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
