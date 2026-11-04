@@ -46,35 +46,15 @@ struct RootView: View {
             case .queue: QueueView()
             case .gallery: GalleryView()
             case .models: ModelsView()
-            case let other: PageView(page: other)
+            case .settings: SettingsView()
             }
         }
+        .preferredColorScheme(model.appearance == .system ? nil : model.appearance == .dark ? .dark : .light)
         // the models a job or the Models page asked for (one sheet for the window)
         .sheet(isPresented: Binding(get: { model.models.stage != .idle },
                                     set: { if !$0 { model.cancelDownload() } })) {
             ModelSheet()
                 .environment(model)
         }
-    }
-}
-
-/// A page – the first release fills them one after the other (docs/macos/phase2-app-plan.md).
-struct PageView: View {
-    @Environment(AppModel.self) private var model
-    let page: Page
-
-    var body: some View {
-        VStack(spacing: Spacing.spaceL) {
-            ContentUnavailableView(model.texts.tr(page.titleKey), systemImage: page.symbol)
-            if !model.engineStatusText.isEmpty {
-                Text(verbatim: model.engineStatusText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: Spacing.readingWidth)
-                    .padding(.bottom, Spacing.spaceXl)
-            }
-        }
-        .navigationTitle(model.texts.tr(page.titleKey))
     }
 }

@@ -24,7 +24,7 @@ public final class AppModel {
     /// The models a job needs that are not there yet.
     public let models: ModelFlow
     /// The results of the output folder.
-    public let gallery: GalleryModel
+    public private(set) var gallery: GalleryModel
     /// The queue page (once the engine runs).
     public private(set) var queuePage: QueueModel?
     /// The queue as it was last reported (nil before the engine runs).
@@ -133,6 +133,53 @@ public final class AppModel {
         if newResult {
             Task { await gallery.refresh() }  // (a finished job is a new result)
         }
+    }
+
+    // MARK: - the settings page
+
+    public struct Choice: Identifiable, Hashable, Sendable {
+        public let id: String
+        public let label: String
+    }
+
+    /// Automatic (the system's language), Deutsch, English.
+    public var languageChoices: [Choice] {
+        let system = Texts.names[Texts.resolve("auto")] ?? "English"
+        return [Choice(id: "auto", label: texts.tr("ui.settings.language_auto", ["lang": system]))]
+            + Texts.languages.map { Choice(id: $0, label: Texts.names[$0] ?? $0) }
+    }
+
+    /// The window's appearance – the settings' "theme" as the Python app keeps it (dark, light or system).
+    public enum Appearance: String, CaseIterable, Sendable {
+        case system, light, dark
+    }
+
+    public var appearance: Appearance { Appearance(rawValue: settings.theme) ?? .dark }
+
+    public func setAppearance(_ appearance: Appearance) {
+        updateSettings { $0.theme = appearance.rawValue }
+    }
+
+    /// The output folder: new jobs go there, the gallery shows it.
+    public func setOutputDir(_ url: URL) async {
+        updateSettings { $0.outputDir = url }
+        await queue?.setOutputRoot(url)
+        gallery = GalleryModel(root: url, schema: schema)
+        await gallery.refresh()
+    }
+
+    /// The folder of the downloaded models; the engine starts again with it. Refused (the text says why) while a job
+    /// runs or waits.
+    public func setModelsDir(_ url: URL?) async -> String? {
+        let busy = queueSnapshot?.jobs.contains { [.queued, .running, .paused].contains($0.status) } ?? false
+        guard !busy, !studio.live.isActive else { return texts.tr("ui.settings.models_busy") }
+        updateSettings { $0.modelsDir = url }
+        models.revision += 1
+        if engine != nil, engineStatus == .ready {
+            await stopEngine()
+            await startEngine()
+        }
+        return nil
     }
 
     // MARK: - the studio's job

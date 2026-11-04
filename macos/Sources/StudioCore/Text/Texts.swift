@@ -5,6 +5,8 @@ import Foundation
 /// placeholders are filled like Python's `str.format` (a text with a placeholder that is not given stays as it is).
 public struct Texts: Sendable {
     public static let languages = ["de", "en"]
+    /// Each language in its own words (gui/i18n.py LANGUAGES).
+    public static let names = ["de": "Deutsch", "en": "English"]
     public let language: String
     private let table: [String: String]
     private let english: [String: String]

@@ -7,7 +7,7 @@ public actor JobQueue {
     public nonisolated let updates: AsyncStream<QueueSnapshot>
     private let sink: AsyncStream<QueueSnapshot>.Continuation
     private let engine: any EngineControlling
-    public let outputRoot: URL
+    public private(set) var outputRoot: URL
     public private(set) var autoStart = true
     public private(set) var whenDone: WhenDone = .nothing
     private var jobs: [QueuedJob] = []
@@ -89,6 +89,11 @@ public actor JobQueue {
         if on, current == nil {
             try? await startNext()
         }
+    }
+
+    /// Where the next jobs are written (a job under way stays where it is).
+    public func setOutputRoot(_ url: URL) {
+        outputRoot = url
     }
 
     public func setWhenDone(_ action: WhenDone) {
