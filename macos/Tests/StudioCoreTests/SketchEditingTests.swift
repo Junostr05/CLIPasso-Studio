@@ -108,7 +108,7 @@ import Testing
         let without = SketchEditing.removeStrokes(odd, [1])
         #expect(without.contains("<!-- a comment -->") && !without.contains("<title>"))  // (the stroke with its content)
         #expect(SketchEditing.removeStrokes(odd, [7]) == odd && SketchEditing.removeStrokes(odd, []) == odd)
-        #expect(SketchEditing.unfix(odd).replacingOccurrences(of: " data-fixed=\"true\"", with: "") == odd)
+        #expect(SketchEditing.unfix(odd) == odd.replacingOccurrences(of: " data-fixed=\"true\"", with: ""))
         let empty = #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" />"#
         let drawn = SketchEditing.appendStroke(empty, points: [SketchPoint(x: 1, y: 1), SketchPoint(x: 9, y: 2)])
         #expect(drawn.hasPrefix(#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M 1 1 C"#))
