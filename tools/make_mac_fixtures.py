@@ -367,8 +367,9 @@ def edit_cases(out: Path) -> list[dict]:
     from clipasso_studio.gui import brush, strokes
 
     (out / "edit").mkdir(parents=True, exist_ok=True)
-    (out / "edit" / "odd.svg").write_text(EDIT_ODD, encoding="utf-8")
-    (out / "edit" / "empty.svg").write_text(EDIT_EMPTY, encoding="utf-8")
+    # (bytes: write_text would end the lines with \r\n on Windows)
+    (out / "edit" / "odd.svg").write_bytes(EDIT_ODD.encode("utf-8"))
+    (out / "edit" / "empty.svg").write_bytes(EDIT_EMPTY.encode("utf-8"))
     cases = []
     for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "edit/empty.svg"):
         svg = (out / name).read_text(encoding="utf-8")
