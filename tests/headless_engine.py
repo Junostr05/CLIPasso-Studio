@@ -33,7 +33,8 @@ def image_in(folder: Path, name: str = "Bild Ä.png") -> Path:
 class Engine:
     def __init__(self, tmp_path: Path):
         env = dict(os.environ, PYTHONPATH=str(ROOT), XDG_DATA_HOME=str(tmp_path / "data"),
-                   LOCALAPPDATA=str(tmp_path / "data"), PYTHONUNBUFFERED="1")
+                   LOCALAPPDATA=str(tmp_path / "data"), PYTHONUNBUFFERED="1",
+                   CLIPASSO_HANG_DUMP="100")  # (a hang shows its stacks in the log the timeout message carries)
         if sys.platform == "darwin":  # (the app data lives under ~/Library there)
             env["HOME"] = str(tmp_path / "home")
         self.log_path = tmp_path / "engine-stderr.log"

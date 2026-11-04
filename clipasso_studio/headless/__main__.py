@@ -27,6 +27,30 @@ def claim_stdout() -> BinaryIO:
     return os.fdopen(fd, "wb", buffering=0)
 
 
+def release_stdin_handle() -> None:
+    """Windows: point the process's standard input handle at NUL; the requests are still read from fd 0. A thread
+    blocked in a synchronous read of the stdin pipe makes every other query of that pipe wait – and CreateProcess
+    queries the parent's standard handles when it starts a child that is given none (the workers of
+    multiprocessing), so starting a job hung until the next request came."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    import msvcrt
+
+    nul = os.open(os.devnull, os.O_RDONLY)  # (kept open for the life of the process)
+    ctypes.windll.kernel32.SetStdHandle(-10, msvcrt.get_osfhandle(nul))  # STD_INPUT_HANDLE → NUL
+
+
+def dump_when_hung() -> None:
+    """With CLIPASSO_HANG_DUMP=seconds (the tests set it): every thread's stack to stderr after that long – so a
+    hang in a CI run shows where it is."""
+    seconds = os.environ.get("CLIPASSO_HANG_DUMP")
+    if seconds:
+        import faulthandler
+
+        faulthandler.dump_traceback_later(float(seconds), exit=False, file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m clipasso_studio.headless",
                                      description="CLIPasso Studio's sketch engine for the Mac app")
@@ -47,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     from .server import EngineServer
 
     out = claim_stdout()
+    release_stdin_handle()
+    dump_when_hung()
     return EngineServer(Writer(out)).serve(sys.stdin.buffer)
 
 

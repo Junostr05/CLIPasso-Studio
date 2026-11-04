@@ -71,10 +71,10 @@ def test_check_swift_meta_tool(tmp_path):
     tool = [sys.executable, str(ROOT / "tools" / "check_swift_meta.py")]
     assert subprocess.run(tool + [str(tmp_path / "export")], capture_output=True).returncode == 0
     (good / "expected.json").write_text(json.dumps({**want, "title": "anders"}), encoding="utf-8")
-    bad = subprocess.run(tool + [str(tmp_path / "export")], capture_output=True, text=True)
+    bad = subprocess.run(tool + [str(tmp_path / "export")], capture_output=True, encoding="utf-8")  # (it writes UTF-8)
     assert bad.returncode == 1 and "title" in bad.stdout
     assert subprocess.run(tool + [str(tmp_path / "nothing")], capture_output=True).returncode == 2
     (good / "expected.json").write_text(json.dumps(want, ensure_ascii=False), encoding="utf-8")
     (good / "meta.json").write_text(json.dumps(want), encoding="utf-8")  # the same data, not as Python writes it
-    other = subprocess.run(tool + [str(tmp_path / "export")], capture_output=True, text=True)
+    other = subprocess.run(tool + [str(tmp_path / "export")], capture_output=True, encoding="utf-8")
     assert other.returncode == 1 and "bytes" in other.stdout

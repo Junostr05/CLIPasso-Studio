@@ -383,3 +383,29 @@ def test_a_failed_probe_is_answered_as_an_error():
     server.begin_probe()
     answer = server.handle(_req(1, "devices"))
     assert answer["ok"] is False and "no torch" in answer["error"]["message"]
+
+
+def test_stdin_handle_released_only_on_windows(monkeypatch):
+    """Elsewhere the standard input stays as it is (the Windows part runs in the Windows CI's end-to-end tests)."""
+    import sys
+
+    from clipasso_studio.headless import __main__ as entry
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    before = os.fstat(0) if hasattr(os, "fstat") else None
+    entry.release_stdin_handle()
+    assert (os.fstat(0) if before is not None else None) == before
+
+
+def test_hang_dump_is_armed_only_when_asked(monkeypatch):
+    import faulthandler
+
+    from clipasso_studio.headless import __main__ as entry
+
+    armed = []
+    monkeypatch.setattr(faulthandler, "dump_traceback_later", lambda t, **kw: armed.append(t))
+    monkeypatch.delenv("CLIPASSO_HANG_DUMP", raising=False)
+    entry.dump_when_hung()
+    monkeypatch.setenv("CLIPASSO_HANG_DUMP", "100")
+    entry.dump_when_hung()
+    assert armed == [100.0]
