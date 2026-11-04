@@ -119,6 +119,8 @@ public struct MethodSchema: Sendable {
     public let presetOrder: [String]
     public let presetText: [String: String]
     public let defaults: JSONObject
+    /// What the studio starts with and Reset goes back to (settings_schema.start_settings)
+    public let start: JSONObject
     public let params: [Param]
     public let strokes: StrokesRule
     private let byKey: [String: Int]
@@ -138,6 +140,7 @@ public struct MethodSchema: Sendable {
         presetOrder = o["preset_order"]?.arrayValue?.compactMap(\.stringValue) ?? []
         presetText = Self.texts(o["preset_text"])
         defaults = o["defaults"]?.objectValue ?? [:]
+        start = o["start"]?.objectValue ?? defaults
         var params: [Param] = []
         for item in o["params"]?.arrayValue ?? [] {
             params.append(try Param(json: item.objectValue ?? [:]))
@@ -168,6 +171,15 @@ public struct MethodSchema: Sendable {
     /// The settings with a preset's values set (settings_schema.apply_preset).
     public func applyPreset(_ name: String, to settings: JSONObject) -> JSONObject {
         settings.merging(presets[name] ?? [:])
+    }
+
+    /// The preset whose values the settings all have (param_panel._detect_preset, with Python's ==), in the presets'
+    /// order; nil: own values.
+    public func matchingPreset(_ settings: JSONObject) -> String? {
+        presetOrder.first { name in
+            guard let values = presets[name] else { return false }
+            return values.allSatisfy { Condition.pyEquals(settings[$0.key] ?? .null, $0.value) }
+        }
     }
 
     /// A value as the parameter takes it – type and limits as settings_schema.coerce makes them for numbers, true /

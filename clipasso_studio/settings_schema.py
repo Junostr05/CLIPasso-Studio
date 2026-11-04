@@ -647,6 +647,20 @@ def apply_preset(settings: dict[str, Any], preset: str) -> dict[str, Any]:
     return out
 
 
+# The preset a method starts with (and "Reset" goes back to) on top of the paper's defaults: SceneSketch's paper
+# settings (the full 3 x 9 matrix) take hours even on a GPU, so it starts with one column; the paper settings are
+# its "Quality" preset.
+START_PRESET: dict[str, str] = {"scenesketch": "standard"}
+
+
+def start_settings(method: str) -> dict[str, Any]:
+    """The settings a method starts with in the studio and the Mac app."""
+    s = default_settings(method)
+    if method in START_PRESET:
+        s = apply_preset(s, START_PRESET[method])
+    return normalize(s)
+
+
 def num_strokes(settings: dict[str, Any]) -> int:
     """Number of strokes a run will produce (per stage for CLIPasso)."""
     method = method_of(settings)

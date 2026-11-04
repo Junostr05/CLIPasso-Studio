@@ -152,3 +152,29 @@ def test_strokes_rule_matches_num_strokes():
             else:
                 got = int(s[rule["key"]])
             assert got == schema.num_strokes(s), (method, s)
+
+
+def test_start_settings_are_exported():
+    """The settings a method starts with (and Reset goes back to) – the defaults, SceneSketch with its standard
+    preset (the paper's 3 × 9 matrix takes hours) – come from settings_schema, for the studio and the Mac app."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.headless import export
+
+    data = json.loads(json.dumps(export.export_schema()))  # (as the app reads it)
+    for method in schema.METHODS:
+        expected = schema.default_settings(method)
+        if method in schema.START_PRESET:
+            expected = schema.apply_preset(expected, schema.START_PRESET[method])
+        assert data["method"][method]["start"] == json.loads(json.dumps(schema.normalize(expected))), method
+    scene = data["method"]["scenesketch"]
+    assert all(scene["start"][k] == v for k, v in scene["presets"]["standard"].items())
+    assert data["method"]["clipasso"]["start"] == json.loads(json.dumps(schema.normalize(
+        schema.default_settings("clipasso"))))
+
+
+def test_the_studio_starts_like_the_schema():
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui.widgets import param_panel
+
+    for method in schema.METHODS:
+        assert param_panel.start_settings(method) == schema.start_settings(method)

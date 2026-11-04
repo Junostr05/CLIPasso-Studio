@@ -383,13 +383,9 @@ class ParamField(QWidget):
 
 
 def start_settings(method: str) -> dict:
-    """The settings a method starts with (and "Reset" goes back to): the paper's defaults, except for
-    SceneSketch, whose paper settings (the full 3 x 9 matrix) take hours even on a GPU – it starts
-    with its standard preset (one column); the paper settings are the "Quality" preset."""
-    s = schema.default_settings(method)
-    if method == "scenesketch":
-        s = schema.apply_preset(s, "standard")
-    return schema.normalize(s)
+    """The settings a method starts with (and "Reset" goes back to): settings_schema.start_settings (the paper's
+    defaults; SceneSketch with its standard preset)."""
+    return schema.start_settings(method)
 
 
 class _MethodPage:

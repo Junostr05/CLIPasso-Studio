@@ -7,6 +7,8 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``schema.json``, ``models.json`` – the exports of ``clipasso_studio.headless`` (the app version as "fixture")
 - ``conditions.json`` – settings (a method's defaults with ``changes``) and what Python decides for them: the
   parameters' rules (``enabled``, one "1" / "0" per parameter in ``ruled``) and ``num_strokes``
+- ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
+  whose values all match, else none – "custom")
 - ``settings.json`` – the app settings as the Python app writes them
 - ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
   ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
@@ -110,6 +112,41 @@ def conditions() -> dict:
             cases.append({"method": method, "changes": changes, "num_strokes": schema.num_strokes(s),
                           "enabled": enabled})
     return {"ruled": ruled, "cases": cases}
+
+
+def detected_preset(settings: dict) -> str | None:
+    """gui/widgets/param_panel._detect_preset (without the user's own presets)."""
+    from clipasso_studio import settings_schema as schema
+
+    for name, values in schema.METHOD_PRESETS[schema.method_of(settings)].items():
+        if all(settings.get(k) == v for k, v in values.items()):
+            return name
+    return None
+
+
+def preset_cases() -> list[dict]:
+    """Each method's start, every preset on it, and a preset with one of its values changed."""
+    from clipasso_studio import settings_schema as schema
+
+    cases = []
+    for method in schema.METHODS:
+        start = schema.start_settings(method)
+        candidates = [start]
+        for name, values in schema.METHOD_PRESETS[method].items():
+            applied = schema.apply_preset(start, name)
+            candidates.append(applied)
+            key = next(iter(values))
+            changed = dict(applied)
+            p = schema.param(method, key)
+            if p.kind == "bool":
+                changed[key] = not applied[key]
+            elif p.kind in ("int", "float"):
+                changed[key] = applied[key] + (1 if p.kind == "int" else 0.125)
+            elif p.choices:
+                changed[key] = next(c for c in p.choices if c != applied[key])
+            candidates.append(changed)
+        cases += [{"method": method, "settings": c, "preset": detected_preset(c)} for c in candidates]
+    return cases
 
 
 def settings_file() -> str:
@@ -388,6 +425,7 @@ def build(out: Path) -> None:
     write_json(out / "models.json", export.export_models())
     write_json(out / "conditions.json", conditions(), indent=None)
     write_json(out / "pyjson.json", pyjson())
+    write_json(out / "presets.json", preset_cases(), indent=None)
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
     exports(out)

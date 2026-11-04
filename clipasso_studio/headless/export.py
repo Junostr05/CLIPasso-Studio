@@ -63,6 +63,7 @@ def _method(method: str) -> dict:
         "presets": copy.deepcopy(schema.METHOD_PRESETS[method]), "preset_order": list(PRESET_ORDER),
         "preset_text": {p: f"ui.preset.{p}" for p in PRESET_ORDER},
         "defaults": schema.default_settings(method),
+        "start": schema.start_settings(method),  # what the studio starts with and Reset goes back to
         "params": [_param(method, p) for p in schema.params_for(method)],
         "strokes": dict(STROKES[method]),
     }

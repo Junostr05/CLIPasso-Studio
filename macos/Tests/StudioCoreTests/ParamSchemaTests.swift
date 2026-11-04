@@ -100,3 +100,26 @@ import Testing
         #expect(!Condition.has("f", "noise").evaluate([:]))
     }
 }
+
+/// The preset the studio shows for settings (param_panel._detect_preset) and what a method starts with.
+@Suite struct PresetDetectionTests {
+    @Test func likeTheStudio() throws {
+        let schema = try ParamSchema.load(Fixtures.url("schema.json"))
+        let cases = try #require(Fixtures.json("presets.json").arrayValue)
+        #expect(cases.count == 28)
+        for c in cases {
+            let o = c.objectValue ?? [:]
+            let method = try #require(schema.method(o["method"]?.stringValue ?? ""))
+            let settings = o["settings"]?.objectValue ?? [:]
+            #expect(method.matchingPreset(settings) == o["preset"]?.stringValue, "\(method.id): \(settings)")
+        }
+    }
+
+    @Test func startSettings() throws {
+        let schema = try ParamSchema.load(Fixtures.url("schema.json"))
+        let scene = try #require(schema.method("scenesketch"))
+        #expect(scene.matchingPreset(scene.start) == "standard" && scene.start != scene.defaults)
+        let clipasso = try #require(schema.method("clipasso"))
+        #expect(clipasso.start["method"] == "clipasso" && clipasso.start.count == clipasso.defaults.count)
+    }
+}

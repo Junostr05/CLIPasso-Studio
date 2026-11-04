@@ -51,4 +51,10 @@ public struct QueueSnapshot: Sendable, Hashable {
     /// set once the last job finished by itself (not cancelled by the user): what is to happen now
     public let finished: WhenDone?
     public let autoStart: Bool
+
+    public init(jobs: [QueuedJob], finished: WhenDone?, autoStart: Bool) {
+        self.jobs = jobs
+        self.finished = finished
+        self.autoStart = autoStart
+    }
 }
