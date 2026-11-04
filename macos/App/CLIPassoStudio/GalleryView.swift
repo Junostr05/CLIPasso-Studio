@@ -72,6 +72,7 @@ private struct GalleryCell: View {
     @State private var sketch: Sketch?
     @State private var renaming = false
     @State private var title = ""
+    @State private var exporting: ExportSource?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.spaceXs) {
@@ -110,6 +111,7 @@ private struct GalleryCell: View {
         .accessibilityAction(named: Text(model.texts.tr("ui.gallery.show_folder"))) {
             NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
         }
+        .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
         .alert(model.texts.tr("ui.gallery.info_name"), isPresented: $renaming) {
             TextField(model.texts.tr("ui.gallery.info_name"), text: $title)
             Button(model.texts.tr("ui.cancel"), role: .cancel) {}
@@ -133,8 +135,7 @@ private struct GalleryCell: View {
             renaming = true
         }
         Divider()
-        Button("SVG …") { export(.svg) }
-        Button("PNG …") { export(.png) }
+        Button(model.texts.tr("ui.export") + " …") { exporting = ExportSource.best(of: item) }
         Button(model.texts.tr("ui.gallery.show_folder")) {
             NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
         }
@@ -147,19 +148,5 @@ private struct GalleryCell: View {
     /// The result back in the studio: its image, its method and its sketches (to touch up).
     private func open() {
         model.studio.open(item)
-    }
-
-    /// export.export_svg / export_png (the plain style; PNG 1024 px on white).
-    private func export(_ type: UTType) {
-        guard let source = item.bestSketch, let svg = try? String(contentsOf: source, encoding: .utf8) else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [type]
-        panel.nameFieldStringValue = "\(item.name).\(type == .png ? "png" : "svg")"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        if type == .png {
-            try? SketchRenderer.exportPNG(svg: svg, size: 1024).write(to: url, options: .atomic)
-        } else {
-            try? Data(SketchExport.restyleSVG(svg).utf8).write(to: url, options: .atomic)
-        }
     }
 }

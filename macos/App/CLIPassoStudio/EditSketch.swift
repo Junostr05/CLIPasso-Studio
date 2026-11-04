@@ -19,6 +19,7 @@ struct ResultCanvas: View {
     let result: StudioResult
     @State private var tool = EditTool.none
     @State private var view = ResultView.sketch
+    @State private var exporting: ExportSource?
 
     var body: some View {
         ZStack {
@@ -47,7 +48,10 @@ struct ResultCanvas: View {
                     .fixedSize()
                 }
                 if view == .sketch, let editor = result.editor {
-                    EditTools(editor: editor, tool: $tool)
+                    EditTools(editor: editor, tool: $tool) {
+                        let name = model.studio.image?.deletingPathExtension().lastPathComponent ?? "sketch"
+                        exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name)
+                    }
                 }
             }
             .padding(.top, Spacing.spaceS)
@@ -56,6 +60,7 @@ struct ResultCanvas: View {
             if result.matrix == nil, result.runs.count > 1 { ResultSketches(result: result) }
         }
         .onChange(of: view) { tool = .none }
+        .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
         .onChange(of: result.editor?.canErase ?? false) { _, can in
             if !can, tool == .eraser { tool = .none }
         }
@@ -200,11 +205,13 @@ struct EditableSketch: View {
 }
 
 /// The tools over the finished sketch (studio.py's edit row): eraser and pen – the one in use tinted – undo, redo and
-/// back to the sketch as it was drawn. Functional layer: glass, in one container.
+/// back to the sketch as it was drawn, and the export of the sketch as it is now. Functional layer: glass, in one
+/// container.
 struct EditTools: View {
     @Environment(AppModel.self) private var model
     let editor: SketchEditor
     @Binding var tool: EditTool
+    let export: () -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: Spacing.spaceS) {
@@ -217,6 +224,8 @@ struct EditTools: View {
                 action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
                     .keyboardShortcut("z", modifiers: [.command, .shift])
                 action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
+                action("ui.export", "square.and.arrow.up", enabled: true, export)
+                    .keyboardShortcut("e", modifiers: .command)
             }
         }
     }
