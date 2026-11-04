@@ -6,9 +6,11 @@ import UniformTypeIdentifiers
 
 /// The gallery page: every result of the output folder as a sketch on paper, searched (toolbar search field),
 /// filtered and sorted from the toolbar; a result's menu opens it in the studio, marks it, renames it, exports it as
-/// SVG or PNG, shows it in the Finder or continues it. Content: a grid, no glass.
+/// SVG, PNG or PDF, prints it, shows it in the Finder or continues it; the toolbar prints the results shown. Content: a
+/// grid, no glass.
 struct GalleryView: View {
     @Environment(AppModel.self) private var model
+    @State private var printing: PrintRequest?
 
     var body: some View {
         @Bindable var gallery = model.gallery
@@ -58,11 +60,24 @@ struct GalleryView: View {
                 } label: {
                     Label(model.texts.tr("ui.gallery.sort_newest"), systemImage: "arrow.up.arrow.down")
                 }
+                Button(model.texts.tr("ui.print.selected", ["n": "\(gallery.items.count)"]), systemImage: "printer") {
+                    printing = shownRequest
+                }
+                .help(model.texts.tr("ui.print.tip"))
+                .disabled(gallery.items.isEmpty)
             }
         }
+        .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
+        .focusedSceneValue(\.printAction, gallery.items.isEmpty ? nil : PrintAction { printing = shownRequest })
         .navigationTitle(model.texts.tr("ui.gallery.title"))
         .navigationSubtitle(gallery.countText(model.texts))
         .task { await gallery.refresh() }
+    }
+
+    /// gallery.print_items: the results shown, in the gallery's order, named as there.
+    private var shownRequest: PrintRequest {
+        PrintRequest(entries: model.gallery.items.compactMap { PrintEntry.best(of: $0) },
+                     name: model.texts.tr("ui.gallery.title"))
     }
 }
 
@@ -73,6 +88,7 @@ private struct GalleryCell: View {
     @State private var renaming = false
     @State private var title = ""
     @State private var exporting: ExportSource?
+    @State private var printing: PrintRequest?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.spaceXs) {
@@ -112,6 +128,7 @@ private struct GalleryCell: View {
             NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
         }
         .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
+        .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
         .alert(model.texts.tr("ui.gallery.info_name"), isPresented: $renaming) {
             TextField(model.texts.tr("ui.gallery.info_name"), text: $title)
             Button(model.texts.tr("ui.cancel"), role: .cancel) {}
@@ -136,6 +153,9 @@ private struct GalleryCell: View {
         }
         Divider()
         Button(model.texts.tr("ui.export") + " …") { exporting = ExportSource.best(of: item) }
+        Button(model.texts.tr("ui.print.button")) {
+            printing = PrintEntry.best(of: item).map { PrintRequest(entries: [$0], name: item.name) }
+        }
         Button(model.texts.tr("ui.gallery.show_folder")) {
             NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
         }

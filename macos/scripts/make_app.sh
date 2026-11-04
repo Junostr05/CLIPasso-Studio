@@ -1,6 +1,7 @@
 #!/bin/bash
-# Put the Mac app together: CLIPasso Studio.app from the Swift package (macos/), the texts, the exported parameter
-# schema and model list, BlazeFace (the one model that comes with the app) – and, when built
+# Put the Mac app together: CLIPasso Studio.app from the Swift package (macos/), the texts, the fonts of the prints
+# (Inter, as the studio prints), the exported parameter schema and model list, BlazeFace (the one model that comes
+# with the app) – and, when built
 # (macos/scripts/build_python.sh OUT_DIR), the app's own Python with the engine.
 #
 #   macos/scripts/make_app.sh [OUT_DIR]          (default: macos/build)
@@ -28,6 +29,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/CLIPassoStudio"
 cp -R "$ROOT/clipasso_studio/resources/i18n" "$APP/Contents/Resources/i18n"
+cp -R "$ROOT/clipasso_studio/resources/fonts" "$APP/Contents/Resources/fonts"  # (ATSApplicationFontsPath)
 (cd "$ROOT" && PYTHONPATH="$ROOT" "$PYTHON" -m clipasso_studio.headless \
     --export-schema "$APP/Contents/Resources/schema.json" --export-models "$APP/Contents/Resources/models.json")
 if [ -d "$OUT/python" ]; then  # the app's own Python and the engine (build_python.sh)
@@ -63,6 +65,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.graphics-design</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>ATSApplicationFontsPath</key><string>fonts</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict>
 </plist>

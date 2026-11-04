@@ -15,8 +15,13 @@ struct ExportSource: Identifiable {
     /// A result of the gallery: its best sketch (the touched-up one if there is one) and that run's folder.
     static func best(of item: GalleryItem) -> ExportSource? {
         guard let url = item.bestSketch, let svg = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return ExportSource(svg: svg, runDir: bestRun(of: item), name: item.name)
+    }
+
+    /// The folder of a result's best run.
+    static func bestRun(of item: GalleryItem) -> URL? {
         let run = item.summary.runs.first { $0["run_name"]?.stringValue == item.summary.bestRun }?["run_dir"]?.stringValue
-        return ExportSource(svg: svg, runDir: run.map { URL(filePath: $0, directoryHint: .isDirectory) }, name: item.name)
+        return run.map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 }
 

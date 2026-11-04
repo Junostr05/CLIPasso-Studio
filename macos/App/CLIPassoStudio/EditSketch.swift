@@ -20,6 +20,7 @@ struct ResultCanvas: View {
     @State private var tool = EditTool.none
     @State private var view = ResultView.sketch
     @State private var exporting: ExportSource?
+    @State private var printing: PrintRequest?
 
     var body: some View {
         ZStack {
@@ -49,8 +50,9 @@ struct ResultCanvas: View {
                 }
                 if view == .sketch, let editor = result.editor {
                     EditTools(editor: editor, tool: $tool) {
-                        let name = model.studio.image?.deletingPathExtension().lastPathComponent ?? "sketch"
                         exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name)
+                    } printSketch: {
+                        printing = request(editor)
                     }
                 }
             }
@@ -61,9 +63,25 @@ struct ResultCanvas: View {
         }
         .onChange(of: view) { tool = .none }
         .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
+        .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
+        .focusedSceneValue(\.printAction, view == .sketch ? result.editor.map { editor in
+            PrintAction { printing = request(editor) }
+        } : nil)
         .onChange(of: result.editor?.canErase ?? false) { _, can in
             if !can, tool == .eraser { tool = .none }
         }
+        .onChange(of: ScreenshotMode.requests.print) {
+            if let editor = result.editor { printing = request(editor) }
+        }
+    }
+
+    /// The image's name (the files' names).
+    private var name: String { model.studio.image?.deletingPathExtension().lastPathComponent ?? "sketch" }
+
+    /// studio.print_sketch: the sketch as it is now, named after its run.
+    private func request(_ editor: SketchEditor) -> PrintRequest {
+        PrintRequest(entries: [PrintEntry(svg: editor.svg, file: nil, runDir: editor.runDir,
+                                          caption: editor.runDir.lastPathComponent)], name: name)
     }
 }
 
@@ -205,13 +223,14 @@ struct EditableSketch: View {
 }
 
 /// The tools over the finished sketch (studio.py's edit row): eraser and pen – the one in use tinted – undo, redo and
-/// back to the sketch as it was drawn, and the export of the sketch as it is now. Functional layer: glass, in one
-/// container.
+/// back to the sketch as it was drawn, and the export and print of the sketch as it is now. Functional layer: glass, in
+/// one container.
 struct EditTools: View {
     @Environment(AppModel.self) private var model
     let editor: SketchEditor
     @Binding var tool: EditTool
     let export: () -> Void
+    let printSketch: () -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: Spacing.spaceS) {
@@ -226,6 +245,7 @@ struct EditTools: View {
                 action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
                 action("ui.export", "square.and.arrow.up", enabled: true, export)
                     .keyboardShortcut("e", modifiers: .command)
+                action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P: the menu's)
             }
         }
     }
@@ -244,10 +264,12 @@ struct EditTools: View {
         }
     }
 
-    private func action(_ name: String, _ symbol: String, enabled: Bool, _ run: @escaping () -> Void) -> some View {
+    private func action(_ name: String, _ symbol: String, help: String? = nil, enabled: Bool,
+                        _ run: @escaping () -> Void) -> some View
+    {
         Button(model.texts.tr(name), systemImage: symbol, action: run)
             .labelStyle(.iconOnly)
-            .help(model.texts.tr(name))
+            .help(model.texts.tr(help ?? name))
             .buttonStyle(.glass)
             .disabled(!enabled)
     }

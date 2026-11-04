@@ -84,9 +84,14 @@ def test_make_app_with_folders_given_relative_to_where_it_is_called(tmp_path):
     resources = app / "Resources"
     assert (resources / "schema.json").stat().st_size > 1000 and (resources / "models.json").is_file()
     assert (resources / "i18n" / "de.json").is_file() and (resources / "i18n" / "en.json").is_file()
+    # the prints' fonts (Inter, with its licence), loaded by macOS for the app
+    fonts = resources / "fonts"
+    assert (fonts / "Inter-SemiBold.ttf").is_file() and (fonts / "LICENSE-Inter-OFL.txt").is_file()
+    plist = (app / "Info.plist").read_text(encoding="utf-8")
+    assert "<key>ATSApplicationFontsPath</key><string>fonts</string>" in plist
     assert (resources / "python" / "bin" / "python3").read_text(encoding="utf-8") == "python"
     assert (resources / "engine" / "clipasso_studio").is_dir()
     assert (resources / "models" / _blazeface_name()).read_bytes() == b"blazeface"
     import clipasso_studio
-    assert f"<string>{clipasso_studio.__version__}</string>" in (app / "Info.plist").read_text(encoding="utf-8")
+    assert f"<string>{clipasso_studio.__version__}</string>" in plist
     assert str(out / "CLIPasso Studio.app") in run.stdout  # (its last line names the app)
