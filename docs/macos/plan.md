@@ -240,12 +240,29 @@ Zwischenstände (`checkpoint.pt`) fasst nur Python an.
   - Der Hilfsprozess setzt `PYTORCH_ENABLE_MPS_FALLBACK=1`, damit fehlende Operationen auf der CPU laufen.
 - **Kompatibilität:** Ein Mac-Auftrag mit `mps`, den man unter Windows öffnet, darf nicht scheitern. Deshalb kennt
   das Schema `mps` überall. Die Qt-App zeigt die Wahl nur unter macOS.
-- **Messung:** `tools/bench_device.py` rechnet jede Methode an `benchmarks/images` auf `cpu` und auf `mps`,
-  dreimal. Es misst die Sekunden pro Iteration, die Gesamtzeit und den CLIP-Score.
-  - **Vorbehalt:** Die macOS-Runner von GitHub sind virtuelle Maschinen. MPS fehlt dort vermutlich. Das prüfe ich im
-    ersten Lauf.
-  - **Fehlt MPS dort:** Der Runner misst nur die CPU. Die MPS-Messung braucht dann deinen Mac, mit einem einzigen
-    Befehl, den ich dir gebe.
+- **Messung:** `tools/bench_device.py` rechnet jede Methode an `benchmarks/images` auf `cpu` und auf `mps` und
+  misst die Sekunden pro Iteration, die Gesamtzeit und den CLIP-Score – zusätzlich bewertet derselbe CLIP-Richter auf
+  der CPU jede Skizze (`cpu_clip_score`), weil jedes Gerät sonst seine eigenen Skizzen benotet. Läuft im macOS-Workflow
+  auf Anforderung (*Run workflow* oder `[bench]` in der Commit-Nachricht).
+- **Gemessen** (GitHub-Runner `macos-26`, Apple Silicon, MPS vorhanden; je Bild ein Durchlauf, 200 Iterationen):
+
+  | Methode | CPU | MPS | CPU-Richter: CPU / MPS |
+  |---|---|---|---|
+  | CLIPasso | 1,49–1,72 s/Iteration | anfangs Fehler im Rückwärtsschritt | 47–53 / – |
+  | SwiftSketch | 0,040–0,090 s/Schritt | 0,020–0,048 s/Schritt (2–3×) | 60,8–69,7 / 60,1–67,9 |
+
+  - CLIPasso auf MPS: Der erste Fehler (`view size is not compatible …`) kam vom `channels_last`-Layout – CLIP
+    nutzt es jetzt nur noch auf CPU und NVIDIA. Danach fehlt MPS eine Operation
+    (`_upsample_bilinear2d_aa_backward`, die Ableitung der geglätteten Verkleinerung in den Augmentierungen); mit
+    `PYTORCH_ENABLE_MPS_FALLBACK=1` (setzt die Engine) rechnet sie auf der CPU – die Tests laufen damit, die Messung
+    zeigt, wie langsam (siehe unten).
+  - SwiftSketch auf MPS: 2–3× schneller, aber der CPU-Richter bewertet die Skizzen auf allen drei Bildern etwas
+    schlechter (−0,7 bis −5,7). Gleich gut ist das nicht.
+  - **Auffällig:** Der CLIP-Score, den ein Auftrag auf MPS selbst berechnet, liegt bei 90–96 für Skizzen, die der
+    CPU-Richter mit 60–68 bewertet – als sähe CLIP auf MPS alle Bilder fast gleich. Die Messung vergleicht deshalb
+    jetzt die CLIP-Merkmale derselben Bilder auf MPS und CPU (Kosinus, `clip_embedding` / `clip_pairs`).
+  - **Folge:** `MPS_AUTO` bleibt leer – *Auto* rechnet auf dem Mac auf der CPU; *mps* lässt sich pro Auftrag
+    wählen.
 
 ---
 
