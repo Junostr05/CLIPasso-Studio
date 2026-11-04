@@ -178,6 +178,18 @@ def _scaled_d(d: str, origin_y: float, factor: float) -> str:
     return " ".join(parts)
 
 
+def _covers(el, vx: float, vy: float, vw: float, vh: float) -> bool:
+    """A rect that fills the whole canvas: a background (svg_io, restyle_svg – "100%" before 4.2)."""
+    x, y, w, h = (el.get(k) for k in ("x", "y", "width", "height"))
+    if w == "100%" and h == "100%" and (x or "0") in ("0", "0%") and (y or "0") in ("0", "0%"):
+        return True
+    try:
+        values = (float(x or 0), float(y or 0), float(w), float(h))
+    except (TypeError, ValueError):
+        return False
+    return all(abs(a - b) < 1e-6 for a, b in zip(values, (vx, vy, vw, vh)))
+
+
 @dataclass
 class Framing:
     """A new frame for the sketches of one run: ``box`` is the new viewBox in the sketch's units; with
@@ -206,6 +218,11 @@ class Framing:
             px = float(re.sub(r"[^\d.]", "", root.get("width", "")) or vw) / vw
         except ValueError:
             px = 1.0
+        ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+        for el in root.iter(f"{ns}rect"):  # a background fills the new frame, as it filled the canvas
+            if _covers(el, vx, vy, vw, vh):
+                for key, value in (("x", bx), ("y", by), ("width", bw), ("height", bh)):
+                    el.set(key, _fmt(value))
         root.set("viewBox", f"{_fmt(bx)} {_fmt(by)} {_fmt(bw)} {_fmt(bh)}")
         root.set("width", _fmt(bw * px))
         root.set("height", _fmt(bh * px))
