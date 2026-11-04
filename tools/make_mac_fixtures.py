@@ -10,6 +10,7 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
   whose values all match, else none – "custom")
 - ``versions.json`` – version pairs and what gui/updates.is_newer decides for them
+- ``export/framing.json`` – the frames of an export (engine/framing.py) on the ``svg/`` sketches and odd.svg
 - ``edit/`` – ``strokes.json``: what gui/strokes.py (the eraser and the pen) makes of the ``svg/`` sketches and of
   ``odd.svg`` and ``empty.svg``
 - ``image_files.json`` – a folder of pictures and the images gui/drop.py takes from it (the folder, with its
@@ -400,6 +401,41 @@ def _path_ds(svg: str) -> list[str]:
     return [el.get("d") or "" for el in root.iter(f"{ns}path")]
 
 
+# ---------------------------------------------------------------------------------------------- export frames
+FRAME_PHOTOS = (  # where the photo lies on the canvas (photo_frame): a padded portrait, a stretched landscape, a crop
+    {"aspect": 0.75, "rect": [0.125, 0.0, 0.875, 1.0]},
+    {"aspect": 1.5, "rect": [0.0, 0.0, 1.0, 1.0]},
+    {"aspect": 1.0, "rect": [-0.25, -0.25, 1.25, 1.25]},
+)
+FRAME_GUESSES = (  # (method, settings, photo size) of runs from before 3.0
+    ("clipasso", {}, (300, 200)), ("clipasso", {"fix_scale": True}, (300, 200)),
+    ("clipasso", {"mask_object": True, "frame_object": True}, (300, 200)),
+    ("swiftsketch", {"fix_scale": True}, (201, 400)),
+    ("scenesketch", {}, (300, 300)), ("scenesketch", {"fix_scale": True}, (301, 200)), ("scenesketch", {}, (200, 351)),
+)
+
+
+def framing_cases(out: Path) -> dict:
+    """engine/framing.py: the strokes' box, the frames "content" (three margins) and "photo" (FRAME_PHOTOS) of the
+    ``svg/`` sketches and ``edit/odd.svg`` with the sketches they make, and the photo frames worked out for old runs."""
+    from clipasso_studio.engine import framing
+
+    sketches = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        frames = []
+        for mode, frame, margin in ([("content", None, m) for m in (0.0, 0.05, 0.2)]
+                                    + [("photo", f, 0.05) for f in FRAME_PHOTOS]):
+            fr = framing.make_framing(svg, mode, frame, margin)
+            frames.append({"mode": mode, "frame": frame, "margin": margin,
+                           "box": list(fr.box) if fr else None, "y_scale": fr.y_scale if fr else None,
+                           "output": fr.apply(svg) if fr else None})
+        sketches.append({"svg": name, "content_box": framing.content_box(svg), "frames": frames})
+    guesses = [{"method": m, "settings": s, "size": list(size), "frame": framing.guess_frame(m, s, size)}
+               for m, s, size in FRAME_GUESSES]
+    return {"sketches": sketches, "guesses": guesses}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -555,6 +591,7 @@ def build(out: Path) -> None:
     sketches(out)
     exports(out)
     write_json(out / "edit" / "strokes.json", edit_cases(out))
+    write_json(out / "export" / "framing.json", framing_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
