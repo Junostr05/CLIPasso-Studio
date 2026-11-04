@@ -90,6 +90,13 @@ public final class StudioModel {
     }
 }
 
+/// One item's latest sketch of a job.
+public struct SeedSketch: Sendable, Hashable, Identifiable {
+    public var id: Int { seed }
+    public let seed: Int
+    public let svg: String
+}
+
 /// The running job of the studio as the queue reports it: status, progress, time left, the sketch under way.
 @Observable
 public final class LiveJob {
@@ -101,6 +108,8 @@ public final class LiveJob {
     public private(set) var liveSVG: String?
     /// the job's best sketch when it is done (a file)
     public private(set) var bestSVG: String?
+    /// every item's latest sketch so far, in the job's order (seed, SVG)
+    public private(set) var sketches: [SeedSketch] = []
     public private(set) var jobDir: URL?
     public private(set) var message = ""
     @ObservationIgnored private var starting = false
@@ -119,6 +128,7 @@ public final class LiveJob {
         eta = nil
         liveSVG = nil
         bestSVG = nil
+        sketches = []
         jobDir = nil
         message = ""
     }
@@ -135,6 +145,8 @@ public final class LiveJob {
             ?? job.seeds.last { job.liveSVG[$0] != nil }
         let svg = underWay.flatMap { job.liveSVG[$0] }
         if let svg, liveSVG != svg { liveSVG = svg }
+        let all = job.seeds.compactMap { seed in job.liveSVG[seed].map { SeedSketch(seed: seed, svg: $0) } }
+        if sketches != all { sketches = all }
         if bestSVG != job.bestSVG { bestSVG = job.bestSVG }
         if jobDir != job.jobDir { jobDir = job.jobDir }
         if message != job.message { message = job.message }

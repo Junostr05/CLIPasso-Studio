@@ -106,6 +106,8 @@ actor RecordingEngine: EngineControlling {
         studio.live.update(from: QueueSnapshot(jobs: [job], finished: nil, autoStart: true))
         #expect(studio.live.progress == 0.75 && studio.live.eta == 42)
         #expect(studio.live.liveSVG == "<svg>b</svg>")  // the sketch under way
+        #expect(studio.live.sketches == [SeedSketch(seed: 1000, svg: "<svg>a</svg>"),
+                                         SeedSketch(seed: 2000, svg: "<svg>b</svg>")])  // every item, in order
         job.status = .done
         job.seedProgress[2000] = 1
         job.bestSVG = "/out/job/best.svg"

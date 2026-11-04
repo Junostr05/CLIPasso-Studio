@@ -310,6 +310,9 @@ private struct CanvasArea: View {
             SketchView(sketch: sketch, label: model.studio.canvasLabel(model.texts, sketch: sketch))
                 .padding(Spacing.spaceXl)
         }
+        .safeAreaInset(edge: .bottom) {
+            if live.sketches.count > 1 { JobSketches(sketches: live.sketches) }
+        }
         .task(id: source) {
             guard !source.isEmpty else {
                 sketch = nil
@@ -321,6 +324,44 @@ private struct CanvasArea: View {
                 return try? SketchSVG.parse(text)
             }.value
             if let parsed { sketch = parsed }
+        }
+    }
+}
+
+/// The job's sketches so far, one per item (ui.step.sketches), small on paper.
+private struct JobSketches: View {
+    @Environment(AppModel.self) private var model
+    let sketches: [SeedSketch]
+    @State private var parsed: [Int: Sketch] = [:]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.spaceXs) {
+            Text(model.texts.tr("ui.step.sketches")).font(.caption).foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
+            ScrollView(.horizontal) {
+                HStack(spacing: Spacing.spaceS) {
+                    ForEach(sketches) { item in
+                        SketchView(sketch: parsed[item.seed], label: model.texts.tr("ui.mac.canvas_label", [
+                            "image": model.studio.image?.lastPathComponent ?? "",
+                            "strokes": "\(parsed[item.seed]?.strokes.count ?? 0)"]))
+                            .frame(width: 88, height: 88)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.control))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.spaceXl)
+        .padding(.bottom, Spacing.spaceS)
+        .task(id: sketches) {
+            let given = sketches
+            let fresh = await Task.detached { () -> [Int: Sketch] in
+                var out: [Int: Sketch] = [:]
+                for item in given {
+                    out[item.seed] = try? SketchSVG.parse(item.svg)
+                }
+                return out
+            }.value
+            parsed = fresh
         }
     }
 }
