@@ -295,6 +295,19 @@ private struct ParamRow: View {
 
 private struct CanvasArea: View {
     @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if !model.studio.live.isActive, let result = model.studio.result {
+            ResultCanvas(result: result)  // a finished job: its sketches, to touch up
+        } else {
+            LiveCanvas()
+        }
+    }
+}
+
+/// The sketch of the job under way – or of the last one when it left no result to show.
+private struct LiveCanvas: View {
+    @Environment(AppModel.self) private var model
     @State private var sketch: Sketch?
 
     var body: some View {

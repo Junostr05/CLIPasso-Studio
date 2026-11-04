@@ -25,6 +25,7 @@ enum ScreenshotMode {
             try? await Task.sleep(for: .milliseconds(200))
         }
         await model.gallery.refresh()
+        if let result = model.gallery.items.first { model.studio.open(result) }  // (the studio with a sketch to edit)
         NSApp.activate()  // (a window in front draws its selection and its main button as in use, not greyed)
         NSApp.windows.first { $0.isVisible }?.makeKeyAndOrderFront(nil)
         var written = 0
