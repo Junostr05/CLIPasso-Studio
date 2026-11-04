@@ -70,8 +70,11 @@ public enum ImageFiles {
         return out.filter { seen.insert($0.standardizedFileURL.path).inserted }
     }
 
-    /// Python's order of strings: by code points.
+    /// Python's order of strings – by code points – of the names composed (NFC): a Mac keeps "ä" decomposed in a
+    /// name Foundation wrote ("a" and the diaeresis, before "b"), Windows composed (after "z"); the order is the same
+    /// whichever way a name is stored.
     private static func before(_ a: String, _ b: String) -> Bool {
-        a.unicodeScalars.lexicographicallyPrecedes(b.unicodeScalars)
+        a.precomposedStringWithCanonicalMapping.unicodeScalars
+            .lexicographicallyPrecedes(b.precomposedStringWithCanonicalMapping.unicodeScalars)
     }
 }

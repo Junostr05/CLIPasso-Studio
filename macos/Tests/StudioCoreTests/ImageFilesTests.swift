@@ -27,6 +27,7 @@ import Testing
         let drop = Self.strings(fixture["drop"]).map { root.appending(path: $0) }
         #expect(relative(ImageFiles.dropped(drop)) == Self.strings(fixture["dropped"]))
         #expect(ImageFiles.inFolder(root.appending(path: "CLIPasso Studio/Kamel_job"), recursive: true).isEmpty)
+        // (the Mac stored "ä-Bild.png" decomposed – Foundation names files so – and it still sorts after "Z.webp")
         #expect(ImageFiles.hasSubfolders(root) && ImageFiles.hasSubfolders(root.appending(path: "Urlaub")))
         #expect(!ImageFiles.hasSubfolders(root.appending(path: "Leer")) && !ImageFiles.hasSubfolders(root.appending(path: "urlaub2")))
     }
