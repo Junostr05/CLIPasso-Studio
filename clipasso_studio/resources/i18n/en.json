@@ -1631,6 +1631,8 @@
  "ui.mac.edit.undo": "Undo",
  "ui.mac.edit.redo": "Redo",
  "ui.mac.edit.sketch": "Sketch {n}",
+ "ui.mac.result.view": "View",
+ "ui.mac.matrix.cell": "Cell L{layer} · level {level}",
  "ui.mac.job_status.queued": "Waiting",
  "ui.mac.job_status.running": "Running",
  "ui.mac.job_status.done": "Done",

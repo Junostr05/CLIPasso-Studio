@@ -1631,6 +1631,8 @@
  "ui.mac.edit.undo": "Rückgängig",
  "ui.mac.edit.redo": "Wiederholen",
  "ui.mac.edit.sketch": "Skizze {n}",
+ "ui.mac.result.view": "Ansicht",
+ "ui.mac.matrix.cell": "Zelle L{layer} · Stufe {level}",
  "ui.mac.job_status.queued": "Wartet",
  "ui.mac.job_status.running": "Läuft",
  "ui.mac.job_status.done": "Fertig",

@@ -32,6 +32,24 @@ import StudioCore
         #expect(StudioResult(jobDir: job.deletingLastPathComponent()) == nil)  // (no job there)
     }
 
+    /// A SceneSketch job: its cells in the matrix (fidelity layer × simplicity level), the best one shown.
+    @Test func aSceneSketchResultHasItsMatrix() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "matrix-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let job = dir.appending(path: "scenesketch_matrix", directoryHint: .isDirectory)
+        try FileManager.default.copyItem(at: SelfTestTests.fixtures.appending(path: "jobs/scenesketch_matrix"), to: job)
+        let result = try #require(StudioResult(jobDir: job))
+        #expect(result.method == "scenesketch" && result.runs.map(\.seed) == [800, 804])
+        let matrix = try #require(result.matrix)
+        #expect(matrix.layers == [8] && matrix.levels == [0, 4])
+        let cell = try #require(result.run(cell: SceneMatrix.cell(layer: 8, level: 4)))
+        result.select(cell.name)
+        #expect(result.selected == cell.name && result.editor?.runDir == cell.runDir)
+        #expect(result.run(cell: 808) == nil)
+        let clipasso = try #require(StudioResult(jobDir: Self.job()))
+        #expect(clipasso.matrix == nil)  // (CLIPasso: no matrix)
+    }
+
     @Test func backToTheOriginalAndForth() throws {
         let editor = try #require(StudioResult(jobDir: Self.job())?.editor)
         let edited = editor.runDir.appending(path: "edited.svg")

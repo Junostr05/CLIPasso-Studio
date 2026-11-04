@@ -7,16 +7,25 @@ enum EditTool: Equatable {
     case none, eraser, pen
 }
 
+/// What the canvas shows of a SceneSketch result: one sketch, or the whole matrix (studio.py's view tabs).
+enum ResultView: Hashable {
+    case sketch, matrix
+}
+
 /// A finished job on the studio's canvas: its sketch, which can be touched up with the tools above it, and below it
-/// the job's other sketches to choose from (studio.py, canvas.py).
+/// the job's other sketches to choose from – for SceneSketch the matrix of its cells instead (studio.py, canvas.py).
 struct ResultCanvas: View {
     @Environment(AppModel.self) private var model
     let result: StudioResult
     @State private var tool = EditTool.none
+    @State private var view = ResultView.sketch
 
     var body: some View {
         ZStack {
-            if let editor = result.editor {
+            if view == .matrix, let matrix = result.matrix {
+                MatrixGrid(result: result, matrix: matrix) { view = .sketch }
+                    .padding(Spacing.spaceXl)
+            } else if let editor = result.editor {
                 EditableSketch(editor: editor, tool: tool)
                     .padding(Spacing.spaceXl)
             } else {
@@ -27,14 +36,26 @@ struct ResultCanvas: View {
             }
         }
         .overlay(alignment: .top) {
-            if let editor = result.editor {
-                EditTools(editor: editor, tool: $tool)
-                    .padding(.top, Spacing.spaceS)
+            HStack(spacing: Spacing.spaceM) {
+                if result.matrix != nil {
+                    Picker(model.texts.tr("ui.mac.result.view"), selection: $view) {
+                        Text(model.texts.tr("ui.mode.sketch")).tag(ResultView.sketch)
+                        Text(model.texts.tr("ui.mode.matrix")).tag(ResultView.matrix)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                if view == .sketch, let editor = result.editor {
+                    EditTools(editor: editor, tool: $tool)
+                }
             }
+            .padding(.top, Spacing.spaceS)
         }
         .safeAreaInset(edge: .bottom) {
-            if result.runs.count > 1 { ResultSketches(result: result) }
+            if result.matrix == nil, result.runs.count > 1 { ResultSketches(result: result) }
         }
+        .onChange(of: view) { tool = .none }
         .onChange(of: result.editor?.canErase ?? false) { _, can in
             if !can, tool == .eraser { tool = .none }
         }
@@ -280,5 +301,104 @@ struct ResultSketches: View {
             if let text = try? String(contentsOf: runDir.appending(path: name), encoding: .utf8) { return text }
         }
         return nil
+    }
+}
+
+/// SceneSketch's matrix of the job (canvas.MatrixView): one column per fidelity layer, one row per simplicity level,
+/// each cell its sketch on paper – the shown one with the accent's edge, the best with the success colour's (as the
+/// studio marks them); a cell not computed is an empty frame. A click shows a cell (the one to touch up), a double
+/// click opens it as the sketch. Content.
+struct MatrixGrid: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
+    let result: StudioResult
+    let matrix: SceneMatrix
+    let open: () -> Void
+    @State private var parsed: [Int: Sketch] = [:]
+
+    static let side: CGFloat = 36  // (room for the levels' numbers)
+
+    var body: some View {
+        let selected = result.selected
+        let best = result.bestRun
+        let shown = result.editor?.svg
+        VStack(spacing: Spacing.spaceS) {
+            Text(verbatim: "\(model.texts.tr("ui.matrix.fidelity")) →   \(model.texts.tr("ui.matrix.simplicity")) ↓")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            GeometryReader { geometry in
+                let gap = Spacing.spaceS
+                let columns = CGFloat(matrix.layers.count), rows = CGFloat(matrix.levels.count)
+                let size = max(24, min((geometry.size.width - Self.side - gap * columns) / columns,
+                                       (geometry.size.height - 24 - gap * rows) / rows))
+                Grid(horizontalSpacing: gap, verticalSpacing: gap) {
+                    GridRow {
+                        Color.clear.frame(width: Self.side, height: 1)
+                        ForEach(matrix.layers, id: \.self) { layer in
+                            Text(verbatim: "L\(layer)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    ForEach(matrix.levels, id: \.self) { level in
+                        GridRow {
+                            Text(verbatim: "\(level)").font(.caption).foregroundStyle(.secondary)
+                                .frame(width: Self.side, alignment: .trailing)
+                            ForEach(matrix.layers, id: \.self) { layer in
+                                cell(layer: layer, level: level, size: size, selected: selected, best: best)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .task(id: [shown ?? ""] + result.runs.map(\.name)) {
+            let runs = result.runs
+            let current = (selected, shown)
+            parsed = await Task.detached { () -> [Int: Sketch] in
+                var out: [Int: Sketch] = [:]
+                for run in runs {
+                    let svg = run.name == current.0 ? current.1 : ResultSketches.file(run.runDir)
+                    out[run.seed] = svg.flatMap { try? SketchSVG.parse($0) }
+                }
+                return out
+            }.value
+        }
+    }
+
+    @ViewBuilder
+    private func cell(layer: Int, level: Int, size: CGFloat, selected: String, best: String) -> some View {
+        let id = SceneMatrix.cell(layer: layer, level: level)
+        if let run = result.run(cell: id) {
+            let isSelected = run.name == selected, isBest = run.name == best
+            let name = model.texts.tr("ui.mac.matrix.cell", ["layer": "\(layer)", "level": "\(level)"])
+            let success = Color(hex: (scheme == .dark ? Palette.dark : Palette.light).success)
+            Button {
+                result.select(run.name)
+            } label: {
+                SketchView(sketch: parsed[id], label: name)
+                    .frame(width: size, height: size)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Radius.control)
+                            .strokeBorder(isSelected ? Color.accentColor : isBest ? success : .clear, lineWidth: 2)
+                    }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture(count: 2).onEnded {
+                result.select(run.name)
+                open()
+            })
+            .accessibilityLabel(Text(verbatim: name))
+            .accessibilityValue(Text(verbatim: isBest ? model.texts.tr("ui.compare.best") : ""))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAction(named: Text(model.texts.tr("ui.mode.sketch"))) {
+                result.select(run.name)
+                open()
+            }
+        } else {
+            RoundedRectangle(cornerRadius: Radius.control)
+                .strokeBorder(.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+        }
     }
 }

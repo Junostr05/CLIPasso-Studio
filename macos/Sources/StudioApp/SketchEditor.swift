@@ -139,6 +139,10 @@ public final class StudioResult {
     public let runs: [Run]
     /// the run job.json calls the best
     public let bestRun: String
+    /// the job's method ("scenesketch" …)
+    public let method: String
+    /// SceneSketch's abstraction matrix of the job's cells (nil for the other methods)
+    public let matrix: SceneMatrix?
     public private(set) var selected: String
     /// the shown run's sketch (nil: it has no finished sketch)
     public private(set) var editor: SketchEditor?
@@ -157,9 +161,14 @@ public final class StudioResult {
         self.jobDir = jobDir
         self.runs = runs
         bestRun = summary.bestRun
+        method = summary.method
+        matrix = summary.method == "scenesketch" ? SceneMatrix(cells: runs.map(\.seed)) : nil
         selected = runs.contains { $0.name == summary.bestRun } ? summary.bestRun : first.name
         select(selected)
     }
+
+    /// The run of a cell of the matrix (nil: not computed).
+    public func run(cell: Int) -> Run? { runs.first { $0.seed == cell } }
 
     public func select(_ name: String) {
         guard let run = runs.first(where: { $0.name == name }) else { return }
