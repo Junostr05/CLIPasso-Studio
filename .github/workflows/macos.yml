@@ -93,14 +93,14 @@ jobs:
           key: macos-pbs-${{ hashFiles('macos/scripts/build_python.sh') }}
       - name: The app's own Python with the engine
         run: macos/scripts/build_python.sh build/app
-      - name: CLIPasso Studio.app
-        run: macos/scripts/make_app.sh build/app | tee app.txt
-      - name: Cache models
+      - name: Cache models  # (BlazeFace for the app is taken from here as well)
         uses: actions/cache@v4
         with:
           path: models
           key: macos-models-v1-${{ hashFiles('clipasso_studio/engine/model_store.py') }}
           restore-keys: macos-models-v1-
+      - name: CLIPasso Studio.app
+        run: macos/scripts/make_app.sh build/app | tee app.txt
       - name: Models for the self-test (downloaded as a user's app would)
         run: PYTHONPATH="$PWD" build/app/python/bin/python3 tools/fetch_models.py
       - name: Self-test of the app (a small CLIPasso job, the engine started as the window starts it)

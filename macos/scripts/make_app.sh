@@ -5,7 +5,8 @@
 #
 #   macos/scripts/make_app.sh [OUT_DIR]          (default: macos/build)
 #
-# BlazeFace is taken from $MODELS (default: models/ of the repository) or downloaded there (tools/fetch_models.py).
+# BlazeFace is taken from $MODELS (default: models/ of the repository) or downloaded there (tools/fetch_models.py,
+# with the app's own Python when it is built: the download is converted with PyTorch).
 # Signed ad hoc (no Apple Developer account): Gatekeeper asks before the first start (see the README).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -36,7 +37,10 @@ fi
 BLAZEFACE=$(cd "$ROOT" && PYTHONPATH="$ROOT" "$PYTHON" -c \
     "from clipasso_studio.engine import model_store; print(model_store.SPECS['blazeface'].filename)")
 if [ ! -f "$MODELS/$BLAZEFACE" ]; then
-    (cd "$ROOT" && "$PYTHON" tools/fetch_models.py --only blazeface --dest "$MODELS")
+    # (converted with PyTorch: the app's own Python has it, the Python running this script need not)
+    FETCH_PYTHON=$PYTHON
+    if [ -x "$OUT/python/bin/python3" ]; then FETCH_PYTHON="$OUT/python/bin/python3"; fi
+    (cd "$ROOT" && PYTHONPATH="$ROOT" "$FETCH_PYTHON" tools/fetch_models.py --only blazeface --dest "$MODELS")
 fi
 mkdir -p "$APP/Contents/Resources/models/$(dirname "$BLAZEFACE")"
 cp "$MODELS/$BLAZEFACE" "$APP/Contents/Resources/models/$BLAZEFACE"
