@@ -82,18 +82,92 @@ def _sketch(svg_path: str, layout: Layout) -> str:
     return stylize_svg(framed, layout.style)
 
 
-def _text_colour(layout: Layout) -> QColor:
+def text_colour(layout: Layout) -> str:
+    """The colour of the heading, footer and captions: light on a dark paper or background, else dark grey."""
     bg = paper_mod.color_of(layout.paper, layout.background) if paper_mod.normalize(layout.paper) else \
         (layout.background or "#FFFFFF")
-    return QColor("#E8E8E2") if paper_mod.is_dark(bg if bg != "transparent" else "#FFFFFF") else QColor("#3A3A3A")
+    return "#E8E8E2" if paper_mod.is_dark(bg if bg != "transparent" else "#FFFFFF") else "#3A3A3A"
+
+
+Box = tuple[float, float, float, float]  # x, y, width, height
+
+
+@dataclass
+class PageBoxes:
+    """Where the parts of a page go, in the device's units (y downwards, the page at 0, 0): the heading and the
+    footer (signature right, page number left) with their font sizes in px, and per sketch its caption (None
+    without) and the sketch fitted to its shape (None when the sketch could not be read)."""
+
+    title: Box | None
+    title_px: int
+    footer: Box | None
+    small_px: int
+    captions: list[Box | None]
+    sketches: list[Box | None]
+
+
+def page_boxes(width: float, height: float, layout: Layout, captions: list[str], aspects: list[float | None],
+               pages: int = 1) -> PageBoxes:
+    """The page's layout (as QRectF works it out): the margin, the heading on top, the footer below, the grid of
+    cells in between (a gap between them on a contact sheet), a caption at the foot of a cell and the sketch
+    (``aspects``: width / height of each) as large as it fits, centred. Sizes are given in mm of the page, so
+    every device (PDF, printer, preview) gets the same picture."""
+    w_mm, _h_mm = page_mm(layout)
+    mm = width / w_mm
+    m = layout.margin_mm * mm
+    x, y, w, h = m, m, width - m - m, height - m - m  # QRectF.adjusted(m, m, -m, -m)
+    title_px = max(1, round(min(9.0, w_mm / 24) * mm))
+    title = None
+    if layout.title:
+        title = (x, y, w, title_px * 1.6)
+        diff = title_px * 1.6 + 3 * mm  # (setTop: the bottom stays)
+        y, h = y + diff, h - diff
+    small = max(1, round(min(4.0, w_mm / 50) * mm))
+    footer = None
+    if layout.signature or pages > 1:
+        footer = (x, y + h - small * 1.8, w, small * 1.8)
+        h = (y + h - small * 1.8 - 3 * mm) - y  # (setBottom)
+    cols, rows = grid(layout.per_page, layout.landscape)
+    gap = GAP_MM * mm if layout.per_page > 1 else 0.0
+    cell_w = (w - gap * (cols - 1)) / cols
+    cell_h = (h - gap * (rows - 1)) / rows
+    caption_boxes: list[Box | None] = []
+    sketch_boxes: list[Box | None] = []
+    for k, aspect in enumerate(aspects[: cols * rows]):
+        c, r = k % cols, k // cols
+        cx, cy, cw, ch = x + c * (cell_w + gap), y + r * (cell_h + gap), cell_w, cell_h
+        caption = None
+        if layout.captions and k < len(captions) and captions[k]:
+            caption = (cx, cy + ch - small * 1.6, cw, small * 1.6)
+            ch = (caption[1] - 1.5 * mm) - cy
+        caption_boxes.append(caption)
+        if aspect is None:
+            sketch_boxes.append(None)
+            continue
+        sw = min(cw, ch * aspect)
+        sh = sw / aspect
+        sketch_boxes.append((cx + cw / 2 - sw / 2, cy + ch / 2 - sh / 2, sw, sh))
+    return PageBoxes(title, title_px, footer, small, caption_boxes, sketch_boxes)
+
+
+def _renderer(svg_path: str, layout: Layout) -> QSvgRenderer | None:
+    try:
+        return QSvgRenderer(QByteArray(_sketch(svg_path, layout).encode("utf-8")))
+    except (OSError, ValueError):
+        return None
+
+
+def _aspect(renderer: QSvgRenderer | None) -> float | None:
+    if renderer is None:
+        return None
+    box = renderer.viewBoxF()
+    return box.width() / box.height() if box.width() > 0 and box.height() > 0 else 1.0
 
 
 def paint_page(p: QPainter, rect: QRectF, items: list[tuple[str, str]], layout: Layout, page: int = 1,
                pages: int = 1) -> None:
     """One page: ``items`` are (sketch file, caption) for this page, ``rect`` the whole page in the painter's
-    units. Sizes are given in mm of the page, so every device (PDF, printer, preview) gets the same picture."""
-    w_mm, _h_mm = page_mm(layout)
-    mm = rect.width() / w_mm
+    units – laid out by page_boxes."""
     if paper_mod.normalize(layout.paper) is not None:
         side = min(2400, max(1, round(rect.width())))
         img = paper_mod.qimage(layout.paper, side, max(1, round(side * rect.height() / rect.width())),
@@ -101,54 +175,36 @@ def paint_page(p: QPainter, rect: QRectF, items: list[tuple[str, str]], layout: 
         p.drawImage(rect, img)
     elif layout.background and layout.background != "transparent":
         p.fillRect(rect, QColor(layout.background))
-    inner = rect.adjusted(layout.margin_mm * mm, layout.margin_mm * mm, -layout.margin_mm * mm,
-                          -layout.margin_mm * mm)
-    colour = _text_colour(layout)
-    p.setPen(colour)
+    cols, rows = grid(layout.per_page, layout.landscape)
+    shown = items[: cols * rows]
+    renderers = [_renderer(svg_path, layout) for svg_path, _caption in shown]
+    boxes = page_boxes(rect.width(), rect.height(), layout, [caption for _path, caption in shown],
+                       [_aspect(r) for r in renderers], pages)
+
+    def at(box: Box) -> QRectF:
+        return QRectF(rect.left() + box[0], rect.top() + box[1], box[2], box[3])
+
+    p.setPen(QColor(text_colour(layout)))
     font = QFont("Inter")
-    if layout.title:
-        font.setPixelSize(max(1, round(min(9.0, w_mm / 24) * mm)))
+    if boxes.title:
+        font.setPixelSize(boxes.title_px)
         font.setWeight(QFont.Weight.DemiBold)
         p.setFont(font)
-        height = font.pixelSize() * 1.6
-        p.drawText(QRectF(inner.left(), inner.top(), inner.width(), height), Qt.AlignLeft | Qt.AlignVCenter,
-                   layout.title)
-        inner.setTop(inner.top() + height + 3 * mm)
-    small = max(1, round(min(4.0, w_mm / 50) * mm))
-    if layout.signature or pages > 1:
-        font.setPixelSize(small)
-        font.setWeight(QFont.Weight.Normal)
-        p.setFont(font)
-        height = small * 1.8
-        foot = QRectF(inner.left(), inner.bottom() - height, inner.width(), height)
-        if layout.signature:
-            p.drawText(foot, Qt.AlignRight | Qt.AlignVCenter, layout.signature)
-        if pages > 1:
-            p.drawText(foot, Qt.AlignLeft | Qt.AlignVCenter, f"{page} / {pages}")
-        inner.setBottom(inner.bottom() - height - 3 * mm)
-    cols, rows = grid(layout.per_page, layout.landscape)
-    gap = GAP_MM * mm if layout.per_page > 1 else 0.0
-    cell_w = (inner.width() - gap * (cols - 1)) / cols
-    cell_h = (inner.height() - gap * (rows - 1)) / rows
-    font.setPixelSize(small)
+        p.drawText(at(boxes.title), Qt.AlignLeft | Qt.AlignVCenter, layout.title)
+    font.setPixelSize(boxes.small_px)
     font.setWeight(QFont.Weight.Normal)
     p.setFont(font)
-    for k, (svg_path, caption) in enumerate(items[: cols * rows]):
-        c, r = k % cols, k // cols
-        cell = QRectF(inner.left() + c * (cell_w + gap), inner.top() + r * (cell_h + gap), cell_w, cell_h)
-        if layout.captions and caption:
-            text = QRectF(cell.left(), cell.bottom() - small * 1.6, cell.width(), small * 1.6)
-            p.drawText(text, Qt.AlignHCenter | Qt.AlignVCenter, caption)
-            cell.setBottom(text.top() - 1.5 * mm)
-        try:
-            renderer = QSvgRenderer(QByteArray(_sketch(svg_path, layout).encode("utf-8")))
-        except (OSError, ValueError):
-            continue
-        box = renderer.viewBoxF()
-        aspect = box.width() / box.height() if box.width() > 0 and box.height() > 0 else 1.0
-        w = min(cell.width(), cell.height() * aspect)
-        h = w / aspect
-        renderer.render(p, QRectF(cell.center().x() - w / 2, cell.center().y() - h / 2, w, h))
+    if boxes.footer:
+        if layout.signature:
+            p.drawText(at(boxes.footer), Qt.AlignRight | Qt.AlignVCenter, layout.signature)
+        if pages > 1:
+            p.drawText(at(boxes.footer), Qt.AlignLeft | Qt.AlignVCenter, f"{page} / {pages}")
+    for (_path, caption), renderer, caption_box, sketch_box in zip(shown, renderers, boxes.captions,
+                                                                   boxes.sketches):
+        if caption_box:
+            p.drawText(at(caption_box), Qt.AlignHCenter | Qt.AlignVCenter, caption)
+        if renderer is not None and sketch_box:
+            renderer.render(p, at(sketch_box))
 
 
 def _pages(items: list[tuple[str, str]], layout: Layout) -> list[list[tuple[str, str]]]:

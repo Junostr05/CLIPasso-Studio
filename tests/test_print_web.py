@@ -106,6 +106,31 @@ def test_page_grid_and_sizes():
     assert pl.page_count(5, pl.Layout(per_page=2)) == 3 and pl.page_count(0, lay) == 0
 
 
+def test_the_parts_of_a_page_lie_inside_its_margin():
+    from clipasso_studio.gui import print_layout as pl
+
+    lay = pl.Layout(page="a4", per_page=4, title="Kamele", signature="J.", captions=True, margin_mm=10)
+    mm = 10.0  # (a page 2100 wide: 10 per mm)
+    b = pl.page_boxes(2100, 2970, lay, ["a", "", "c"], [1.0, 0.5, None], pages=2)
+    assert b.title_px == 88 and b.small_px == 40  # (the heading 210 / 24 mm high, small text 4 mm)
+    assert b.title == pytest.approx((100, 100, 1900, 88 * 1.6))
+    assert b.footer == pytest.approx((100, 2870 - 40 * 1.8, 1900, 40 * 1.8))
+    assert len(b.sketches) == 3 and b.sketches[2] is None and b.captions[1] is None
+    top = 100 + 88 * 1.6 + 3 * mm
+    cell_w = (1900 - 6 * mm) / 2
+    cell_h = (2870 - 40 * 1.8 - 3 * mm - top - 6 * mm) / 2
+    assert b.captions[0] == pytest.approx((100, top + cell_h - 40 * 1.6, cell_w, 40 * 1.6))
+    x, y, w, h = b.sketches[0]  # square, as wide as its cell, centred above its caption
+    assert w == pytest.approx(cell_w) and h == pytest.approx(cell_w)
+    assert y + h / 2 == pytest.approx(top + (cell_h - 40 * 1.6 - 1.5 * mm) / 2)
+    x, y, w, h = b.sketches[1]  # half as wide as high, in the second column, filling its cell's height
+    assert w / h == pytest.approx(0.5) and h == pytest.approx(cell_h) and x + w / 2 == pytest.approx(
+        100 + cell_w + 6 * mm + cell_w / 2)
+    single = pl.page_boxes(2100, 2970, pl.Layout(page="a4"), [""], [2.0])
+    assert single.title is None and single.footer is None and single.sketches == [pytest.approx(
+        (150, 1485 - 1800 / 4, 1800, 900))]
+
+
 def test_pdf_pages_and_preview(qapp, tmp_path, sketches):
     from clipasso_studio.gui import print_layout as pl
 

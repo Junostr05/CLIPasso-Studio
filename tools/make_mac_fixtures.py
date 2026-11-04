@@ -436,6 +436,51 @@ def framing_cases(out: Path) -> dict:
     return {"sketches": sketches, "guesses": guesses}
 
 
+PRINT_LAYOUTS = (  # (layout, captions, aspects of the sketches – None: not readable –, pages) of a page
+    ({"page": "a4"}, [""], [1.0], 1),
+    ({"page": "a4", "landscape": True, "title": "Kamele", "signature": "J. 2026"}, ["x"], [0.75], 1),
+    ({"page": "a5", "per_page": 2, "title": "Mein Titel", "signature": "J.", "captions": True}, ["Kamel", "Hund"],
+     [1.0, 1.5], 3),
+    ({"page": "a3", "per_page": 9, "margin_mm": 0, "captions": True}, ["a", "", "c", "d", "e", "f", "g", "h", "i", "j"],
+     [1.0, 0.5, None, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 2),
+    ({"page": "letter", "landscape": True, "per_page": 6, "captions": True, "margin_mm": 22.5},
+     ["Ein langer Name", "b", "c"], [1.0, 0.75, 1.333], 4),
+    ({"page": "poster", "per_page": 20, "title": "Poster", "signature": "Studio", "captions": True},
+     [f"Skizze {i}" for i in range(20)], [1.0 + (i % 3) * 0.25 for i in range(20)], 1),
+    ({"page": "a4", "landscape": True, "per_page": 12, "margin_mm": 60, "title": "Rand"}, ["a"] * 12, [1.0] * 12, 1),
+    ({"page": "a5", "per_page": 16, "signature": "x"}, [""] * 5, [0.5] * 5, 7),
+    ({"page": "letter", "per_page": 4}, [], [], 1),
+)
+PRINT_BACKGROUNDS = (None, "transparent", "#FFFFFF", "#2C3A33", "#6B6B6B", "#6C6C6C", "#zzz", "6b6b6b")
+
+
+def print_cases() -> dict:
+    """gui/print_layout.py: the pages' sizes in mm, the grids, the page counts, the text's colour on a background
+    and where the heading, footer, captions and sketches of PRINT_LAYOUTS go – on a page in points, at 600 dpi
+    and as the dialog's preview."""
+    from clipasso_studio.gui import print_layout as pl
+
+    sizes = [{"page": page, "landscape": land, "mm": list(pl.page_mm(pl.Layout(page=page, landscape=land)))}
+             for page in pl.PAGES for land in (False, True)]
+    grids = [{"per_page": n, "landscape": land, "grid": list(pl.grid(n, land))}
+             for n in (*pl.PER_PAGE, 3, 5, 7, 25) for land in (False, True)]
+    counts = [{"n": n, "per_page": k, "pages": pl.page_count(n, pl.Layout(per_page=k))}
+              for n in (0, 1, 5, 20, 21) for k in (1, 6, 20)]
+    colours = [{"background": bg, "colour": pl.text_colour(pl.Layout(background=bg))} for bg in PRINT_BACKGROUNDS]
+    pages = []
+    for layout, captions, aspects, count in PRINT_LAYOUTS:
+        lay = pl.Layout(**layout)
+        w_mm, h_mm = pl.page_mm(lay)
+        for width, height in ((w_mm / 25.4 * 72, h_mm / 25.4 * 72), (int(w_mm / 25.4 * 600), int(h_mm / 25.4 * 600)),
+                              (300, max(1, round(300 * h_mm / w_mm)))):
+            b = pl.page_boxes(width, height, lay, captions, aspects, count)
+            pages.append({"layout": layout, "captions": captions, "aspects": aspects, "pages": count,
+                          "width": width, "height": height, "title": b.title, "title_px": b.title_px,
+                          "footer": b.footer, "small_px": b.small_px, "caption_boxes": b.captions,
+                          "sketch_boxes": b.sketches})
+    return {"sizes": sizes, "grids": grids, "counts": counts, "colours": colours, "pages": pages}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -592,6 +637,7 @@ def build(out: Path) -> None:
     exports(out)
     write_json(out / "edit" / "strokes.json", edit_cases(out))
     write_json(out / "export" / "framing.json", framing_cases(out))
+    write_json(out / "export" / "print.json", print_cases())
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
