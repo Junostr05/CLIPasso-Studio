@@ -74,7 +74,7 @@ import Testing
     @Test func theBackgroundCoversTheViewBox() {
         let svg = #"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="-2, 1 300.5 200"></svg>"#
         #expect(Self.backgroundTag(SketchExport.restyleSVG(svg, background: "#101010"))
-            == #"<rect x="-2" y="1" width="300.5" height="200" fill="#101010" data-bg="1" />"#)
+            == ##"<rect x="-2" y="1" width="300.5" height="200" fill="#101010" data-bg="1" />"##)
         #expect(SketchExport.canvasBox(viewBox: nil, width: "300", height: "200")
             == #"x="0" y="0" width="300" height="200""#)
         #expect(SketchExport.canvasBox(viewBox: "0 0 1", width: "100%", height: nil) == #"width="100%" height="100%""#)
