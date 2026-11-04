@@ -90,6 +90,26 @@ final class OneFileTransport: HTTPTransport {
         await model.stopEngine()
     }
 
+    /// Images added on the queue page that need a missing model: asked first, as for the studio's job; after the
+    /// download they are queued (and the studio's own job is not started) – after a cancel nothing is.
+    @Test func queuePageImagesWaitForTheirModels() async throws {
+        let (model, _) = try Self.setup(OneFileTransport(Self.payload))
+        await model.startEngine()
+        await model.queuePage?.setAutoStart(false)
+        model.studio.image = URL(filePath: "/Bilder/Studio.png")
+        let images = [URL(filePath: "/Bilder/a.png"), URL(filePath: "/Bilder/b.png")]
+        #expect(await model.addToQueue(images) == 0)
+        #expect(model.models.stage == .asking(["tiny"]) && (model.queueSnapshot?.jobs.isEmpty ?? true))
+        model.cancelDownload()
+        #expect(model.models.stage == .idle)
+        #expect(await model.addToQueue(images) == 0)  // asked again
+        await model.downloadMissingAndStart()
+        #expect(model.models.stage == .idle)
+        #expect(model.queueSnapshot?.jobs.map(\.target.lastPathComponent) == ["a.png", "b.png"])
+        #expect(model.studio.live.jobID == nil)  // not the studio's image
+        await model.stopEngine()
+    }
+
     @Test func cancelKeepsPartial() async throws {
         let (model, modelsDir) = try Self.setup(OneFileTransport(Self.payload, stall: true))
         await model.startEngine()

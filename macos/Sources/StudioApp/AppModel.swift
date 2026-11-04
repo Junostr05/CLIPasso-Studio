@@ -239,12 +239,42 @@ public final class AppModel {
             missing = answer.objectValue?["missing"]?.arrayValue?.compactMap(\.stringValue) ?? []
         }  // (when the engine cannot say, the job itself reports a missing model)
         guard missing.isEmpty else {
+            pendingImages = []
             models.startsJob = true
             models.stage = .asking(missing)
             return
         }
         await studio.start(on: queue)
         apply(await queue.snapshot())
+    }
+
+    // MARK: - the queue page's own jobs
+
+    /// Images given to the queue page while the models they need are asked for: queued after the download.
+    @ObservationIgnored private var pendingImages: [URL] = []
+
+    /// *Add images*, *Add folder* or a drop on the queue page (other_pages.QueuePage.add_paths): every image a job
+    /// with the studio's settings, behind the others – first asking for the models they need that are not there, as
+    /// *Create sketch* does. The number of jobs queued (0 while the models are asked for).
+    @discardableResult
+    public func addToQueue(_ images: [URL]) async -> Int {
+        guard let queue, let engine, !images.isEmpty else { return 0 }
+        let settings = studio.jobSettings
+        var missing: [String] = []
+        if let answer = try? await engine.request("required_models", ["settings": .object(settings)]) {
+            missing = answer.objectValue?["missing"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        }
+        guard missing.isEmpty else {
+            pendingImages = images
+            models.startsJob = true
+            models.stage = .asking(missing)
+            return 0
+        }
+        for image in images {
+            await queue.add(target: image, settings: settings)
+        }
+        apply(await queue.snapshot())
+        return images.count
     }
 
     /// *Download* in the question: the missing models one after the other, each converted by the engine, then the
@@ -272,7 +302,14 @@ public final class AppModel {
             }
         }
         models.stage = .idle
-        if models.startsJob { await startSketch() }
+        guard models.startsJob else { return }
+        if pendingImages.isEmpty {
+            await startSketch()
+        } else {
+            let images = pendingImages
+            pendingImages = []
+            await addToQueue(images)
+        }
     }
 
     // MARK: - the Models page
@@ -314,6 +351,7 @@ public final class AppModel {
         guard models.stage != .idle else { return }  // (the sheet closing after a finished download is no cancel)
         download?.cancel()
         download = nil
+        pendingImages = []
         if case .asking = models.stage { models.stage = .idle }
         if case .failed = models.stage { models.stage = .idle }
     }

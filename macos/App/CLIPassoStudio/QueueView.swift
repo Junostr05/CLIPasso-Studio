@@ -1,11 +1,19 @@
 import StudioApp
 import StudioCore
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// The queue page: the jobs in order (drag or the arrows to move, remove a waiting one), *Start the next job
-/// automatically*, *When done* and *Remove finished* in the toolbar. Content: a plain list.
+/// The queue page: the jobs in order (drag or the arrows to move, remove a waiting one); *Add images*, *Add folder*,
+/// *Start the next job automatically*, *When done* and *Remove finished* in the toolbar; images and folders dropped
+/// on the list are queued with the studio's settings (other_pages.QueuePage). Content: a plain list.
 struct QueueView: View {
     @Environment(AppModel.self) private var model
+    @State private var importing = false
+    @State private var importKind = ImportKind.images
+    @State private var askedFolder: URL?
+    @State private var nothingFound = false
+
+    private enum ImportKind { case images, folder }
 
     var body: some View {
         Group {
@@ -24,7 +32,27 @@ struct QueueView: View {
                                                description: Text(model.texts.tr("ui.queue.empty")))
                     }
                 }
+                .dropDestination(for: URL.self) { urls, _ in
+                    let images = ImageFiles.dropped(urls)
+                    guard !images.isEmpty else {
+                        nothingFound = true
+                        return false
+                    }
+                    Task { await model.addToQueue(images) }
+                    return true
+                }
                 .toolbar {
+                    ToolbarItemGroup {
+                        Button(model.texts.tr("ui.queue.add"), systemImage: "photo.badge.plus") {
+                            importKind = .images
+                            importing = true
+                        }
+                        Button(model.texts.tr("ui.queue.add_folder"), systemImage: "folder.badge.plus") {
+                            importKind = .folder
+                            importing = true
+                        }
+                        .help(model.texts.tr("ui.queue.add_folder_tip"))
+                    }
                     ToolbarItemGroup {
                         Toggle(model.texts.tr("ui.queue.auto"), isOn: Binding(
                             get: { page.snapshot.autoStart },
@@ -41,6 +69,23 @@ struct QueueView: View {
                         }
                     }
                 }
+                .fileImporter(isPresented: $importing, allowedContentTypes: importKind == .folder ? [.folder] : [.image],
+                              allowsMultipleSelection: importKind == .images) { result in
+                    guard case .success(let urls) = result, let first = urls.first else { return }
+                    switch importKind {
+                    case .images: Task { await model.addToQueue(urls.filter { ImageFiles.isImage($0.lastPathComponent) }) }
+                    case .folder:
+                        if ImageFiles.hasSubfolders(first) { askedFolder = first } else { addFolder(first, recursive: false) }
+                    }
+                }
+                .confirmationDialog(model.texts.tr("ui.queue.subfolders_q"),
+                                    isPresented: Binding(get: { askedFolder != nil }, set: { if !$0 { askedFolder = nil } }),
+                                    presenting: askedFolder) { folder in
+                    Button(model.texts.tr("ui.mac.queue.with_subfolders")) { addFolder(folder, recursive: true) }
+                    Button(model.texts.tr("ui.mac.queue.only_folder")) { addFolder(folder, recursive: false) }
+                    Button(model.texts.tr("ui.cancel"), role: .cancel) {}
+                }
+                .alert(model.texts.tr("ui.queue.folder_empty"), isPresented: $nothingFound) {}
                 .task { await page.reload() }
             } else {
                 ContentUnavailableView(model.texts.tr("ui.queue.title"), systemImage: "list.bullet.rectangle",
@@ -48,6 +93,18 @@ struct QueueView: View {
             }
         }
         .navigationTitle(model.texts.tr("ui.queue.title"))
+    }
+
+    /// QueuePage.add_folder: the folder's images (with its subfolders' when asked), read off the main actor.
+    private func addFolder(_ folder: URL, recursive: Bool) {
+        Task {
+            let images = await Task.detached { ImageFiles.inFolder(folder, recursive: recursive) }.value
+            guard !images.isEmpty else {
+                nothingFound = true
+                return
+            }
+            await model.addToQueue(images)
+        }
     }
 }
 

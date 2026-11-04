@@ -10,6 +10,8 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
   whose values all match, else none – "custom")
 - ``versions.json`` – version pairs and what gui/updates.is_newer decides for them
+- ``image_files.json`` – a folder of pictures and the images gui/drop.py takes from it (the folder, with its
+  subfolders, and as dropped)
 - ``settings.json`` – the app settings as the Python app writes them
 - ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
   ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
@@ -294,6 +296,44 @@ def exports(out: Path) -> None:
                 image.convert("RGB").save(folder / "render" / name.replace(".svg", ".png"), optimize=False)
 
 
+# ----------------------------------------------------------------------------------------------- dropped images
+IMAGE_TREE = (  # a folder of pictures as a user's might be ("/" at the end: an empty folder)
+    "b.PNG", "a.jpg", "Notiz.txt", "c.HEIC", "Z.webp", "ä-Bild.png", ".versteckt.png", "Urlaub/2.jpg", "Urlaub/10.jpg",
+    "Urlaub/Strand/1.tif", "urlaub2/x.gif", "_edited/e.png", "_pasted_2/p.png", ".git/g.png",
+    "CLIPasso Studio/Kamel_job/job.json", "CLIPasso Studio/Kamel_job/input/Kamel.png",
+    "CLIPasso Studio/laufend/job_state.json", "CLIPasso Studio/laufend/x.png", "CLIPasso Studio/Notizen/n.png", "Leer/",
+)
+IMAGE_DROP = ("a.jpg", "Notiz.txt", "Urlaub", "a.jpg", "Urlaub/2.jpg", "fehlt.png", "Leer")
+
+
+def image_file_cases() -> dict:
+    """gui/drop.image_files (a folder's own images, and with its subfolders) and dropped_images (files and folders
+    as they are dropped) on a folder made of IMAGE_TREE – the paths relative to it."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QMimeData, QUrl
+
+    from clipasso_studio.gui import drop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "Bilder"
+        for entry in IMAGE_TREE:
+            path = root / entry
+            if entry.endswith("/"):
+                path.mkdir(parents=True, exist_ok=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"")
+
+        def relative(paths: list[str]) -> list[str]:
+            return [Path(p).relative_to(root).as_posix() for p in paths]
+
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(str(root / p)) for p in IMAGE_DROP])
+        return {"tree": list(IMAGE_TREE), "flat": relative(drop.image_files(str(root))),
+                "recursive": relative(drop.image_files(str(root), recursive=True)), "drop": list(IMAGE_DROP),
+                "dropped": relative(drop.dropped_images(mime))}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -444,6 +484,7 @@ def build(out: Path) -> None:
     write_json(out / "pyjson.json", pyjson())
     write_json(out / "presets.json", preset_cases(), indent=None)
     write_json(out / "versions.json", version_cases())
+    write_json(out / "image_files.json", image_file_cases())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
     exports(out)

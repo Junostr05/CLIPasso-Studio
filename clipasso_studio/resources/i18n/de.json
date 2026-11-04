@@ -1622,6 +1622,8 @@
  "ui.mac.canvas_label": "Skizze von {image}, {strokes} Striche",
  "ui.mac.queue.done_text_sleep": "Der Mac geht in {s} s in den Ruhezustand.",
  "ui.mac.queue.done_text_shutdown": "Der Mac schaltet sich in {s} s aus. Deine Skizzen sind gespeichert.",
+ "ui.mac.queue.with_subfolders": "Mit Unterordnern",
+ "ui.mac.queue.only_folder": "Nur dieser Ordner",
  "ui.mac.job_status.queued": "Wartet",
  "ui.mac.job_status.running": "Läuft",
  "ui.mac.job_status.done": "Fertig",

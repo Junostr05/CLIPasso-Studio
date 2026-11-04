@@ -89,6 +89,27 @@ import StudioCore
     }
 
     /// The studio's job goes through the queue on the engine; the studio follows it to its end.
+    /// *Add images* on the queue page: every image a job with the studio's settings, behind the others – the studio
+    /// itself does not follow them (its canvas stays its own image's).
+    @Test func imagesAddedOnTheQueuePage() async throws {
+        let done = SelfTestTests.fixtures.appending(path: "jobs/done_clipasso")
+        let model = try AppModel(resources: Self.resources(engine: SelfTestTests.fake(["job", done.path])),
+                                 store: Self.store(language: "de"))
+        #expect(await model.addToQueue([URL(filePath: "/Bilder/a.png")]) == 0)  // (no engine yet)
+        await model.startEngine()
+        await model.queuePage?.setAutoStart(false)
+        model.studio.set("num_sketches", to: 2)
+        let images = ["Kamel.png", "Giraffe.jpg", "Zebra.heic"].map { URL(filePath: "/Bilder/\($0)") }
+        #expect(await model.addToQueue(images) == 3)
+        #expect(await model.addToQueue([]) == 0)
+        let jobs = model.queueSnapshot?.jobs ?? []
+        #expect(jobs.map(\.target.lastPathComponent) == ["Kamel.png", "Giraffe.jpg", "Zebra.heic"])
+        #expect(jobs.allSatisfy { $0.status == .queued && $0.settings == model.studio.jobSettings })
+        #expect(jobs.first?.settings["num_sketches"] == 2 && jobs.first?.settings["method"] == "clipasso")
+        #expect(model.queuePage?.jobs.count == 3 && model.studio.live.jobID == nil)
+        await model.stopEngine()
+    }
+
     @Test func aStudioJobRunsThroughTheQueue() async throws {
         let done = SelfTestTests.fixtures.appending(path: "jobs/done_clipasso")
         let out = FileManager.default.temporaryDirectory.appending(path: "studio-\(UUID().uuidString)")
