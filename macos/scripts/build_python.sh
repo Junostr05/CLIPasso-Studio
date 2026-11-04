@@ -36,10 +36,11 @@ PY="$OUT/python/bin/python3"
 "$PY" -m pip install --no-cache-dir --disable-pip-version-check --no-warn-script-location --only-binary :all: \
     --require-hashes -r "$ROOT/requirements/lock-macos.txt"
 
-# smaller: what the engine never uses at run time
+# smaller: what the engine never uses at run time (torch/testing/_internal stays: torch/utils/checkpoint.py imports
+# torch.testing._internal.logging_tensor when torch is imported – the check at the end of this script found it)
 SITE=$("$PY" -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
 STDLIB=$("$PY" -c "import sysconfig; print(sysconfig.get_paths()['stdlib'])")
-rm -rf "$SITE/torch/include" "$SITE/torch/share" "$SITE/torch/testing/_internal" \
+rm -rf "$SITE/torch/include" "$SITE/torch/share" \
        "$STDLIB/test" "$STDLIB/idlelib" "$STDLIB/turtledemo" "$STDLIB/tkinter" "$STDLIB/ensurepip" \
        "$STDLIB"/lib-dynload/_tkinter* "$OUT/python/lib"/tcl* "$OUT/python/lib"/tk* \
        "$OUT/python/include" "$OUT/python/share"
