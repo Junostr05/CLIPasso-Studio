@@ -54,7 +54,10 @@ struct CLIPassoStudioApp: App {
             if let model {
                 RootView()
                     .environment(model)
-                    .task { await model.startEngine() }
+                    .task {
+                        await model.startEngine()
+                        if ScreenshotMode.options == nil { await model.checkForUpdate() }
+                    }
                     .frame(minWidth: 960, minHeight: 640)
             } else {
                 // (the app's own files are missing – only when the bundle is broken)

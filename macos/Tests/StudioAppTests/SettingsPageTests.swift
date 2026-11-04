@@ -55,3 +55,35 @@ import StudioCore
         await model.stopEngine()
     }
 }
+
+/// The update hint: announced, skipped for good, or not looked for when the settings say so.
+@Suite(.serialized) struct UpdateHintTests {
+    nonisolated static let mac = #"{"tag_name": "v9.0.0", "html_url": "https://github.com/Junostr05/CLIPasso-Studio/releases/tag/v9.0.0", "prerelease": false, "draft": false, "assets": [{"name": "CLIPasso-Studio-9.0.0-mac.dmg"}]}"#
+
+    struct Answer: HTTPTransport {
+        func open(_ url: URL, offset: Int64) async throws -> HTTPResponse {
+            let data = Data(UpdateHintTests.mac.utf8)
+            return HTTPResponse(status: 200, length: Int64(data.count), contentType: "application/json",
+                                body: AsyncThrowingStream { $0.yield(data); $0.finish() })
+        }
+    }
+
+    @Test func announcedThenSkipped() async throws {
+        let store = try AppModelTests.store(language: "en")
+        let model = try AppModel(resources: AppModelTests.resources(engine: nil), store: store, transport: Answer())
+        await model.checkForUpdate(current: "4.3.0")
+        #expect(model.update?.version == "v9.0.0")
+        #expect(model.texts.tr("ui.update.available", ["version": "v9.0.0", "current": "4.3.0"]).contains("v9.0.0"))
+        model.skipUpdate()
+        #expect(model.update == nil && store.load()["skipped_version"] == "v9.0.0")
+        await model.checkForUpdate(current: "4.3.0")
+        #expect(model.update == nil)  // the skipped version is not announced again
+    }
+
+    @Test func offWhenTheSettingsSaySo() async throws {
+        let store = try AppModelTests.store(language: "en", ["check_updates": false])
+        let model = try AppModel(resources: AppModelTests.resources(engine: nil), store: store, transport: Answer())
+        await model.checkForUpdate(current: "4.3.0")
+        #expect(model.update == nil)
+    }
+}

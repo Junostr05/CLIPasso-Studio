@@ -27,6 +27,8 @@ public final class AppModel {
     public private(set) var gallery: GalleryModel
     /// The queue page (once the engine runs).
     public private(set) var queuePage: QueueModel?
+    /// A newer release with a Mac disk image (announced; its page opens on request).
+    public private(set) var update: UpdateCheck.Release?
     /// The countdown before the Mac sleeps or shuts down, once the queue ran out with that chosen.
     public private(set) var countdown: WhenDoneCountdown?
     @ObservationIgnored private let power: any PowerActions
@@ -149,6 +151,34 @@ public final class AppModel {
         if newResult {
             Task { await gallery.refresh() }  // (a finished job is a new result)
         }
+    }
+
+    // MARK: - updates (announced only)
+
+    /// The app's version (the bundle's; "0" while developing).
+    public var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
+
+    /// At the start, when the settings allow it (check_updates, as the Python app): a newer release that is not
+    /// the one the user skipped.
+    public func checkForUpdate(current: String? = nil) async {
+        guard settings["check_updates"]?.truthy ?? true else { return }
+        guard let found = try? await UpdateCheck.newer(than: current ?? version, transport: transport) else { return }
+        if settings["skipped_version"]?.stringValue == found.version { return }
+        update = found
+    }
+
+    /// *Skip this version* (skipped_version, as the Python app keeps it).
+    public func skipUpdate() {
+        guard let update else { return }
+        updateSettings { $0["skipped_version"] = .string(update.version) }
+        self.update = nil
+    }
+
+    /// *Remind me next time*.
+    public func dismissUpdate() {
+        update = nil
     }
 
     // MARK: - the settings page

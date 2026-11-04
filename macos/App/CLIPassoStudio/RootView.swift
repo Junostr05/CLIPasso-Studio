@@ -1,3 +1,4 @@
+import AppKit
 import StudioApp
 import StudioCore
 import SwiftUI
@@ -41,12 +42,17 @@ struct RootView: View {
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 260)
         } detail: {
-            switch page ?? .studio {
-            case .studio: StudioView()
-            case .queue: QueueView()
-            case .gallery: GalleryView()
-            case .models: ModelsView()
-            case .settings: SettingsView()
+            Group {
+                switch page ?? .studio {
+                case .studio: StudioView()
+                case .queue: QueueView()
+                case .gallery: GalleryView()
+                case .models: ModelsView()
+                case .settings: SettingsView()
+                }
+            }
+            .safeAreaInset(edge: .top) {
+                if let update = model.update { UpdateBanner(update: update) }
             }
         }
         .preferredColorScheme(model.appearance == .system ? nil : model.appearance == .dark ? .dark : .light)
@@ -69,5 +75,29 @@ struct RootView: View {
                     .environment(model)
             }
         }
+    }
+}
+
+/// A newer release with a Mac disk image: its page opens in the browser (the app is not signed, so it does not
+/// update itself). Content: a plain banner.
+private struct UpdateBanner: View {
+    @Environment(AppModel.self) private var model
+    let update: UpdateCheck.Release
+
+    var body: some View {
+        HStack(spacing: Spacing.spaceM) {
+            Image(systemName: "arrow.down.circle").accessibilityHidden(true)
+            Text(model.texts.tr("ui.update.available", ["version": update.version, "current": model.version]))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button(model.texts.tr("ui.update.download")) { NSWorkspace.shared.open(update.page) }
+            Button(model.texts.tr("ui.update.skip")) { model.skipUpdate() }
+            Button(model.texts.tr("ui.update.later")) { model.dismissUpdate() }
+        }
+        .padding(.horizontal, Spacing.spaceL)
+        .padding(.vertical, Spacing.spaceS)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .overlay(alignment: .bottom) { Divider() }
+        .accessibilityElement(children: .contain)
     }
 }

@@ -9,6 +9,7 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
   parameters' rules (``enabled``, one "1" / "0" per parameter in ``ruled``) and ``num_strokes``
 - ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
   whose values all match, else none – "custom")
+- ``versions.json`` – version pairs and what gui/updates.is_newer decides for them
 - ``settings.json`` – the app settings as the Python app writes them
 - ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
   ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
@@ -112,6 +113,22 @@ def conditions() -> dict:
             cases.append({"method": method, "changes": changes, "num_strokes": schema.num_strokes(s),
                           "enabled": enabled})
     return {"ruled": ruled, "cases": cases}
+
+
+VERSION_PAIRS = (
+    ("4.3.0", "4.2.9"), ("v4.3.0", "4.3.0"), ("4.3.0b2", "4.3.0b1"), ("4.3.0", "4.3.0b9"), ("4.3.0-beta.1", "4.2.9"),
+    ("4.3.0rc1", "4.3.0b4"), ("4.10.0", "4.9.0"), ("4.3", "4.3.0"), ("5", "4.99.99"), ("v4.3.0a1", "4.3.0"),
+    ("nonsense", "4.3.0"), ("4.2.9", "4.3.0"), ("v4.3.1", "v4.3.1"),
+)
+
+
+def version_cases() -> list[dict]:
+    """gui/updates.parse_version and is_newer on version pairs (the Mac app announces updates the same way)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from clipasso_studio.gui import updates
+
+    return [{"latest": a, "current": b, "newer": updates.is_newer(a, b), "parsed": list(updates.parse_version(a))}
+            for a, b in VERSION_PAIRS]
 
 
 def detected_preset(settings: dict) -> str | None:
@@ -426,6 +443,7 @@ def build(out: Path) -> None:
     write_json(out / "conditions.json", conditions(), indent=None)
     write_json(out / "pyjson.json", pyjson())
     write_json(out / "presets.json", preset_cases(), indent=None)
+    write_json(out / "versions.json", version_cases())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
     sketches(out)
     exports(out)
