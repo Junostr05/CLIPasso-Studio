@@ -25,6 +25,8 @@ enum ScreenshotMode {
             try? await Task.sleep(for: .milliseconds(200))
         }
         await model.gallery.refresh()
+        NSApp.activate()  // (a window in front draws its selection and its main button as in use, not greyed)
+        NSApp.windows.first { $0.isVisible }?.makeKeyAndOrderFront(nil)
         var written = 0
         for shot in options.shots(pages: Page.allCases.map(\.rawValue)) {
             try? model.setLanguage(shot.language)

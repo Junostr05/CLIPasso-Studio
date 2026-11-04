@@ -1625,6 +1625,7 @@
  "ui.mac.queue.done_text_shutdown": "Der Mac schaltet sich in {s} s aus. Deine Skizzen sind gespeichert.",
  "ui.mac.queue.with_subfolders": "Mit Unterordnern",
  "ui.mac.queue.only_folder": "Nur dieser Ordner",
+ "ui.mac.queue.empty_hint": "Lege Bilder oder Ordner hier ab oder füge sie mit den Schaltflächen oben hinzu.",
  "ui.mac.job_status.queued": "Wartet",
  "ui.mac.job_status.running": "Läuft",
  "ui.mac.job_status.done": "Fertig",

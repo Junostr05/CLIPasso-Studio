@@ -1625,6 +1625,7 @@
  "ui.mac.queue.done_text_shutdown": "The Mac shuts down in {s} s. Your sketches are saved.",
  "ui.mac.queue.with_subfolders": "With subfolders",
  "ui.mac.queue.only_folder": "Only this folder",
+ "ui.mac.queue.empty_hint": "Drop images or folders here, or add them with the buttons above.",
  "ui.mac.job_status.queued": "Waiting",
  "ui.mac.job_status.running": "Running",
  "ui.mac.job_status.done": "Done",

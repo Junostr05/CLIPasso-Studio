@@ -29,7 +29,7 @@ struct QueueView: View {
                 .overlay {
                     if page.jobs.isEmpty {
                         ContentUnavailableView(model.texts.tr("ui.queue.empty_title"), systemImage: "list.bullet.rectangle",
-                                               description: Text(model.texts.tr("ui.queue.empty")))
+                                               description: Text(model.texts.tr("ui.mac.queue.empty_hint")))  // (the title says it is empty)
                     }
                 }
                 .dropDestination(for: URL.self) { urls, _ in
