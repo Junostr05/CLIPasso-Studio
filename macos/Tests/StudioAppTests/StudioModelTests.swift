@@ -125,3 +125,13 @@ actor RecordingEngine: EngineControlling {
         #expect(studio.canvasLabel(de, sketch: sketch) == "Skizze von Kamel.png, \(sketch.strokes.count) Striche")
     }
 }
+
+/// The value types the window reads in background tasks (the sketch previews are parsed off the main actor) must
+/// not belong to the main actor, which is this module's default.
+@Suite struct OffTheMainActorTests {
+    @Test func seedSketchInABackgroundTask() async {
+        let item = SeedSketch(seed: 1000, svg: "<svg/>")
+        let read = await Task.detached { (item.seed, item.svg) }.value
+        #expect(read.0 == 1000 && read.1 == "<svg/>")
+    }
+}

@@ -91,7 +91,7 @@ public final class StudioModel {
 }
 
 /// One item's latest sketch of a job.
-public struct SeedSketch: Sendable, Hashable, Identifiable {
+public nonisolated struct SeedSketch: Sendable, Hashable, Identifiable {
     public var id: Int { seed }
     public let seed: Int
     public let svg: String
