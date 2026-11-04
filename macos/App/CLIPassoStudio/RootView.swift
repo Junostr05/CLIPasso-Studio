@@ -43,6 +43,8 @@ struct RootView: View {
         } detail: {
             switch page ?? .studio {
             case .studio: StudioView()
+            case .queue: QueueView()
+            case .gallery: GalleryView()
             case .models: ModelsView()
             case let other: PageView(page: other)
             }

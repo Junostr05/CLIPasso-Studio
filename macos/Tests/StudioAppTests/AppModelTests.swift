@@ -106,6 +106,12 @@ import StudioCore
         #expect(model.studio.live.status == .done && model.studio.canStart)
         #expect(model.queueSnapshot?.jobs.count == 1)
         #expect(model.studio.live.jobDir?.path.hasPrefix(out.path) == true)  // the output folder of the settings
+        #expect(model.queuePage?.jobs.count == 1)
+        let deadline2 = ContinuousClock.now + .seconds(10)
+        while model.gallery.items.isEmpty, ContinuousClock.now < deadline2 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.gallery.items.count == 1)  // the finished job appears in the gallery
         await model.stopEngine()
     }
 

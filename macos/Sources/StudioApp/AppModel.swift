@@ -23,6 +23,10 @@ public final class AppModel {
     public let studio: StudioModel
     /// The models a job needs that are not there yet.
     public let models: ModelFlow
+    /// The results of the output folder.
+    public let gallery: GalleryModel
+    /// The queue page (once the engine runs).
+    public private(set) var queuePage: QueueModel?
     /// The queue as it was last reported (nil before the engine runs).
     public private(set) var queueSnapshot: QueueSnapshot?
     @ObservationIgnored public private(set) var engine: EngineClient?
@@ -48,6 +52,7 @@ public final class AppModel {
         self.catalog = catalog
         models = ModelFlow(catalog: catalog)
         studio = StudioModel(schema: schema)
+        gallery = GalleryModel(root: loaded.outputDir, schema: schema)
     }
 
     /// Change the settings and save them at once (AppSettings.set); false when the file could not be written – the
@@ -100,6 +105,7 @@ public final class AppModel {
             engineStatus = .ready
             let queue = JobQueue(engine: client, outputRoot: settings.outputDir)
             self.queue = queue
+            queuePage = QueueModel(queue: queue)
             queueListener = Task { [weak self] in
                 for await snapshot in queue.updates {
                     self?.apply(snapshot)
@@ -119,8 +125,14 @@ public final class AppModel {
     }
 
     private func apply(_ snapshot: QueueSnapshot) {
+        let finished = { (s: QueueSnapshot?) in s?.jobs.filter { $0.status == .done }.count ?? 0 }
+        let newResult = finished(snapshot) > finished(queueSnapshot)
         queueSnapshot = snapshot
+        queuePage?.apply(snapshot)
         studio.live.update(from: snapshot)
+        if newResult {
+            Task { await gallery.refresh() }  // (a finished job is a new result)
+        }
     }
 
     // MARK: - the studio's job
