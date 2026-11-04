@@ -103,8 +103,10 @@ public final class GalleryModel {
 
     /// "12 results in the output folder" or, filtered, "3 of 12 results".
     public func countText(_ texts: Texts) -> String {
-        items.count == total ? texts.tr("ui.gallery.count", ["n": "\(total)"])
-            : texts.tr("ui.gallery.count_shown", ["n": "\(items.count)", "total": "\(total)"])
+        guard items.count == total else {
+            return texts.tr("ui.gallery.count_shown", ["n": "\(items.count)", "total": "\(total)"])
+        }
+        return total == 1 ? texts.tr("ui.gallery.count_one") : texts.tr("ui.gallery.count", ["n": "\(total)"])
     }
 
     public func setFavourite(_ item: GalleryItem, _ on: Bool) async {

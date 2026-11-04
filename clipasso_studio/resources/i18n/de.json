@@ -291,6 +291,7 @@
  "ui.gallery.title": "Galerie",
  "ui.gallery.subtitle": "Alle bisherigen Ergebnisse aus deinem Ausgabeordner. Doppelklick öffnet ein Ergebnis im Studio – mit Bild und Einstellungen; mehrere auswählen, um sie zu exportieren, zu markieren oder zu löschen.",
  "ui.gallery.count": "{n} Ergebnisse im Ausgabeordner",
+ "ui.gallery.count_one": "1 Ergebnis im Ausgabeordner",
  "ui.gallery.count_shown": "{n} von {total} Ergebnissen",
  "ui.gallery.search": "Name oder Methode suchen …",
  "ui.gallery.empty": "Noch keine Ergebnisse – erstelle deine erste Skizze im Studio.",

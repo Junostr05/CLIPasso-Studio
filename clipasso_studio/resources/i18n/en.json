@@ -291,6 +291,7 @@
  "ui.gallery.title": "Gallery",
  "ui.gallery.subtitle": "All results in your output folder. Double-click a result to continue working on it in the studio – with its image and settings; select several to export, mark or delete them.",
  "ui.gallery.count": "{n} results in the output folder",
+ "ui.gallery.count_one": "1 result in the output folder",
  "ui.gallery.count_shown": "{n} of {total} results",
  "ui.gallery.search": "Search name or method …",
  "ui.gallery.empty": "No results yet – create your first sketch in the studio.",

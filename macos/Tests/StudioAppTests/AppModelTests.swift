@@ -133,6 +133,7 @@ import StudioCore
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(model.gallery.items.count == 1)  // the finished job appears in the gallery
+        #expect(model.gallery.countText(model.texts) == "1 result in the output folder")  // (not "1 results")
         await model.stopEngine()
     }
 

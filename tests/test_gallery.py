@@ -220,6 +220,24 @@ def test_albums(gallery, monkeypatch):
     assert [n for n in page.album_chips] == ["", "Best"]
 
 
+def test_one_result_is_counted_in_the_singular(gallery):
+    """Below the title: "1 Ergebnis im Ausgabeordner", not "1 Ergebnisse" (as the Mac app says it too)."""
+    from clipasso_studio.gui.i18n import i18n, tr
+
+    page, out = gallery
+    lang = i18n.lang
+    try:
+        i18n.set_language("de")
+        _job(out, "zebra", "2026-09-01 10:00:00")
+        page.refresh()
+        assert page.subtitle.text() == tr("ui.gallery.count_one") == "1 Ergebnis im Ausgabeordner"
+        _job(out, "apple", "2026-09-02 10:00:00")
+        page.refresh()
+        assert page.subtitle.text() == tr("ui.gallery.count", n=2)
+    finally:
+        i18n.set_language(lang)
+
+
 def test_the_filter_column_and_the_floating_selection_bar(gallery):
     """4.0: the gallery from edge to edge – on the left the search, the methods (a column), favourites, the
     albums with their counts and the tags (only when there are some); below the title how many results are
