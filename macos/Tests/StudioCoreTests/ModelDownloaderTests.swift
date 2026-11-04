@@ -305,18 +305,18 @@ final class FakeTransport: HTTPTransport {
         #expect(try Data(contentsOf: root.appending(path: ".partial/test_single.part")).count == 3000)  // kept
     }
 
-    /// The first line a process writes – read in a detached task: a read of a pipe blocks its thread until Python
-    /// (seconds on a cold runner) writes, and the tests share the main actor. Ends early when the pipe does.
+    /// The first line a process writes ("" when it ends without one). FileHandle's async bytes wait for it without
+    /// holding a thread: a blocking read (availableData), also in a detached task, holds one of the few threads of
+    /// Swift's shared pool for the seconds Python takes to start on a cold runner – and every task that resumes
+    /// through the pool waits with it (run 24: a test's sleep woke after its deadline, before the countdown's last
+    /// tick).
     static func firstLine(_ handle: FileHandle) async -> String {
-        await Task.detached {
-            var line = Data()
-            while !line.contains(0x0A) {
-                let chunk = handle.availableData
-                if chunk.isEmpty { break }  // (the process is gone)
-                line.append(chunk)
+        do {
+            for try await line in handle.bytes.lines {
+                return line
             }
-            return String(decoding: line, as: UTF8.self)
-        }.value
+        } catch {}
+        return ""
     }
 
     @Test func realURLSessionWithRangeServer() async throws {

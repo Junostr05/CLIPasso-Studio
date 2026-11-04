@@ -24,8 +24,8 @@ final class FakePower: PowerActions {
         let countdown = WhenDoneCountdown(action: .sleep, seconds: 3, tick: .milliseconds(20), power: power)
         #expect(countdown.text(Self.texts) == "Der Mac geht in 3 s in den Ruhezustand.")
         countdown.start()
-        // (only a guard against a hang: the countdown ticks on the main actor, which the tests running alongside
-        // share – a deadline near a stall of theirs ended the wait before the last tick)
+        // (only a guard against a hang: the countdown's ticks wake through Swift's shared thread pool, as the tests
+        // running alongside do – a deadline near a stall of theirs ended the wait before the last tick)
         let deadline = ContinuousClock.now + .seconds(60)
         while !countdown.finished, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(10))
