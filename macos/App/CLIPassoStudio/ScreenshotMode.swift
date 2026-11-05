@@ -13,9 +13,9 @@ enum ScreenshotMode {
     static var options: ScreenshotOptions?
     private static var toldDrawn = false
 
-    /// What the screenshots ask of the pages: the studio's canvas opens its print sheet when `print` changes.
+    /// What the screenshots ask of the pages: the studio's canvas shows its print sheet while `printSheet` is on.
     @Observable final class Requests {
-        var print = 0
+        var printSheet = false
     }
 
     static let requests = Requests()
@@ -45,7 +45,7 @@ enum ScreenshotMode {
         }
         show(.studio)  // (the print sheet of the sketch on the canvas, in every language and appearance)
         try? await Task.sleep(for: .milliseconds(1000))
-        requests.print += 1
+        requests.printSheet = true
         for language in ScreenshotOptions.languages {
             for appearance in ScreenshotOptions.appearances {
                 try? model.setLanguage(language)
@@ -59,6 +59,8 @@ enum ScreenshotMode {
                 }
             }
         }
+        requests.printSheet = false  // (the app does not quit while a sheet is open)
+        try? await Task.sleep(for: .milliseconds(1000))
         print("screenshots: \(written) written to \(options.output.path)")
         NSApp.terminate(nil)
     }

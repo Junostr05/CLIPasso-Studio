@@ -70,8 +70,8 @@ struct ResultCanvas: View {
         .onChange(of: result.editor?.canErase ?? false) { _, can in
             if !can, tool == .eraser { tool = .none }
         }
-        .onChange(of: ScreenshotMode.requests.print) {
-            if let editor = result.editor { printing = request(editor) }
+        .onChange(of: ScreenshotMode.requests.printSheet) { _, open in
+            printing = open ? result.editor.map(request) : nil
         }
     }
 
