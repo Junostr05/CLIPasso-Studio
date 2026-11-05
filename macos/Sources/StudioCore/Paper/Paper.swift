@@ -90,6 +90,17 @@ public struct Paper: Sendable, Equatable {
         return (UInt8(v >> 16 & 0xFF), UInt8(v >> 8 & 0xFF), UInt8(v & 0xFF))
     }
 
+    /// dialogs.paper_colours: another paper brings its own colour (`kind` nil: only the background changed); on a
+    /// dark background black strokes become light – and black again on a light one. nil: transparent.
+    public static func colours(kind: Kind?, background: String?, stroke: String) -> (background: String?, stroke: String) {
+        var background = background
+        if let kind, kind != Kind.none { background = colours[kind] }
+        let dark = background.map { $0 != "transparent" && isDark($0) } ?? false
+        if dark, stroke.lowercased() == "#000000" { return (background, lightStroke) }
+        if !dark, stroke.lowercased() == lightStroke.lowercased() { return (background, "#000000") }
+        return (background, stroke)
+    }
+
     /// is_dark: darker than `dark` in luminance.
     public static func isDark(_ colour: String) -> Bool {
         guard let (r, g, b) = rgb(colour) else { return false }

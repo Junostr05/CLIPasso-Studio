@@ -181,6 +181,24 @@ import Testing
             #expect(layout.textColour == "#E8E8E2")
         }
 
+        /// On a paper (the export's, as the studio's print dialog takes it): the paper under every page – the board's
+        /// dark green, its writing light – one picture for all pages of the PDF.
+        @Test func onPaper() throws {
+            var settings = AppSettings(data: [:], defaultOutputDir: URL(filePath: "/tmp"))
+            settings["export_paper"] = "blackboard"
+            settings["export_background"] = "#2C3A33"  // (as the studio keeps a paper: its colour too)
+            var layout = PrintLayout(settings: settings, count: 2)
+            #expect(layout.paper == Paper(kind: .blackboard) && layout.textColour == "#E8E8E2")
+            layout.background = nil  // (the paper's own colour)
+            layout.title = "Tafel"
+            let image = try PrintPages.preview(try Self.items(), layout: layout, width: 120)
+            #expect(Self.dark(image) > 120 * image.height / 4 * 8 / 10)  // (the board covers the page)
+            let paper = try #require(try PrintPages.paper(layout, side: PrintPages.pdfPaperSide(layout)))
+            #expect(paper.width == 2400 && paper.height == Int((2400 * 297 / 210.0).rounded()))  // (A4 at 600 dpi: 2400)
+            layout.paper = nil
+            #expect(try PrintPages.paper(layout, side: 600) == nil)
+        }
+
         @Test func aCancelledPrintStopsBetweenPages() async throws {
             let items = try Self.items()
             let result = await Task {

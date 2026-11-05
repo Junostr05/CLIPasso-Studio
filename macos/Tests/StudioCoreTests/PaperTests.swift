@@ -8,7 +8,7 @@ import Testing
 
 /// The papers of gui/paper.py made in Swift – checked against the pictures Python made (Fixtures/paper/*.png): every
 /// kind small and in part of a larger picture, fibres two pixels wide, a texture scaled up beyond 1600 px, a vignette
-/// on a colour – and what the settings of a paper come to.
+/// on a colour: the same pixels – and what the settings of a paper come to.
 @Suite struct PaperTests {
     @Test func settingsComeToThePapersOfPython() throws {
         let fixture = try #require(Fixtures.json("paper/papers.json").objectValue)
@@ -24,6 +24,18 @@ import Testing
             let colour = d["colour"]?.stringValue ?? ""
             #expect(Paper.isDark(colour) == d["dark"]?.truthy, "\(colour)")
         }
+    }
+
+    /// dialogs.paper_colours: a paper brings its colour; black strokes turn light on a dark one and back.
+    @Test func aPaperBringsItsColours() {
+        let board = Paper.colours(kind: .blackboard, background: "#FFFFFF", stroke: "#000000")
+        #expect(board.background == "#2C3A33" && board.stroke == Paper.lightStroke)
+        let back = Paper.colours(kind: .drawing, background: board.background, stroke: board.stroke)
+        #expect(back.background == "#FBFAF6" && back.stroke == "#000000")
+        #expect(Paper.colours(kind: .blackboard, background: nil, stroke: "#336699").stroke == "#336699")  // (a colour stays)
+        let clear = Paper.colours(kind: nil, background: nil, stroke: Paper.lightStroke)  // (transparent)
+        #expect(clear.background == nil && clear.stroke == "#000000")
+        #expect(Paper.colours(kind: Paper.Kind.none, background: "#101010", stroke: "#000000").stroke == Paper.lightStroke)
     }
 
     @Test func aBigNoiseGridShrinksAsPillowShrinksIt() {
@@ -77,8 +89,9 @@ import Testing
                 let largest = differences.max() ?? 0
                 let share = Double(differences.filter { $0 > 0 }.count) / Double(differences.count)
                 print("paper \(name): largest difference \(largest), \(String(format: "%.3f", share * 100)) % of channels differ")
-                // (numpy's float32 cosine – the woven linen – may be a step away from the system's)
-                #expect(largest <= 1 && share <= (name.hasPrefix("linen") ? 0.02 : 0.002),
+                // the same pixels (numpy's float32 cosine – the woven linen – may be a step away from the system's)
+                let linen = name.hasPrefix("linen")
+                #expect(linen ? largest <= 1 && share <= 0.02 : largest == 0,
                         "\(name): largest difference \(largest), \(share * 100) % of channels differ")
             }
         }

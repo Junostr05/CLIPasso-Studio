@@ -79,6 +79,32 @@ import Testing
             #expect(image.width == 300 && image.height == 200)
         }
 
+        /// On paper (export_paper, export_vignette in percent): the PNG's ground is the paper, in the background's
+        /// colour; the SVG embeds it as a JPEG in place of the background rect.
+        @Test func onPaper() throws {
+            var settings = AppSettings(data: [:], defaultOutputDir: URL(filePath: "/tmp"))
+            settings["export_paper"] = "kraft"
+            settings["export_vignette"] = 40
+            var options = ExportOptions(settings: settings, format: .png)
+            #expect(options.paper == Paper(kind: .kraft, vignette: 0.4))
+            options.remember(in: &settings, format: .png)
+            #expect(settings["export_paper"] == "kraft" && settings["export_vignette"] == 40)
+            options.size = 96
+            let data = try SketchExporter.png(try Self.sketch("svg/lines.svg"), options: options)
+            let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+            let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+            #expect(image.width == 96 && image.height == 96)
+            let paper = PaperTexture.rgb(options.paper, width: 96, height: 96, background: options.background)
+            #expect(Set(stride(from: 0, to: paper.count, by: 3).map { paper[$0] }).count > 3)  // (a texture, not a colour)
+            options.background = "#101010"
+            let svg = SketchExporter.svg(try Self.sketch("svg/closed_bg.svg"), options: options)
+            #expect(svg.contains(#"<image data-bg="1" x="0" y="0" width="224" height="224" preserveAspectRatio="none""#))
+            #expect(svg.contains("data:image/jpeg;base64,") && svg.contains("xmlns:xlink"))
+            #expect(!svg.contains(#"data-bg="1" />"#))  // (the background rect made way for the paper)
+            options.paper = nil
+            #expect(!SketchExporter.svg(try Self.sketch("svg/closed_bg.svg"), options: options).contains("<image"))
+        }
+
         @Test func aPDFPageOfTheChosenWidth() throws {
             var options = ExportOptions()
             options.pdfWidth = 21

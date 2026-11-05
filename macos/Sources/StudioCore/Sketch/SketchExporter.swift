@@ -20,6 +20,8 @@ public struct ExportOptions: Sendable, Equatable {
     public var size = 1024
     /// a PDF's width in cm (2 … 200)
     public var pdfWidth = 15.0
+    /// the paper under the strokes (nil: the plain background)
+    public var paper: Paper?
 
     public init() {}
 
@@ -37,6 +39,7 @@ public struct ExportOptions: Sendable, Equatable {
         margin = min(50, max(0, settings["export_margin"]?.intValue ?? 5))
         size = format == .png ? 1024 : 512
         pdfWidth = min(200, max(2, settings["export_pdf_width"]?.doubleValue ?? 15))
+        paper = Paper.of(settings)
     }
 
     /// ExportDialog._save: the choices kept for the next export.
@@ -47,12 +50,14 @@ public struct ExportOptions: Sendable, Equatable {
         settings["export_frame"] = .string(frame.rawValue)
         settings["export_margin"] = .int(margin)
         if format == .pdf { settings["export_pdf_width"] = .double(pdfWidth) }
+        Paper.remember(paper, in: &settings)
         settings["export_last_format"] = .string(format.rawValue)
     }
 }
 
 /// A sketch as the studio exports it (gui/export.py): its strokes in one colour and width, the frame chosen, and the
-/// background – in an SVG as a rect behind the strokes, in a PNG and a PDF as the picture's ground.
+/// background – in an SVG as a rect behind the strokes, in a PNG and a PDF as the picture's ground – or the paper,
+/// in the background's colour (in an SVG an embedded JPEG).
 public enum SketchExporter {
     /// export.framing_for: the frame (measured on the sketch as drawn); nil for "square" or when it is not known.
     public static func framing(_ svg: String, _ options: ExportOptions, photo: SketchFraming.PhotoFrame?)
@@ -61,11 +66,16 @@ public enum SketchExporter {
         SketchFraming.make(svg, mode: options.frame, frame: photo, margin: Double(options.margin) / 100)
     }
 
-    /// export.export_svg (the plain style, no paper).
+    /// export.export_svg (the plain style): restyled, framed, then the paper.
     public static func svg(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil) -> String {
         let restyled = SketchExport.restyleSVG(svg, strokeColor: options.strokeColour, widthScale: options.widthScale,
                                                background: options.background)
-        return framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
+        let framed = framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
+        #if canImport(ImageIO)
+            return PaperPicture.svgWithPaper(framed, paper: options.paper, background: options.background)
+        #else
+            return framed
+        #endif
     }
 
     /// The restyled, framed sketch a PNG or PDF draws (its background is the picture's, not a rect).
@@ -83,7 +93,12 @@ public enum SketchExporter {
         static func png(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil) throws -> Data {
             let sketch = try SketchSVG.parse(drawn(svg, options, photo: photo))
             let ground = options.background.flatMap { SketchSVG.color($0) }
-            return try SketchRenderer.pngData(SketchRenderer.image(sketch, longSide: options.size, background: ground))
+            guard let paper = options.paper else {
+                return try SketchRenderer.pngData(SketchRenderer.image(sketch, longSide: options.size, background: ground))
+            }
+            let (w, h) = SketchRenderer.size(of: sketch, longSide: options.size)
+            let base = try PaperPicture.image(paper, width: w, height: h, background: options.background)
+            return try SketchRenderer.pngData(SketchRenderer.image(sketch, longSide: options.size, background: nil, under: base))
         }
 
         /// export.export_pdf: one vector page `options.pdfWidth` cm wide in the sketch's shape (its viewBox), the
@@ -103,7 +118,15 @@ public enum SketchExporter {
                   let context = CGContext(consumer: consumer, mediaBox: &page, info)
             else { throw SketchRenderer.RenderError(description: "no PDF writer") }
             context.beginPDFPage(nil)
-            if let ground = options.background.flatMap({ SketchSVG.color($0) }) {
+            if let paper = options.paper {  // (PDF_PAPER_DPI: 200 dpi, at most 3000 px)
+                let wMM = max(options.pdfWidth, 1) * 10
+                let scale = min(200 / 25.4, 3000 / max(wMM, wMM * aspect))
+                let picture = try PaperPicture.image(paper, width: max(1, Int((wMM * scale).rounded(.toNearestOrEven))),
+                                                     height: max(1, Int((wMM * aspect * scale).rounded(.toNearestOrEven))),
+                                                     background: options.background)
+                context.interpolationQuality = .high
+                context.draw(picture, in: page)
+            } else if let ground = options.background.flatMap({ SketchSVG.color($0) }) {
                 context.setFillColor(SketchRenderer.cgColor(ground))
                 context.fill(page)
             }

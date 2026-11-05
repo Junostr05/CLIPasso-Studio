@@ -46,6 +46,8 @@ public struct PrintLayout: Sendable, Equatable {
     public var background: String?
     public var frame = SketchFraming.Mode.square
     public var frameMargin = SketchFraming.defaultMargin
+    /// the paper of the pages (nil: the plain background)
+    public var paper: Paper?
 
     public init() {}
 
@@ -67,6 +69,7 @@ public struct PrintLayout: Sendable, Equatable {
         let background = settings["export_background"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 } ?? "#FFFFFF"
         self.background = background == "transparent" ? "#FFFFFF" : background
         frame = SketchFraming.Mode(rawValue: settings["export_frame"]?.stringValue ?? "") ?? .square
+        paper = Paper.of(settings)
     }
 
     /// PrintDialog._remember: the page's choices kept for the next print (the number per page only from a print of
@@ -108,9 +111,10 @@ public struct PrintLayout: Sendable, Equatable {
         return stride(from: 0, to: items.count, by: n).map { items[$0 ..< min($0 + n, items.count)] }
     }
 
-    /// text_colour: the heading's, footer's and captions' colour – light on a dark background, else dark grey.
+    /// text_colour: the heading's, footer's and captions' colour – light on a dark paper or background, else dark
+    /// grey.
     public var textColour: String {
-        let ground = background ?? "#FFFFFF"
+        let ground = paper != nil ? Paper.colour(of: paper, background: background) : background ?? "#FFFFFF"
         return Self.isDark(ground == "transparent" ? "#FFFFFF" : ground) ? "#E8E8E2" : "#3A3A3A"
     }
 

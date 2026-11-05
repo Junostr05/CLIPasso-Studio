@@ -59,8 +59,11 @@
             context.restoreGState()
         }
 
-        /// The sketch as an image with its longer side `longSide`, on `background` (nil: transparent).
-        public static func image(_ sketch: Sketch, longSide: Int, background: RGB? = RGB(255, 255, 255)) throws -> CGImage {
+        /// The sketch as an image with its longer side `longSide`, on `background` (nil: transparent) or on a copy of
+        /// `under` (a paper of the image's size).
+        public static func image(_ sketch: Sketch, longSide: Int, background: RGB? = RGB(255, 255, 255),
+                                 under: CGImage? = nil) throws -> CGImage
+        {
             let (width, height) = size(of: sketch, longSide: longSide)
             guard let space = CGColorSpace(name: CGColorSpace.sRGB),
                   let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -69,7 +72,9 @@
             context.setAllowsAntialiasing(true)
             context.setShouldAntialias(true)
             context.interpolationQuality = .high
-            if let background {
+            if let under {
+                context.draw(under, in: CGRect(x: 0, y: 0, width: width, height: height))
+            } else if let background {
                 context.setFillColor(cgColor(background))
                 context.fill(CGRect(x: 0, y: 0, width: width, height: height))
             }

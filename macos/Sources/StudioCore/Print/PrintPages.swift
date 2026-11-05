@@ -39,15 +39,31 @@ public struct PrintItem: Sendable {
             return (sketch, box.width > 0 && box.height > 0 ? box.width / box.height : 1)
         }
 
-        /// One page into `context` (y up, the page at 0, 0 of `size`): `items` are this page's sketches.
+        /// paint_page's paper: `side` pixels wide (at most 2400) in the page's shape.
+        public static func paper(_ layout: PrintLayout, side: Int) throws -> CGImage? {
+            guard let paper = layout.paper else { return nil }
+            let (w, h) = layout.pageMM
+            let width = min(2400, max(1, side))
+            let height = max(1, Int((Double(width) * h / w).rounded(.toNearestOrEven)))  // (Python's round)
+            return try PaperPicture.image(paper, width: width, height: height, background: layout.background)
+        }
+
+        /// The paper's width in a PDF: Qt's page at 600 dpi is wider than 2400 pixels, so 2400.
+        static func pdfPaperSide(_ layout: PrintLayout) -> Int { Int(layout.pageMM.width / 25.4 * 600) }
+
+        /// One page into `context` (y up, the page at 0, 0 of `size`): `items` are this page's sketches, `paper` the
+        /// paper under them (PrintPages.paper).
         public static func draw(_ items: ArraySlice<PrintItem>, layout: PrintLayout, page: Int, pages: Int,
-                                in context: CGContext, size: CGSize)
+                                in context: CGContext, size: CGSize, paper: CGImage? = nil)
         {
             let height = Double(size.height)
             func rect(_ box: PageBox) -> CGRect {  // (from the top left to Core Graphics' bottom left)
                 CGRect(x: box.x, y: height - box.y - box.height, width: box.width, height: box.height)
             }
-            if let ground = layout.background.flatMap({ $0 == "transparent" ? nil : SketchSVG.color($0) }) {
+            if let paper {
+                context.interpolationQuality = .high
+                context.draw(paper, in: CGRect(origin: .zero, size: size))
+            } else if let ground = layout.background.flatMap({ $0 == "transparent" ? nil : SketchSVG.color($0) }) {
                 context.setFillColor(SketchRenderer.cgColor(ground))
                 context.fill(CGRect(origin: .zero, size: size))
             }
@@ -94,13 +110,14 @@ public struct PrintItem: Sendable {
             guard let consumer = CGDataConsumer(data: data as CFMutableData),
                   let context = CGContext(consumer: consumer, mediaBox: &media, info)
             else { throw SketchRenderer.RenderError(description: "no PDF writer") }
+            let ground = try Self.paper(layout, side: pdfPaperSide(layout))  // (one picture for every page)
             for (i, chunk) in chunks.enumerated() {
                 if Task.isCancelled {
                     context.closePDF()
                     throw CancellationError()
                 }
                 context.beginPDFPage(nil)
-                draw(chunk, layout: layout, page: i + 1, pages: chunks.count, in: context, size: size)
+                draw(chunk, layout: layout, page: i + 1, pages: chunks.count, in: context, size: size, paper: ground)
                 context.endPDFPage()
                 progress(i + 1, chunks.count)
             }
@@ -121,8 +138,9 @@ public struct PrintItem: Sendable {
             context.fill(CGRect(origin: .zero, size: size))
             let chunks = layout.pages(items)
             let shown = chunks.isEmpty ? [] : chunks[min(max(page, 1), chunks.count) - 1]
+            let ground = try Self.paper(layout, side: width)
             draw(shown, layout: layout, page: min(max(page, 1), max(chunks.count, 1)), pages: max(chunks.count, 1),
-                 in: context, size: size)
+                 in: context, size: size, paper: ground)
             guard let image = context.makeImage() else { throw SketchRenderer.RenderError(description: "the bitmap gave no image") }
             return image
         }
