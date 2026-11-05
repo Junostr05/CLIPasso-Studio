@@ -56,9 +56,9 @@ struct PrintCommands: Commands {
 }
 
 /// The print layout (print_dialog.PrintDialog): the page and its orientation, how many sketches per page, the margin,
-/// a heading, a signature and the names under the sketches, the stroke colour and the background – with a preview of
-/// the first page – then a PDF (vector pages) or the printer. It starts from the last print's choices (of this app or
-/// the studio) and keeps them for the next one.
+/// a heading, a signature and the names under the sketches, the stroke colour, the background and the paper – with a
+/// preview of the first page – then a PDF (vector pages) or the printer. It starts from the last print's choices (of
+/// this app or the studio) and keeps them for the next one.
 struct PrintSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -163,6 +163,7 @@ struct PrintSheet: View {
             Section {
                 ColorPicker(t.tr("ui.stroke_color"), selection: stroke, supportsOpacity: false)
                 ColorPicker(t.tr("ui.background"), selection: background, supportsOpacity: false)
+                PaperChoice(paper: $layout.paper) { kind in colours(kind: kind, background: layout.background) }
             }
         }
         .formStyle(.grouped)
@@ -198,7 +199,15 @@ struct PrintSheet: View {
     }
 
     private var background: Binding<Color> {
-        Binding(get: { Color(hex: layout.background ?? "#FFFFFF") }, set: { layout.background = ExportSheet.hex($0) })
+        Binding(get: { Color(hex: layout.background ?? "#FFFFFF") },
+                set: { colours(kind: nil, background: ExportSheet.hex($0)) })
+    }
+
+    /// paper_colours: a paper brings its colour; on a dark background black strokes turn light, and back.
+    private func colours(kind: Paper.Kind?, background: String?) {
+        let (ground, stroke) = Paper.colours(kind: kind, background: background, stroke: layout.stroke ?? "#000000")
+        layout.background = ground
+        layout.stroke = stroke.lowercased() == "#000000" ? nil : stroke
     }
 
     /// The layout as it is printed: heading and signature without spaces around them.

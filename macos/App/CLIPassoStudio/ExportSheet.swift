@@ -26,8 +26,8 @@ struct ExportSource: Identifiable {
 }
 
 /// The export of a sketch (dialogs.ExportDialog): SVG, PNG or PDF with the stroke colour and width, the background
-/// (or none), the frame – square, the photo's shape (when it is known), cropped to the strokes with a margin – and
-/// the PNG's size or the PDF's width. It starts from the last export's choices (of this app or the studio) and keeps
+/// (or none) and the paper, the frame – square, the photo's shape (when it is known), cropped to the strokes with a
+/// margin – and the PNG's size or the PDF's width. It starts from the last export's choices (of this app or the studio) and keeps
 /// them for the next one.
 struct ExportSheet: View {
     @Environment(AppModel.self) private var model
@@ -64,9 +64,13 @@ struct ExportSheet: View {
                         LabeledContent(t.tr("ui.stroke_width_scale"), value: String(format: "%.1f ×", options.widthScale))
                     }
                     Toggle(t.tr("ui.transparent"), isOn: Binding(get: { options.background == nil },
-                                                               set: { options.background = $0 ? nil : "#FFFFFF" }))
+                                                               set: { setBackground($0 ? nil : "#FFFFFF") }))
                     if options.background != nil {
                         ColorPicker(t.tr("ui.background"), selection: background, supportsOpacity: false)
+                    }
+                    PaperChoice(paper: $options.paper) { kind in
+                        (options.background, options.stroke) = Paper.colours(kind: kind, background: options.background,
+                                                                             stroke: options.stroke)
                     }
                 }
                 Section {
@@ -124,7 +128,12 @@ struct ExportSheet: View {
     }
 
     private var background: Binding<Color> {
-        Binding(get: { Color(hex: options.background ?? "#FFFFFF") }, set: { options.background = Self.hex($0) })
+        Binding(get: { Color(hex: options.background ?? "#FFFFFF") }, set: { setBackground(Self.hex($0)) })
+    }
+
+    /// A new background (nil: transparent) – on a dark one black strokes turn light, and back (paper_colours).
+    private func setBackground(_ colour: String?) {
+        (options.background, options.stroke) = Paper.colours(kind: nil, background: colour, stroke: options.stroke)
     }
 
     /// "#RRGGBB" of a colour chosen in the colour panel (in sRGB).
