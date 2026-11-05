@@ -549,7 +549,8 @@ def paper_cases(out: Path) -> dict:
     inputs = [{"paper": p, "normalized": paper.normalize(p),
                "colour": paper.color_of(paper.normalize(p)), "colour_on_blue": paper.color_of(p, "#336699")}
               for p in PAPER_INPUTS]
-    dark = [{"colour": c, "dark": paper.is_dark(c)} for c in ("#2C3A33", "#C9A97C", "#6b6b6b", "#6c6c6c", "abc", "#zzz")]
+    dark = [{"colour": c, "dark": paper.is_dark(c)}
+            for c in ("#2C3A33", "#C9A97C", "#6b6b6b", "#6c6c6c", "abc", "#zzz")]
     return {"pictures": pictures, "inputs": inputs, "dark": dark}
 
 
