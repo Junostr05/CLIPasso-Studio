@@ -51,9 +51,27 @@ public struct Paper: Sendable, Equatable {
         return normalize(kind: object["kind"]?.stringValue, vignette: object["vignette"])
     }
 
-    /// The paper of the export settings (export_paper, export_vignette).
+    /// The paper of the export settings: export_paper (the kind) and export_vignette (whole percent, as the
+    /// dialogs' spin box keeps it).
     public static func of(_ settings: AppSettings) -> Paper? {
-        normalize(kind: settings["export_paper"]?.stringValue, vignette: settings["export_vignette"])
+        normalize(kind: settings["export_paper"]?.stringValue, vignette: .double(Double(vignettePercent(settings)) / 100))
+    }
+
+    /// int(export_vignette or 0) – 0 where it is no number.
+    public static func vignettePercent(_ settings: AppSettings) -> Int {
+        switch settings["export_vignette"] {
+        case .int(let i): i
+        case .double(let d) where d.isFinite: Int(d)
+        case .string(let s): Int(s.trimmingCharacters(in: .whitespaces)) ?? 0
+        case .bool(let b): b ? 1 : 0
+        default: 0
+        }
+    }
+
+    /// The choice kept for the next export (export_paper, export_vignette in percent).
+    public static func remember(_ paper: Paper?, in settings: inout AppSettings) {
+        settings["export_paper"] = .string(paper?.kind.rawValue ?? Kind.none.rawValue)
+        settings["export_vignette"] = .int(Int(((paper?.vignette ?? 0) * 100).rounded()))
     }
 
     /// color_of: the background colour if there is one, else the kind's own colour.

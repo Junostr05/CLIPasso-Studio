@@ -55,6 +55,17 @@ import Testing
         #expect(SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options).contains(#"viewBox="0 0 224 224""#))
     }
 
+    /// Black is no colour (ExportDialog._save): the strokes keep their own.
+    @Test func blackKeepsTheSketchsColours() throws {
+        let coloured = try Self.sketch("svg/lines.svg")
+            .replacingOccurrences(of: #"stroke="rgb(0, 0, 0)""#, with: ##"stroke="#aa3311""##)
+        let before = try SketchSVG.parse(coloured).strokes.map(\.color)
+        #expect(before.contains(RGB(0xAA, 0x33, 0x11)))
+        let options = ExportOptions()
+        #expect(options.strokeColour == nil)
+        #expect(try SketchSVG.parse(SketchExporter.svg(coloured, options: options)).strokes.map(\.color) == before)
+    }
+
     #if canImport(CoreGraphics)
         @Test func aPNGOfTheFramesShape() throws {
             var options = ExportOptions()

@@ -23,6 +23,9 @@ public struct ExportOptions: Sendable, Equatable {
 
     public init() {}
 
+    /// The colour the strokes get – none for black: as the studio's dialog, the sketch then keeps its own colours.
+    public var strokeColour: String? { stroke.lowercased() == "#000000" ? nil : stroke }
+
     /// The last choices (the dialog's defaults where there are none: a white background for PNG and PDF, none for SVG).
     public init(settings: AppSettings, format: Format) {
         if let s = settings["export_stroke"]?.stringValue, !s.isEmpty { stroke = s }
@@ -60,14 +63,14 @@ public enum SketchExporter {
 
     /// export.export_svg (the plain style, no paper).
     public static func svg(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil) -> String {
-        let restyled = SketchExport.restyleSVG(svg, strokeColor: options.stroke, widthScale: options.widthScale,
+        let restyled = SketchExport.restyleSVG(svg, strokeColor: options.strokeColour, widthScale: options.widthScale,
                                                background: options.background)
         return framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
     }
 
     /// The restyled, framed sketch a PNG or PDF draws (its background is the picture's, not a rect).
     static func drawn(_ svg: String, _ options: ExportOptions, photo: SketchFraming.PhotoFrame?) -> String {
-        let restyled = SketchExport.restyleSVG(svg, strokeColor: options.stroke, widthScale: options.widthScale)
+        let restyled = SketchExport.restyleSVG(svg, strokeColor: options.strokeColour, widthScale: options.widthScale)
         return framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
     }
 }
