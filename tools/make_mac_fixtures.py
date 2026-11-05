@@ -517,6 +517,42 @@ def random_cases() -> list[dict]:
     return cases
 
 
+PAPER_KINDS = ("drawing", "watercolor", "kraft", "linen", "blackboard")
+PAPER_CASES = (  # (name, paper, background, size, crop (x, y, w, h) – None: the whole picture)
+    *((f"{k}_160x120", {"kind": k, "vignette": 0}, None, (160, 120), None) for k in PAPER_KINDS),
+    *((f"{k}_640x480", {"kind": k, "vignette": 0}, None, (640, 480), (256, 176, 128, 128)) for k in PAPER_KINDS),
+    ("kraft_1500x1000", {"kind": "kraft", "vignette": 0}, None, (1500, 1000), (700, 450, 128, 128)),  # 2 px fibres
+    ("drawing_1800x1200", {"kind": "drawing", "vignette": 0}, None, (1800, 1200), (900, 600, 128, 128)),  # scaled up
+    ("linen_vignette_blue", {"kind": "linen", "vignette": 0.6}, "#336699", (160, 120), None),
+    ("none_vignette", {"kind": "none", "vignette": 1.0}, "#FBFAF6", (100, 80), None),
+)
+PAPER_INPUTS = (None, {}, {"kind": "none"}, {"kind": "none", "vignette": 0.3}, {"kind": "kraft"},
+                {"kind": "linen", "vignette": "0.5"}, {"kind": "felt", "vignette": 2},
+                {"kind": "drawing", "vignette": -1}, {"kind": "blackboard", "vignette": None})
+
+
+def paper_cases(out: Path) -> dict:
+    """gui/paper.py: the papers as pictures (paper/*.png – the whole picture or a part of a large one) of every kind,
+    with a vignette and a background colour, and what normalize, color_of and is_dark make of settings."""
+    from clipasso_studio.gui import paper
+
+    (out / "paper").mkdir(parents=True, exist_ok=True)
+    pictures = []
+    for name, p, background, (w, h), crop in PAPER_CASES:
+        img = paper.image(p, w, h, background)
+        if crop:
+            x, y, cw, ch = crop
+            img = img.crop((x, y, x + cw, y + ch))
+        img.save(out / "paper" / f"{name}.png", "PNG")
+        pictures.append({"name": name, "paper": p, "background": background, "size": [w, h],
+                         "crop": list(crop) if crop else None, "file": f"paper/{name}.png"})
+    inputs = [{"paper": p, "normalized": paper.normalize(p),
+               "colour": paper.color_of(paper.normalize(p)), "colour_on_blue": paper.color_of(p, "#336699")}
+              for p in PAPER_INPUTS]
+    dark = [{"colour": c, "dark": paper.is_dark(c)} for c in ("#2C3A33", "#C9A97C", "#6b6b6b", "#6c6c6c", "abc", "#zzz")]
+    return {"pictures": pictures, "inputs": inputs, "dark": dark}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -675,6 +711,7 @@ def build(out: Path) -> None:
     write_json(out / "export" / "framing.json", framing_cases(out))
     write_json(out / "export" / "print.json", print_cases())
     write_json(out / "paper" / "random.json", random_cases())
+    write_json(out / "paper" / "papers.json", paper_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),

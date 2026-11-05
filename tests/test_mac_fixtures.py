@@ -25,7 +25,8 @@ def _files(root: Path) -> list[str]:
 
 
 def _same_pixels(a: Path, b: Path) -> bool:
-    """Qt's drawing (export/render/*.png) may differ by a step of a channel between platforms; nothing more."""
+    """Qt's drawing (export/render/*.png) and the papers (paper/*.png: numpy's float32 cosine is its own on every
+    processor) may differ by a step of a channel between platforms; nothing more."""
     from PIL import Image, ImageChops
 
     with Image.open(a) as x, Image.open(b) as y:
@@ -38,7 +39,9 @@ def test_fixtures_are_current(tmp_path, user_data):
     out = tmp_path / "Fixtures"
     _generator().build(out)
     assert _files(out) == _files(FIXTURES)
-    different = [f for f in _files(out) if not (_same_pixels(out / f, FIXTURES / f) if f.startswith("export/render/")
+    pictures = ("export/render/", "paper/")
+    different = [f for f in _files(out) if not (_same_pixels(out / f, FIXTURES / f)
+                                                if f.startswith(pictures) and f.endswith(".png")
                                                 else filecmp.cmp(out / f, FIXTURES / f, shallow=False))]
     assert different == [], "run: python tools/make_mac_fixtures.py"
 
