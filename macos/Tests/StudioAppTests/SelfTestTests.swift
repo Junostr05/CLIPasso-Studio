@@ -82,5 +82,6 @@ import StudioCore
         let store = try options.store()
         #expect(store.url.deletingLastPathComponent().path == out.path)
         #expect(store.load().outputDir.path == "/Volumes/R")
+        #expect(Paper.of(store.load()) == Paper(kind: .watercolor, vignette: 0.3))  // (the print sheet on paper)
     }
 }

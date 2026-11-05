@@ -47,12 +47,16 @@ public struct ScreenshotOptions: Sendable {
         }
     }
 
-    /// The settings of the screenshots: in OUT, the gallery on `results`.
+    /// The settings of the screenshots: in OUT, the gallery on `results`; the exports and prints on watercolour
+    /// paper with a vignette (so the print sheet shows a paper).
     public func store() throws -> SettingsStore {
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         let store = SettingsStore(url: output.appending(path: "settings.json"), home: output)
         var settings = store.load()
         if let results { settings.outputDir = results }
+        settings["export_paper"] = "watercolor"
+        settings["export_vignette"] = 30
+        settings["export_background"] = .string(Paper.colours[.watercolor] ?? "#FFFFFF")
         try store.save(settings)
         return store
     }
