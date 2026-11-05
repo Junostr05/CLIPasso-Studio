@@ -482,6 +482,41 @@ def print_cases() -> dict:
     return {"sizes": sizes, "grids": grids, "counts": counts, "colours": colours, "pages": pages}
 
 
+RANDOM_SEEDS = ([7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [0], [12345], [1, 2, 3, 4, 5, 6])
+RANDOM_NORMALS = 30000  # (enough to reach the ziggurat's tail and its slow layers often)
+RANDOM_FIBRES = 300
+
+
+def _bits_hash(values) -> str:
+    """FNV-1a (64 bit) over the IEEE bits of the numbers, 8 bytes each, little-endian: equal only when every bit is."""
+    import struct
+
+    h = 0xCBF29CE484222325
+    for v in values:
+        for b in struct.pack("<d", float(v)):
+            h = ((h ^ b) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}"
+
+
+def random_cases() -> list[dict]:
+    """numpy.random.default_rng as gui/paper.py draws from it: the raw 64-bit numbers, standard normals, and the
+    draws of a fibre (uniform, choice of (-1, 1) – 32 bits, half kept for the next –, normal) one after another."""
+    import numpy as np
+
+    cases = []
+    for seed in RANDOM_SEEDS:
+        raw = np.random.default_rng(seed).bit_generator.random_raw(8).tolist()
+        normals = np.random.default_rng(seed).standard_normal(RANDOM_NORMALS)
+        rng = np.random.default_rng(seed)
+        fibres = [[rng.uniform(0, 300), rng.uniform(0, 200), rng.uniform(0, math.pi), rng.uniform(6, 26),
+                   rng.uniform(-0.4, 0.4), float(rng.choice((-1, 1))), rng.uniform(64, 127), rng.normal(0, 1)]
+                  for _ in range(RANDOM_FIBRES)]
+        cases.append({"seed": seed, "raw": [f"{v:016x}" for v in raw], "normals_first": normals[:12].tolist(),
+                      "normals_hash": _bits_hash(normals), "fibres_first": fibres[:2],
+                      "fibres_hash": _bits_hash(v for row in fibres for v in row)})
+    return cases
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -639,6 +674,7 @@ def build(out: Path) -> None:
     write_json(out / "edit" / "strokes.json", edit_cases(out))
     write_json(out / "export" / "framing.json", framing_cases(out))
     write_json(out / "export" / "print.json", print_cases())
+    write_json(out / "paper" / "random.json", random_cases())
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
