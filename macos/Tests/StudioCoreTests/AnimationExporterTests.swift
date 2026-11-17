@@ -104,7 +104,8 @@
             try AnimationExporter.frames(job) { _ in count += 1 }
             let drawn = SketchAnimation.plan(50, length: 1, fps: 50, hold: 0.5, format: .gif, size: 64)
             #expect(asked.batches.allSatisfy { $0.count <= AnimationExporter.styledAhead } && asked.batches.count > 1)
-            #expect(Set(asked.batches.joined()).count == Set(drawn.frames).count)  // (each drawn frame once)
+            // (each drawn frame asked about once – a frame of the pen's pause can read like the one before it)
+            #expect(asked.batches.joined().count == Set(drawn.frames).count)
             #expect(asked.batches.joined().allSatisfy { !$0.contains("#336699") })  // (the ink is drawn black)
             #expect(count == drawn.frames.count)
         }
