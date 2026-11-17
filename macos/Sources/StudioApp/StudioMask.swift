@@ -182,18 +182,18 @@ public extension AppModel {
 
         init?(edited: URL?, probability url: URL?, threshold: Float) {
             let prob = url.flatMap { try? MaskFile.read($0) }
+            let shown: (values: [Bool], width: Int, height: Int)
             if let edited, let mine = try? MaskFile.read(edited) {
-                object = mine.values.map { $0 >= 0.5 }
-                width = mine.width
-                height = mine.height
+                shown = (mine.values.map { $0 >= 0.5 }, mine.width, mine.height)
             } else if let prob {
-                object = prob.values.map { $0 >= threshold }
-                width = prob.width
-                height = prob.height
+                shown = (prob.values.map { $0 >= threshold }, prob.width, prob.height)
             } else {
                 return nil
             }
-            probability = prob.flatMap { $0.width == width && $0.height == height ? $0.values : nil }
+            object = shown.values
+            width = shown.width
+            height = shown.height
+            probability = prob.flatMap { $0.width == shown.width && $0.height == shown.height ? $0.values : nil }
         }
     }
 #endif
