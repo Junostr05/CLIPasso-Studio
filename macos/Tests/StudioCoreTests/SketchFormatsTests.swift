@@ -49,6 +49,21 @@ import Testing
         }
     }
 
+    /// QColor(name) as Qt reads it (Fixtures/export/qcolor.json): its 148 names, the hex forms – and what is no
+    /// colour to it ("nope", rgb(), white space around a hex value), which the web page shows on white.
+    @Test func coloursLikeQt() throws {
+        let fixture = try #require(Fixtures.json("export/qcolor.json").objectValue)
+        let names = try #require(fixture["names"]?.objectValue)
+        #expect(names.count == 148 && QtColour.names.count == 148)
+        func hex(_ c: RGB?) -> String? { c.map { String(format: "#%02x%02x%02x", $0.r, $0.g, $0.b) } }
+        for (name, colour) in names { #expect(hex(QtColour.read(name)) == colour.stringValue, "\(name)") }
+        for c in (fixture["cases"]?.arrayValue ?? []).compactMap(\.arrayValue) {
+            let text = c[0].stringValue ?? ""
+            #expect(hex(QtColour.read(text)) == c[2].stringValue, "\(text)")
+            #expect((QtColour.read(text) != nil) == (c[1].truthy), "\(text)")
+        }
+    }
+
     @Test func webPagesLikePython() throws {
         let animated = try #require(try Self.cases("animated").first?["out"]?.stringValue)
         for c in try Self.cases("pages") {

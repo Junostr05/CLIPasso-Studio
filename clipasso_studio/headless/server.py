@@ -2,8 +2,8 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · convert_model · encode_webp · start · pause · resume ·
-cancel · shutdown
+ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · start · pause ·
+resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -235,6 +235,27 @@ class EngineServer:
                 pass
             raise
         return {"path": dest, "frames": len(images)}
+
+    def op_stylize(self, args: dict) -> dict:
+        """Sketches drawn in a brush style (gui/brush.stylize_svg, as every export of the studio draws them): the Mac
+        app sends ``svgs`` restyled and framed and draws what comes back – the strokes become filled outlines,
+        dashed grain, halos … in plain SVG. ``style`` is one of brush.STYLES ("plain": unchanged)."""
+        import xml.etree.ElementTree as ET
+
+        from ..gui import brush
+
+        svgs, style = args.get("svgs"), args.get("style")
+        if not isinstance(svgs, list) or not all(isinstance(svg, str) for svg in svgs):
+            raise _Fail("bad_request", "svgs is a list of SVG texts")
+        if style not in brush.STYLES:
+            raise _Fail("bad_request", f"style is one of {', '.join(brush.STYLES)}")
+        out = []
+        for i, svg in enumerate(svgs):
+            try:
+                out.append(brush.stylize_svg(svg, style))
+            except ET.ParseError as exc:
+                raise _Fail("bad_request", f"svgs[{i}] is no SVG: {exc}") from None
+        return {"svgs": out}
 
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")

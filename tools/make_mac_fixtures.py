@@ -24,8 +24,11 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them;
   ``paths_expected.json``: path data and what engine/svg_path.py reads from it
 - ``export/`` – ``restyle.json``: SVGs as gui/export.restyle_svg changes them (colour, width, background), and
-  ``render/*.png``: the ``svg/`` sketches as the studio exports them (gui/export.export_png, 256 px, Qt). Qt's
-  pixels can differ by a step between platforms, so the test compares these by pixel, not by byte
+  ``qcolor.json``: Qt's colour names and what QColor makes of other texts (the web page's and Lottie's colours);
+  ``render/*.png``: the ``svg/`` sketches as the studio exports them (gui/export.export_png, 256 px, Qt);
+  ``styles/<style>.svg`` and ``.png``: a sketch in every brush style as the engine gives it to the Mac app
+  (gui/brush.stylize_svg) and as the studio exports it. Qt's pixels can differ by a step between platforms, so the
+  test compares these by pixel, not by byte
 
 ``tests/test_mac_fixtures.py`` checks that the committed files are current.
 """
@@ -277,12 +280,17 @@ RESTYLE_CASES = (  # (sketch, stroke colour, width factor, background)
 RENDER_SIZE = 256
 
 
+STYLE_SKETCH = "lines.svg"  # (black strokes: the styles that colour black ones do it)
+QCOLOR_INPUTS = ("red", " Red ", "DarkGrey", "transparent", "nope", "", "none", "rgb(1,2,3)", "#abc", "#ABCDEF",
+                 "#80ff0000", "#123456789", "#111122223333", "#12345", "#ggg", "  #abcdef  ", "#2C3A33")
+
+
 def exports(out: Path) -> None:
     """What the studio's export makes of the ``svg/`` sketches (needs PySide6: Qt draws the PNGs)."""
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PIL import Image
 
-    from clipasso_studio.gui import export
+    from clipasso_studio.gui import brush, export
 
     folder = out / "export"
     (folder / "render").mkdir(parents=True)
@@ -292,12 +300,29 @@ def exports(out: Path) -> None:
         cases.append({"svg": name, "stroke_color": colour, "width_scale": scale, "background": background,
                       "output": export.restyle_svg(svg, colour, scale, background)})
     write_json(folder / "restyle.json", cases)
+    # QColor(name), as the web page and Lottie read a colour: Qt's names, and what it makes of other texts
+    from PySide6.QtGui import QColor
+
+    write_json(folder / "qcolor.json", {
+        "names": {n: QColor(n).name() for n in QColor.colorNames()},
+        "cases": [[text, QColor(text).isValid(), QColor(text).name() if QColor(text).isValid() else None]
+                  for text in QCOLOR_INPUTS]})
     with tempfile.TemporaryDirectory() as tmp:
         for name in ("lines.svg", "cubic.svg", "closed_bg.svg"):
             qt = Path(tmp) / "qt.png"
             export.export_png(str(out / "svg" / name), str(qt), size=RENDER_SIZE)  # (white behind it)
             with Image.open(qt) as image:
                 image.convert("RGB").save(folder / "render" / name.replace(".svg", ".png"), optimize=False)
+        # the brush styles: the SVG the engine gives the Mac app (export_png's, restyled and stylized) and Qt's PNG
+        (folder / "styles").mkdir()
+        raw = (out / "svg" / STYLE_SKETCH).read_text(encoding="utf-8")
+        for style in brush.STYLES[1:]:
+            styled = brush.stylize_svg(export.restyle_svg(raw, None, 1.0), style)
+            (folder / "styles" / f"{style}.svg").write_bytes(styled.encode("utf-8"))
+            qt = Path(tmp) / "qt.png"
+            export.export_png(str(out / "svg" / STYLE_SKETCH), str(qt), size=RENDER_SIZE, style=style)
+            with Image.open(qt) as image:
+                image.convert("RGB").save(folder / "styles" / f"{style}.png", optimize=False)
 
 
 # ----------------------------------------------------------------------------------------------- dropped images

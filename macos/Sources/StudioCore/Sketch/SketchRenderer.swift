@@ -5,7 +5,8 @@
     import UniformTypeIdentifiers
 
     /// A sketch drawn with Core Graphics as the studio draws it with Qt (gui/export.svg_to_qimage): every stroke with
-    /// round ends and corners, its width and opacity, in sRGB; the sketch's own background first, when it has one.
+    /// round ends and corners, its width and opacity, in sRGB; the sketch's own background first, when it has one. A
+    /// sketch in a brush style also has filled outlines, dashed grain and flat ends.
     public enum SketchRenderer {
         public struct RenderError: Error, CustomStringConvertible, Sendable {
             public let description: String
@@ -25,6 +26,14 @@
             }
             if stroke.closed { path.closeSubpath() }
             return path
+        }
+
+        public static func lineCap(_ cap: SketchStroke.Cap) -> CGLineCap {
+            switch cap {
+            case .round: .round
+            case .butt: .butt
+            case .square: .square
+            }
         }
 
         /// The pixel size with the longer side `longSide`, in the sketch's shape (export._dims, Python's round).
@@ -48,12 +57,19 @@
                 context.setFillColor(cgColor(background))
                 context.fill(CGRect(x: 0, y: 0, width: sketch.width, height: sketch.height))
             }
-            context.setLineCap(.round)
             context.setLineJoin(.round)
             for stroke in sketch.strokes {
+                if let fill = stroke.fill {  // (an open outline is filled as if closed, as in SVG)
+                    context.addPath(path(stroke))
+                    context.setFillColor(cgColor(fill, alpha: stroke.fillOpacity))
+                    context.fillPath()
+                }
+                guard stroke.stroked else { continue }
                 context.addPath(path(stroke))
                 context.setStrokeColor(cgColor(stroke.color, alpha: stroke.opacity))
                 context.setLineWidth(CGFloat(stroke.width))
+                context.setLineCap(lineCap(stroke.cap))
+                context.setLineDash(phase: CGFloat(stroke.dashOffset), lengths: stroke.dash.map { CGFloat($0) })
                 context.strokePath()
             }
             context.restoreGState()

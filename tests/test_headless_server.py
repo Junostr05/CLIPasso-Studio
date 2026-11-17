@@ -491,3 +491,24 @@ def test_encode_webp(tmp_path):
     gone = server.handle(_req(20, "encode_webp", frames=paths + [str(tmp_path / "nope.png")], durations=[1, 2, 3, 4],
                               dest=str(dest)))
     assert gone["error"]["code"] == "not_found"
+
+
+def test_stylize():
+    """The Mac app draws the brush styles: the engine turns its sketches into the style's plain SVG geometry, the
+    same as the studio's exports (random offsets seeded: the same every time)."""
+    from clipasso_studio.gui import brush
+
+    sketch = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
+              '<path d="M 10 10 C 60 0 120 80 200 40" fill="none" stroke="#000000" stroke-width="2"/></svg>')
+    server, _ = _server()
+    answer = server.handle(_req(1, "stylize", svgs=[sketch, sketch], style="charcoal"))
+    assert answer["ok"]
+    styled = answer["result"]["svgs"]
+    assert styled == [brush.stylize_svg(sketch, "charcoal")] * 2
+    assert styled[0].count("<path") == 9 and "stroke-dasharray" in styled[0]  # (a smudge and eight grainy streaks)
+    plain = server.handle(_req(2, "stylize", svgs=[sketch], style="plain"))
+    assert plain["result"]["svgs"] == [sketch]
+    assert server.handle(_req(3, "stylize", svgs=[], style="ink"))["result"]["svgs"] == []
+    for i, args in enumerate([dict(svgs=sketch, style="ink"), dict(svgs=[sketch], style="glitter"),
+                              dict(svgs=[1], style="ink"), dict(svgs=["<svg"], style="ink")]):
+        assert server.handle(_req(10 + i, "stylize", **args))["error"]["code"] == "bad_request", args

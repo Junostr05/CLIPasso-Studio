@@ -54,7 +54,8 @@
         }
 
         @Test func aGIFStrokeByStroke() throws {
-            let job = try Self.job(.strokes, .gif)
+            var job = try Self.job(.strokes, .gif)
+            job.options.stroke = "#336699"  // (one stroke colour: ink in eight steps, as export._ink draws it)
             let url = FileManager.default.temporaryDirectory.appending(path: "strokes-\(UUID().uuidString).gif")
             defer { try? FileManager.default.removeItem(at: url) }
             var progress: [Int] = []
@@ -74,6 +75,12 @@
             #expect(first.width == 64 && first.height == 64)
             #expect(Self.colours(last).count > 2 && Self.colours(last).count <= SketchAnimation.inkLevels)  // (ink in steps)
             #expect(Self.colours(first).count < Self.colours(last).count || Self.colours(first).count <= 2)
+            // the sketch's own colours – black and a dark grey (export._one_colour: not one colour) – in full colour
+            job.options.stroke = "#000000"
+            try AnimationExporter.gif(job, to: url)
+            let full = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+            let end = try #require(CGImageSourceCreateImageAtIndex(full, CGImageSourceGetCount(full) - 1, nil))
+            #expect(Self.colours(end).count > SketchAnimation.inkLevels)
         }
 
         @Test func theDrawingProcessOfARun() throws {

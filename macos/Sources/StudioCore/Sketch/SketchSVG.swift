@@ -44,6 +44,20 @@ public struct SketchStroke: Sendable, Hashable {
     public var width: Double
     /// drawn by hand in the studio (data-fixed): stays as it is
     public var fixed: Bool
+    // how a brush style draws it (brush.stylize_svg) – plain sketches keep the defaults: a filled outline (nil: no
+    // fill), whether the line itself is drawn (stroke="none": only the fill), dashes (grain) and where they start,
+    // the ends of the line
+    public var fill: RGB? = nil
+    public var fillOpacity = 1.0
+    public var stroked = true
+    public var dash: [Double] = []
+    public var dashOffset = 0.0
+    public var cap = Cap.round
+
+    /// stroke-linecap – round where the SVG names none (the sketches' strokes all have round ends)
+    public enum Cap: String, Sendable, Hashable {
+        case round, butt, square
+    }
 }
 
 public struct Sketch: Sendable, Hashable {
@@ -288,6 +302,31 @@ public enum SketchSVG {
         return RGB(0, 0, 0)
     }
 
+    /// The attributes a brush style sets (fill, stroke="none", dashes, line caps), the lengths in pixels.
+    private struct Look {
+        var fill: RGB?
+        var fillOpacity: Double
+        var stroked: Bool
+        var dash: [Double]
+        var dashOffset: Double
+        var cap: SketchStroke.Cap
+
+        init(_ attrs: [String: String], scale: Double) {
+            // (a fill only where the SVG names one: the sketches' paths name none, the styles' outlines do)
+            let fillName = (attrs["fill"] ?? "").trimmingCharacters(in: .whitespaces)
+            fill = fillName.isEmpty ? nil : SketchSVG.color(fillName)
+            fillOpacity = (SketchSVG.number(attrs["fill-opacity"]) ?? 1) * (SketchSVG.number(attrs["opacity"]) ?? 1)
+            stroked = (attrs["stroke"] ?? "").trimmingCharacters(in: .whitespaces) != "none"
+            let lengths = (attrs["stroke-dasharray"] ?? "").split(whereSeparator: { $0 == "," || $0 == " " })
+                .compactMap { Double($0) }
+            // (a pattern with a negative length or none above zero is drawn solid, as the SVG spec says)
+            dash = lengths.allSatisfy { $0 >= 0 } && lengths.contains { $0 > 0 } ? lengths.map { $0 * scale } : []
+            dashOffset = (SketchSVG.number(attrs["stroke-dashoffset"]) ?? 0) * scale
+            let cap = (attrs["stroke-linecap"] ?? "").trimmingCharacters(in: .whitespaces)
+            self.cap = SketchStroke.Cap(rawValue: cap) ?? .round
+        }
+    }
+
     public static func parse(_ text: String) throws -> Sketch {
         let parser = XMLParser(data: Data(text.utf8))
         let collector = Collector()
@@ -327,8 +366,10 @@ public enum SketchSVG {
             guard !d.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
             let opacity = (number(attrs["stroke-opacity"]) ?? 1) * (number(attrs["opacity"]) ?? 1)
             let rgb = color(attrs["stroke"] ?? "rgb(0,0,0)") ?? RGB(0, 0, 0)
-            let strokeWidth = (number(attrs["stroke-width"]) ?? 1) * (sx + sy) / 2
+            let scale = (sx + sy) / 2
+            let strokeWidth = (number(attrs["stroke-width"]) ?? 1) * scale
             let fixed = ["1", "true"].contains(attrs["data-fixed"] ?? "")
+            let look = Look(attrs, scale: scale)
             func scaled(_ p: SketchPoint) -> SketchPoint { SketchPoint(x: (p.x - vx) * sx, y: (p.y - vy) * sy) }
             for sub in try parsePath(d) {
                 guard let first = sub.segments.first?.first else { continue }
@@ -337,7 +378,9 @@ public enum SketchSVG {
                     return SketchSegment(kind: kind, points: seg.dropFirst().map(scaled))
                 }
                 strokes.append(SketchStroke(start: scaled(first), segments: segments, closed: sub.closed, color: rgb,
-                                            opacity: opacity, width: strokeWidth, fixed: fixed))
+                                            opacity: opacity, width: strokeWidth, fixed: fixed, fill: look.fill,
+                                            fillOpacity: look.fillOpacity, stroked: look.stroked, dash: look.dash,
+                                            dashOffset: look.dashOffset, cap: look.cap))
             }
         }
         return Sketch(width: width, height: height, background: background, strokes: strokes)

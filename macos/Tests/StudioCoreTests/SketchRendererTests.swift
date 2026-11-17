@@ -49,6 +49,30 @@
             let svg = String(decoding: try Fixtures.data("svg/\(name).svg"), as: UTF8.self)
             let qt = try Pixels(Self.decode(Fixtures.data("export/render/\(name).png")))
             let mine = try Pixels(Self.decode(SketchRenderer.exportPNG(svg: svg, size: 256)))
+            Self.likeQt(mine, qt, name)
+        }
+
+        /// A sketch in every brush style – the SVG the engine gives the app (brush.stylize_svg: filled outlines, thin
+        /// see-through lines, dashed grain, flat ends, halos) – drawn here as Qt draws it in the studio's export.
+        @Test(arguments: ["ink", "pencil", "charcoal", "chalk", "ballpoint", "marker", "watercolor", "neon", "calligraphy"])
+        func brushStylesLikeQt(_ style: String) throws {
+            let svg = String(decoding: try Fixtures.data("export/styles/\(style).svg"), as: UTF8.self)
+            let qt = try Pixels(Self.decode(Fixtures.data("export/styles/\(style).png")))
+            let image = try SketchRenderer.image(try SketchSVG.parse(svg), longSide: 256, background: RGB(255, 255, 255))
+            // (a style can be light – watercolour's washes are 15 % ink: "clearly drawn" is measured against its
+            // strongest pixel, 40 % of it, as 102 is of black's 255)
+            let paper = qt.at(0, 0)
+            var strongest = 0
+            for y in 0..<qt.height {
+                for x in 0..<qt.width { strongest = max(strongest, Self.distance(qt.at(x, y), paper)) }
+            }
+            let clear = Int((Double(strongest) * 0.4).rounded())
+            Self.likeQt(try Pixels(image), qt, style, clear: clear, near: clear * 38 / 102)
+        }
+
+        /// Mine and Qt's: on average within 2 % per channel, and every clearly drawn pixel of Qt's (`clear` away from
+        /// the paper) drawn here too (`near` away from it, at the pixel or a neighbour).
+        static func likeQt(_ mine: Pixels, _ qt: Pixels, _ name: String, clear: Int = 102, near: Int = 38) {
             #expect(mine.width == qt.width && mine.height == qt.height)
             // on average within 2 % per channel
             var total = 0
@@ -61,12 +85,12 @@
             let paper = qt.at(0, 0)
             var ink = 0, missing = 0
             for y in 0..<qt.height {
-                for x in 0..<qt.width where Self.distance(qt.at(x, y), paper) > 102 {
+                for x in 0..<qt.width where distance(qt.at(x, y), paper) > clear {
                     ink += 1
-                    let near = (max(0, y - 1)...min(qt.height - 1, y + 1)).contains { yy in
-                        (max(0, x - 1)...min(qt.width - 1, x + 1)).contains { Self.distance(mine.at($0, yy), paper) > 38 }
+                    let drawn = (max(0, y - 1)...min(qt.height - 1, y + 1)).contains { yy in
+                        (max(0, x - 1)...min(qt.width - 1, x + 1)).contains { distance(mine.at($0, yy), paper) > near }
                     }
-                    if !near { missing += 1 }
+                    if !drawn { missing += 1 }
                 }
             }
             #expect(ink > 100, "\(name): Qt drew only \(ink) ink pixels")

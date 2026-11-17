@@ -19,13 +19,9 @@ public extension SketchFormats {
         return ["o": still(100), "r": still(0), "p": still([0, 0, 0]), "a": still([0, 0, 0]), "s": still([100, 100, 100])]
     }
 
-    /// QColor(name) as the studio reads it: "#rgb", "#rrggbb" or an SVG colour name – anything else (rgb()) is not a
-    /// colour to it.
-    internal static func qColor(_ name: String) -> RGB? {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard trimmed.hasPrefix("#") || trimmed.allSatisfy(\.isLetter) else { return nil }
-        return SketchSVG.color(trimmed)
-    }
+    /// QColor(name) as the studio reads it (QtColour): "#…" or one of Qt's colour names – anything else (rgb(), an
+    /// unknown name) is not a colour to it.
+    internal static func qColor(_ name: String) -> RGB? { QtColour.read(name) }
 
     /// _lottie_rgb: red, green, blue (0 … 1, four places) and 1.
     private static func rgb(_ name: String) -> JSONValue {

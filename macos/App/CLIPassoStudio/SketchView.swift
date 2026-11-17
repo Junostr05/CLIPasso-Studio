@@ -40,8 +40,13 @@ struct SketchView: View {
                              with: .color(Color(background)))
             }
             for stroke in sketch.strokes {
-                drawing.stroke(Path(SketchRenderer.path(stroke)), with: .color(Color(stroke.color, opacity: stroke.opacity)),
-                               style: StrokeStyle(lineWidth: stroke.width, lineCap: .round, lineJoin: .round))
+                let path = Path(SketchRenderer.path(stroke))
+                if let fill = stroke.fill { drawing.fill(path, with: .color(Color(fill, opacity: stroke.fillOpacity))) }
+                guard stroke.stroked else { continue }
+                drawing.stroke(path, with: .color(Color(stroke.color, opacity: stroke.opacity)),
+                               style: StrokeStyle(lineWidth: stroke.width, lineCap: SketchRenderer.lineCap(stroke.cap),
+                                                  lineJoin: .round, dash: stroke.dash.map { CGFloat($0) },
+                                                  dashPhase: stroke.dashOffset))
             }
             context.stroke(Path(roundedRect: paper.insetBy(dx: 0.5, dy: 0.5), cornerRadius: Radius.control),
                            with: .color(edge), lineWidth: 1)  // (the edge, over the strokes that reach it)

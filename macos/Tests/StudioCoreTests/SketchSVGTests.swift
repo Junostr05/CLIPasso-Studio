@@ -81,6 +81,27 @@ import Testing
         #expect(sketch.strokes.map(\.opacity) == [1, 0.5] && sketch.strokes[0].width == 2)
     }
 
+    /// What a brush style writes (brush.stylize_svg): filled outlines without a line, dashed grain with flat ends –
+    /// in pixels, as the widths are. A plain sketch keeps the defaults: lines with round ends, no fill.
+    @Test func theLookOfABrushStyle() throws {
+        let svg = #"<svg xmlns="http://www.w3.org/2000/svg" width="448" height="448" viewBox="0 0 224 224">"#
+            + ##"<path d="M 0 0 L 10 0 L 10 10 Z" fill="#336699" fill-opacity="0.5" stroke="none"/>"##
+            + ##"<path d="M 0 20 L 100 20" fill="none" stroke="#000" stroke-width="2" stroke-linecap="butt" "##
+            + #"stroke-dasharray="3,1.5 2" stroke-dashoffset="4" stroke-opacity="0.5"/>"#
+            + ##"<path d="M 0 40 L 100 40" stroke="#000" stroke-dasharray="0 0" stroke-linecap="square"/>"##
+            + ##"<path d="M 0 60 L 100 60" stroke="#000" stroke-dasharray="4 -1"/>"##
+            + "</svg>"
+        let strokes = try SketchSVG.parse(svg).strokes
+        #expect(strokes.count == 4)
+        #expect(strokes[0].fill == RGB(0x33, 0x66, 0x99) && strokes[0].fillOpacity == 0.5 && !strokes[0].stroked)
+        #expect(strokes[1].fill == nil && strokes[1].stroked && strokes[1].cap == .butt && strokes[1].opacity == 0.5)
+        #expect(strokes[1].dash == [6, 3, 4] && strokes[1].dashOffset == 8)  // (the viewBox drawn twice as large)
+        #expect(strokes[2].dash.isEmpty && strokes[2].cap == .square)  // (no length above zero: solid)
+        #expect(strokes[3].dash.isEmpty && strokes[3].cap == .round)  // (a negative length: solid)
+        let plain = try SketchSVG.parse(String(decoding: try Fixtures.data("svg/lines.svg"), as: UTF8.self)).strokes
+        #expect(plain.allSatisfy { $0.fill == nil && $0.stroked && $0.dash.isEmpty && $0.cap == .round })
+    }
+
     @Test func rejectsNonSVG() {
         #expect(throws: SketchSVG.ParseError.self) { try SketchSVG.parse("<html><body/></html>") }
         #expect(throws: SketchSVG.ParseError.self) { try SketchSVG.parse("not xml at all <") }
