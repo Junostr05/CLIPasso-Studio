@@ -98,7 +98,8 @@ public extension AppModel {
         else { return mask.clear() }
         if let asked = mask.asked, asked.image == image, asked.model == model, mask.state != .off { return }
         mask.begin(image: image, model: model)
-        guard let engine else { return mask.fail("the engine is not running") }
+        guard let engine, let queue else { return mask.fail("the engine is not running") }
+        await queue.begin()  // (its notices bring "mask_ready")
         let device = studio.settings["device"]?.stringValue ?? "auto"
         do {
             let answer = try await engine.request("mask", ["image": .string(image.path), "model": .string(model),

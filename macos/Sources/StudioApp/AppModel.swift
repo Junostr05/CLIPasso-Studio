@@ -123,7 +123,8 @@ public final class AppModel {
                     self?.apply(snapshot)
                 }
             }
-            await queue.begin()  // (the engine's notices – a mask is ready – before any job)
+            // (the engine's notices – a mask is ready; the queue reads the engine's events once a mask is asked for:
+            // the self-test reads them itself, and the engine's stream has one reader at a time)
             noticeListener = Task { [weak self] in
                 for await notice in queue.notices {
                     await self?.maskNotice(notice)
