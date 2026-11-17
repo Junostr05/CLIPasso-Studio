@@ -153,6 +153,8 @@ private struct GalleryCell: View {
         }
         Divider()
         Button(model.texts.tr("ui.export") + " …") { exporting = ExportSource.best(of: item) }
+        Button(model.texts.tr("ui.copy")) { copy(item) }
+            .help(model.texts.tr("ui.copy_tip"))
         Button(model.texts.tr("ui.print.button")) {
             printing = PrintEntry.best(of: item).map { PrintRequest(entries: [$0], name: item.name) }
         }
@@ -168,5 +170,19 @@ private struct GalleryCell: View {
     /// The result back in the studio: its image, its method and its sketches (to touch up).
     private func open() {
         model.studio.open(item)
+    }
+
+    /// Its best sketch on the clipboard (as the studio's Copy; a beep when it cannot be made).
+    private func copy(_ item: GalleryItem) {
+        guard let file = item.bestSketch else { return NSSound.beep() }
+        let run = ExportSource.bestRun(of: item)
+        Task {
+            do {
+                let svg = try await Task.detached { try String(contentsOf: file, encoding: .utf8) }.value
+                try await SketchClipboard.copy(svg: svg, runDir: run, model: model)
+            } catch {
+                NSSound.beep()
+            }
+        }
     }
 }

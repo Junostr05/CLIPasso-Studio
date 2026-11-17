@@ -1628,6 +1628,7 @@
  "ui.mac.queue.empty_hint": "Drop images or folders here, or add them with the buttons above.",
  "ui.mac.edit.eraser": "Eraser",
  "ui.mac.edit.pen": "Pen",
+ "ui.mac.copy_sketch": "Copy Sketch",
  "ui.mac.edit.undo": "Undo",
  "ui.mac.edit.redo": "Redo",
  "ui.mac.edit.sketch": "Sketch {n}",

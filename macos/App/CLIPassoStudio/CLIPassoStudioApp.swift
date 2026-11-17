@@ -66,6 +66,9 @@ struct CLIPassoStudioApp: App {
             }
         }
         .defaultSize(width: 1280, height: 820)
-        .commands { PrintCommands(texts: model?.texts) }
+        .commands {
+            PrintCommands(texts: model?.texts)
+            CopySketchCommands(texts: model?.texts)
+        }
     }
 }

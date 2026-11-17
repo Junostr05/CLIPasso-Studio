@@ -11,6 +11,17 @@ import Testing
 @Suite(.onOwnThreads) struct SketchExporterTests {
     static func sketch(_ name: String) throws -> String { String(decoding: try Fixtures.data(name), as: UTF8.self) }
 
+    /// ⌘C copies with the last export's choices, 1024 pixels, on white where the export was transparent.
+    @Test func theClipboardsChoices() {
+        var settings = AppSettings(data: [:], defaultOutputDir: URL(filePath: "/tmp"))
+        settings["export_background"] = "transparent"
+        settings["export_style"] = "ink"
+        let options = ExportOptions.forClipboard(settings)
+        #expect(options.background == "#FFFFFF" && options.size == 1024 && options.style == "ink")
+        settings["export_background"] = "#2C3A33"
+        #expect(ExportOptions.forClipboard(settings).background == "#2C3A33")
+    }
+
     @Test func theLastChoicesUnderTheStudiosKeys() {
         let home = URL(filePath: "/tmp")
         var settings = AppSettings(data: [:], defaultOutputDir: home)
@@ -98,7 +109,7 @@ import Testing
     @Test func inABrushStyleLikePython() throws {
         let cases = (try #require(Fixtures.json("export/styled.json").objectValue)["cases"]?.arrayValue ?? [])
             .compactMap(\.objectValue)
-        #expect(cases.count == 6)
+        #expect(cases.count == 9)
         for c in cases {
             let (kind, style) = (c["kind"]?.stringValue ?? "", c["style"]?.stringValue ?? "")
             let calls = (c["calls"]?.arrayValue ?? []).compactMap(\.arrayValue)
@@ -113,6 +124,22 @@ import Testing
                 options.frame = .content
                 options.margin = 10
                 out = try SketchExporter.svg(svg, options: options, stylist: stylist)
+            } else if kind == "clipboard" {  // (⌘C: the last export's choices, the SVG beside the PNG)
+                #if canImport(CoreGraphics)
+                    var settings = AppSettings(data: [:], defaultOutputDir: URL(filePath: "/tmp"))
+                    settings["export_stroke"] = "#336699"
+                    settings["export_width"] = 1.5
+                    settings["export_background"] = "#fff8e7"
+                    settings["export_frame"] = "content"
+                    settings["export_margin"] = 10
+                    var options = ExportOptions.forClipboard(settings)
+                    options.size = 64
+                    let copied = try SketchExporter.clipboard(svg, options: options, stylist: stylist)
+                    #expect(copied.png.starts(with: [0x89, 0x50, 0x4E, 0x47]))  // (a PNG)
+                    out = copied.svg
+                #else
+                    continue
+                #endif
             } else {
                 out = try SketchFormats.animatedSVG(svg, length: 2, hold: 0.5, widthScale: 1.5, background: "#fafafa",
                                                     stylist: stylist)

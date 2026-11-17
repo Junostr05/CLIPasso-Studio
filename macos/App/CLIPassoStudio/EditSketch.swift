@@ -1,3 +1,4 @@
+import AppKit
 import StudioApp
 import StudioCore
 import SwiftUI
@@ -54,6 +55,8 @@ struct ResultCanvas: View {
                                                  method: result.method, runs: result.runs.count)
                     } printSketch: {
                         printing = request(editor)
+                    } copySketch: {
+                        copy(editor)
                     }
                 }
             }
@@ -68,6 +71,9 @@ struct ResultCanvas: View {
         .focusedSceneValue(\.printAction, view == .sketch ? result.editor.map { editor in
             PrintAction { printing = request(editor) }
         } : nil)
+        .focusedSceneValue(\.copySketchAction, view == .sketch ? result.editor.map { editor in
+            CopySketchAction { copy(editor) }
+        } : nil)
         .onChange(of: result.editor?.canErase ?? false) { _, can in
             if !can, tool == .eraser { tool = .none }
         }
@@ -80,6 +86,18 @@ struct ResultCanvas: View {
     private var name: String { model.studio.image?.deletingPathExtension().lastPathComponent ?? "sketch" }
 
     /// studio.print_sketch: the sketch as it is now, named after its run.
+    /// ⇧⌘C and the toolbar's Copy: the sketch as it is now on the clipboard (a beep when it cannot be made).
+    private func copy(_ editor: SketchEditor) {
+        let (svg, run) = (editor.svg, editor.runDir)
+        Task {
+            do {
+                try await SketchClipboard.copy(svg: svg, runDir: run, model: model)
+            } catch {
+                NSSound.beep()
+            }
+        }
+    }
+
     private func request(_ editor: SketchEditor) -> PrintRequest {
         PrintRequest(entries: [PrintEntry(svg: editor.svg, file: nil, runDir: editor.runDir,
                                           caption: editor.runDir.lastPathComponent)], name: name)
@@ -232,6 +250,7 @@ struct EditTools: View {
     @Binding var tool: EditTool
     let export: () -> Void
     let printSketch: () -> Void
+    let copySketch: () -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: Spacing.spaceS) {
@@ -247,6 +266,7 @@ struct EditTools: View {
                 action("ui.export", "square.and.arrow.up", enabled: true, export)
                     .keyboardShortcut("e", modifiers: .command)
                 action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P: the menu's)
+                action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C: the menu's)
             }
         }
     }

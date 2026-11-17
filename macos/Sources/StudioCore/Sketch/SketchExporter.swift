@@ -88,6 +88,15 @@ public struct ExportOptions: Sendable, Equatable {
         if let s = settings["export_style"]?.stringValue, !s.isEmpty { style = s }
     }
 
+    /// The choices ⌘C copies with (dialogs.copy_sketch): the last export's, 1024 pixels, white for a transparent
+    /// background (many programs paste transparency as black).
+    public static func forClipboard(_ settings: AppSettings) -> ExportOptions {
+        var options = ExportOptions(settings: settings, format: .png)
+        options.size = 1024
+        if options.background == nil { options.background = "#FFFFFF" }
+        return options
+    }
+
     /// ExportDialog._save: the choices kept for the next export (the plotter's SVG has no background or paper, the
     /// matrix no frame).
     public func remember(in settings: inout AppSettings, format: Format) {
@@ -187,7 +196,29 @@ public enum SketchExporter {
         static func png(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil,
                         stylist: Stylist = .plain) throws -> Data
         {
-            let sketch = try SketchSVG.parse(drawn(svg, options, photo: photo, stylist: stylist))
+            try png(drawn: drawn(svg, options, photo: photo, stylist: stylist), options: options)
+        }
+
+        /// dialogs.copy_sketch / export.sketch_mime: what ⌘C puts on the clipboard – the sketch with the last export's
+        /// choices (`options`, ExportOptions.forClipboard) as a PNG and as an SVG with its background or paper, both
+        /// of the sketch styled once.
+        static func clipboard(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil,
+                              stylist: Stylist = .plain) throws -> (png: Data, svg: String)
+        {
+            let drawn = try drawn(svg, options, photo: photo, stylist: stylist)
+            var text = drawn
+            if let background = options.background {
+                text = SketchExport.restyleSVG(drawn, strokeColor: nil, widthScale: 1, background: background)
+            }
+            #if canImport(ImageIO)
+                text = PaperPicture.svgWithPaper(text, paper: options.paper, background: options.background)
+            #endif
+            return (try png(drawn: drawn, options: options), text)
+        }
+
+        /// A PNG of the sketch restyled, framed and styled.
+        private static func png(drawn: String, options: ExportOptions) throws -> Data {
+            let sketch = try SketchSVG.parse(drawn)
             let ground = options.background.flatMap { SketchSVG.color($0) }
             guard let paper = options.paper else {
                 return try SketchRenderer.pngData(SketchRenderer.image(sketch, longSide: options.size, background: ground))

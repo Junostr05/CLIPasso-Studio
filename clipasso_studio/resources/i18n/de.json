@@ -1628,6 +1628,7 @@
  "ui.mac.queue.empty_hint": "Lege Bilder oder Ordner hier ab oder füge sie mit den Schaltflächen oben hinzu.",
  "ui.mac.edit.eraser": "Radierer",
  "ui.mac.edit.pen": "Stift",
+ "ui.mac.copy_sketch": "Skizze kopieren",
  "ui.mac.edit.undo": "Rückgängig",
  "ui.mac.edit.redo": "Wiederholen",
  "ui.mac.edit.sketch": "Skizze {n}",

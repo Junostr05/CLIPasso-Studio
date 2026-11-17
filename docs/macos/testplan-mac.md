@@ -109,6 +109,7 @@ Exportiere dieselbe Skizze in jedes Format und öffne die Datei im genannten Pro
 | F13 | Papier „Aquarell“ mit Vignette, als PNG und als SVG | Vorschau, Safari | Die Papierstruktur ist sichtbar und sieht aus wie in der Windows-App |
 | F14 | Ein langes GIF (60 s, 1024 px) mitten im Export abbrechen | Finder | Es bleibt keine halbe Datei zurück |
 | F15 | Pinselstil „Kohle“, dann „Neon“: als SVG, PNG, GIF und Webseite | Safari, Vorschau | Sieht aus wie derselbe Export aus der Windows-App. Neon leuchtet auch im GIF farbig |
+| F16 | Im Studio ⇧⌘C (Bearbeiten ▸ Skizze kopieren), dann in Pages, Keynote und Figma einfügen | Pages, Keynote, Figma | Die Skizze erscheint als Bild mit den Einstellungen des letzten Exports. Ein durchsichtiger Hintergrund wird weiß. ⌘C in Textfeldern kopiert weiter Text |
 
 Prüfe dabei auch: Die Dateinamen haben die Endungen aus der Windows-App (`_1layer`, `_layers`, `_matrix`,
 `_animated`). Beim nächsten Export sind die zuletzt gewählten Einstellungen schon eingestellt.

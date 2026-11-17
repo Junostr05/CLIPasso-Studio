@@ -655,11 +655,16 @@ STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a 
 
 def styled_cases(out: Path) -> dict:
     """gui/export.py's exports in a brush style, every call of brush.stylize_svg recorded – what the Mac app asks the
-    engine and its answer – so that the Swift tests answer as the engine does: the SVG (framed to the strokes) and
-    the SVG that draws itself (each stroke styled on its own)."""
+    engine and its answer – so that the Swift tests answer as the engine does: the SVG (framed to the strokes), the
+    SVG that draws itself (each stroke styled on its own) and the SVG ⌘C puts on the clipboard (needs PySide6)."""
     import tempfile
 
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
     from clipasso_studio.gui import export
+
+    QGuiApplication.instance() or QGuiApplication([])
 
     real, calls = export.stylize_svg, []
 
@@ -685,6 +690,11 @@ def styled_cases(out: Path) -> dict:
                 animated = export.animated_svg(drawing, 2.0, 0.5, None, 1.5, "#fafafa", style, False)
                 cases.append({"kind": "animated", "style": style, "svg": "animation/drawing.svg", "calls": list(calls),
                               "out": animated})
+                calls.clear()  # ⌘C: the SVG the clipboard gets (dialogs.copy_sketch, export.sketch_mime)
+                mime = export.sketch_mime(str(out / "svg" / "cubic.svg"), 64, "#336699", 1.5, "#fff8e7", style,
+                                          "content", 0.1)
+                cases.append({"kind": "clipboard", "style": style, "svg": "svg/cubic.svg", "calls": list(calls),
+                              "out": bytes(mime.data("image/svg+xml").data()).decode("utf-8")})
     finally:
         export.stylize_svg = real
     return {"cases": cases}
