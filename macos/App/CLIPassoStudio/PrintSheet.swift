@@ -183,12 +183,17 @@ struct PrintSheet: View {
                 ProgressView().controlSize(.small)
             }
         }
-        .aspectRatio(w / h, contentMode: .fit)
-        .frame(maxWidth: Self.previewWidth, maxHeight: Self.previewWidth * 1.5)
+        .frame(width: Self.pageSize(w, h).width, height: Self.pageSize(w, h).height)  // (the page's own shape)
         .overlay { Rectangle().strokeBorder(.separator) }
         .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
         .accessibilityElement()
         .accessibilityLabel(Text(model.texts.tr("ui.print.pages", ["n": "\(pages)"])))
+    }
+
+    /// The preview's size: 300 points wide, a tall page at most 450 high.
+    static func pageSize(_ w: Double, _ h: Double) -> CGSize {
+        let width = min(previewWidth, previewWidth * 1.5 * w / h)
+        return CGSize(width: width, height: width * h / w)
     }
 
     /// The stroke colour (black: the sketches keep their own colours, as the studio's dialog).
