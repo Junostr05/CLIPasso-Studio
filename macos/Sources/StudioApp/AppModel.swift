@@ -38,6 +38,9 @@ public final class AppModel {
     @ObservationIgnored public private(set) var engine: EngineClient?
     @ObservationIgnored public private(set) var queue: JobQueue?
     @ObservationIgnored private var queueListener: Task<Void, Never>?
+    @ObservationIgnored private var noticeListener: Task<Void, Never>?
+    /// the object mask of the studio's image
+    public let mask = StudioMask()
     @ObservationIgnored private let transport: any HTTPTransport
     @ObservationIgnored private var download: Task<Void, Never>?
     @ObservationIgnored private let resources: AppResources
@@ -120,6 +123,12 @@ public final class AppModel {
                     self?.apply(snapshot)
                 }
             }
+            await queue.begin()  // (the engine's notices – a mask is ready – before any job)
+            noticeListener = Task { [weak self] in
+                for await notice in queue.notices {
+                    await self?.maskNotice(notice)
+                }
+            }
         } catch {
             let log = await client.stderrTail().suffix(5).joined(separator: "\n")
             let details = log.isEmpty ? String(describing: error) : "\(error)\n\(log)"
@@ -130,6 +139,8 @@ public final class AppModel {
     public func stopEngine() async {
         queueListener?.cancel()
         queueListener = nil
+        noticeListener?.cancel()
+        noticeListener = nil
         await engine?.stop()
     }
 

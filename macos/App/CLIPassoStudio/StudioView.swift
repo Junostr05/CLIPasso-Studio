@@ -62,9 +62,12 @@ private struct Step<Content: View>: View {
 
 private struct ImageStep: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
     @State private var importing = false
     @State private var preview: NSImage?
     @State private var targeted = false
+    /// the object mask over the image (mask_view.overlay)
+    @State private var overlay: CGImage?
 
     var body: some View {
         let studio = model.studio
@@ -79,6 +82,11 @@ private struct ImageStep: View {
                     Image(nsImage: preview)
                         .resizable()
                         .scaledToFit()
+                        .overlay {
+                            if let overlay, model.showsMask {
+                                Image(decorative: overlay, scale: 1).resizable().scaledToFit()
+                            }
+                        }
                         .padding(Spacing.spaceS)
                         .accessibilityLabel(Text(verbatim: studio.image?.lastPathComponent ?? ""))
                 } else {
@@ -98,6 +106,7 @@ private struct ImageStep: View {
                     Task { @MainActor in studio.image = url }
                 }
             }
+            maskRow
             Button(model.texts.tr(studio.image == nil ? "ui.step.open" : "ui.step.change"), systemImage: "folder") {
                 importing = true
             }
@@ -113,6 +122,76 @@ private struct ImageStep: View {
             let data = await Task.detached { try? Data(contentsOf: url) }.value  // (NSImage is not Sendable)
             preview = data.flatMap { NSImage(data: $0) }
         }
+        .task(id: maskKey) { await model.updateMask() }
+        .task(id: [model.mask.version, scheme == .dark ? 1 : 0]) {
+            overlay = await Self.overlay(model.mask, dark: scheme == .dark)
+        }
+    }
+
+    /// What decides whether and which mask is asked for: the image, whether the run uses one, its model, the engine.
+    private var maskKey: String {
+        let studio = model.studio
+        var ready = false
+        if case .ready = model.engineStatus { ready = true }
+        return [studio.image?.path ?? "", studio.method, studio.settings["mask_model"]?.stringValue ?? "",
+                "\(studio.isEnabled("mask_model"))", "\(ready)"].joined(separator: "|")
+    }
+
+    /// The mask's state under the image (studio.py's mask row): what the engine does, the eye that shows the mask,
+    /// back to the model's mask after the user's.
+    @ViewBuilder private var maskRow: some View {
+        let mask = model.mask
+        if mask.state != .off {
+            HStack(spacing: Spacing.spaceS) {
+                if mask.state == .busy { ProgressView().controlSize(.small) }
+                Text(verbatim: mask.status(model.texts, name: model.modelName(mask.model)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help(Self.failure(mask.state))
+                Spacer()
+                Toggle(isOn: Binding(get: { model.showsMask }, set: { model.setShowsMask($0) })) {
+                    Label(model.texts.tr("ui.mask.show"), systemImage: "eye")
+                }
+                .toggleStyle(.button)
+                .labelStyle(.iconOnly)
+                .help(model.texts.tr("ui.mask.show"))
+                .disabled(mask.state != .ready && mask.state != .edited)
+                if mask.state == .edited {
+                    Button(model.texts.tr("ui.mask.reset"), systemImage: "arrow.uturn.backward") {
+                        Task { await model.resetMask() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .help(model.texts.tr("ui.mask.reset"))
+                }
+            }
+        }
+    }
+
+    private static func failure(_ state: StudioMask.State) -> String {
+        if case .failed(let why) = state { return why }
+        return ""
+    }
+
+    /// The overlay of the mask (700 pixels at most, as the studio's), off the main actor: the background under the
+    /// surface colour, the object outlined in the accent.
+    private static func overlay(_ mask: StudioMask, dark: Bool) async -> CGImage? {
+        guard !mask.object.isEmpty else { return nil }
+        let palette = dark ? Palette.dark : Palette.light
+        let veil = SketchSVG.color(palette.surface2) ?? RGB(240, 240, 236)
+        let edge = SketchSVG.color(palette.accent) ?? RGB(60, 110, 240)
+        let (object, width, height) = (mask.object, mask.width, mask.height)
+        return await Task.detached(executorPreference: OwnThreads.shared) { () -> CGImage? in
+            let made = MaskOverlay.rgba(object, width: width, height: height,
+                                        veil: (UInt8(veil.r), UInt8(veil.g), UInt8(veil.b), 215),
+                                        edge: (UInt8(edge.r), UInt8(edge.g), UInt8(edge.b), 255), maxSide: 700)
+            guard let provider = CGDataProvider(data: Data(made.pixels) as CFData),
+                  let space = CGColorSpace(name: CGColorSpace.sRGB)
+            else { return nil }
+            return CGImage(width: made.width, height: made.height, bitsPerComponent: 8, bitsPerPixel: 32,
+                           bytesPerRow: made.width * 4, space: space,
+                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
+                           decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        }.value
     }
 }
 
