@@ -19,7 +19,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
 **Noch nicht in der Mac-App, also nicht testen:** Masken und Detailpinsel, Handy-Fernbedienung, Updates,
-Pinselstile (die Exporte sind vorerst immer „Einfach“).
+der Pinselstil der Zeichenfläche im Studio (in Exporten und beim Drucken gibt es die Pinselstile schon).
 
 ---
 
@@ -108,6 +108,7 @@ Exportiere dieselbe Skizze in jedes Format und öffne die Datei im genannten Pro
 | F12 | Webseite | Safari | Die Skizze zeichnet sich. Der Knopf „Neu zeichnen“ startet sie von vorn |
 | F13 | Papier „Aquarell“ mit Vignette, als PNG und als SVG | Vorschau, Safari | Die Papierstruktur ist sichtbar und sieht aus wie in der Windows-App |
 | F14 | Ein langes GIF (60 s, 1024 px) mitten im Export abbrechen | Finder | Es bleibt keine halbe Datei zurück |
+| F15 | Pinselstil „Kohle“, dann „Neon“: als SVG, PNG, GIF und Webseite | Safari, Vorschau | Sieht aus wie derselbe Export aus der Windows-App. Neon leuchtet auch im GIF farbig |
 
 Prüfe dabei auch: Die Dateinamen haben die Endungen aus der Windows-App (`_1layer`, `_layers`, `_matrix`,
 `_animated`). Beim nächsten Export sind die zuletzt gewählten Einstellungen schon eingestellt.
@@ -120,6 +121,7 @@ Prüfe dabei auch: Die Dateinamen haben die Endungen aus der Windows-App (`_1lay
 | G2 | Drucke vier Skizzen auf eine Seite mit Bildunterschriften. | Raster 2 × 2, Unterschriften unter den richtigen Skizzen |
 | G3 | Druckdialog → „Als PDF sichern“ und Papier „Kraft“. | Das PDF hat die Papierstruktur, ohne Kanten und Streifen. |
 | G4 | Letter statt A4 (Druckdialog → Papierformat). | Die Seite passt, nichts ist verschoben. |
+| G5 | Pinselstil „Bleistift“ im Druckblatt wählen. | Vorschau und Ausdruck zeigen den Stil. Das Druckblatt beginnt immer mit dem Stil des letzten Exports. |
 
 ## H. Aussehen, Sprache, Bedienung
 
