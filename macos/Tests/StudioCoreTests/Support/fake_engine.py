@@ -7,7 +7,9 @@ MODE: echo · crash_after N (ends with exit code 3 after N answers) · garbage (
 (answers after 2 s) · stderr_secret (writes a secret to stderr) · protocol2 (speaks another protocol) · job DIR
 (``start`` "computes" by copying the finished job folder DIR into output_root) · job_fails (``start`` ends with
 job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEYS as missing until ``convert_model``
-found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR).
+found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR) · mask
+PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked again it gives PNG as the model's
+probability).
 Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
@@ -20,7 +22,7 @@ import time
 
 mode = sys.argv[1] if len(sys.argv) > 1 else "echo"
 limit = int(sys.argv[2]) if len(sys.argv) > 2 and mode in ("crash_after", "events") else 0
-source = sys.argv[2] if mode == "job" else sys.argv[3] if mode == "needs" else ""
+source = sys.argv[2] if mode in ("job", "mask") else sys.argv[3] if mode == "needs" else ""
 needed = sys.argv[2].split(",") if mode == "needs" else []
 converted = set()
 out = sys.stdout.buffer
@@ -80,6 +82,13 @@ for raw in sys.stdin.buffer:
             send({"event": "job_done", "job": "j1", "data": {"job_dir": job_dir}})
         else:
             send({"event": "job_failed", "job": "j1", "data": {"message": "RuntimeError: made up", "job_dir": job_dir}})
+    elif op == "mask" and mode == "mask":
+        computing = bool(args.get("compute"))
+        send({"id": rid, "ok": True, "result": {"probability": None if computing else source, "edited": None,
+                                                "width": 32, "height": 24, "threshold": 0.5, "computing": computing}})
+        if computing:
+            send({"event": "mask_ready", "job": None, "data": {"image": args["image"], "model": args["model"],
+                                                               "probability": source}})
     elif op == "shutdown":
         send({"id": rid, "ok": True, "result": {}})
         sys.exit(0)
