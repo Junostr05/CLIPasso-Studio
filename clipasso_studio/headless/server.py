@@ -2,8 +2,8 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · convert_model · encode_webp · start · pause · resume · cancel ·
-shutdown
+ops: hello · devices · schema · models · required_models · convert_model · encode_webp · start · pause · resume ·
+cancel · shutdown
 """
 
 from __future__ import annotations
