@@ -19,7 +19,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
 **Noch nicht in der Mac-App, also nicht testen:** Masken und Detailpinsel, Handy-Fernbedienung, Updates,
-der Pinselstil der Zeichenfläche im Studio (in Exporten und beim Drucken gibt es die Pinselstile schon).
+die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon).
 
 ---
 
@@ -87,6 +87,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | E2 | Zeichne mit dem Stift. Teste Trackpad, Maus und, falls vorhanden, ein Grafiktablett. | Die Striche folgen der Hand. Ein Klick allein erzeugt keinen Strich. |
 | E3 | ⌘Z und ⇧⌘Z mehrmals, dann „Zurücksetzen“. | Rückgängig und Wiederholen laufen Schritt für Schritt. „Zurücksetzen“ stellt das Original wieder her. |
 | E4 | Öffne bei SceneSketch die Matrix und wähle eine andere Zelle. | Die Zelle erscheint groß und lässt sich bearbeiten. Die Matrix zeigt die Änderung. |
+| E5 | Pinsel-Knopf über der Skizze: „Kohle“ wählen, dann radieren | Die Skizze erscheint im Stil. Mit Radierer oder Stift in der Hand zeigt sie die einfachen Striche, gespeichert wird die einfache Skizze. |
 
 ## F. Exportieren (⌘E)
 

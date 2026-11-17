@@ -7,6 +7,17 @@ public extension AppModel {
     /// The styles the exports offer, "plain" first.
     var brushStyles: [String] { schema.brushStyles }
 
+    /// The style the studio shows its sketches in (canvas_style; plain when the schema does not list it). The
+    /// sketch itself stays plain: touched up, saved and exported as it is.
+    var canvasStyle: String {
+        let style = settings["canvas_style"]?.stringValue ?? "plain"
+        return brushStyles.contains(style) ? style : "plain"
+    }
+
+    func setCanvasStyle(_ style: String) {
+        _ = updateSettings { $0["canvas_style"] = .string(style) }
+    }
+
     /// The stylist of `style` for an export: it asks the engine (op "stylize") – from the export's own thread, which
     /// waits for the answer (never from the main actor). "plain" or a style the engine does not know asks no one.
     func stylist(_ style: String) -> Stylist {

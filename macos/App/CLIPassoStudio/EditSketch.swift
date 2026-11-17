@@ -112,6 +112,8 @@ struct EditableSketch: View {
     let editor: SketchEditor
     let tool: EditTool
     @State private var sketch: Sketch?
+    /// the sketch in the canvas's brush style (the engine's; nil: plain) – shown while no tool is in the hand
+    @State private var styled: Sketch?
     @State private var index: SketchEditing.StrokeIndex?
     @State private var box = (x: 0.0, y: 0.0, width: 1.0, height: 1.0)
     @State private var hover: Int?
@@ -125,7 +127,8 @@ struct EditableSketch: View {
         GeometryReader { geometry in
             let paper = Self.paper(for: sketch, in: geometry.size)
             ZStack {
-                SketchView(sketch: sketch, label: model.studio.canvasLabel(model.texts, sketch: sketch))
+                SketchView(sketch: tool == .none ? styled ?? sketch : sketch,
+                           label: model.studio.canvasLabel(model.texts, sketch: sketch))
                 Canvas { context, _ in
                     drawOverlay(in: &context, paper: paper)
                 }
@@ -146,6 +149,18 @@ struct EditableSketch: View {
             })
         }
         .onChange(of: editor.svg, initial: true) { _, svg in refresh(svg) }
+        .task(id: [editor.svg, model.canvasStyle]) {
+            let stylist = model.stylist(model.canvasStyle)
+            guard !stylist.isPlain else {
+                styled = nil
+                return
+            }
+            let svg = editor.svg
+            let drawn = try? await Task.detached(executorPreference: OwnThreads.shared) {
+                try SketchSVG.parse(stylist(svg))
+            }.value
+            if !Task.isCancelled { styled = drawn }  // (no engine, no answer: the plain sketch)
+        }
         .onChange(of: tool) {
             hover = nil
             drawn = []
@@ -267,6 +282,7 @@ struct EditTools: View {
                     .keyboardShortcut("e", modifiers: .command)
                 action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P: the menu's)
                 action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C: the menu's)
+                styleMenu
             }
         }
     }
@@ -283,6 +299,25 @@ struct EditTools: View {
         } else {
             button.buttonStyle(.glass)
         }
+    }
+
+    /// The brush style the studio shows its sketches in (studio.set_canvas_style): only the view – the sketch is
+    /// touched up and saved plain.
+    private var styleMenu: some View {
+        Menu {
+            Picker(model.texts.tr("ui.brush.label"), selection: Binding(get: { model.canvasStyle },
+                                                                         set: { model.setCanvasStyle($0) })) {
+                ForEach(model.brushStyles, id: \.self) { Text(model.texts.tr("ui.brush.\($0)")).tag($0) }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label(model.texts.tr("ui.brush.label"), systemImage: "paintbrush.pointed")
+        }
+        .labelStyle(.iconOnly)
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .buttonStyle(.glass)
+        .help(model.texts.tr("ui.brush.tip"))
     }
 
     private func action(_ name: String, _ symbol: String, help: String? = nil, enabled: Bool,

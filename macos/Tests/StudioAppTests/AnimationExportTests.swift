@@ -78,6 +78,17 @@ import StudioCore
 /// The brush styles of the exports: the engine draws a sketch in a style (op "stylize") for an export's thread; plain,
 /// and a style the schema does not list, ask no one.
 @Suite(.serialized) struct BrushStyleTests {
+    /// The style the studio shows its sketches in is kept under the studio's key (canvas_style); one the schema does
+    /// not list shows them plain.
+    @Test func theCanvasStyle() throws {
+        let model = try AppModel(resources: AppModelTests.resources(engine: nil), store: AppModelTests.store(language: "de"))
+        #expect(model.canvasStyle == "plain")
+        model.setCanvasStyle("pencil")
+        #expect(model.canvasStyle == "pencil" && model.settings["canvas_style"]?.stringValue == "pencil")
+        model.setCanvasStyle("glitter")
+        #expect(model.canvasStyle == "plain")
+    }
+
     @Test func theEngineDrawsAStyle() async throws {
         let model = try AppModel(resources: AppModelTests.resources(engine: AppModelTests.realEngine()),
                                  store: AppModelTests.store(language: "en"))
