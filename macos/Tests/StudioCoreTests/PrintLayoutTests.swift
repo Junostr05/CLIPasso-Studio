@@ -8,7 +8,7 @@ import Testing
 /// The print layout as gui/print_layout.py lays out its pages – checked against what Python worked out
 /// (Fixtures/export/print.json): the pages' sizes, the grids, where the heading, footer, captions and sketches go –
 /// the choices kept under the studio's keys, and the pages drawn as a PDF and a preview.
-@Suite struct PrintLayoutTests {
+@Suite(.onOwnThreads) struct PrintLayoutTests {
     static func box(_ value: JSONValue?) -> [Double]? {
         guard let value, !value.isNull else { return nil }
         return value.arrayValue?.compactMap(\.doubleValue)

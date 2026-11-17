@@ -11,7 +11,7 @@
     /// The studio's animations made here: the drawing process of a run and the sketch stroke by stroke, as a GIF
     /// (ImageIO), an MP4 (AVFoundation) and PNG frames for the engine's WebP – the plan's frames and delays, ink in
     /// eight steps on a plain background, the paper under the strokes, a transparent background only for WebP.
-    @Suite struct AnimationExporterTests {
+    @Suite(.onOwnThreads) struct AnimationExporterTests {
         static func sketch(_ name: String) throws -> String { String(decoding: try Fixtures.data(name), as: UTF8.self) }
 
         static func job(_ mode: SketchAnimation.Mode, _ format: SketchAnimation.Format, size: Int = 64, runDir: URL? = nil,

@@ -149,13 +149,15 @@ public extension SketchFormats {
             let first = point(shapes[0], last: false), last = point(shapes[shapes.count - 1], last: true)
             let s0 = stroke.subs[0][0]
             let start = [(s0.x - box.x) * scale, (s0.y - box.y) * scale]
-            func dist(_ p: [Double], _ q: [Double]) -> Double { hypot(p[0] - q[0], p[1] - q[1]) }
+            func dist(_ p: [Double], _ q: [Double]) -> Double { Python.hypot(p[0] - q[0], p[1] - q[1]) }  // (math.dist)
             if dist(start, last) < dist(start, first) - 1e-6 {  // (the route draws this stroke backwards)
                 shapes = shapes.reversed().map(reversedShape)
             }
             let attribute = { (key: String) in stroke.attributes.first { $0.name == key }?.value }
             var width: Double, opacity: Double
-            if let sw = Double(attribute("stroke-width") ?? "1"), let so = Double(attribute("stroke-opacity") ?? "1") {
+            if let sw = Python.float(attribute("stroke-width") ?? "1"),
+               let so = Python.float(attribute("stroke-opacity") ?? "1")
+            {
                 (width, opacity) = (sw * widthScale * scale, so * 100)
             } else {
                 (width, opacity) = (widthScale * scale, 100)

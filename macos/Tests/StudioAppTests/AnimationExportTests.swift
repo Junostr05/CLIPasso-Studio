@@ -33,14 +33,22 @@ import StudioCore
         #expect(FileManager.default.fileExists(atPath: mp4.path))
     }
 
-    @Test func aCancelledExportLeavesNoFile() async throws {
+    /// The cancel comes while the export is under way – after the first frame, and after the last one, before the
+    /// GIF is written: the export stops and leaves no file. (The frame waits for the cancel, so the test does not
+    /// hang on the machine's speed.)
+    @Test(arguments: [false, true]) func aCancelledExportLeavesNoFile(atTheEnd: Bool) async throws {
         let model = try AppModel(resources: AppModelTests.resources(engine: nil), store: AppModelTests.store(language: "de"))
         let gif = Self.file("gif")
-        let job = try Self.job(.gif, length: 60, size: 512)  // (3000 drawn steps: long enough to be stopped)
-        let started = Counter()
-        let task = Task { try await model.exportAnimation(job, to: gif) { done, _ in started.add(done) } }
-        while started.last == 0 { try await Task.sleep(for: .milliseconds(10)) }
+        defer { try? FileManager.default.removeItem(at: gif) }
+        let gate = Gate()
+        let task = Task {
+            try await model.exportAnimation(try Self.job(.gif, length: 2), to: gif) { done, total in
+                if done == (atTheEnd ? total : 1) { gate.arrive() }
+            }
+        }
+        while !gate.arrived { try await Task.sleep(for: .milliseconds(10)) }
         task.cancel()
+        gate.open()
         await #expect(throws: CancellationError.self) { try await task.value }
         #expect(!FileManager.default.fileExists(atPath: gif.path))
     }
@@ -71,6 +79,21 @@ import StudioCore
         #expect(CGImageSourceGetCount(source) == frames)
         await model.stopEngine()
     }
+}
+
+/// A frame that waits until the test has cancelled the export (at most half a minute).
+nonisolated final class Gate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reached = false
+    private let opened = DispatchSemaphore(value: 0)
+
+    func arrive() {
+        lock.withLock { reached = true }
+        _ = opened.wait(timeout: .now() + 30)
+    }
+
+    var arrived: Bool { lock.withLock { reached } }
+    func open() { opened.signal() }
 }
 
 /// The progress an export reported, from any thread.

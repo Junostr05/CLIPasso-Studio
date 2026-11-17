@@ -4,7 +4,7 @@ import Testing
 
 /// An export's frame as engine/framing.py makes it – checked against what Python made of the same sketches
 /// (Fixtures/export/framing.json): the strokes' box, the new viewBox, the points moved, the backgrounds resized.
-@Suite struct SketchFramingTests {
+@Suite(.onOwnThreads) struct SketchFramingTests {
     static func numbers(_ value: JSONValue?) -> [Double]? { value?.arrayValue?.compactMap(\.doubleValue) }
 
     static func close(_ a: [Double]?, _ b: [Double]?, _ tolerance: Double = 1e-9) -> Bool {

@@ -8,7 +8,7 @@ import Testing
 
 /// The exports of a sketch with the studio's choices (dialogs.ExportDialog, gui/export.py): kept under the studio's
 /// keys, the strokes restyled, the frame applied – the background filling it – and PNG and PDF of the frame's shape.
-@Suite struct SketchExporterTests {
+@Suite(.onOwnThreads) struct SketchExporterTests {
     static func sketch(_ name: String) throws -> String { String(decoding: try Fixtures.data(name), as: UTF8.self) }
 
     @Test func theLastChoicesUnderTheStudiosKeys() {
@@ -21,6 +21,11 @@ import Testing
         #expect(ExportOptions(settings: settings, format: .gif).background == "#FFFFFF")  // (GIF, MP4: never)
         #expect(ExportOptions(settings: settings, format: .webp).background == nil && ExportOptions.Format.webp.title == "WebP")
         #expect(ExportOptions(settings: settings, format: .mp4).size == 512 && ExportOptions.Format.png.animation == nil)
+        #expect(ExportOptions(settings: settings, format: .html).background == "#FFFFFF")  // (a web page: never)
+        #expect(ExportOptions(settings: settings, format: .matrix).size == 1024)
+        #expect(ExportOptions.Format.svg1.fileExtension == "svg" && ExportOptions.Format.svg1.suffix == "_1layer")
+        #expect(ExportOptions.Format.lottie.fileExtension == "json" && ExportOptions.Format.matrix.fileExtension == "zip")
+        #expect(ExportOptions.Format.pictures + ExportOptions.Format.animations == ExportOptions.Format.allCases)
         settings["export_background"] = nil
         var chosen = fresh
         chosen.stroke = "#336699"
@@ -35,6 +40,14 @@ import Testing
         let again = ExportOptions(settings: settings, format: .pdf)
         #expect(again.stroke == "#336699" && again.widthScale == 2.5 && again.background == nil && again.frame == .content)
         #expect(again.margin == 12 && again.pdfWidth == 21)
+        var plotter = again
+        plotter.background = "#123456"
+        plotter.frame = .square
+        plotter.remember(in: &settings, format: .svg1)  // (the plotter's SVG: no background to keep)
+        #expect(settings["export_background"] == "transparent" && settings["export_frame"] == "square")
+        plotter.frame = .content
+        plotter.remember(in: &settings, format: .matrix)  // (the matrix: no frame to keep)
+        #expect(settings["export_background"] == "#123456" && settings["export_frame"] == "square")
         settings["export_width"] = 50  // (out of range: clamped as the dialog's field clamps)
         #expect(ExportOptions(settings: settings, format: .svg).widthScale == 10)
     }
@@ -58,6 +71,25 @@ import Testing
         #expect(out.contains(#"stroke-width="3""#))  // 1.5 × 2
         options.frame = .photo
         #expect(SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options).contains(#"viewBox="0 0 224 224""#))
+    }
+
+    /// The other formats through one door: framed first, then written as SketchFormats writes them.
+    @Test func theTextFormats() throws {
+        let svg = try Self.sketch("animation/drawing.svg")
+        var options = ExportOptions()
+        #expect(SketchExporter.text(svg, format: .svg1, options: options) == SketchFormats.singleLayer(svg))
+        #expect(SketchExporter.text(svg, format: .svg, options: options) == SketchExporter.svg(svg, options: options))
+        let page = SketchExporter.text(svg, format: .html, options: options, name: "Kamel")
+        #expect(page.hasPrefix("<!doctype html>") && page.contains("<title>Kamel</title>"))
+        let text = SketchExporter.text(svg, format: .lottie, options: options, name: "Kätzchen")
+        #expect(text.contains(#""nm":"K\u00e4tzchen""#))  // (written as Python writes it: ASCII only)
+        let lottie = try PyJSON.parse(Data(text.utf8))
+        #expect(lottie.objectValue?["layers"]?.arrayValue?.count == 5)  // (one layer a stroke, no background)
+        options.frame = .content
+        let framed = SketchExporter.text(svg, format: .svganim, options: options)
+        #expect(!framed.contains(#"viewBox="0 0 224 224""#) && framed.contains("@keyframes d4"))
+        let layered = SketchExporter.text(svg, format: .svglayers, options: options, labels: ("Hintergrund", "Objekt"))
+        #expect(layered.contains(#"inkscape:label="Hintergrund""#) && !layered.contains(#"viewBox="0 0 224 224""#))
     }
 
     /// Black is no colour (ExportDialog._save): the strokes keep their own.

@@ -266,7 +266,7 @@ struct ExportSheet: View {
                     _ = try await model.exportAnimation(job, to: url) { progress.yield(($0, $1)) }
                     progress.finish()
                 } else {
-                    let data = try await Task.detached { () throws -> Data in
+                    let data = try await Task.detached(executorPreference: OwnThreads.shared) { () throws -> Data in
                         switch format {
                         case .png: try SketchExporter.png(svg, options: options, photo: photo)
                         case .pdf: try SketchExporter.pdf(svg, options: options, photo: photo, title: title)

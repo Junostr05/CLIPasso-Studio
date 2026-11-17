@@ -41,10 +41,10 @@ public struct Drawing: Sendable {
             guard !subs.isEmpty else { continue }
             let attributes = element.tag.attributes.filter { $0.name != "d" && !$0.name.contains(":") && $0.name != "xmlns" }
             strokes.append(Stroke(subs: subs, attributes: attributes, xml: String(svg[element.start ..< element.end]),
-                                  length: subs.reduce(0) { $0 + Self.length($1) }))
+                                  length: Python.sum(subs.map(Self.length))))
         }
         self.strokes = keepOrder ? strokes : Self.route(strokes)
-        let mean = self.strokes.reduce(0) { $0 + $1.length } / Double(max(self.strokes.count, 1))
+        let mean = Python.sum(self.strokes.map(\.length)) / Double(max(self.strokes.count, 1))
         let lift = Self.penLift * mean
         var spans: [(Double, Double)] = []
         var t = 0.0
@@ -58,7 +58,7 @@ public struct Drawing: Sendable {
     }
 
     static func length(_ points: [SketchPoint]) -> Double {
-        zip(points, points.dropFirst()).reduce(0) { $0 + hypot($1.1.x - $1.0.x, $1.1.y - $1.0.y) }
+        Python.sum(zip(points, points.dropFirst()).map { Python.hypot($1.x - $0.x, $1.y - $0.y) })
     }
 
     /// _route: the longest stroke first, then always the nearest stroke end (drawn from that end).
@@ -72,8 +72,8 @@ public struct Drawing: Sendable {
             var best = 0, bestDistance = Double.infinity, reverse = false, found = false
             for (i, stroke) in left.enumerated() {
                 let a = stroke.subs[0][0], b = stroke.subs[stroke.subs.count - 1].last!
-                for (d, r) in [(hypot(a.x - pen.x, a.y - pen.y), false), (hypot(b.x - pen.x, b.y - pen.y), true)]
-                    where !found || d < bestDistance
+                let ends = [(Python.hypot(a.x - pen.x, a.y - pen.y), false), (Python.hypot(b.x - pen.x, b.y - pen.y), true)]
+                for (d, r) in ends where !found || d < bestDistance
                 {
                     (best, bestDistance, reverse, found) = (i, d, r, true)
                 }
@@ -103,7 +103,7 @@ public struct Drawing: Sendable {
             if left <= 0 { break }
             var out = [points[0]]
             for (a, b) in zip(points, points.dropFirst()) {
-                let segment = hypot(b.x - a.x, b.y - a.y)
+                let segment = Python.hypot(b.x - a.x, b.y - a.y)
                 if segment >= left {
                     let f = segment != 0 ? left / segment : 0
                     out.append(SketchPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f))

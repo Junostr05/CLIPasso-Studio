@@ -127,7 +127,9 @@ struct PrintSheet: View {
             guard !Task.isCancelled else { return }
             let (layout, scale) = (layout, NSScreen.main?.backingScaleFactor ?? 2)
             let width = Int(Self.previewWidth * scale)
-            preview = await Task.detached { try? PrintPages.preview(items, layout: layout, width: width) }.value
+            preview = await Task.detached(executorPreference: OwnThreads.shared) {
+                try? PrintPages.preview(items, layout: layout, width: width)
+            }.value
         }
     }
 
@@ -236,7 +238,7 @@ struct PrintSheet: View {
     private func pdf(_ layout: PrintLayout, title: String) async throws -> Data {
         let items = items ?? []
         let (stream, progress) = AsyncStream.makeStream(of: Int.self)
-        let task = Task.detached { () throws -> Data in
+        let task = Task.detached(executorPreference: OwnThreads.shared) { () throws -> Data in
             defer { progress.finish() }
             return try PrintPages.pdf(items, layout: layout, title: title) { done, _ in progress.yield(done) }
         }

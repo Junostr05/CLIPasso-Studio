@@ -4,7 +4,7 @@ import Testing
 
 /// The SVG export changes a sketch as gui/export.restyle_svg does – checked against what Python wrote for the same
 /// sketches and options (Fixtures/export/restyle.json).
-@Suite struct SketchExportTests {
+@Suite(.onOwnThreads) struct SketchExportTests {
     struct Case {
         let svg: String, color: String?, scale: Double, background: String?, python: String
     }

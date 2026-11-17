@@ -6,7 +6,7 @@ import Testing
 /// (Fixtures/export/formats.json): the plotter's one-layer SVG, the web page and the matrix sheet to the character,
 /// Lottie to the character of its JSON, the SVG that draws itself in its CSS and masks, the layered SVG in its strokes
 /// and layers.
-@Suite struct SketchFormatsTests {
+@Suite(.onOwnThreads) struct SketchFormatsTests {
     static func fixture() throws -> JSONObject { try #require(Fixtures.json("export/formats.json").objectValue) }
     static func sketch(_ name: String) throws -> String { String(decoding: try Fixtures.data(name), as: UTF8.self) }
     static func cases(_ key: String) throws -> [JSONObject] { (try fixture()[key]?.arrayValue ?? []).compactMap(\.objectValue) }

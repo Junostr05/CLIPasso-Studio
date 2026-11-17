@@ -2,7 +2,7 @@ import Testing
 @testable import StudioCore
 
 /// The matrix of a SceneSketch job: columns of layers, rows of levels, from the cells (settings_schema.scene_cell_id).
-@Suite struct SceneMatrixTests {
+@Suite(.onOwnThreads) struct SceneMatrixTests {
     @Test func layersAcrossLevelsDown() throws {
         let matrix = try #require(SceneMatrix(cells: [1104, 800, 204, 1100, 804, 200, 808]))
         #expect(matrix.layers == [2, 8, 11] && matrix.levels == [0, 4, 8])

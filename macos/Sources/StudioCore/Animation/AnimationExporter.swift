@@ -223,6 +223,10 @@ public struct DrawnFrames: Sendable {
             let loop = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary
             CGImageDestinationSetProperties(destination, loop)
             for frame in collected {
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: url)
+                    throw CancellationError()
+                }
                 let seconds = frame.milliseconds / 1000
                 let delay = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: seconds,
                                                              kCGImagePropertyGIFUnclampedDelayTime: seconds]] as CFDictionary

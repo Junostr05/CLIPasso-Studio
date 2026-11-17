@@ -4,7 +4,7 @@ import Testing
 
 /// The eraser and the pen change a sketch as gui/strokes.py does – checked against what Python made of the same
 /// sketches (Fixtures/edit/strokes.json, made by tools/make_mac_fixtures.py): the strokes hit, removed, drawn and freed.
-@Suite struct SketchEditingTests {
+@Suite(.onOwnThreads) struct SketchEditingTests {
     struct Case {
         let name: String, svg: String, fixture: JSONObject
     }

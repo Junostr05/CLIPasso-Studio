@@ -5,7 +5,7 @@ import Testing
 /// numpy's random numbers in Swift – checked against what numpy drew for the same seeds (Fixtures/paper/random.json):
 /// the raw 64-bit numbers of PCG64 seeded by SeedSequence, 30 000 standard normals (the ziggurat with its tail) and
 /// the draws of the paper's fibres one after another (uniform, a choice of two – 32 bits –, normal), bit for bit.
-@Suite struct NumpyRandomTests {
+@Suite(.onOwnThreads) struct NumpyRandomTests {
     /// FNV-1a (64 bit) over the numbers' IEEE bits, 8 bytes each, little-endian (make_mac_fixtures._bits_hash).
     static func bitsHash(_ values: [Double]) -> String {
         var h: UInt64 = 0xCBF2_9CE4_8422_2325

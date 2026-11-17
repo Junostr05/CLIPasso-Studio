@@ -8,7 +8,7 @@
     /// Core Graphics draws a sketch as Qt does in the studio's PNG export: compared pixel by pixel with the PNGs Qt
     /// drew of the same sketches (Fixtures/export/render, made by tools/make_mac_fixtures.py). Antialiasing differs a
     /// little between the two; no stroke may be missing.
-    @Suite struct SketchRendererTests {
+    @Suite(.onOwnThreads) struct SketchRendererTests {
         struct Pixels {
             let width: Int, height: Int
             let bytes: [UInt8]  // RGBA

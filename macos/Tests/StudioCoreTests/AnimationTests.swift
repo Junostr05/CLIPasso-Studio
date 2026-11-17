@@ -5,7 +5,7 @@ import Testing
 /// The plan of the studio's animations and its stroke-by-stroke drawing – checked against what gui/export.py worked
 /// out (Fixtures/animation/animation.json): the frames shown and their durations, the lengths the dialog starts from,
 /// the drawing's route, timeline, centre lines and its SVG at points of the timeline.
-@Suite struct AnimationTests {
+@Suite(.onOwnThreads) struct AnimationTests {
     static func numbers(_ value: JSONValue?) -> [Double] { (value?.arrayValue ?? []).compactMap(\.doubleValue) }
 
     static func close(_ a: [Double], _ b: [Double], _ tolerance: Double = 1e-9) -> Bool {
@@ -29,6 +29,20 @@ import Testing
             #expect(plan.frames.reduce(0, +) == p["sum_frames"]?.intValue, "\(what)")
             #expect(Self.close([plan.durations.reduce(0, +)], [p["sum_durations"]?.doubleValue ?? -1]), "\(what)")
         }
+    }
+
+    /// Python's arithmetic where it is not the plain one: sum() compensated (3.12), math.hypot computed by CPython
+    /// (it differs from the system's in about one call of 300 – these three from the studio's Python), float()
+    /// reading a number with white space around it.
+    @Test func pythonsArithmetic() {
+        #expect(Python.sum(Array(repeating: 0.1, count: 10)) == 1.0)  // (a plain loop: 0.9999999999999999)
+        #expect(Python.sum([]) == 0 && Python.sum([1e100, 1.0, -1e100]) == 1.0)
+        #expect(Python.hypot(3, 4) == 5 && Python.hypot(0, -0.0) == 0 && Python.hypot(-.infinity, .nan) == .infinity)
+        #expect(Python.hypot(0x1.4359555b23c04p+6, 0x1.9762307c1d75cp+5) == 0x1.7e287fb4048aep+6)
+        #expect(Python.hypot(0x1.2108fd59b43a3p+8, 0x1.f8068b07ed650p+7) == 0x1.7f792766cbc10p+8)
+        #expect(Python.hypot(0x1.22ff1b65b5b4fp+7, 0x1.09c1b217ae5f7p+7) == 0x1.8a1697e58f076p+7)
+        #expect(Python.hypot(5e-324, 5e-324) == 5e-324 && Python.hypot(1e308, 1e308) == 1.4142135623730951e308)
+        #expect(Python.float(" 4 ") == 4 && Python.float("\n2.5\t") == 2.5 && Python.float("4px") == nil)
     }
 
     @Test func lengthsLikePython() throws {

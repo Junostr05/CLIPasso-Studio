@@ -125,4 +125,55 @@ enum Python {
         if div - floored > 0.5 { floored += 1 }
         return floored
     }
+
+    /// sum() of floats: since Python 3.12 compensated (Neumaier) – a plain loop can differ in the last place, and
+    /// whether the last stroke is complete at the end of a drawing hangs on that place.
+    static func sum(_ values: some Sequence<Double>) -> Double {
+        var total = 0.0, c = 0.0
+        for x in values {
+            let t = total + x
+            c += abs(total) >= abs(x) ? (total - t) + x : (x - t) + total
+            total = t
+        }
+        if c != 0, c.isFinite { total += c }
+        return total
+    }
+
+    /// math.hypot(x, y) as CPython computes it (vector_norm: lossless scaling and squaring, a differential correction)
+    /// – the system's hypot may round the last place differently.
+    static func hypot(_ x: Double, _ y: Double) -> Double {
+        var vec = [abs(x), abs(y)], top = 0.0
+        for v in vec where v > top { top = v }
+        if top.isInfinite { return top }
+        if x.isNaN || y.isNaN { return .nan }
+        if top == 0 { return top }
+        let exponent = Int(top.exponent) + 1  // (frexp: top = m · 2^e with 0.5 ≤ m < 1)
+        if exponent < -1023 {
+            let tiny = Double.leastNormalMagnitude
+            return tiny * hypot(vec[0] / tiny, vec[1] / tiny)
+        }
+        let scale = Double(sign: .plus, exponent: -exponent, significand: 1)
+        var csum = 1.0, frac1 = 0.0, frac2 = 0.0
+        func add(_ z: Double, _ zz: Double) {  // (dl_mul's two parts, then dl_fast_sum into csum)
+            let s = csum + z
+            frac1 += zz
+            frac2 += z - (s - csum)
+            csum = s
+        }
+        for i in vec.indices {
+            vec[i] *= scale
+            let z = vec[i] * vec[i]
+            add(z, (-z).addingProduct(vec[i], vec[i]))
+        }
+        var h = (csum - 1 + (frac1 + frac2)).squareRoot()
+        let z = -h * h
+        add(z, (-z).addingProduct(-h, h))
+        h += (csum - 1 + (frac1 + frac2)) / (2 * h)
+        return h / scale
+    }
+
+    /// float(text): Python reads a number with white space around it (" 4 ").
+    static func float(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
 }

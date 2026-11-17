@@ -4,7 +4,7 @@ import Testing
 
 /// A SceneSketch matrix exported as the studio exports it: every cell as SVG and PNG and the overview sheet in one ZIP
 /// file – which the system's unzip reads back, entry for entry.
-@Suite struct MatrixExportTests {
+@Suite(.onOwnThreads) struct MatrixExportTests {
     static func job() throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appending(path: "zip-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

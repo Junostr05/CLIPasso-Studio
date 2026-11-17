@@ -115,7 +115,7 @@ public enum SketchFormats {
             let s = String(format: "%.3f", start), e = String(format: "%.3f", end), c = String(format: "%.3f", cycle)
             css += "@keyframes d\(i){0%,\(s)%{stroke-dashoffset:1}\(e)%,100%{stroke-dashoffset:0}}"
                 + ".d\(i){animation:d\(i) \(c)s linear infinite}"
-            let width = (Double(stroke.attributes.first { $0.name == "stroke-width" }?.value ?? "1") ?? 1)
+            let width = (Python.float(stroke.attributes.first { $0.name == "stroke-width" }?.value ?? "1") ?? 1)
                 * widthScale
             defs += #"<mask id="m\#(i)" maskUnits="userSpaceOnUse"><path class="d\#(i)" d="\#(drawing.centreline(i))" "#
                 + ##"fill="none" stroke="#fff" stroke-width="\##(String(format: "%.3g", 4 * width + 2))" "##

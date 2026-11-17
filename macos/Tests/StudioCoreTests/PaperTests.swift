@@ -9,7 +9,7 @@ import Testing
 /// The papers of gui/paper.py made in Swift – checked against the pictures Python made (Fixtures/paper/*.png): every
 /// kind small and in part of a larger picture, fibres two pixels wide, a texture scaled up beyond 1600 px, a vignette
 /// on a colour: the same pixels – and what the settings of a paper come to.
-@Suite struct PaperTests {
+@Suite(.onOwnThreads) struct PaperTests {
     @Test func settingsComeToThePapersOfPython() throws {
         let fixture = try #require(Fixtures.json("paper/papers.json").objectValue)
         for c in (fixture["inputs"]?.arrayValue ?? []).compactMap(\.objectValue) {

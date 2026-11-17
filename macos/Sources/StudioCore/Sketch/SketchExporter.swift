@@ -4,17 +4,51 @@ import Foundation
 /// export_width, export_background ("transparent" or a colour), export_frame, export_margin, export_pdf_width – so the
 /// Mac app and the studio start from the last export of either.
 public struct ExportOptions: Sendable, Equatable {
+    /// The formats of the export dialog (export_center.GROUPS): pictures, then animations.
     public enum Format: String, Sendable, CaseIterable {
-        case svg, png, pdf, gif, mp4, webp
+        case svg, png, pdf, svg1, svglayers, matrix, gif, mp4, webp, svganim, lottie, html
 
-        /// the animation it is (nil: a picture)
+        public static let pictures: [Format] = [.svg, .png, .pdf, .svg1, .svglayers, .matrix]
+        public static let animations: [Format] = [.gif, .mp4, .webp, .svganim, .lottie, .html]
+
+        /// the animation drawn here frame by frame (nil: not one)
         public var animation: SketchAnimation.Format? { SketchAnimation.Format(rawValue: rawValue) }
 
-        /// GIF and MP4 cannot be transparent (white instead)
-        public var allowsTransparent: Bool { self != .gif && self != .mp4 }
+        /// the finished strokes drawn one by one in a browser or an app (DRAWN)
+        public var drawnElsewhere: Bool { self == .svganim || self == .lottie || self == .html }
 
-        /// its name in the dialog's heading
-        public var title: String { self == .webp ? "WebP" : rawValue.uppercased() }
+        /// the file's extension (EXTENSIONS)
+        public var fileExtension: String {
+            switch self {
+            case .svg1, .svglayers, .svganim: "svg"
+            case .matrix: "zip"
+            case .lottie: "json"
+            default: rawValue
+            }
+        }
+
+        /// added to the file's name ("_1layer", …)
+        public var suffix: String {
+            switch self {
+            case .svg1: "_1layer"
+            case .svglayers: "_layers"
+            case .matrix: "_matrix"
+            case .svganim: "_animated"
+            default: ""
+            }
+        }
+
+        /// a transparent background is possible (GIF, MP4 and a web page: white instead)
+        public var allowsTransparent: Bool { ![.gif, .mp4, .html].contains(self) }
+
+        /// transparent unless a background was chosen before
+        var transparentAtFirst: Bool { [.svg, .svglayers, .svganim, .lottie].contains(self) }
+
+        /// a picture's longer side to choose (not for SVG, PDF, Lottie, a web page)
+        public var hasSize: Bool { [.png, .matrix, .gif, .mp4, .webp].contains(self) }
+
+        /// its name in the dialog's heading where it is the format's own (texts: the others)
+        public var title: String { self == .webp ? "WebP" : self == .lottie ? "Lottie" : rawValue.uppercased() }
     }
 
     public var stroke = "#000000"
@@ -42,24 +76,29 @@ public struct ExportOptions: Sendable, Equatable {
         if let s = settings["export_stroke"]?.stringValue, !s.isEmpty { stroke = s }
         widthScale = min(10, max(0.1, settings["export_width"]?.doubleValue ?? 1))
         let bg = settings["export_background"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 }
-            ?? (format == .svg ? "transparent" : "#FFFFFF")
+            ?? (format.transparentAtFirst ? "transparent" : "#FFFFFF")
         background = bg == "transparent" ? (format.allowsTransparent ? nil : "#FFFFFF") : bg
         frame = SketchFraming.Mode(rawValue: settings["export_frame"]?.stringValue ?? "") ?? .square
         margin = min(50, max(0, settings["export_margin"]?.intValue ?? 5))
-        size = format == .png ? 1024 : 512
+        size = format == .png || format == .matrix ? 1024 : 512
         pdfWidth = min(200, max(2, settings["export_pdf_width"]?.doubleValue ?? 15))
         paper = Paper.of(settings)
     }
 
-    /// ExportDialog._save: the choices kept for the next export.
+    /// ExportDialog._save: the choices kept for the next export (the plotter's SVG has no background or paper, the
+    /// matrix no frame).
     public func remember(in settings: inout AppSettings, format: Format) {
         settings["export_stroke"] = .string(stroke)
         settings["export_width"] = .double(widthScale)
-        settings["export_background"] = .string(background ?? "transparent")
-        settings["export_frame"] = .string(frame.rawValue)
-        settings["export_margin"] = .int(margin)
+        if format != .svg1 {
+            settings["export_background"] = .string(background ?? "transparent")
+            Paper.remember(paper, in: &settings)
+        }
+        if format != .matrix {
+            settings["export_frame"] = .string(frame.rawValue)
+            settings["export_margin"] = .int(margin)
+        }
         if format == .pdf { settings["export_pdf_width"] = .double(pdfWidth) }
-        Paper.remember(paper, in: &settings)
         settings["export_last_format"] = .string(format.rawValue)
     }
 }
@@ -85,6 +124,41 @@ public enum SketchExporter {
         #else
             return framed
         #endif
+    }
+
+    /// The text formats of a sketch as the studio writes them: SVG, the plotter's one-layer SVG, the SceneSketch cell
+    /// in two layers (`labels`; its run's object.svg tells them apart), the SVG that draws itself, Lottie and the web
+    /// page (named `name`) – framed first; a ControlSketch run's strokes drawn in their order.
+    public static func text(_ svg: String, format: ExportOptions.Format, options: ExportOptions,
+                     photo: SketchFraming.PhotoFrame? = nil, runDir: URL? = nil, length: Double? = nil, hold: Double = 1,
+                     name: String = "sketch", labels: (String, String) = ("Background", "Object")) -> String
+    {
+        let framed = framing(svg, options, photo: photo)?.apply(svg) ?? svg
+        let keep = runDir.map { SketchAnimation.method(runDir: $0) == "controlsketch" } ?? false
+        func animated() -> String {
+            SketchFormats.animatedSVG(framed, length: length, hold: hold, strokeColor: options.strokeColour,
+                                      widthScale: options.widthScale, background: options.background, keepOrder: keep,
+                                      paper: options.paper)
+        }
+        switch format {
+        case .svg1:
+            return SketchFormats.singleLayer(framed, strokeColor: options.strokeColour, widthScale: options.widthScale)
+        case .svglayers:
+            let layered = SketchFormats.layered(svg, objects: SketchFormats.objectStrokes(runDir: runDir), labels: labels)
+            return self.svg(layered, options: options, photo: photo)
+        case .svganim:
+            return animated()
+        case .lottie:
+            return PyJSON.dump(SketchFormats.lottie(framed, length: length, hold: hold, strokeColor: options.strokeColour,
+                                                    widthScale: options.widthScale, background: options.background,
+                                                    keepOrder: keep, paper: options.paper, name: name),
+                               asciiOnly: true, compact: true)  // (json.dump: ensure_ascii)
+        case .html:
+            let page = options.paper != nil ? Paper.colour(of: options.paper, background: options.background) : options.background
+            return SketchFormats.webPage(animated(), title: name, background: page)
+        default:
+            return self.svg(svg, options: options, photo: photo)
+        }
     }
 
     /// The restyled, framed sketch a PNG or PDF draws (its background is the picture's, not a rect).

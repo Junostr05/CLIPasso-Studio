@@ -12,9 +12,9 @@ public extension AppModel {
     {
         switch job.format {
         case .gif:
-            return try await detached { try AnimationExporter.gif(job, to: url, progress: progress) }
+            return try kept(url, try await detached { try AnimationExporter.gif(job, to: url, progress: progress) })
         case .mp4:
-            return try await detached { try await AnimationExporter.mp4(job, to: url, progress: progress) }
+            return try kept(url, try await detached { try await AnimationExporter.mp4(job, to: url, progress: progress) })
         case .webp:
             guard let engine else {
                 throw EngineFailure(code: "engine_gone", message: "the engine is not running")
@@ -47,9 +47,17 @@ public extension AppModel {
         }
     }
 
-    /// Work off the main actor that stops when the calling task is cancelled.
+    /// The file written – unless the cancel came after the last frame: then nothing half-wanted is kept either.
+    private func kept(_ url: URL, _ count: Int) throws -> Int {
+        guard Task.isCancelled else { return count }
+        try? FileManager.default.removeItem(at: url)
+        throw CancellationError()
+    }
+
+    /// Work off the main actor – on threads of its own, not the cooperative pool – that stops when the calling task
+    /// is cancelled.
     private func detached<T: Sendable>(_ work: @escaping @Sendable () async throws -> T) async throws -> T {
-        let task = Task.detached(operation: work)
+        let task = Task.detached(executorPreference: OwnThreads.shared, operation: work)
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 }
