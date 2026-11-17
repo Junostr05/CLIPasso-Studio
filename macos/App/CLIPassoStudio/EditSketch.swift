@@ -50,7 +50,8 @@ struct ResultCanvas: View {
                 }
                 if view == .sketch, let editor = result.editor {
                     EditTools(editor: editor, tool: $tool) {
-                        exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name)
+                        exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name, jobDir: result.jobDir,
+                                                 method: result.method, runs: result.runs.count)
                     } printSketch: {
                         printing = request(editor)
                     }
