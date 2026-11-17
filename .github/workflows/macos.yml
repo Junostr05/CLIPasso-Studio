@@ -134,6 +134,20 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "build/app/CLIPasso Studio.app"
       - name: Disk image
         run: macos/scripts/make_dmg.sh build/app | tee dmg.txt
+      - name: The app from the disk image starts as the Finder starts it (LaunchServices, not its executable)
+        run: |
+          mount=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" build/app/CLIPasso-Studio-*-mac.dmg
+          apps="$RUNNER_TEMP/Programme" && rm -rf "$apps" && mkdir -p "$apps"
+          ditto "$mount/CLIPasso Studio.app" "$apps/CLIPasso Studio.app"
+          hdiutil detach "$mount"
+          vtool -show-build "$apps/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio"  # (platform, minos, sdk)
+          plutil -p "$apps/CLIPasso Studio.app/Contents/Info.plist"
+          open -n "$apps/CLIPasso Studio.app"
+          for i in $(seq 1 30); do pgrep -x CLIPassoStudio >/dev/null && break; sleep 1; done
+          sleep 5
+          pgrep -lx CLIPassoStudio  # (still running five seconds later: it did not quit at once)
+          pkill -x CLIPassoStudio || true
       - name: Sizes and self-test in the summary
         run: |
           {
