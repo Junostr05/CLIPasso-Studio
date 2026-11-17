@@ -168,6 +168,17 @@ public enum JobFolder {
         return p.done < p.total
     }
 
+    /// jobs.sketch_file: the sketch of a run as it is shown and exported – the touched-up one (edited.svg) if there
+    /// is one, else `original` (or the run's best_iter.svg).
+    public static func sketchFile(runDir: URL?, original: String = "") -> URL? {
+        if let runDir {
+            let edited = runDir.appending(path: editedFile)
+            if FileManager.default.fileExists(atPath: edited.path) { return edited }
+        }
+        if !original.isEmpty { return URL(filePath: original) }
+        return runDir?.appending(path: "best_iter.svg")
+    }
+
     /// jobs.best_sketch: the best sketch of a job, the touched-up one (edited.svg) if there is one.
     public static func bestSketch(_ summary: JobSummary) -> URL? {
         for run in summary.runs where run["run_name"]?.stringValue == summary.bestRun {

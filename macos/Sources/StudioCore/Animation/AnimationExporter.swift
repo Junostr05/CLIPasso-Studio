@@ -23,10 +23,14 @@ public struct AnimationJob: Sendable {
     }
 }
 
-/// Why an animation cannot be made: its text is ui.err.<code> (export_no_logs, export_no_strokes).
-public struct AnimationError: Error, Equatable, Sendable {
+/// Why an export cannot be made: its text is ui.err.<code> (export_no_logs, export_no_strokes, export_no_sketches).
+public struct ExportError: Error, Equatable, Sendable {
     public let code: String
+
+    public init(code: String) { self.code = code }
 }
+
+public typealias AnimationError = ExportError
 
 /// The drawn frames of an animation (export.export_animation / export_drawing): their number, the SVG of each –
 /// framed as the finished sketch – and the frame rate and length the plan starts from.
