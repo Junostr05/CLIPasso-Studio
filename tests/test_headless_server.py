@@ -512,3 +512,58 @@ def test_stylize():
     for i, args in enumerate([dict(svgs=sketch, style="ink"), dict(svgs=[sketch], style="glitter"),
                               dict(svgs=[1], style="ink"), dict(svgs=["<svg"], style="ink")]):
         assert server.handle(_req(10 + i, "stylize", **args))["error"]["code"] == "bad_request", args
+
+
+def test_masks(tmp_path, user_data):
+    """The Mac app's object mask: what is known at once (the model's from the mask cache, the user's edited one),
+    the model's computed in a process of its own (here a stand-in) – one at a time, the newest waiting – with
+    "mask_ready" / "mask_failed", and the user's mask kept by the image's content."""
+    import queue as queue_mod
+
+    from PIL import Image
+
+    from clipasso_studio.engine import masking
+    from clipasso_studio.engine.imaging import load_rgb
+
+    image, other = tmp_path / "Kamel ä.png", tmp_path / "zwei.png"
+    Image.new("RGB", (40, 30), (200, 120, 60)).save(image)
+    Image.new("RGB", (40, 30), (20, 120, 60)).save(other)
+    started = []
+
+    def work(path, model, device):
+        started.append((path, model, device, queue_mod.Queue()))
+        return started[-1][3], None
+
+    server, out = _server(mask_work=work)
+    first = server.handle(_req(1, "mask", image=str(image), model="u2net"))["result"]
+    assert first == {"probability": None, "edited": None, "width": 40, "height": 30, "computing": False}
+    assert server.handle(_req(2, "mask", image=str(image), model="u2net", compute=True))["result"]["computing"]
+    assert server.handle(_req(3, "mask", image=str(other), model="u2net", compute=True))["result"]["computing"]
+    assert [s[:3] for s in started] == [(str(image), "u2net", "auto")]  # (the other one waits)
+    assert server.pump() == 0
+    started[0][3].put(("done", {"path": "/cache/u2net-key.png"}))
+    assert server.pump() == 1
+    assert out.lines()[-1] == {"event": "mask_ready", "job": None,
+                               "data": {"image": str(image), "model": "u2net", "probability": "/cache/u2net-key.png"}}
+    assert [s[0] for s in started] == [str(image), str(other)]  # (then the one that waited)
+    started[1][3].put(("error", "RuntimeError: no memory"))
+    server.pump()
+    assert out.lines()[-1]["event"] == "mask_failed" and out.lines()[-1]["data"]["message"] == "RuntimeError: no memory"
+    # the user's mask: the left half, kept by the image's content
+    painted = tmp_path / "painted.png"
+    mask = Image.new("L", (40, 30), 0)
+    mask.paste(255, (0, 0, 20, 30))
+    mask.save(painted)
+    saved = server.handle(_req(4, "save_mask", image=str(image), mask=str(painted)))["result"]["path"]
+    im = load_rgb(str(image))
+    assert saved == str(masking.edited_mask_path(im))
+    kept = masking.edited_mask(im)
+    assert kept is not None and kept[:, :20].all() and not kept[:, 20:].any()
+    assert server.handle(_req(5, "mask", image=str(image), model="u2net"))["result"]["edited"] == saved
+    small = tmp_path / "small.png"
+    Image.new("L", (10, 10), 255).save(small)
+    assert server.handle(_req(6, "save_mask", image=str(image), mask=str(small)))["error"]["code"] == "bad_request"
+    assert server.handle(_req(7, "remove_mask", image=str(image)))["ok"]
+    assert masking.edited_mask(im) is None
+    assert server.handle(_req(8, "mask", image=str(image), model="sam"))["error"]["code"] == "bad_request"
+    assert server.handle(_req(9, "mask", image=str(tmp_path / "nope.png")))["error"]["code"] == "not_found"

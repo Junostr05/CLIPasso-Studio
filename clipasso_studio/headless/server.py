@@ -2,8 +2,8 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · start · pause ·
-resume · cancel · shutdown
+ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · mask · save_mask ·
+remove_mask · start · pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from typing import BinaryIO, Callable
 from .. import __version__
 from .. import settings_schema as schema
 from ..engine.errors import UserError
-from . import export
+from . import export, masks
 from .protocol import PROTOCOL_VERSION, IterationThrottle, ProtocolError, Writer, decode
 
 TERMINAL = ("job_done", "job_failed", "job_ended")  # the last event of a job
@@ -112,7 +112,7 @@ def _text(args: dict, key: str, required: bool = True) -> str:
 
 class EngineServer:
     def __init__(self, writer: Writer, runner=None, clock: Callable[[], float] = time.monotonic,
-                 devices_probe: Callable[[], dict] = probe_devices):
+                 devices_probe: Callable[[], dict] = probe_devices, mask_work: Callable | None = None):
         if runner is None:
             from ..engine.runner import JobRunner
 
@@ -128,6 +128,9 @@ class EngineServer:
         self._probe_thread: threading.Thread | None = None
         self._probe_lock = threading.Lock()
         self._stopping = False
+        # (the object masks: one computed at a time, in a process of its own; ``mask_work`` stands in for it in tests)
+        self.masks = masks.Previews(lambda kind, data: self.writer.send({"event": kind, "job": None, "data": data}),
+                                    mask_work)
 
     # ------------------------------------------------------------------ requests
     def handle(self, req: dict) -> dict:
@@ -257,6 +260,40 @@ class EngineServer:
                 raise _Fail("bad_request", f"svgs[{i}] is no SVG: {exc}") from None
         return {"svgs": out}
 
+    def _image(self, args: dict) -> str:
+        image = _text(args, "image")
+        if not os.path.isfile(image):
+            raise _Fail("not_found", f"no image {image}")
+        return image
+
+    def op_mask(self, args: dict) -> dict:
+        """The object mask of an image (headless/masks.py): the model's probability from the mask cache and the
+        user's edited mask as far as they are there; with ``compute`` the model's mask is computed when it is not –
+        the event "mask_ready" or "mask_failed" follows."""
+        image, model = self._image(args), args.get("model", schema.DEFAULT_MASK_MODEL)
+        if model not in schema.MASK_MODELS:
+            raise _Fail("bad_request", f"model is one of {', '.join(schema.MASK_MODELS)}")
+        out = {**masks.status(image, model), "computing": False}
+        if args.get("compute") and out["probability"] is None:
+            self.masks.request(image, model, str(args.get("device") or "auto"))
+            out["computing"] = True
+        return out
+
+    def op_save_mask(self, args: dict) -> dict:
+        """The user's mask of an image (a PNG of its size the app painted) kept where every method finds it."""
+        image, mask = self._image(args), _text(args, "mask")
+        if not os.path.isfile(mask):
+            raise _Fail("not_found", f"no mask {mask}")
+        try:
+            return {"path": masks.save(image, mask)}
+        except ValueError as exc:
+            raise _Fail("bad_request", str(exc)) from None
+
+    def op_remove_mask(self, args: dict) -> dict:
+        """The image back to the model's mask (the user's goes)."""
+        masks.remove(self._image(args))
+        return {}
+
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")
         if not isinstance(settings, dict):
@@ -305,10 +342,11 @@ class EngineServer:
         self.writer.send({"event": kind, "job": self.job, "data": data})
 
     def pump(self) -> int:
-        """Pass the job's new events on; returns how many came."""
+        """Pass the job's new events (and a finished mask) on; returns how many came."""
+        sent = self.masks.poll()
         if self.job is None:
             self.runner.release_idle(WARM_IDLE)
-            return 0
+            return sent
         events = self.runner.poll()
         for kind, data in events:
             data = {k: v for k, v in data.items() if k != "token"}
@@ -323,11 +361,11 @@ class EngineServer:
             self._send(kind, data)
             if kind in TERMINAL:
                 self.job = None
-                return len(events)
+                return len(events) + sent
         for job, item in self.throttle.due():
             if job == self.job:
                 self._send("iteration", item)
-        return len(events)
+        return len(events) + sent
 
     # ---------------------------------------------------------------------- loop
     def serve(self, inp: BinaryIO) -> int:
@@ -360,4 +398,5 @@ class EngineServer:
             code = 1
         finally:
             self.runner.kill()  # the job stops and is marked interrupted, whatever ended the loop
+            self.masks.shutdown()
         return code
