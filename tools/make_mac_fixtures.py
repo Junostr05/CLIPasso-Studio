@@ -662,6 +662,7 @@ def mask_cases(out: Path) -> list[dict]:
     from PIL import Image
     from PySide6.QtGui import QColor, QGuiApplication
 
+    from clipasso_studio.engine import masking
     from clipasso_studio.gui import mask_view
 
     QGuiApplication.instance() or QGuiApplication([])
@@ -680,6 +681,14 @@ def mask_cases(out: Path) -> list[dict]:
         classes = np.where(rgba[..., 3] == 255, 254, np.where(rgba[..., 3] == 215, 127, 0)).astype(np.uint8)
         Image.fromarray(classes).save(folder / f"{name}_overlay.png")
         cases.append({"name": name, "size": [w, h], "max_side": side, "overlay": [img.width(), img.height()]})
+    # a probability as the mask cache keeps it (masking._write_cached: 16 bits) and what masking reads from it
+    yy, xx = np.mgrid[0:24, 0:32]
+    q = np.round(np.clip(xx / 31 * 0.6 + yy / 23 * 0.4, 0, 1) * 65535.0).astype(np.uint16)
+    masking._write_cached(folder / "probability.png", q)
+    prob = masking._read_cached(folder / "probability.png")
+    cases.append({"name": "probability", "size": [32, 24], "samples": [[x, y, float(prob[y, x])] for x, y in
+                                                                       ((0, 0), (31, 0), (0, 23), (31, 23), (16, 12))],
+                  "object": int((prob >= masking.OBJECT_THRESHOLD).sum())})
     return cases
 
 

@@ -45,6 +45,22 @@
             #expect(Array(out.pixels[first * 4 ..< first * 4 + 3]) == [60, 110, 240])
         }
 
+        /// The engine's mask pictures read as masking reads them: the cache's 16-bit probability / 65535 (in float),
+        /// an edited mask's 8 bits / 255.
+        @Test func theEnginesMaskFiles() throws {
+            let cases = try #require(Fixtures.json("mask/overlay.json").arrayValue).compactMap(\.objectValue)
+            let c = try #require(cases.first { $0["name"]?.stringValue == "probability" })
+            let prob = try MaskFile.read(Fixtures.url("mask/probability.png"))
+            #expect(prob.width == 32 && prob.height == 24)
+            for sample in (c["samples"]?.arrayValue ?? []).compactMap(\.arrayValue) {
+                let (x, y) = (sample[0].intValue ?? 0, sample[1].intValue ?? 0)
+                #expect(Double(prob.values[y * 32 + x]) == sample[2].doubleValue, "\(x), \(y)")
+            }
+            #expect(prob.values.filter { $0 >= 0.5 }.count == c["object"]?.intValue)
+            let edited = try MaskFile.read(Fixtures.url("mask/small.png"))
+            #expect(edited.width == 60 && Set(edited.values) == [0, 1])
+        }
+
         /// Pillow's 8-bit bilinear shrink: the weights in fixed point (22 bits), rounded away from zero, clipped.
         @Test func pillowsFixedPoint() {
             #expect(Pillow.fixed(0.5) == 1 << 21 && Pillow.fixed(-0.25) == -(1 << 20))

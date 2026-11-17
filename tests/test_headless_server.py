@@ -536,7 +536,8 @@ def test_masks(tmp_path, user_data):
 
     server, out = _server(mask_work=work)
     first = server.handle(_req(1, "mask", image=str(image), model="u2net"))["result"]
-    assert first == {"probability": None, "edited": None, "width": 40, "height": 30, "computing": False}
+    assert first == {"probability": None, "edited": None, "width": 40, "height": 30, "threshold": 0.5,
+                     "computing": False}
     assert server.handle(_req(2, "mask", image=str(image), model="u2net", compute=True))["result"]["computing"]
     assert server.handle(_req(3, "mask", image=str(other), model="u2net", compute=True))["result"]["computing"]
     assert [s[:3] for s in started] == [(str(image), "u2net", "auto")]  # (the other one waits)

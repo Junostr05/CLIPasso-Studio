@@ -22,13 +22,15 @@ from ..engine.imaging import load_rgb
 
 
 def status(image: str, model: str) -> dict:
-    """The mask of ``image`` as far as it is known: the model's probability (None: not computed yet) and the
-    user's edited mask (None: none), the image's size (the masks are of that size, the picture turned upright)."""
+    """The mask of ``image`` as far as it is known: the model's probability (None: not computed yet), the user's
+    edited mask (None: none), the image's size (the masks are of that size, the picture turned upright) and the
+    probability from which a pixel belongs to the object."""
     im = load_rgb(image)
     digest = masking.image_digest(im)
     cached, edited = masking.cache_path(im, model, digest), masking.edited_mask_path(im, digest)
     return {"probability": str(cached) if cached.is_file() else None,
-            "edited": str(edited) if edited.is_file() else None, "width": im.width, "height": im.height}
+            "edited": str(edited) if edited.is_file() else None, "width": im.width, "height": im.height,
+            "threshold": masking.OBJECT_THRESHOLD}
 
 
 def save(image: str, mask: str) -> str:
