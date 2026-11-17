@@ -38,7 +38,7 @@ actor FakeEngine: EngineControlling {
         }
     }
 
-    func emit(_ kind: String, job: String = "j1", _ data: JSONObject = [:]) {
+    func emit(_ kind: String, job: String? = "j1", _ data: JSONObject = [:]) {
         sink.yield(EngineEvent(kind: kind, job: job, data: data))
     }
 
@@ -86,6 +86,16 @@ actor FakeEngine: EngineControlling {
         await engine.emit("job_done", job: "j2")
         let end = try await Self.until(queue, "finished") { $0.finished != nil }
         #expect(end.finished == .nothing && end.jobs.allSatisfy { $0.status == .done })
+    }
+
+    /// The engine's events that belong to no job – an image's mask is ready – are passed on, before any job too.
+    @Test func noticesOfNoJob() async throws {
+        let (engine, queue, _) = try Self.setUp()
+        await queue.begin()
+        var notices = queue.notices.makeAsyncIterator()
+        await engine.emit("mask_ready", job: nil, ["image": "/a.png", "model": "u2net"])
+        let notice = await notices.next()
+        #expect(notice?.kind == "mask_ready" && notice?.job == nil && notice?.data["image"] == "/a.png")
     }
 
     @Test func autoStartOffWaits() async throws {

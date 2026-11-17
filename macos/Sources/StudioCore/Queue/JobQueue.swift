@@ -6,6 +6,10 @@ import Foundation
 public actor JobQueue {
     public nonisolated let updates: AsyncStream<QueueSnapshot>
     private let sink: AsyncStream<QueueSnapshot>.Continuation
+    /// The engine's events that belong to no job (an image's mask is ready …), passed on: the engine has one stream
+    /// of events, and the queue reads it.
+    public nonisolated let notices: AsyncStream<EngineEvent>
+    private let noticeSink: AsyncStream<EngineEvent>.Continuation
     private let engine: any EngineControlling
     public private(set) var outputRoot: URL
     public private(set) var autoStart = true
@@ -19,6 +23,12 @@ public actor JobQueue {
         self.engine = engine
         self.outputRoot = outputRoot
         (updates, sink) = AsyncStream<QueueSnapshot>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        (notices, noticeSink) = AsyncStream<EngineEvent>.makeStream()
+    }
+
+    /// Read the engine's events from now on (else from the first job): the notices come before any job.
+    public func begin() {
+        listen()
     }
 
     deinit {
@@ -161,6 +171,10 @@ public actor JobQueue {
     // MARK: - the engine's events
 
     private func handle(_ event: EngineEvent) async {
+        if event.job == nil, event.kind.hasPrefix("mask_") {
+            noticeSink.yield(event)
+            return
+        }
         if event.kind == "engine_exit" {
             engineEnded(crashed: event.data["crashed"]?.truthy ?? true)
             return

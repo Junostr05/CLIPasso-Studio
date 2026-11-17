@@ -211,3 +211,21 @@ def test_models_groups_on_a_mac():
             assert g["title"] in texts and g["hint"] in texts, (code, g)
         for m in data["models"]:
             assert m["purpose"] in texts and all(v in texts for v in m["purpose_params"].values()), (code, m["key"])
+
+
+def test_the_mask_models_rule_is_uses_mask():
+    """The Mac app knows that a run uses the object mask from the schema alone: the mask model's parameter is active
+    (its enabled_if) exactly when settings_schema.uses_mask says so – for every method, over many settings."""
+    rng = random.Random(7)
+    for method in schema.METHODS:
+        param = next(p for p in schema.params_for(method) if p.key == "mask_model")
+        for _ in range(2000):
+            s = schema.default_settings(method)
+            for q in schema.params_for(method):
+                if q.kind == "bool":
+                    s[q.key] = rng.random() < 0.5
+                elif q.kind == "choice" and q.choices:
+                    s[q.key] = rng.choice(list(q.choices))
+            for key in [k for k in s if rng.random() < 0.05]:
+                del s[key]  # (a setting missing: its default counts)
+            assert (param.enabled_if(s) if param.enabled_if else True) == schema.uses_mask(method, s), (method, s)
