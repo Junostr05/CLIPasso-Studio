@@ -56,6 +56,8 @@ jobs:
       - uses: actions/setup-python@v5  # (the tests start the real engine: python3 -m clipasso_studio.headless)
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Pillow for the engine (it writes the WebP the tests make)
+        run: python -m pip install "$(grep -E '^pillow==' requirements/lock-macos.txt | cut -d' ' -f1)"
       - name: swift build and swift test
         working-directory: macos
         env:
@@ -78,9 +80,11 @@ jobs:
           XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i -E "beta|release_candidate|_rc" | sort -V | tail -1)
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - uses: actions/setup-python@v5  # (only for the build scripts: the app gets its own Python)
+      - uses: actions/setup-python@v5  # (the build scripts; the tests' engine – the app gets its own Python)
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Pillow for the engine (it writes the WebP the tests make)
+        run: python -m pip install "$(grep -E '^pillow==' requirements/lock-macos.txt | cut -d' ' -f1)"
       - name: xcodebuild (the app and its tests)
         working-directory: macos
         run: |

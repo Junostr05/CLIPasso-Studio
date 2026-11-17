@@ -5,7 +5,16 @@ import Foundation
 /// Mac app and the studio start from the last export of either.
 public struct ExportOptions: Sendable, Equatable {
     public enum Format: String, Sendable, CaseIterable {
-        case svg, png, pdf
+        case svg, png, pdf, gif, mp4, webp
+
+        /// the animation it is (nil: a picture)
+        public var animation: Animation.Format? { Animation.Format(rawValue: rawValue) }
+
+        /// GIF and MP4 cannot be transparent (white instead)
+        public var allowsTransparent: Bool { self != .gif && self != .mp4 }
+
+        /// its name in the dialog's heading
+        public var title: String { self == .webp ? "WebP" : rawValue.uppercased() }
     }
 
     public var stroke = "#000000"
@@ -34,7 +43,7 @@ public struct ExportOptions: Sendable, Equatable {
         widthScale = min(10, max(0.1, settings["export_width"]?.doubleValue ?? 1))
         let bg = settings["export_background"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 }
             ?? (format == .svg ? "transparent" : "#FFFFFF")
-        background = bg == "transparent" ? nil : bg
+        background = bg == "transparent" ? (format.allowsTransparent ? nil : "#FFFFFF") : bg
         frame = SketchFraming.Mode(rawValue: settings["export_frame"]?.stringValue ?? "") ?? .square
         margin = min(50, max(0, settings["export_margin"]?.intValue ?? 5))
         size = format == .png ? 1024 : 512

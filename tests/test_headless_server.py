@@ -454,3 +454,40 @@ def test_read_lines_on_a_windows_pipe(monkeypatch):
     server.read_lines(Inp(), got.append)
     assert got == [b'{"id": 1}\n', b'{"id": 2}\n', b"tail", None]
     assert reads == sizes  # exactly what was there each time
+
+
+def test_encode_webp(tmp_path):
+    """The Mac app draws an animation's frames and the engine writes them as an animated WebP with Pillow."""
+    from PIL import Image
+
+    paths = []
+    for i, colour in enumerate(((255, 255, 255, 255), (0, 0, 0, 0), (20, 30, 40, 255))):
+        path = tmp_path / f"frame_{i:05d}.png"
+        Image.new("RGBA", (8, 6), colour).save(path)
+        paths.append(str(path))
+    server, _ = _server()
+    dest = tmp_path / "Zeichnung ä.webp"
+    answer = server.handle(_req(1, "encode_webp", frames=paths, durations=[100, 100.0, 1500], dest=str(dest),
+                                background=None))
+    assert answer["ok"] and answer["result"] == {"path": str(dest), "frames": 3}
+    with Image.open(dest) as webp:
+        assert webp.format == "WEBP" and webp.n_frames == 3 and webp.size == (8, 6)
+        webp.seek(1)
+        assert webp.convert("RGBA").getpixel((0, 0))[3] == 0  # (transparent stays transparent)
+        webp.seek(2)
+        webp.load()  # (Pillow reads a frame's duration with the frame)
+        assert webp.info["duration"] == 1500
+    opaque = tmp_path / "opaque.webp"
+    assert server.handle(_req(2, "encode_webp", frames=paths, durations=[50, 50, 50], dest=str(opaque),
+                              background=[255, 255, 255]))["ok"]
+    with Image.open(opaque) as webp:
+        webp.seek(1)
+        assert webp.convert("RGBA").getpixel((0, 0))[3] == 255
+    bad = [dict(frames=[], durations=[], dest=str(dest)), dict(frames=paths, durations=[1, 2], dest=str(dest)),
+           dict(frames=paths, durations=[1, 2, 0], dest=str(dest)), dict(frames=paths, durations=[1, 2, 3], dest=""),
+           dict(frames=paths, durations=[1, 2, 3], dest=str(dest), background=[1, 2])]
+    for i, args in enumerate(bad):
+        assert server.handle(_req(10 + i, "encode_webp", **args))["error"]["code"] == "bad_request", args
+    gone = server.handle(_req(20, "encode_webp", frames=paths + [str(tmp_path / "nope.png")], durations=[1, 2, 3, 4],
+                              dest=str(dest)))
+    assert gone["error"]["code"] == "not_found"

@@ -2,7 +2,8 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · convert_model · start · pause · resume · cancel · shutdown
+ops: hello · devices · schema · models · required_models · convert_model · encode_webp · start · pause · resume · cancel ·
+shutdown
 """
 
 from __future__ import annotations
@@ -197,6 +198,43 @@ class EngineServer:
         if key not in model_store.SPECS:
             raise _Fail("not_found", f"unknown model {key}")
         return {"path": str(model_store.convert_downloaded(key, Path(root)))}
+
+    def op_encode_webp(self, args: dict) -> dict:
+        """An animated WebP of frames the Mac app drew (PNG files) – written with Pillow as export._encode writes
+        it: lossless, repeating, each frame for its ``durations`` ms; ``background`` [r, g, b] or None
+        (transparent)."""
+        import os
+
+        from PIL import Image
+
+        frames, durations = args.get("frames"), args.get("durations")
+        if (not isinstance(frames, list) or not frames or not all(isinstance(f, str) and f for f in frames)
+                or not isinstance(durations, list) or len(durations) != len(frames)
+                or not all(isinstance(d, (int, float)) and not isinstance(d, bool) and d > 0 for d in durations)):
+            raise _Fail("bad_request", "frames are paths of PNG files and durations their milliseconds, as many")
+        dest = _text(args, "dest")
+        background = args.get("background")
+        if background is not None and (not isinstance(background, list) or len(background) != 3
+                                       or not all(isinstance(c, int) and 0 <= c <= 255 for c in background)):
+            raise _Fail("bad_request", "background is [r, g, b] or null (transparent)")
+        missing = [f for f in frames if not os.path.isfile(f)]
+        if missing:
+            raise _Fail("not_found", f"no frame {missing[0]}")
+        images = []
+        for path in frames:
+            with Image.open(path) as image:
+                images.append(image.convert("RGBA" if background is None else "RGB"))
+        try:
+            images[0].save(dest, format="WEBP", save_all=True, append_images=images[1:], duration=durations, loop=0,
+                           lossless=True, method=4,
+                           background=(0, 0, 0, 0) if background is None else (*background, 255))
+        except BaseException:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            raise
+        return {"path": dest, "frames": len(images)}
 
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")

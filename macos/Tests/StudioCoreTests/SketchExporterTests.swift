@@ -17,6 +17,11 @@ import Testing
         let fresh = ExportOptions(settings: settings, format: .png)
         #expect(fresh.background == "#FFFFFF" && fresh.stroke == "#000000" && fresh.frame == .square && fresh.size == 1024)
         #expect(ExportOptions(settings: settings, format: .svg).background == nil)  // (an SVG: transparent at first)
+        settings["export_background"] = "transparent"
+        #expect(ExportOptions(settings: settings, format: .gif).background == "#FFFFFF")  // (GIF, MP4: never)
+        #expect(ExportOptions(settings: settings, format: .webp).background == nil && ExportOptions.Format.webp.title == "WebP")
+        #expect(ExportOptions(settings: settings, format: .mp4).size == 512 && ExportOptions.Format.png.animation == nil)
+        settings["export_background"] = nil
         var chosen = fresh
         chosen.stroke = "#336699"
         chosen.widthScale = 2.5
