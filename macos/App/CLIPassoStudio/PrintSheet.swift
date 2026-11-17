@@ -125,10 +125,11 @@ struct PrintSheet: View {
             guard let items else { return }
             try? await Task.sleep(for: .milliseconds(150))  // (typing a heading does not draw for every letter)
             guard !Task.isCancelled else { return }
-            let (layout, scale) = (layout, NSScreen.main?.backingScaleFactor ?? 2)
+            if !model.brushStyles.contains(layout.style) { layout.style = "plain" }
+            let (layout, scale, stylist) = (layout, NSScreen.main?.backingScaleFactor ?? 2, model.stylist(layout.style))
             let width = Int(Self.previewWidth * scale)
             preview = await Task.detached(executorPreference: OwnThreads.shared) {
-                try? PrintPages.preview(items, layout: layout, width: width)
+                try? PrintPages.preview(items, layout: layout, width: width, stylist: stylist)
             }.value
         }
     }
@@ -164,6 +165,10 @@ struct PrintSheet: View {
             }
             Section {
                 ColorPicker(t.tr("ui.stroke_color"), selection: stroke, supportsOpacity: false)
+                Picker(t.tr("ui.brush.label"), selection: $layout.style) {
+                    ForEach(model.brushStyles, id: \.self) { Text(t.tr("ui.brush.\($0)")).tag($0) }
+                }
+                .help(t.tr("ui.brush.tip"))
                 ColorPicker(t.tr("ui.background"), selection: background, supportsOpacity: false)
                 PaperChoice(paper: $layout.paper) { kind in colours(kind: kind, background: layout.background) }
             }
@@ -236,11 +241,13 @@ struct PrintSheet: View {
 
     /// The pages as a PDF, drawn off the main actor; the progress follows page by page.
     private func pdf(_ layout: PrintLayout, title: String) async throws -> Data {
-        let items = items ?? []
+        let (items, stylist) = (items ?? [], model.stylist(layout.style))
         let (stream, progress) = AsyncStream.makeStream(of: Int.self)
         let task = Task.detached(executorPreference: OwnThreads.shared) { () throws -> Data in
             defer { progress.finish() }
-            return try PrintPages.pdf(items, layout: layout, title: title) { done, _ in progress.yield(done) }
+            return try PrintPages.pdf(items, layout: layout, title: title, stylist: stylist) { done, _ in
+                progress.yield(done)
+            }
         }
         work = task
         pagesDone = 0

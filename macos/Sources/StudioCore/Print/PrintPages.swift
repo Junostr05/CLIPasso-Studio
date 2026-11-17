@@ -29,14 +29,28 @@ public struct PrintItem: Sendable {
         }
 
         /// print_layout._sketch: the sketch restyled (one colour unless it keeps its own, the widths scaled) and
-        /// framed; nil when it cannot be read.
-        static func sketch(_ item: PrintItem, _ layout: PrintLayout) -> (sketch: Sketch, aspect: Double)? {
+        /// framed – then in the brush style.
+        static func prepared(_ item: PrintItem, _ layout: PrintLayout) -> String {
             let restyled = SketchExport.restyleSVG(item.svg, strokeColor: layout.stroke, widthScale: layout.widthScale)
             let framing = SketchFraming.make(item.svg, mode: layout.frame, frame: item.photo, margin: layout.frameMargin)
-            let text = framing?.apply(restyled) ?? restyled
-            guard let sketch = try? SketchSVG.parse(text) else { return nil }
-            let box = SketchEditing.viewBox(text)
-            return (sketch, box.width > 0 && box.height > 0 ? box.width / box.height : 1)
+            return framing?.apply(restyled) ?? restyled
+        }
+
+        /// A page's sketches in the brush style (one request for those that can be read), with their shapes; nil for
+        /// one that cannot be read – it leaves its caption only, and the others are drawn.
+        static func styledSketches(_ items: [PrintItem], _ layout: PrintLayout, stylist: Stylist)
+            throws -> [(sketch: Sketch, aspect: Double)?]
+        {
+            let texts = items.map { prepared($0, layout) }
+            let readable = texts.indices.filter { (try? SketchSVG.parse(texts[$0])) != nil }
+            let styled = try stylist(readable.map { texts[$0] })
+            var out: [(sketch: Sketch, aspect: Double)?] = Array(repeating: nil, count: items.count)
+            for (k, i) in readable.enumerated() {
+                guard let sketch = try? SketchSVG.parse(styled[k]) else { continue }
+                let box = SketchEditing.viewBox(styled[k])
+                out[i] = (sketch, box.width > 0 && box.height > 0 ? box.width / box.height : 1)
+            }
+            return out
         }
 
         /// paint_page's paper: `side` pixels wide (at most 2400) in the page's shape.
@@ -54,7 +68,8 @@ public struct PrintItem: Sendable {
         /// One page into `context` (y up, the page at 0, 0 of `size`): `items` are this page's sketches, `paper` the
         /// paper under them (PrintPages.paper).
         public static func draw(_ items: ArraySlice<PrintItem>, layout: PrintLayout, page: Int, pages: Int,
-                                in context: CGContext, size: CGSize, paper: CGImage? = nil)
+                                in context: CGContext, size: CGSize, paper: CGImage? = nil, stylist: Stylist = .plain)
+            throws
         {
             let height = Double(size.height)
             func rect(_ box: PageBox) -> CGRect {  // (from the top left to Core Graphics' bottom left)
@@ -69,7 +84,7 @@ public struct PrintItem: Sendable {
             }
             let (cols, rows) = layout.grid
             let shown = Array(items.prefix(cols * rows))
-            let sketches = shown.map { sketch($0, layout) }
+            let sketches = try styledSketches(shown, layout, stylist: stylist)
             let boxes = layout.boxes(width: Double(size.width), height: height, captions: shown.map(\.caption),
                                      aspects: sketches.map { $0?.aspect }, pages: pages)
             let colour = SketchSVG.color(layout.textColour).map { SketchRenderer.cgColor($0) }
@@ -99,7 +114,7 @@ public struct PrintItem: Sendable {
 
         /// export_pdf_pages: a PDF of the sketches laid out on pages (vector, in points), titled `title`.
         /// `progress` hears (pages done, pages); a cancelled task stops between pages (CancellationError).
-        public static func pdf(_ items: [PrintItem], layout: PrintLayout, title: String,
+        public static func pdf(_ items: [PrintItem], layout: PrintLayout, title: String, stylist: Stylist = .plain,
                                progress: (Int, Int) -> Void = { _, _ in }) throws -> Data
         {
             let chunks = layout.pages(items)
@@ -117,7 +132,8 @@ public struct PrintItem: Sendable {
                     throw CancellationError()
                 }
                 context.beginPDFPage(nil)
-                draw(chunk, layout: layout, page: i + 1, pages: chunks.count, in: context, size: size, paper: ground)
+                try draw(chunk, layout: layout, page: i + 1, pages: chunks.count, in: context, size: size, paper: ground,
+                         stylist: stylist)
                 context.endPDFPage()
                 progress(i + 1, chunks.count)
             }
@@ -126,7 +142,9 @@ public struct PrintItem: Sendable {
         }
 
         /// preview: page `page` (1 …) as a picture `width` pixels wide, on white.
-        public static func preview(_ items: [PrintItem], layout: PrintLayout, width: Int, page: Int = 1) throws -> CGImage {
+        public static func preview(_ items: [PrintItem], layout: PrintLayout, width: Int, page: Int = 1,
+                                   stylist: Stylist = .plain) throws -> CGImage
+        {
             let (wMM, hMM) = layout.pageMM
             let height = max(1, Int((Double(width) * hMM / wMM).rounded(.toNearestOrEven)))
             guard let space = CGColorSpace(name: CGColorSpace.sRGB),
@@ -139,8 +157,8 @@ public struct PrintItem: Sendable {
             let chunks = layout.pages(items)
             let shown = chunks.isEmpty ? [] : chunks[min(max(page, 1), chunks.count) - 1]
             let ground = try Self.paper(layout, side: width)
-            draw(shown, layout: layout, page: min(max(page, 1), max(chunks.count, 1)), pages: max(chunks.count, 1),
-                 in: context, size: size, paper: ground)
+            try draw(shown, layout: layout, page: min(max(page, 1), max(chunks.count, 1)), pages: max(chunks.count, 1),
+                     in: context, size: size, paper: ground, stylist: stylist)
             guard let image = context.makeImage() else { throw SketchRenderer.RenderError(description: "the bitmap gave no image") }
             return image
         }

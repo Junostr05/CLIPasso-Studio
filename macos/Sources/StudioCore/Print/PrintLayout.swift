@@ -42,6 +42,8 @@ public struct PrintLayout: Sendable, Equatable {
     /// nil: the sketches' own colours
     public var stroke: String?
     public var widthScale = 1.0
+    /// the brush style (the export's last one: the dialog starts from it and does not keep its own)
+    public var style = "plain"
     /// nil or "transparent": none
     public var background: String?
     public var frame = SketchFraming.Mode.square
@@ -70,6 +72,7 @@ public struct PrintLayout: Sendable, Equatable {
         self.background = background == "transparent" ? "#FFFFFF" : background
         frame = SketchFraming.Mode(rawValue: settings["export_frame"]?.stringValue ?? "") ?? .square
         paper = Paper.of(settings)
+        if let s = settings["export_style"]?.stringValue, !s.isEmpty { style = s }
     }
 
     /// PrintDialog._remember: the page's choices kept for the next print (the number per page only from a print of

@@ -172,6 +172,29 @@ import Testing
             #expect(Self.dark(last) < Self.dark(preview))  // (one unreadable sketch: only its caption)
         }
 
+        /// The pages in a brush style: a page's sketches go to the stylist together, restyled and framed as
+        /// print_layout._sketch frames them, and what it answers is drawn; the style starts from the export's.
+        @Test func pagesInABrushStyle() throws {
+            var settings = AppSettings(data: [:], defaultOutputDir: URL(filePath: "/tmp"))
+            settings["export_style"] = "pencil"
+            #expect(PrintLayout(settings: settings, count: 1).style == "pencil" && PrintLayout().style == "plain")
+            var layout = PrintLayout()
+            layout.perPage = 2
+            let items = try Self.items()
+            let asked = Asked()
+            let stylist = Stylist(style: "pencil") { svgs in
+                asked.add(svgs)
+                return svgs.map { $0.replacingOccurrences(of: "<path ", with: #"<path stroke-dasharray="2 2" "#) }
+            }
+            _ = try PrintPages.pdf(items, layout: layout, title: "Kamele", stylist: stylist)
+            // (a request a page – of the sketches that can be read: the last page's only one cannot)
+            #expect(asked.batches.map(\.count) == [2, 2] && layout.pages(items).count == 3)
+            #expect(asked.batches.first?.first == PrintPages.prepared(items[0], layout))
+            let plain = try PrintPages.preview(items, layout: layout, width: 200)
+            let styled = try PrintPages.preview(items, layout: layout, width: 200, stylist: stylist)
+            #expect(Self.dark(styled) < Self.dark(plain))  // (the dashes leave gaps)
+        }
+
         @Test func aDarkBackgroundGetsLightWriting() throws {
             var layout = PrintLayout()
             layout.background = "#2C3A33"
