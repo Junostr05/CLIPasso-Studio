@@ -180,6 +180,11 @@ public enum SketchExport {
             parts.first { $0.attribute.name == key }.map { unescape($0.attribute.raw) }
         }
 
+        /// The attributes in their order, their values unescaped (ElementTree's `attrib`).
+        var attributes: [(name: String, value: String)] {
+            parts.map { ($0.attribute.name, unescape($0.attribute.raw)) }
+        }
+
         /// ElementTree's `attrib.pop(key, None)`.
         mutating func remove(_ key: String) {
             guard let at = parts.firstIndex(where: { $0.attribute.name == key }) else { return }

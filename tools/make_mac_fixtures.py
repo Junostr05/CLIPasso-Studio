@@ -554,6 +554,63 @@ def paper_cases(out: Path) -> dict:
     return {"pictures": pictures, "inputs": inputs, "dark": dark}
 
 
+ANIMATION_PLANS = (  # (drawn frames, length or None, fps, hold, format, size)
+    (1, None, 20, 1.0, "gif", 512), (2, None, 20, 1.0, "gif", 512), (40, None, 20, 1.0, "gif", 512),
+    (40, 3.3, 20, 0.5, "gif", 512), (40, 3.3, 20, 0.5, "webp", 512), (40, 3.3, 20, 0.5, "mp4", 512),
+    (500, 2.0, 20, 1.0, "gif", 512), (500, 2.0, 20, 1.0, "webp", 1024), (500, 0.05, 20, 0.0, "gif", 512),
+    (7, 10.0, 20, 2.5, "gif", 512), (7, 10.0, 20, 2.5, "mp4", 512), (100, None, 0, 1.0, "webp", 512),
+    (250, 12.35, 50, 1.25, "gif", 2048), (250, 12.35, 50, 1.25, "mp4", 2048), (3, 0.5, 20, -1, "webp", 512),
+    (6000, 300.0, 20, 1.0, "webp", 64), (100, 5.0, 20, 1.0, "gif", 8192),
+)
+DRAWING_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+<rect x="0" y="0" width="224" height="224" fill="#FFFFFF" data-bg="1" />
+<g>
+<path d="M 20 30 L 60 35 L 90 80" fill="none" stroke="#000000" stroke-width="1.5" stroke-opacity="0.8" />
+<path d="M 200 200 Q 150 180 120 210" fill="none" stroke="#000000" stroke-width="2.25" />
+<path d="M 100 100 C 120 60 160 60 180 100 Z" fill="none" stroke="#000000" stroke-width="1" />
+<path d="M 30 190 L 40 150 M 45 150 L 70 120" fill="none" stroke="#333333" stroke-width="1.5" />
+<path d="M 92 82 L 92 82" fill="none" stroke="#000000" stroke-width="1.5" />
+<path d="M 210 20 L 150 25 Q 120 30 110 60" fill="none" stroke="#000000" stroke-width="3" />
+</g>
+</svg>
+"""
+DRAWING_TIMES = (0.0, 0.04, 0.13, 0.5, 0.77, 0.999, 1.0)
+
+
+def animation_cases(out: Path) -> dict:
+    """gui/export.py's animations: which drawn frames an animation shows and how long (animation_plan), the
+    lengths it starts from, and the stroke-by-stroke drawing (Drawing) of the sketches – its order along the route
+    (or as written), its timeline and the SVG at points of it."""
+    from clipasso_studio.gui import dialogs, export
+
+    (out / "animation").mkdir(parents=True, exist_ok=True)
+    (out / "animation" / "drawing.svg").write_bytes(DRAWING_SVG.encode("utf-8"))
+    plans = []
+    for n, length, fps, hold, fmt, size in ANIMATION_PLANS:
+        idx, durations = export.animation_plan(n, length, fps, hold, fmt, size)
+        plans.append({"n": n, "length": length, "fps": fps, "hold": hold, "format": fmt, "size": size,
+                      "count": len(idx), "frames": idx[:60] + idx[-60:] if len(idx) > 120 else idx,
+                      "durations": durations[:60] + durations[-60:] if len(durations) > 120 else durations,
+                      "sum_frames": sum(idx), "sum_durations": sum(durations)})
+    lengths = {"every_step": [[n, fmt, export.every_step_length(n, fmt)] for n in (0, 1, 7, 40, 101, 999, 5000)
+                              for fmt in ("gif", "mp4")],
+               "drawing": [[n, line, export.default_drawing_length(n, line)]
+                           for n, line in ((0, 0.0), (1, 0.0), (1, 2.5), (1, 30.0), (5, 0.0), (9, 0.0), (17, 0.0),
+                                           (60, 0.0), (1, 4.2))],
+               "process": [[n, dialogs.default_animation_length(n)] for n in (0, 1, 30, 41, 99, 150, 199, 250, 900)]}
+    drawings = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "animation/drawing.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        for keep in (False, True):
+            d = export.Drawing(svg, keep_order=keep)
+            drawings.append({"svg": name, "keep_order": keep, "head": d.head, "total": d.total, "line": d.line,
+                             "spans": [list(s) for s in d.spans],
+                             "starts": [list(st["subs"][0][0]) for st in d.strokes],
+                             "centrelines": [d.centreline(i) for i in range(len(d.strokes))],
+                             "frames": [[t, d.frame(t)] for t in DRAWING_TIMES]})
+    return {"plans": plans, "lengths": lengths, "drawings": drawings}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -713,6 +770,7 @@ def build(out: Path) -> None:
     write_json(out / "export" / "print.json", print_cases())
     write_json(out / "paper" / "random.json", random_cases())
     write_json(out / "paper" / "papers.json", paper_cases(out))
+    write_json(out / "animation" / "animation.json", animation_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
