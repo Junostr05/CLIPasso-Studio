@@ -568,3 +568,14 @@ def test_masks(tmp_path, user_data):
     assert masking.edited_mask(im) is None
     assert server.handle(_req(8, "mask", image=str(image), model="sam"))["error"]["code"] == "bad_request"
     assert server.handle(_req(9, "mask", image=str(tmp_path / "nope.png")))["error"]["code"] == "not_found"
+
+
+def test_the_engine_starts_without_numpy():
+    """The engine answers "hello" before any heavy library is loaded: the Mac app's tests start it in a Python with
+    Pillow only, and the app waits for it at every start."""
+    import subprocess
+    import sys
+
+    code = "import sys, clipasso_studio.headless.server; print(sorted({'numpy', 'torch'} & set(sys.modules)))"
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "[]"

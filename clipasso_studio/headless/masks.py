@@ -14,17 +14,16 @@ import queue as queue_mod
 from collections.abc import Callable
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
-
-from ..engine import masking
-from ..engine.imaging import load_rgb
+# (numpy, Pillow and the masking module are imported where they are used: the engine starts without them)
 
 
 def status(image: str, model: str) -> dict:
     """The mask of ``image`` as far as it is known: the model's probability (None: not computed yet), the user's
     edited mask (None: none), the image's size (the masks are of that size, the picture turned upright) and the
     probability from which a pixel belongs to the object."""
+    from ..engine import masking
+    from ..engine.imaging import load_rgb
+
     im = load_rgb(image)
     digest = masking.image_digest(im)
     cached, edited = masking.cache_path(im, model, digest), masking.edited_mask_path(im, digest)
@@ -35,6 +34,12 @@ def status(image: str, model: str) -> dict:
 
 def save(image: str, mask: str) -> str:
     """The user's mask (a picture of the image's size, white the object) kept for this image content."""
+    import numpy as np
+    from PIL import Image
+
+    from ..engine import masking
+    from ..engine.imaging import load_rgb
+
     im = load_rgb(image)
     with Image.open(mask) as m:
         if m.size != im.size:
@@ -44,6 +49,9 @@ def save(image: str, mask: str) -> str:
 
 
 def remove(image: str) -> None:
+    from ..engine import masking
+    from ..engine.imaging import load_rgb
+
     masking.remove_edited_mask(load_rgb(image))
 
 
