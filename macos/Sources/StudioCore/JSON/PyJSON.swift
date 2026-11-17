@@ -224,13 +224,19 @@ public enum PyJSON {
 
     // MARK: - writing
 
-    public static func dump(_ value: JSONValue, indent: Int? = nil, asciiOnly: Bool = false) -> String {
+    /// `compact`: Python's `separators=(",", ":")` (no spaces).
+    public static func dump(_ value: JSONValue, indent: Int? = nil, asciiOnly: Bool = false, compact: Bool = false)
+        -> String
+    {
         var out = ""
-        write(value, indent: indent, level: 0, ascii: asciiOnly, into: &out)
+        write(value, indent: indent, level: 0, ascii: asciiOnly, compact: compact, into: &out)
         return out
     }
 
-    private static func write(_ value: JSONValue, indent: Int?, level: Int, ascii: Bool, into out: inout String) {
+    private static func write(_ value: JSONValue, indent: Int?, level: Int, ascii: Bool, compact: Bool = false,
+                              into out: inout String)
+    {
+        let comma = indent == nil && !compact ? ", " : ",", colon = compact ? ":" : ": "
         switch value {
         case .null: out += "null"
         case .bool(let b): out += b ? "true" : "false"
@@ -244,9 +250,9 @@ public enum PyJSON {
             }
             out += "["
             for (i, item) in items.enumerated() {
-                if i > 0 { out += indent == nil ? ", " : "," }
+                if i > 0 { out += comma }
                 newline(indent, level + 1, &out)
-                write(item, indent: indent, level: level + 1, ascii: ascii, into: &out)
+                write(item, indent: indent, level: level + 1, ascii: ascii, compact: compact, into: &out)
             }
             newline(indent, level, &out)
             out += "]"
@@ -257,11 +263,11 @@ public enum PyJSON {
             }
             out += "{"
             for (i, (key, item)) in object.enumerated() {
-                if i > 0 { out += indent == nil ? ", " : "," }
+                if i > 0 { out += comma }
                 newline(indent, level + 1, &out)
                 writeString(key, ascii: ascii, into: &out)
-                out += ": "
-                write(item, indent: indent, level: level + 1, ascii: ascii, into: &out)
+                out += colon
+                write(item, indent: indent, level: level + 1, ascii: ascii, compact: compact, into: &out)
             }
             newline(indent, level, &out)
             out += "}"

@@ -57,10 +57,8 @@
                 return String(svg[..<head.lowerBound]) + opening + tag + body
             }
 
-            /// The value of `name="…"` in a start tag (its first match, as Python's re.search).
             internal static func attribute(_ name: String, in tag: String, pattern: String) -> String? {
-                guard let found = tag.range(of: "\(name)=\"\(pattern)", options: .regularExpression) else { return nil }
-                return String(tag[found].dropFirst(name.count + 2)).replacingOccurrences(of: "\"", with: "")
+                SketchFormats.attribute(name, in: tag, pattern: pattern)
             }
 
             static func jpegData(_ image: CGImage, quality: Double) -> Data? {

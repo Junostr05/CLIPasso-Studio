@@ -611,6 +611,54 @@ def animation_cases(out: Path) -> dict:
     return {"plans": plans, "lengths": lengths, "drawings": drawings}
 
 
+FORMAT_SKETCHES = ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "animation/drawing.svg")
+FORMAT_LOOKS = ((None, 1.0), ("#336699", 2.5))  # (stroke colour, width factor)
+ANIMATED_CASES = (  # (length, hold, stroke colour, width factor, background, keep the order)
+    (None, 1.0, None, 1.0, None, False), (2.0, 0.5, "#aa0000", 2.0, "#fafafa", True),
+    (7.25, 0.0, None, 0.5, "#2C3A33", False),
+)
+LOTTIE_CASES = (  # (length, hold, stroke colour, width factor, background, keep the order, size)
+    (None, 1.0, None, 1.0, None, False, 512), (3.5, 0.25, "#336699", 1.5, "#fff8e7", True, 300),
+)
+PAGE_CASES = (("Kamel", None), ("Kamel <1> & \"Zwei\"", "#2C3A33"), ("x", "#fff8e7"), ("y", "nope"))
+LAYER_OBJECT = ("M 20 30 L 60 35 L 90 80", "M 100 100 C 120 60 160 60 180 100 Z")  # two strokes of drawing.svg
+
+
+def format_cases(out: Path) -> dict:
+    """gui/export.py's other formats of a sketch: one path in one layer for plotters (single_layer_svg), the SVG
+    that draws itself (animated_svg) and its web page (web_page), Lottie (lottie), a SceneSketch cell in two layers
+    (scene_layers.layered) and the overview sheet of a matrix (matrix_sheet_svg)."""
+    import tempfile
+
+    from clipasso_studio.gui import export, scene_layers
+
+    sketches = {name: (out / name).read_text(encoding="utf-8") for name in FORMAT_SKETCHES}
+    single = [{"svg": name, "stroke": stroke, "width": width, "out": export.single_layer_svg(svg, stroke, width)}
+              for name, svg in sketches.items() for stroke, width in FORMAT_LOOKS]
+    animated = [{"svg": name, "length": c[0], "hold": c[1], "stroke": c[2], "width": c[3], "background": c[4],
+                 "keep_order": c[5], "out": export.animated_svg(svg, c[0], c[1], c[2], c[3], c[4], "plain", c[5])}
+                for name, svg in sketches.items() for c in ANIMATED_CASES]
+    pages = [{"title": title, "background": bg, "out": export.web_page(animated[0]["out"], title, bg)}
+             for title, bg in PAGE_CASES]
+    lotties = [{"svg": name, "length": c[0], "hold": c[1], "stroke": c[2], "width": c[3], "background": c[4],
+                "keep_order": c[5], "size": c[6],
+                "out": export.lottie(svg, c[0], c[1], c[2], c[3], c[4], c[5], None, "Kamel", c[6])}
+               for name, svg in sketches.items() for c in LOTTIE_CASES]
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "object.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg">' + "".join(f'<path d="{d}"/>' for d in LAYER_OBJECT) + "</svg>",
+            encoding="utf-8")
+        layered = [{"svg": name, "object": with_object,
+                    "out": scene_layers.layered(svg, tmp if with_object else None, ("Hintergrund", "Objekt"))}
+                   for name, svg in sketches.items() for with_object in (True, False)]
+    cells = {801: sketches["svg/lines.svg"], 804: sketches["svg/cubic.svg"], 1601: sketches["animation/drawing.svg"],
+             1604: sketches["edit/odd.svg"]}
+    sheets = [{"cells": {str(k): v for k, v in cells.items()}, "background": bg, "out": export.matrix_sheet_svg(
+        cells, background=bg)} for bg in ("#FFFFFF", None)]
+    return {"single": single, "animated": animated, "pages": pages, "lottie": lotties, "layered": layered,
+            "sheets": sheets, "object": list(LAYER_OBJECT)}
+
+
 # --------------------------------------------------------------------------------------------------------- jobs
 def _png(path: Path, colour) -> Path:
     """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
@@ -771,6 +819,7 @@ def build(out: Path) -> None:
     write_json(out / "paper" / "random.json", random_cases())
     write_json(out / "paper" / "papers.json", paper_cases(out))
     write_json(out / "animation" / "animation.json", animation_cases(out))
+    write_json(out / "export" / "formats.json", format_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),

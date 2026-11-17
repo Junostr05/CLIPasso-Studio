@@ -1,0 +1,6309 @@
+{
+ "single": [
+  {
+   "svg": "svg/lines.svg",
+   "stroke": null,
+   "width": 1.0,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 10 20 L 200.5 30.25 M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "svg/lines.svg",
+   "stroke": "#336699",
+   "width": 2.5,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 10 20 L 200.5 30.25 M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"#336699\" stroke-width=\"3.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "stroke": null,
+   "width": 1.0,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20 M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "stroke": "#336699",
+   "width": 2.5,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20 M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"#336699\" stroke-width=\"7.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "stroke": null,
+   "width": 1.0,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "stroke": "#336699",
+   "width": 2.5,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"#336699\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "stroke": null,
+   "width": 1.0,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 0 10 L 100 10 M 120 10 L 200 60 M 20 150 C 60 100 100 200 140 150 M 250 20 Q 260 150 270 190 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "stroke": "#336699",
+   "width": 2.5,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 0 10 L 100 10 M 120 10 L 200 60 M 20 150 C 60 100 100 200 140 150 M 250 20 Q 260 150 270 190 Z\" fill=\"none\" stroke=\"#336699\" stroke-width=\"6.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "stroke": null,
+   "width": 1.0,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 20 30 L 60 35 L 90 80 M 200 200 Q 150 180 120 210 M 100 100 C 120 60 160 60 180 100 Z M 30 190 L 40 150 M 45 150 L 70 120 M 92 82 L 92 82 M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "stroke": "#336699",
+   "width": 2.5,
+   "out": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <g id=\"strokes\" inkscape:groupmode=\"layer\" inkscape:label=\"Strokes\">\n    <path d=\"M 20 30 L 60 35 L 90 80 M 200 200 Q 150 180 120 210 M 100 100 C 120 60 160 60 180 100 Z M 30 190 L 40 150 M 45 150 L 70 120 M 92 82 L 92 82 M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#336699\" stroke-width=\"3.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  </g>\n</svg>\n"
+  }
+ ],
+ "animated": [
+  {
+   "svg": "svg/lines.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}35.535%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,42.943%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg>"
+  },
+  {
+   "svg": "svg/lines.svg",
+   "length": 2.0,
+   "hold": 0.5,
+   "stroke": "#aa0000",
+   "width": 2.0,
+   "background": "#fafafa",
+   "keep_order": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}28.469%,100%{stroke-dashoffset:0}}.d0{animation:d0 2.500s linear infinite}@keyframes d1{0%,37.358%{stroke-dashoffset:1}80.000%,100%{stroke-dashoffset:0}}.d1{animation:d1 2.500s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 10.00 20.00 L 22.70 20.68 L 35.40 21.37 L 48.10 22.05 L 60.80 22.73 L 73.50 23.42 L 86.20 24.10 L 98.90 24.78 L 111.60 25.47 L 124.30 26.15 L 137.00 26.83 L 149.70 27.52 L 162.40 28.20 L 175.10 28.88 L 187.80 29.57 L 200.50 30.25\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#fafafa\"/><g mask=\"url(#m0)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"#aa0000\" stroke-opacity=\"1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g><g mask=\"url(#m1)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"#aa0000\" stroke-opacity=\"1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/lines.svg",
+   "length": 7.25,
+   "hold": 0.0,
+   "stroke": null,
+   "width": 0.5,
+   "background": "#2C3A33",
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}53.303%,100%{stroke-dashoffset:0}}.d0{animation:d0 7.250s linear infinite}@keyframes d1{0%,64.414%{stroke-dashoffset:1}100.000%,100%{stroke-dashoffset:0}}.d1{animation:d1 7.250s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#2C3A33\"/><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"0.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"0.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg>"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}44.521%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,51.928%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 12.00 200.00 L 17.75 184.67 L 23.79 170.67 L 30.08 158.00 L 36.58 146.67 L 43.26 136.67 L 50.08 128.00 L 57.01 120.67 L 64.01 114.67 L 71.04 110.00 L 78.07 106.67 L 85.07 104.67 L 92.00 104.00 L 98.82 104.67 L 105.50 106.67 L 112.00 110.00 L 119.62 112.84 L 127.26 113.48 L 134.90 112.16 L 142.49 109.08 L 150.00 104.44 L 157.41 98.48 L 164.68 91.40 L 171.78 83.40 L 178.67 74.72 L 185.33 65.56 L 191.73 56.12 L 197.82 46.64 L 203.59 37.32 L 208.99 28.36 L 214.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"11\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 120.50 33.33 L 114.41 39.43 L 108.33 43.29 L 102.26 45.23 L 96.20 45.60 L 90.15 44.73 L 84.12 42.94 L 78.09 40.58 L 72.07 37.98 L 66.06 35.47 L 60.06 33.38 L 54.06 32.05 L 48.07 31.81 L 42.08 33.00 L 36.10 35.95 L 30.12 40.99\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g><g mask=\"url(#m1)\"><path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "length": 2.0,
+   "hold": 0.5,
+   "stroke": "#aa0000",
+   "width": 2.0,
+   "background": "#fafafa",
+   "keep_order": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}53.425%,100%{stroke-dashoffset:0}}.d0{animation:d0 2.500s linear infinite}@keyframes d1{0%,62.314%{stroke-dashoffset:1}80.000%,100%{stroke-dashoffset:0}}.d1{animation:d1 2.500s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 12.00 200.00 L 17.75 184.67 L 23.79 170.67 L 30.08 158.00 L 36.58 146.67 L 43.26 136.67 L 50.08 128.00 L 57.01 120.67 L 64.01 114.67 L 71.04 110.00 L 78.07 106.67 L 85.07 104.67 L 92.00 104.00 L 98.82 104.67 L 105.50 106.67 L 112.00 110.00 L 119.62 112.84 L 127.26 113.48 L 134.90 112.16 L 142.49 109.08 L 150.00 104.44 L 157.41 98.48 L 164.68 91.40 L 171.78 83.40 L 178.67 74.72 L 185.33 65.56 L 191.73 56.12 L 197.82 46.64 L 203.59 37.32 L 208.99 28.36 L 214.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 30.12 40.99 L 36.10 35.95 L 42.08 33.00 L 48.07 31.81 L 54.06 32.05 L 60.06 33.38 L 66.06 35.47 L 72.07 37.98 L 78.09 40.58 L 84.12 42.94 L 90.15 44.73 L 96.20 45.60 L 102.26 45.23 L 108.33 43.29 L 114.41 39.43 L 120.50 33.33\" fill=\"none\" stroke=\"#fff\" stroke-width=\"26\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#fafafa\"/><g mask=\"url(#m0)\"><path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"#aa0000\" stroke-opacity=\"0.6\" stroke-width=\"4.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g><g mask=\"url(#m1)\"><path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"#aa0000\" stroke-opacity=\"0.35\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "length": 7.25,
+   "hold": 0.0,
+   "stroke": null,
+   "width": 0.5,
+   "background": "#2C3A33",
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}66.782%,100%{stroke-dashoffset:0}}.d0{animation:d0 7.250s linear infinite}@keyframes d1{0%,77.893%{stroke-dashoffset:1}100.000%,100%{stroke-dashoffset:0}}.d1{animation:d1 7.250s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 12.00 200.00 L 17.75 184.67 L 23.79 170.67 L 30.08 158.00 L 36.58 146.67 L 43.26 136.67 L 50.08 128.00 L 57.01 120.67 L 64.01 114.67 L 71.04 110.00 L 78.07 106.67 L 85.07 104.67 L 92.00 104.00 L 98.82 104.67 L 105.50 106.67 L 112.00 110.00 L 119.62 112.84 L 127.26 113.48 L 134.90 112.16 L 142.49 109.08 L 150.00 104.44 L 157.41 98.48 L 164.68 91.40 L 171.78 83.40 L 178.67 74.72 L 185.33 65.56 L 191.73 56.12 L 197.82 46.64 L 203.59 37.32 L 208.99 28.36 L 214.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 120.50 33.33 L 114.41 39.43 L 108.33 43.29 L 102.26 45.23 L 96.20 45.60 L 90.15 44.73 L 84.12 42.94 L 78.09 40.58 L 72.07 37.98 L 66.06 35.47 L 60.06 33.38 L 54.06 32.05 L 48.07 31.81 L 42.08 33.00 L 36.10 35.95 L 30.12 40.99\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#2C3A33\"/><g mask=\"url(#m0)\"><path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"1.125\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g><g mask=\"url(#m1)\"><path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 50.00 50.00 L 56.38 44.40 L 63.46 39.60 L 71.12 35.60 L 79.26 32.40 L 87.78 30.00 L 96.56 28.40 L 105.50 27.60 L 114.50 27.60 L 123.44 28.40 L 132.22 30.00 L 140.74 32.40 L 148.88 35.60 L 156.54 39.60 L 163.62 44.40 L 170.00 50.00 L 165.24 70.53 L 159.08 88.13 L 151.76 102.80 L 143.48 114.53 L 134.44 123.33 L 124.88 129.20 L 115.00 132.13 L 105.00 132.13 L 95.12 129.20 L 85.56 123.33 L 76.52 114.53 L 68.24 102.80 L 60.92 88.13 L 54.76 70.53 L 50.00 50.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "length": 2.0,
+   "hold": 0.5,
+   "stroke": "#aa0000",
+   "width": 2.0,
+   "background": "#fafafa",
+   "keep_order": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}80.000%,100%{stroke-dashoffset:0}}.d0{animation:d0 2.500s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 50.00 50.00 L 56.38 44.40 L 63.46 39.60 L 71.12 35.60 L 79.26 32.40 L 87.78 30.00 L 96.56 28.40 L 105.50 27.60 L 114.50 27.60 L 123.44 28.40 L 132.22 30.00 L 140.74 32.40 L 148.88 35.60 L 156.54 39.60 L 163.62 44.40 L 170.00 50.00 L 165.24 70.53 L 159.08 88.13 L 151.76 102.80 L 143.48 114.53 L 134.44 123.33 L 124.88 129.20 L 115.00 132.13 L 105.00 132.13 L 95.12 129.20 L 85.56 123.33 L 76.52 114.53 L 68.24 102.80 L 60.92 88.13 L 54.76 70.53 L 50.00 50.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#fafafa\"/><g mask=\"url(#m0)\"><path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"#aa0000\" stroke-opacity=\"1\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g></svg>"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "length": 7.25,
+   "hold": 0.0,
+   "stroke": null,
+   "width": 0.5,
+   "background": "#2C3A33",
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}100.000%,100%{stroke-dashoffset:0}}.d0{animation:d0 7.250s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 50.00 50.00 L 56.38 44.40 L 63.46 39.60 L 71.12 35.60 L 79.26 32.40 L 87.78 30.00 L 96.56 28.40 L 105.50 27.60 L 114.50 27.60 L 123.44 28.40 L 132.22 30.00 L 140.74 32.40 L 148.88 35.60 L 156.54 39.60 L 163.62 44.40 L 170.00 50.00 L 165.24 70.53 L 159.08 88.13 L 151.76 102.80 L 143.48 114.53 L 134.44 123.33 L 124.88 129.20 L 115.00 132.13 L 105.00 132.13 L 95.12 129.20 L 85.56 123.33 L 76.52 114.53 L 68.24 102.80 L 60.92 88.13 L 54.76 70.53 L 50.00 50.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#2C3A33\"/><g mask=\"url(#m0)\"><path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g></svg>"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}29.076%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,33.837%{stroke-dashoffset:1}50.337%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}@keyframes d2{0%,55.099%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d2{animation:d2 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 250.00 20.00 L 251.33 36.93 L 252.67 53.07 L 254.00 68.40 L 255.33 82.93 L 256.67 96.67 L 258.00 109.60 L 259.33 121.73 L 260.67 133.07 L 262.00 143.60 L 263.33 153.33 L 264.67 162.27 L 266.00 170.40 L 267.33 177.73 L 268.67 184.27 L 270.00 190.00 L 268.67 178.67 L 267.33 167.33 L 266.00 156.00 L 264.67 144.67 L 263.33 133.33 L 262.00 122.00 L 260.67 110.67 L 259.33 99.33 L 258.00 88.00 L 256.67 76.67 L 255.33 65.33 L 254.00 54.00 L 252.67 42.67 L 251.33 31.33 L 250.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"12\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.00 60.00 L 194.67 56.67 L 189.33 53.33 L 184.00 50.00 L 178.67 46.67 L 173.33 43.33 L 168.00 40.00 L 162.67 36.67 L 157.33 33.33 L 152.00 30.00 L 146.67 26.67 L 141.33 23.33 L 136.00 20.00 L 130.67 16.67 L 125.33 13.33 L 120.00 10.00 M 100.00 10.00 L 93.33 10.00 L 86.67 10.00 L 80.00 10.00 L 73.33 10.00 L 66.67 10.00 L 60.00 10.00 L 53.33 10.00 L 46.67 10.00 L 40.00 10.00 L 33.33 10.00 L 26.67 10.00 L 20.00 10.00 L 13.33 10.00 L 6.67 10.00 L 0.00 10.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 20.00 150.00 L 28.00 141.91 L 36.00 137.29 L 44.00 135.60 L 52.00 136.31 L 60.00 138.89 L 68.00 142.80 L 76.00 147.51 L 84.00 152.49 L 92.00 157.20 L 100.00 161.11 L 108.00 163.69 L 116.00 164.40 L 124.00 162.71 L 132.00 158.09 L 140.00 150.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"18\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  </g><g mask=\"url(#m2)\"><path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g></svg>"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "length": 2.0,
+   "hold": 0.5,
+   "stroke": "#aa0000",
+   "width": 2.0,
+   "background": "#fafafa",
+   "keep_order": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}19.799%,100%{stroke-dashoffset:0}}.d0{animation:d0 2.500s linear infinite}@keyframes d1{0%,25.513%{stroke-dashoffset:1}39.395%,100%{stroke-dashoffset:0}}.d1{animation:d1 2.500s linear infinite}@keyframes d2{0%,45.109%{stroke-dashoffset:1}80.000%,100%{stroke-dashoffset:0}}.d2{animation:d2 2.500s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 0.00 10.00 L 6.67 10.00 L 13.33 10.00 L 20.00 10.00 L 26.67 10.00 L 33.33 10.00 L 40.00 10.00 L 46.67 10.00 L 53.33 10.00 L 60.00 10.00 L 66.67 10.00 L 73.33 10.00 L 80.00 10.00 L 86.67 10.00 L 93.33 10.00 L 100.00 10.00 M 120.00 10.00 L 125.33 13.33 L 130.67 16.67 L 136.00 20.00 L 141.33 23.33 L 146.67 26.67 L 152.00 30.00 L 157.33 33.33 L 162.67 36.67 L 168.00 40.00 L 173.33 43.33 L 178.67 46.67 L 184.00 50.00 L 189.33 53.33 L 194.67 56.67 L 200.00 60.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 20.00 150.00 L 28.00 141.91 L 36.00 137.29 L 44.00 135.60 L 52.00 136.31 L 60.00 138.89 L 68.00 142.80 L 76.00 147.51 L 84.00 152.49 L 92.00 157.20 L 100.00 161.11 L 108.00 163.69 L 116.00 164.40 L 124.00 162.71 L 132.00 158.09 L 140.00 150.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"34\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 250.00 20.00 L 251.33 36.93 L 252.67 53.07 L 254.00 68.40 L 255.33 82.93 L 256.67 96.67 L 258.00 109.60 L 259.33 121.73 L 260.67 133.07 L 262.00 143.60 L 263.33 153.33 L 264.67 162.27 L 266.00 170.40 L 267.33 177.73 L 268.67 184.27 L 270.00 190.00 L 268.67 178.67 L 267.33 167.33 L 266.00 156.00 L 264.67 144.67 L 263.33 133.33 L 262.00 122.00 L 260.67 110.67 L 259.33 99.33 L 258.00 88.00 L 256.67 76.67 L 255.33 65.33 L 254.00 54.00 L 252.67 42.67 L 251.33 31.33 L 250.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#fafafa\"/><g mask=\"url(#m0)\"><path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"#aa0000\" stroke-width=\"2\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\"8\" stroke=\"#aa0000\"><title>t</title></path>\n  </g><g mask=\"url(#m2)\"><path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"5\" data-fixed=\"true\" stroke=\"#aa0000\" />\n  </g></svg>"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "length": 7.25,
+   "hold": 0.0,
+   "stroke": null,
+   "width": 0.5,
+   "background": "#2C3A33",
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}43.613%,100%{stroke-dashoffset:0}}.d0{animation:d0 7.250s linear infinite}@keyframes d1{0%,50.756%{stroke-dashoffset:1}75.505%,100%{stroke-dashoffset:0}}.d1{animation:d1 7.250s linear infinite}@keyframes d2{0%,82.648%{stroke-dashoffset:1}100.000%,100%{stroke-dashoffset:0}}.d2{animation:d2 7.250s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 250.00 20.00 L 251.33 36.93 L 252.67 53.07 L 254.00 68.40 L 255.33 82.93 L 256.67 96.67 L 258.00 109.60 L 259.33 121.73 L 260.67 133.07 L 262.00 143.60 L 263.33 153.33 L 264.67 162.27 L 266.00 170.40 L 267.33 177.73 L 268.67 184.27 L 270.00 190.00 L 268.67 178.67 L 267.33 167.33 L 266.00 156.00 L 264.67 144.67 L 263.33 133.33 L 262.00 122.00 L 260.67 110.67 L 259.33 99.33 L 258.00 88.00 L 256.67 76.67 L 255.33 65.33 L 254.00 54.00 L 252.67 42.67 L 251.33 31.33 L 250.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.00 60.00 L 194.67 56.67 L 189.33 53.33 L 184.00 50.00 L 178.67 46.67 L 173.33 43.33 L 168.00 40.00 L 162.67 36.67 L 157.33 33.33 L 152.00 30.00 L 146.67 26.67 L 141.33 23.33 L 136.00 20.00 L 130.67 16.67 L 125.33 13.33 L 120.00 10.00 M 100.00 10.00 L 93.33 10.00 L 86.67 10.00 L 80.00 10.00 L 73.33 10.00 L 66.67 10.00 L 60.00 10.00 L 53.33 10.00 L 46.67 10.00 L 40.00 10.00 L 33.33 10.00 L 26.67 10.00 L 20.00 10.00 L 13.33 10.00 L 6.67 10.00 L 0.00 10.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 20.00 150.00 L 28.00 141.91 L 36.00 137.29 L 44.00 135.60 L 52.00 136.31 L 60.00 138.89 L 68.00 142.80 L 76.00 147.51 L 84.00 152.49 L 92.00 157.20 L 100.00 161.11 L 108.00 163.69 L 116.00 164.40 L 124.00 162.71 L 132.00 158.09 L 140.00 150.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#2C3A33\"/><g mask=\"url(#m0)\"><path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"1.25\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" stroke-width=\"0.5\" />\n  </g><g mask=\"url(#m2)\"><path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\"2\" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g></svg>"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}18.304%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,21.082%{stroke-dashoffset:1}30.408%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}@keyframes d2{0%,33.186%{stroke-dashoffset:1}44.686%,100%{stroke-dashoffset:0}}.d2{animation:d2 3.000s linear infinite}@keyframes d3{0%,47.464%{stroke-dashoffset:1}55.395%,100%{stroke-dashoffset:0}}.d3{animation:d3 3.000s linear infinite}@keyframes d4{0%,58.173%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d4{animation:d4 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 100.00 100.00 L 104.25 92.53 L 108.97 86.13 L 114.08 80.80 L 119.51 76.53 L 125.19 73.33 L 131.04 71.20 L 137.00 70.13 L 143.00 70.13 L 148.96 71.20 L 154.81 73.33 L 160.49 76.53 L 165.92 80.80 L 171.03 86.13 L 175.75 92.53 L 180.00 100.00 L 174.67 100.00 L 169.33 100.00 L 164.00 100.00 L 158.67 100.00 L 153.33 100.00 L 148.00 100.00 L 142.67 100.00 L 137.33 100.00 L 132.00 100.00 L 126.67 100.00 L 121.33 100.00 L 116.00 100.00 L 110.67 100.00 L 105.33 100.00 L 100.00 100.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 90.00 80.00 L 88.00 77.00 L 86.00 74.00 L 84.00 71.00 L 82.00 68.00 L 80.00 65.00 L 78.00 62.00 L 76.00 59.00 L 74.00 56.00 L 72.00 53.00 L 70.00 50.00 L 68.00 47.00 L 66.00 44.00 L 64.00 41.00 L 62.00 38.00 L 60.00 35.00 L 57.33 34.67 L 54.67 34.33 L 52.00 34.00 L 49.33 33.67 L 46.67 33.33 L 44.00 33.00 L 41.33 32.67 L 38.67 32.33 L 36.00 32.00 L 33.33 31.67 L 30.67 31.33 L 28.00 31.00 L 25.33 30.67 L 22.67 30.33 L 20.00 30.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 110.00 60.00 L 111.42 56.11 L 113.02 52.44 L 114.80 49.00 L 116.76 45.78 L 118.89 42.78 L 121.20 40.00 L 123.69 37.44 L 126.36 35.11 L 129.20 33.00 L 132.22 31.11 L 135.42 29.44 L 138.80 28.00 L 142.36 26.78 L 146.09 25.78 L 150.00 25.00 L 154.00 24.67 L 158.00 24.33 L 162.00 24.00 L 166.00 23.67 L 170.00 23.33 L 174.00 23.00 L 178.00 22.67 L 182.00 22.33 L 186.00 22.00 L 190.00 21.67 L 194.00 21.33 L 198.00 21.00 L 202.00 20.67 L 206.00 20.33 L 210.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m3\" maskUnits=\"userSpaceOnUse\"><path class=\"d3\" d=\"M 70.00 120.00 L 68.33 122.00 L 66.67 124.00 L 65.00 126.00 L 63.33 128.00 L 61.67 130.00 L 60.00 132.00 L 58.33 134.00 L 56.67 136.00 L 55.00 138.00 L 53.33 140.00 L 51.67 142.00 L 50.00 144.00 L 48.33 146.00 L 46.67 148.00 L 45.00 150.00 M 40.00 150.00 L 39.33 152.67 L 38.67 155.33 L 38.00 158.00 L 37.33 160.67 L 36.67 163.33 L 36.00 166.00 L 35.33 168.67 L 34.67 171.33 L 34.00 174.00 L 33.33 176.67 L 32.67 179.33 L 32.00 182.00 L 31.33 184.67 L 30.67 187.33 L 30.00 190.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m4\" maskUnits=\"userSpaceOnUse\"><path class=\"d4\" d=\"M 120.00 210.00 L 124.09 206.22 L 128.36 202.89 L 132.80 200.00 L 137.42 197.56 L 142.22 195.56 L 147.20 194.00 L 152.36 192.89 L 157.69 192.22 L 163.20 192.00 L 168.89 192.22 L 174.76 192.89 L 180.80 194.00 L 187.02 195.56 L 193.42 197.56 L 200.00 200.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"11\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n</g><g mask=\"url(#m1)\"><path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n</g><g mask=\"url(#m2)\"><path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g><g mask=\"url(#m3)\"><path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n</g><g mask=\"url(#m4)\"><path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n</g></svg>"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "length": 2.0,
+   "hold": 0.5,
+   "stroke": "#aa0000",
+   "width": 2.0,
+   "background": "#fafafa",
+   "keep_order": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}11.191%,100%{stroke-dashoffset:0}}.d0{animation:d0 2.500s linear infinite}@keyframes d1{0%,14.524%{stroke-dashoffset:1}24.717%,100%{stroke-dashoffset:0}}.d1{animation:d1 2.500s linear infinite}@keyframes d2{0%,28.050%{stroke-dashoffset:1}50.015%,100%{stroke-dashoffset:0}}.d2{animation:d2 2.500s linear infinite}@keyframes d3{0%,53.349%{stroke-dashoffset:1}62.867%,100%{stroke-dashoffset:0}}.d3{animation:d3 2.500s linear infinite}@keyframes d4{0%,66.200%{stroke-dashoffset:1}80.000%,100%{stroke-dashoffset:0}}.d4{animation:d4 2.500s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 20.00 30.00 L 22.67 30.33 L 25.33 30.67 L 28.00 31.00 L 30.67 31.33 L 33.33 31.67 L 36.00 32.00 L 38.67 32.33 L 41.33 32.67 L 44.00 33.00 L 46.67 33.33 L 49.33 33.67 L 52.00 34.00 L 54.67 34.33 L 57.33 34.67 L 60.00 35.00 L 62.00 38.00 L 64.00 41.00 L 66.00 44.00 L 68.00 47.00 L 70.00 50.00 L 72.00 53.00 L 74.00 56.00 L 76.00 59.00 L 78.00 62.00 L 80.00 65.00 L 82.00 68.00 L 84.00 71.00 L 86.00 74.00 L 88.00 77.00 L 90.00 80.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.00 200.00 L 193.42 197.56 L 187.02 195.56 L 180.80 194.00 L 174.76 192.89 L 168.89 192.22 L 163.20 192.00 L 157.69 192.22 L 152.36 192.89 L 147.20 194.00 L 142.22 195.56 L 137.42 197.56 L 132.80 200.00 L 128.36 202.89 L 124.09 206.22 L 120.00 210.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 100.00 100.00 L 104.25 92.53 L 108.97 86.13 L 114.08 80.80 L 119.51 76.53 L 125.19 73.33 L 131.04 71.20 L 137.00 70.13 L 143.00 70.13 L 148.96 71.20 L 154.81 73.33 L 160.49 76.53 L 165.92 80.80 L 171.03 86.13 L 175.75 92.53 L 180.00 100.00 L 174.67 100.00 L 169.33 100.00 L 164.00 100.00 L 158.67 100.00 L 153.33 100.00 L 148.00 100.00 L 142.67 100.00 L 137.33 100.00 L 132.00 100.00 L 126.67 100.00 L 121.33 100.00 L 116.00 100.00 L 110.67 100.00 L 105.33 100.00 L 100.00 100.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m3\" maskUnits=\"userSpaceOnUse\"><path class=\"d3\" d=\"M 30.00 190.00 L 30.67 187.33 L 31.33 184.67 L 32.00 182.00 L 32.67 179.33 L 33.33 176.67 L 34.00 174.00 L 34.67 171.33 L 35.33 168.67 L 36.00 166.00 L 36.67 163.33 L 37.33 160.67 L 38.00 158.00 L 38.67 155.33 L 39.33 152.67 L 40.00 150.00 M 45.00 150.00 L 46.67 148.00 L 48.33 146.00 L 50.00 144.00 L 51.67 142.00 L 53.33 140.00 L 55.00 138.00 L 56.67 136.00 L 58.33 134.00 L 60.00 132.00 L 61.67 130.00 L 63.33 128.00 L 65.00 126.00 L 66.67 124.00 L 68.33 122.00 L 70.00 120.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m4\" maskUnits=\"userSpaceOnUse\"><path class=\"d4\" d=\"M 210.00 20.00 L 206.00 20.33 L 202.00 20.67 L 198.00 21.00 L 194.00 21.33 L 190.00 21.67 L 186.00 22.00 L 182.00 22.33 L 178.00 22.67 L 174.00 23.00 L 170.00 23.33 L 166.00 23.67 L 162.00 24.00 L 158.00 24.33 L 154.00 24.67 L 150.00 25.00 L 146.09 25.78 L 142.36 26.78 L 138.80 28.00 L 135.42 29.44 L 132.22 31.11 L 129.20 33.00 L 126.36 35.11 L 123.69 37.44 L 121.20 40.00 L 118.89 42.78 L 116.76 45.78 L 114.80 49.00 L 113.02 52.44 L 111.42 56.11 L 110.00 60.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"26\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#fafafa\"/><g mask=\"url(#m0)\"><path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#aa0000\" stroke-width=\"3\" stroke-opacity=\"0.8\" />\n</g><g mask=\"url(#m1)\"><path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#aa0000\" stroke-width=\"4.5\" />\n</g><g mask=\"url(#m2)\"><path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#aa0000\" stroke-width=\"2\" />\n</g><g mask=\"url(#m3)\"><path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#aa0000\" stroke-width=\"3\" />\n</g><g mask=\"url(#m4)\"><path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#aa0000\" stroke-width=\"6\" />\n</g></svg>"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "length": 7.25,
+   "hold": 0.0,
+   "stroke": null,
+   "width": 0.5,
+   "background": "#2C3A33",
+   "keep_order": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}27.457%,100%{stroke-dashoffset:0}}.d0{animation:d0 7.250s linear infinite}@keyframes d1{0%,31.623%{stroke-dashoffset:1}45.612%,100%{stroke-dashoffset:0}}.d1{animation:d1 7.250s linear infinite}@keyframes d2{0%,49.779%{stroke-dashoffset:1}67.029%,100%{stroke-dashoffset:0}}.d2{animation:d2 7.250s linear infinite}@keyframes d3{0%,71.195%{stroke-dashoffset:1}83.093%,100%{stroke-dashoffset:0}}.d3{animation:d3 7.250s linear infinite}@keyframes d4{0%,87.260%{stroke-dashoffset:1}100.000%,100%{stroke-dashoffset:0}}.d4{animation:d4 7.250s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 100.00 100.00 L 104.25 92.53 L 108.97 86.13 L 114.08 80.80 L 119.51 76.53 L 125.19 73.33 L 131.04 71.20 L 137.00 70.13 L 143.00 70.13 L 148.96 71.20 L 154.81 73.33 L 160.49 76.53 L 165.92 80.80 L 171.03 86.13 L 175.75 92.53 L 180.00 100.00 L 174.67 100.00 L 169.33 100.00 L 164.00 100.00 L 158.67 100.00 L 153.33 100.00 L 148.00 100.00 L 142.67 100.00 L 137.33 100.00 L 132.00 100.00 L 126.67 100.00 L 121.33 100.00 L 116.00 100.00 L 110.67 100.00 L 105.33 100.00 L 100.00 100.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 90.00 80.00 L 88.00 77.00 L 86.00 74.00 L 84.00 71.00 L 82.00 68.00 L 80.00 65.00 L 78.00 62.00 L 76.00 59.00 L 74.00 56.00 L 72.00 53.00 L 70.00 50.00 L 68.00 47.00 L 66.00 44.00 L 64.00 41.00 L 62.00 38.00 L 60.00 35.00 L 57.33 34.67 L 54.67 34.33 L 52.00 34.00 L 49.33 33.67 L 46.67 33.33 L 44.00 33.00 L 41.33 32.67 L 38.67 32.33 L 36.00 32.00 L 33.33 31.67 L 30.67 31.33 L 28.00 31.00 L 25.33 30.67 L 22.67 30.33 L 20.00 30.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m2\" maskUnits=\"userSpaceOnUse\"><path class=\"d2\" d=\"M 110.00 60.00 L 111.42 56.11 L 113.02 52.44 L 114.80 49.00 L 116.76 45.78 L 118.89 42.78 L 121.20 40.00 L 123.69 37.44 L 126.36 35.11 L 129.20 33.00 L 132.22 31.11 L 135.42 29.44 L 138.80 28.00 L 142.36 26.78 L 146.09 25.78 L 150.00 25.00 L 154.00 24.67 L 158.00 24.33 L 162.00 24.00 L 166.00 23.67 L 170.00 23.33 L 174.00 23.00 L 178.00 22.67 L 182.00 22.33 L 186.00 22.00 L 190.00 21.67 L 194.00 21.33 L 198.00 21.00 L 202.00 20.67 L 206.00 20.33 L 210.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m3\" maskUnits=\"userSpaceOnUse\"><path class=\"d3\" d=\"M 70.00 120.00 L 68.33 122.00 L 66.67 124.00 L 65.00 126.00 L 63.33 128.00 L 61.67 130.00 L 60.00 132.00 L 58.33 134.00 L 56.67 136.00 L 55.00 138.00 L 53.33 140.00 L 51.67 142.00 L 50.00 144.00 L 48.33 146.00 L 46.67 148.00 L 45.00 150.00 M 40.00 150.00 L 39.33 152.67 L 38.67 155.33 L 38.00 158.00 L 37.33 160.67 L 36.67 163.33 L 36.00 166.00 L 35.33 168.67 L 34.67 171.33 L 34.00 174.00 L 33.33 176.67 L 32.67 179.33 L 32.00 182.00 L 31.33 184.67 L 30.67 187.33 L 30.00 190.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m4\" maskUnits=\"userSpaceOnUse\"><path class=\"d4\" d=\"M 120.00 210.00 L 124.09 206.22 L 128.36 202.89 L 132.80 200.00 L 137.42 197.56 L 142.22 195.56 L 147.20 194.00 L 152.36 192.89 L 157.69 192.22 L 163.20 192.00 L 168.89 192.22 L 174.76 192.89 L 180.80 194.00 L 187.02 195.56 L 193.42 197.56 L 200.00 200.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><rect width=\"100%\" height=\"100%\" fill=\"#2C3A33\"/><g mask=\"url(#m0)\"><path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"0.5\" />\n</g><g mask=\"url(#m1)\"><path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"0.75\" stroke-opacity=\"0.8\" />\n</g><g mask=\"url(#m2)\"><path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n</g><g mask=\"url(#m3)\"><path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"0.75\" />\n</g><g mask=\"url(#m4)\"><path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.125\" />\n</g></svg>"
+  }
+ ],
+ "pages": [
+  {
+   "title": "Kamel",
+   "background": null,
+   "out": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Kamel</title>\n<style>\nhtml, body { margin: 0; height: 100%; background: #ffffff; color: #333333; font-family: system-ui, sans-serif; }\nbody { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }\nmain { width: min(92vw, 86vh); }\nmain svg { display: block; width: 100%; height: auto; }\nbutton { border: 0; border-radius: 999px; padding: 8px 18px; background: rgba(0,0,0,.06); color: inherit; font: inherit;\n         cursor: pointer; }\n</style>\n</head>\n<body>\n<main><svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}35.535%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,42.943%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg></main>\n<button type=\"button\" onclick=\"const s = document.querySelector('main svg'); s.replaceWith(s.cloneNode(true));\"\n title=\"Draw again\">&#8635;</button>\n</body>\n</html>\n"
+  },
+  {
+   "title": "Kamel <1> & \"Zwei\"",
+   "background": "#2C3A33",
+   "out": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Kamel &lt;1&gt; &amp; &quot;Zwei&quot;</title>\n<style>\nhtml, body { margin: 0; height: 100%; background: #2c3a33; color: #e8e8e8; font-family: system-ui, sans-serif; }\nbody { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }\nmain { width: min(92vw, 86vh); }\nmain svg { display: block; width: 100%; height: auto; }\nbutton { border: 0; border-radius: 999px; padding: 8px 18px; background: rgba(255,255,255,.12); color: inherit; font: inherit;\n         cursor: pointer; }\n</style>\n</head>\n<body>\n<main><svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}35.535%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,42.943%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg></main>\n<button type=\"button\" onclick=\"const s = document.querySelector('main svg'); s.replaceWith(s.cloneNode(true));\"\n title=\"Draw again\">&#8635;</button>\n</body>\n</html>\n"
+  },
+  {
+   "title": "x",
+   "background": "#fff8e7",
+   "out": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>x</title>\n<style>\nhtml, body { margin: 0; height: 100%; background: #fff8e7; color: #333333; font-family: system-ui, sans-serif; }\nbody { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }\nmain { width: min(92vw, 86vh); }\nmain svg { display: block; width: 100%; height: auto; }\nbutton { border: 0; border-radius: 999px; padding: 8px 18px; background: rgba(0,0,0,.06); color: inherit; font: inherit;\n         cursor: pointer; }\n</style>\n</head>\n<body>\n<main><svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}35.535%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,42.943%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg></main>\n<button type=\"button\" onclick=\"const s = document.querySelector('main svg'); s.replaceWith(s.cloneNode(true));\"\n title=\"Draw again\">&#8635;</button>\n</body>\n</html>\n"
+  },
+  {
+   "title": "y",
+   "background": "nope",
+   "out": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>y</title>\n<style>\nhtml, body { margin: 0; height: 100%; background: #ffffff; color: #333333; font-family: system-ui, sans-serif; }\nbody { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }\nmain { width: min(92vw, 86vh); }\nmain svg { display: block; width: 100%; height: auto; }\nbutton { border: 0; border-radius: 999px; padding: 8px 18px; background: rgba(0,0,0,.06); color: inherit; font: inherit;\n         cursor: pointer; }\n</style>\n</head>\n<body>\n<main><svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><style>@keyframes d0{0%,0.000%{stroke-dashoffset:1}35.535%,100%{stroke-dashoffset:0}}.d0{animation:d0 3.000s linear infinite}@keyframes d1{0%,42.943%{stroke-dashoffset:1}66.667%,100%{stroke-dashoffset:0}}.d1{animation:d1 3.000s linear infinite}</style><defs><mask id=\"m0\" maskUnits=\"userSpaceOnUse\"><path class=\"d0\" d=\"M 5.00 5.00 L 17.73 28.05 L 30.60 47.88 L 43.60 64.48 L 56.73 77.85 L 70.00 88.00 L 83.40 94.92 L 96.93 98.61 L 110.60 99.08 L 124.40 96.32 L 138.33 90.33 L 152.40 81.12 L 166.60 68.68 L 180.93 53.01 L 195.40 34.12 L 210.00 12.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask><mask id=\"m1\" maskUnits=\"userSpaceOnUse\"><path class=\"d1\" d=\"M 200.50 30.25 L 187.80 29.57 L 175.10 28.88 L 162.40 28.20 L 149.70 27.52 L 137.00 26.83 L 124.30 26.15 L 111.60 25.47 L 98.90 24.78 L 86.20 24.10 L 73.50 23.42 L 60.80 22.73 L 48.10 22.05 L 35.40 21.37 L 22.70 20.68 L 10.00 20.00\" fill=\"none\" stroke=\"#fff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset=\"1\"/></mask></defs><g mask=\"url(#m0)\"><path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g mask=\"url(#m1)\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g></svg></main>\n<button type=\"button\" onclick=\"const s = document.querySelector('main svg'); s.replaceWith(s.cloneNode(true));\"\n title=\"Draw again\">&#8635;</button>\n</body>\n</html>\n"
+  }
+ ],
+ "lottie": [
+  {
+   "svg": "svg/lines.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "size": 512,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 90,
+    "w": 512,
+    "h": 512,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              458.286,
+              69.143
+             ],
+             [
+              22.857,
+              45.714
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.429
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 38.65,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 60.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -167.619,
+              271.238
+             ]
+            ],
+            "o": [
+             [
+              144.762,
+              281.905
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              11.429,
+              11.429
+             ],
+             [
+              480.0,
+              27.429
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.429
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 31.98,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "svg/lines.svg",
+   "length": 3.5,
+   "hold": 0.25,
+   "stroke": "#336699",
+   "width": 1.5,
+   "background": "#fff8e7",
+   "keep_order": true,
+   "size": 300,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 112,
+    "w": 300,
+    "h": 300,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -98.214,
+              158.929
+             ]
+            ],
+            "o": [
+             [
+              84.821,
+              165.179
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              6.696,
+              6.696
+             ],
+             [
+              281.25,
+              16.071
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.013
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 49.03,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 105.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              13.393,
+              26.786
+             ],
+             [
+              268.527,
+              40.513
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.013
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 37.37,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 1,
+      "nm": "background",
+      "sc": "#fff8e7",
+      "sw": 300,
+      "sh": 300,
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "size": 512,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 90,
+    "w": 512,
+    "h": 512,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              68.289,
+              -70.829
+             ]
+            ],
+            "o": [
+             [
+              -69.714,
+              83.81
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              275.429,
+              76.19
+             ],
+             [
+              68.854,
+              93.686
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 35.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.857
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 46.74,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 60.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -73.143,
+              -45.714
+             ],
+             [
+              -54.857,
+              91.429
+             ]
+            ],
+            "o": [
+             [
+              64.0,
+              -182.857
+             ],
+             [
+              86.857,
+              45.714
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              27.429,
+              457.143
+             ],
+             [
+              256.0,
+              251.429
+             ],
+             [
+              489.143,
+              45.714
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 60.0
+          },
+          "w": {
+           "a": 0,
+           "k": 5.143
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 40.07,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "length": 3.5,
+   "hold": 0.25,
+   "stroke": "#336699",
+   "width": 1.5,
+   "background": "#fff8e7",
+   "keep_order": true,
+   "size": 300,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 112,
+    "w": 300,
+    "h": 300,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -40.848,
+              49.107
+             ]
+            ],
+            "o": [
+             [
+              40.013,
+              -41.501
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              40.344,
+              54.894
+             ],
+             [
+              161.384,
+              44.643
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 35.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.027
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 81.79,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 105.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -42.857,
+              -26.786
+             ],
+             [
+              -32.143,
+              53.571
+             ]
+            ],
+            "o": [
+             [
+              37.5,
+              -107.143
+             ],
+             [
+              50.893,
+              26.786
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              16.071,
+              267.857
+             ],
+             [
+              150.0,
+              147.321
+             ],
+             [
+              286.607,
+              26.786
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 60.0
+          },
+          "w": {
+           "a": 0,
+           "k": 4.52
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 70.12,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 1,
+      "nm": "background",
+      "sc": "#fff8e7",
+      "sw": 300,
+      "sh": 300,
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "size": 512,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 90,
+    "w": 512,
+    "h": 512,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              45.714,
+              251.429
+             ],
+             [
+              -68.571,
+              -68.571
+             ]
+            ],
+            "o": [
+             [
+              68.571,
+              -68.571
+             ],
+             [
+              -45.714,
+              251.429
+             ]
+            ],
+            "v": [
+             [
+              114.286,
+              114.286
+             ],
+             [
+              388.571,
+              114.286
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 2.286
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 60.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "length": 3.5,
+   "hold": 0.25,
+   "stroke": "#336699",
+   "width": 1.5,
+   "background": "#fff8e7",
+   "keep_order": true,
+   "size": 300,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 112,
+    "w": 300,
+    "h": 300,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              26.786,
+              147.321
+             ],
+             [
+              -40.179,
+              -40.179
+             ]
+            ],
+            "o": [
+             [
+              40.179,
+              -40.179
+             ],
+             [
+              -26.786,
+              147.321
+             ]
+            ],
+            "v": [
+             [
+              66.964,
+              66.964
+             ],
+             [
+              227.679,
+              66.964
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 2.009
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 105.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 1,
+      "nm": "background",
+      "sc": "#fff8e7",
+      "sw": 300,
+      "sh": 300,
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "edit/odd.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "size": 512,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 90,
+    "w": 512,
+    "h": 341,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 4,
+      "nm": "stroke 3",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 3",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -68.267,
+              85.333
+             ]
+            ],
+            "o": [
+             [
+              68.267,
+              -85.333
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              51.2,
+              247.467
+             ],
+             [
+              256.0,
+              247.467
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.827
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 49.59,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 60.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              358.4,
+              93.867
+             ],
+             [
+              221.867,
+              8.533
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              187.733,
+              8.533
+             ],
+             [
+              17.067,
+              8.533
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 1.707
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 30.45,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 45.3,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              -11.378,
+              -45.511
+             ]
+            ],
+            "o": [
+             [
+              11.378,
+              147.911
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "v": [
+             [
+              443.733,
+              25.6
+             ],
+             [
+              477.867,
+              315.733
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 4.267
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 26.17,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "edit/odd.svg",
+   "length": 3.5,
+   "hold": 0.25,
+   "stroke": "#336699",
+   "width": 1.5,
+   "background": "#fff8e7",
+   "keep_order": true,
+   "size": 300,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 112,
+    "w": 300,
+    "h": 200,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 4,
+      "nm": "stroke 3",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 3",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              -6.667,
+              -26.667
+             ]
+            ],
+            "o": [
+             [
+              6.667,
+              86.667
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "v": [
+             [
+              260.0,
+              15.0
+             ],
+             [
+              280.0,
+              185.0
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.75
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 59.21,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 105.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -40.0,
+              50.0
+             ]
+            ],
+            "o": [
+             [
+              40.0,
+              -50.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              30.0,
+              145.0
+             ],
+             [
+              150.0,
+              145.0
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.0
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 33.49,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 51.71,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              10.0,
+              5.0
+             ],
+             [
+              110.0,
+              5.0
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              130.0,
+              5.0
+             ],
+             [
+              210.0,
+              55.0
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 1.5
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 25.99,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 4,
+      "ty": 1,
+      "nm": "background",
+      "sc": "#fff8e7",
+      "sw": 300,
+      "sh": 200,
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "length": null,
+   "hold": 1.0,
+   "stroke": null,
+   "width": 1.0,
+   "background": null,
+   "keep_order": false,
+   "size": 512,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 90,
+    "w": 512,
+    "h": 512,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 5,
+      "ty": 4,
+      "nm": "stroke 5",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 5",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -76.19,
+              -30.476
+             ]
+            ],
+            "o": [
+             [
+              45.714,
+              -45.714
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              274.286,
+              480.0
+             ],
+             [
+              457.143,
+              457.143
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 5.143
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 52.36,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 60.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 4,
+      "ty": 4,
+      "nm": "stroke 4",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 4",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              160.0,
+              274.286
+             ],
+             [
+              102.857,
+              342.857
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              91.429,
+              342.857
+             ],
+             [
+              68.571,
+              434.286
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.2,
+            0.2,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.429
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 42.72,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 49.86,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 4,
+      "nm": "stroke 3",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 3",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              -45.714,
+              7.619
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              15.238,
+              -45.714
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              251.429,
+              137.143
+             ],
+             [
+              342.857,
+              57.143
+             ],
+             [
+              480.0,
+              45.714
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.857
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 29.87,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 40.22,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              205.714,
+              182.857
+             ],
+             [
+              137.143,
+              80.0
+             ],
+             [
+              45.714,
+              68.571
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 80.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.429
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 18.97,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 27.37,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              -45.714,
+              -91.429
+             ]
+            ],
+            "o": [
+             [
+              45.714,
+              -91.429
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "v": [
+             [
+              228.571,
+              228.571
+             ],
+             [
+              411.429,
+              228.571
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.0,
+            0.0,
+            0.0,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 2.286
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 16.47,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 90,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "length": 3.5,
+   "hold": 0.25,
+   "stroke": "#336699",
+   "width": 1.5,
+   "background": "#fff8e7",
+   "keep_order": true,
+   "size": 300,
+   "out": {
+    "v": "5.7.4",
+    "fr": 30,
+    "ip": 0,
+    "op": 112,
+    "w": 300,
+    "h": 300,
+    "nm": "Kamel",
+    "ddd": 0,
+    "assets": [],
+    "layers": [
+     {
+      "ddd": 0,
+      "ind": 5,
+      "ty": 4,
+      "nm": "stroke 5",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 5",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              8.929,
+              -26.786
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              -26.786,
+              4.464
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              281.25,
+              26.786
+             ],
+             [
+              200.893,
+              33.482
+             ],
+             [
+              147.321,
+              80.357
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 6.027
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 86.89,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 105.0,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 4,
+      "ty": 4,
+      "nm": "stroke 4",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 4",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              40.179,
+              254.464
+             ],
+             [
+              53.571,
+              200.893
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              60.268,
+              200.893
+             ],
+             [
+              93.75,
+              160.714
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.013
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 70.02,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 82.51,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 3,
+      "ty": 4,
+      "nm": "stroke 3",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 3",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              -26.786,
+              -53.571
+             ]
+            ],
+            "o": [
+             [
+              26.786,
+              -53.571
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "v": [
+             [
+              133.929,
+              133.929
+             ],
+             [
+              241.071,
+              133.929
+             ]
+            ],
+            "c": true
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 2.009
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 36.82,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 65.65,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 2,
+      "ty": 4,
+      "nm": "stroke 2",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 2",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              26.786,
+              -26.786
+             ]
+            ],
+            "o": [
+             [
+              -44.643,
+              -17.857
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              267.857,
+              267.857
+             ],
+             [
+              160.714,
+              281.25
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 100.0
+          },
+          "w": {
+           "a": 0,
+           "k": 4.52
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 19.06,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 32.44,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "stroke 1",
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "shapes": [
+       {
+        "ty": "gr",
+        "nm": "stroke 1",
+        "it": [
+         {
+          "ty": "sh",
+          "ks": {
+           "a": 0,
+           "k": {
+            "i": [
+             [
+              0,
+              0
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0.0,
+              0.0
+             ]
+            ],
+            "o": [
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0.0,
+              0.0
+             ],
+             [
+              0,
+              0
+             ]
+            ],
+            "v": [
+             [
+              26.786,
+              40.179
+             ],
+             [
+              80.357,
+              46.875
+             ],
+             [
+              120.536,
+              107.143
+             ]
+            ],
+            "c": false
+           }
+          }
+         },
+         {
+          "ty": "st",
+          "c": {
+           "a": 0,
+           "k": [
+            0.2,
+            0.4,
+            0.6,
+            1
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 80.0
+          },
+          "w": {
+           "a": 0,
+           "k": 3.013
+          },
+          "lc": 2,
+          "lj": 2,
+          "ml": 4,
+          "nm": "stroke"
+         },
+         {
+          "ty": "tm",
+          "s": {
+           "a": 0,
+           "k": 0
+          },
+          "e": {
+           "a": 1,
+           "k": [
+            {
+             "t": 0.0,
+             "s": [
+              0
+             ],
+             "i": {
+              "x": [
+               1
+              ],
+              "y": [
+               1
+              ]
+             },
+             "o": {
+              "x": [
+               0
+              ],
+              "y": [
+               0
+              ]
+             }
+            },
+            {
+             "t": 14.69,
+             "s": [
+              100
+             ]
+            }
+           ]
+          },
+          "o": {
+           "a": 0,
+           "k": 0
+          },
+          "m": 2,
+          "nm": "draw"
+         },
+         {
+          "ty": "tr",
+          "p": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "a": {
+           "a": 0,
+           "k": [
+            0,
+            0
+           ]
+          },
+          "s": {
+           "a": 0,
+           "k": [
+            100,
+            100
+           ]
+          },
+          "r": {
+           "a": 0,
+           "k": 0
+          },
+          "o": {
+           "a": 0,
+           "k": 100
+          },
+          "sk": {
+           "a": 0,
+           "k": 0
+          },
+          "sa": {
+           "a": 0,
+           "k": 0
+          }
+         }
+        ]
+       }
+      ],
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     },
+     {
+      "ddd": 0,
+      "ind": 6,
+      "ty": 1,
+      "nm": "background",
+      "sc": "#fff8e7",
+      "sw": 300,
+      "sh": 300,
+      "sr": 1,
+      "ks": {
+       "o": {
+        "a": 0,
+        "k": 100
+       },
+       "r": {
+        "a": 0,
+        "k": 0
+       },
+       "p": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "a": {
+        "a": 0,
+        "k": [
+         0,
+         0,
+         0
+        ]
+       },
+       "s": {
+        "a": 0,
+        "k": [
+         100,
+         100,
+         100
+        ]
+       }
+      },
+      "ao": 0,
+      "ip": 0,
+      "op": 112,
+      "st": 0,
+      "bm": 0
+     }
+    ],
+    "markers": []
+   }
+  }
+ ],
+ "layered": [
+  {
+   "svg": "svg/lines.svg",
+   "object": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "svg/lines.svg",
+   "object": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "object": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "svg/cubic.svg",
+   "object": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "object": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "svg/closed_bg.svg",
+   "object": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "object": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /><g><g transform=\"none\">\n    </g>\n  </g>\n</svg>"
+  },
+  {
+   "svg": "edit/odd.svg",
+   "object": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /><g><g transform=\"none\">\n    </g>\n  </g>\n</svg>"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "object": true,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\"><path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n</g></g>\n</svg>"
+  },
+  {
+   "svg": "animation/drawing.svg",
+   "object": false,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<g id=\"background\" inkscape:groupmode=\"layer\" inkscape:label=\"Hintergrund\"><path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g><g id=\"object\" inkscape:groupmode=\"layer\" inkscape:label=\"Objekt\" /></g>\n</svg>"
+  }
+ ],
+ "sheets": [
+  {
+   "cells": {
+    "801": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>",
+    "804": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>",
+    "1601": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g>\n</svg>\n",
+    "1604": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  <!-- a comment -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>\n"
+   },
+   "background": "#FFFFFF",
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"566\" height=\"530\" viewBox=\"0 0 566 530\">\n<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n<text x=\"198\" y=\"24\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">L8</text>\n<text x=\"438\" y=\"24\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">L16</text>\n<text x=\"62\" y=\"168\" text-anchor=\"end\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">1</text>\n<text x=\"62\" y=\"408\" text-anchor=\"end\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">4</text>\n<svg x=\"86\" y=\"50\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>\n<svg x=\"86\" y=\"290\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>\n<svg x=\"326\" y=\"50\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g>\n</svg>\n<svg x=\"326\" y=\"290\" width=\"224\" height=\"224\" viewBox=\"-10, 5 300 200\">\n  <!-- a comment -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>\n</svg>"
+  },
+  {
+   "cells": {
+    "801": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>",
+    "804": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>",
+    "1601": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g>\n</svg>\n",
+    "1604": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  <!-- a comment -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>\n"
+   },
+   "background": null,
+   "out": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"566\" height=\"530\" viewBox=\"0 0 566 530\">\n<text x=\"198\" y=\"24\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">L8</text>\n<text x=\"438\" y=\"24\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">L16</text>\n<text x=\"62\" y=\"168\" text-anchor=\"end\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">1</text>\n<text x=\"62\" y=\"408\" text-anchor=\"end\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#555555\">4</text>\n<svg x=\"86\" y=\"50\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>\n<svg x=\"86\" y=\"290\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>\n<svg x=\"326\" y=\"50\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n<rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#FFFFFF\" data-bg=\"1\" />\n<g>\n<path d=\"M 20 30 L 60 35 L 90 80\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" stroke-opacity=\"0.8\" />\n<path d=\"M 200 200 Q 150 180 120 210\" fill=\"none\" stroke=\"#000000\" stroke-width=\"2.25\" />\n<path d=\"M 100 100 C 120 60 160 60 180 100 Z\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1\" />\n<path d=\"M 30 190 L 40 150 M 45 150 L 70 120\" fill=\"none\" stroke=\"#333333\" stroke-width=\"1.5\" />\n<path d=\"M 92 82 L 92 82\" fill=\"none\" stroke=\"#000000\" stroke-width=\"1.5\" />\n<path d=\"M 210 20 L 150 25 Q 120 30 110 60\" fill=\"none\" stroke=\"#000000\" stroke-width=\"3\" />\n</g>\n</svg>\n<svg x=\"326\" y=\"290\" width=\"224\" height=\"224\" viewBox=\"-10, 5 300 200\">\n  <!-- a comment -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>\n</svg>"
+  }
+ ],
+ "object": [
+  "M 20 30 L 60 35 L 90 80",
+  "M 100 100 C 120 60 160 60 180 100 Z"
+ ]
+}
