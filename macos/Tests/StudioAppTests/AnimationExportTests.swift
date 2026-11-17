@@ -7,7 +7,7 @@ import StudioCore
 /// The app's animation export: GIF and MP4 written here off the main actor, WebP by the engine (Pillow) from the
 /// frames drawn here; a cancelled export leaves no file.
 @Suite(.serialized) struct AnimationExportTests {
-    static func job(_ format: Animation.Format, length: Double = 1, size: Int = 64) throws -> AnimationJob {
+    static func job(_ format: SketchAnimation.Format, length: Double = 1, size: Int = 64) throws -> AnimationJob {
         var options = ExportOptions()
         options.size = size
         options.background = "#FFFFFF"

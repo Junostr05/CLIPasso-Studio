@@ -3,7 +3,7 @@ import Foundation
 /// The animations of a sketch as the studio makes them (gui/export.py): the drawing process – the saved steps of a
 /// run one after another – or the finished sketch drawn stroke by stroke, as GIF, WebP or MP4. This is the plan of
 /// them: which drawn frames an animation shows and how long, and the lengths the export dialog starts from.
-public enum Animation {
+public enum SketchAnimation {
     public enum Format: String, Sendable, CaseIterable {
         case gif, webp, mp4
     }

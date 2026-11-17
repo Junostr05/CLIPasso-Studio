@@ -8,7 +8,7 @@ public struct ExportOptions: Sendable, Equatable {
         case svg, png, pdf, gif, mp4, webp
 
         /// the animation it is (nil: a picture)
-        public var animation: Animation.Format? { Animation.Format(rawValue: rawValue) }
+        public var animation: SketchAnimation.Format? { SketchAnimation.Format(rawValue: rawValue) }
 
         /// GIF and MP4 cannot be transparent (white instead)
         public var allowsTransparent: Bool { self != .gif && self != .mp4 }

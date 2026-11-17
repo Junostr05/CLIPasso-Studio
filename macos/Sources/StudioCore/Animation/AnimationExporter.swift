@@ -4,8 +4,8 @@ import Foundation
 /// the format, the export's choices (stroke colour and width, background or paper, frame, size), the drawing's length
 /// (nil: the default) and how long the finished sketch stays.
 public struct AnimationJob: Sendable {
-    public var mode: Animation.Mode
-    public var format: Animation.Format
+    public var mode: SketchAnimation.Mode
+    public var format: SketchAnimation.Format
     public var options: ExportOptions
     public var length: Double?
     public var hold: Double
@@ -15,7 +15,7 @@ public struct AnimationJob: Sendable {
     public var runDir: URL?
     public var photo: SketchFraming.PhotoFrame?
 
-    public init(mode: Animation.Mode, format: Animation.Format, options: ExportOptions, length: Double? = nil,
+    public init(mode: SketchAnimation.Mode, format: SketchAnimation.Format, options: ExportOptions, length: Double? = nil,
                 hold: Double = 1, svg: String, runDir: URL?, photo: SketchFraming.PhotoFrame? = nil)
     {
         (self.mode, self.format, self.options, self.length, self.hold) = (mode, format, options, length, hold)
@@ -43,7 +43,7 @@ public struct DrawnFrames: Sendable {
                                          margin: Double(job.options.margin) / 100)
         switch job.mode {
         case .process:
-            let steps = job.runDir.map { Animation.steps(runDir: $0) } ?? []
+            let steps = job.runDir.map { SketchAnimation.steps(runDir: $0) } ?? []
             guard !steps.isEmpty else { throw AnimationError(code: "export_no_logs") }
             count = steps.count
             fps = 20
@@ -53,11 +53,11 @@ public struct DrawnFrames: Sendable {
                 return framing?.apply(text) ?? text
             }
         case .strokes:
-            let keep = job.runDir.map { Animation.method(runDir: $0) == "controlsketch" } ?? false
+            let keep = job.runDir.map { SketchAnimation.method(runDir: $0) == "controlsketch" } ?? false
             let drawing = Drawing(svg: framing?.apply(job.svg) ?? job.svg, keepOrder: keep)
             guard drawing.strokeCount > 0 else { throw AnimationError(code: "export_no_strokes") }
-            let length = job.length ?? Animation.defaultDrawingLength(strokes: drawing.strokeCount, line: drawing.line)
-            let n = max(2, Int((length * Double(Animation.drawStepsPerSecond)).rounded(.toNearestOrEven)))
+            let length = job.length ?? SketchAnimation.defaultDrawingLength(strokes: drawing.strokeCount, line: drawing.line)
+            let n = max(2, Int((length * Double(SketchAnimation.drawStepsPerSecond)).rounded(.toNearestOrEven)))
             count = n
             fps = Double(n) / length
             self.length = length
@@ -112,8 +112,8 @@ public struct DrawnFrames: Sendable {
             var background = options.background.flatMap { SketchSVG.color($0) }
             if background == nil, job.format != .webp { background = RGB(255, 255, 255) }
             let stroke = SketchSVG.color(options.strokeColour ?? "#000000") ?? RGB(0, 0, 0)
-            let palette = (0 ..< Animation.inkLevels).map { i -> (UInt8, UInt8, UInt8, UInt8) in
-                let f = Double(i) / Double(Animation.inkLevels - 1)
+            let palette = (0 ..< SketchAnimation.inkLevels).map { i -> (UInt8, UInt8, UInt8, UInt8) in
+                let f = Double(i) / Double(SketchAnimation.inkLevels - 1)
                 guard let b = background else {
                     return (UInt8(stroke.r), UInt8(stroke.g), UInt8(stroke.b), UInt8((255 * f).rounded(.toNearestOrEven)))
                 }
@@ -163,7 +163,7 @@ public struct DrawnFrames: Sendable {
                 SketchRenderer.draw(sketch, in: context, rect: rect)
                 guard let data = context.data else { throw SketchRenderer.RenderError(description: "no frame") }
                 let pixels = data.bindMemory(to: UInt8.self, capacity: cw * ch * 4)
-                let levels = Animation.inkLevels - 1
+                let levels = SketchAnimation.inkLevels - 1
                 for i in 0 ..< cw * ch {
                     let p = pixels + i * 4
                     let grey = (Int(p[0]) * 19595 + Int(p[1]) * 38470 + Int(p[2]) * 7471 + 0x8000) >> 16
@@ -194,7 +194,7 @@ public struct DrawnFrames: Sendable {
                                   each: (Frame) throws -> Void) throws -> Int
         {
             let drawn = try DrawnFrames(job)
-            let plan = Animation.plan(drawn.count, length: drawn.length, fps: drawn.fps, hold: job.hold,
+            let plan = SketchAnimation.plan(drawn.count, length: drawn.length, fps: drawn.fps, hold: job.hold,
                                       format: job.format, size: job.options.size)
             let look = try look(job, drawn)
             var last: (index: Int, image: CGImage)?
@@ -280,7 +280,7 @@ public struct DrawnFrames: Sendable {
                 try frames(job, progress: progress) { frame in
                     while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.002) }
                     let buffer = try pixelBuffer(frame.image, adaptor: adaptor, width: w, height: h)
-                    let time = CMTime(value: CMTimeValue(index), timescale: CMTimeScale(Animation.mp4FPS))
+                    let time = CMTime(value: CMTimeValue(index), timescale: CMTimeScale(SketchAnimation.mp4FPS))
                     guard adaptor.append(buffer, withPresentationTime: time) else {
                         throw SketchRenderer.RenderError(description: writer.error.map { String(describing: $0) } ?? "MP4 frame")
                     }
@@ -292,7 +292,7 @@ public struct DrawnFrames: Sendable {
                 throw error
             }
             input.markAsFinished()
-            writer.endSession(atSourceTime: CMTime(value: CMTimeValue(index), timescale: CMTimeScale(Animation.mp4FPS)))
+            writer.endSession(atSourceTime: CMTime(value: CMTimeValue(index), timescale: CMTimeScale(SketchAnimation.mp4FPS)))
             await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
                 writer.finishWriting { done.resume() }
             }

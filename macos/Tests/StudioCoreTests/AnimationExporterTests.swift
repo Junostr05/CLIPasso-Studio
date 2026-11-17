@@ -14,7 +14,7 @@
     @Suite struct AnimationExporterTests {
         static func sketch(_ name: String) throws -> String { String(decoding: try Fixtures.data(name), as: UTF8.self) }
 
-        static func job(_ mode: Animation.Mode, _ format: Animation.Format, size: Int = 64, runDir: URL? = nil,
+        static func job(_ mode: SketchAnimation.Mode, _ format: SketchAnimation.Format, size: Int = 64, runDir: URL? = nil,
                         svg: String? = nil, length: Double? = 1, hold: Double = 0.5) throws -> AnimationJob
         {
             var options = ExportOptions()
@@ -55,7 +55,7 @@
             defer { try? FileManager.default.removeItem(at: url) }
             var progress: [Int] = []
             let count = try AnimationExporter.gif(job, to: url) { done, _ in progress.append(done) }
-            let plan = Animation.plan(50, length: 1, fps: 50, hold: 0.5, format: .gif, size: 64)  // (1 s: 50 drawn steps)
+            let plan = SketchAnimation.plan(50, length: 1, fps: 50, hold: 0.5, format: .gif, size: 64)  // (1 s: 50 drawn steps)
             #expect(count == plan.frames.count && progress.last == count)
             let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
             #expect(CGImageSourceGetCount(source) == count)
@@ -68,7 +68,7 @@
             let first = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
             let last = try #require(CGImageSourceCreateImageAtIndex(source, count - 1, nil))
             #expect(first.width == 64 && first.height == 64)
-            #expect(Self.colours(last).count > 2 && Self.colours(last).count <= Animation.inkLevels)  // (ink in steps)
+            #expect(Self.colours(last).count > 2 && Self.colours(last).count <= SketchAnimation.inkLevels)  // (ink in steps)
             #expect(Self.colours(first).count < Self.colours(last).count || Self.colours(first).count <= 2)
         }
 
@@ -77,7 +77,7 @@
             defer { try? FileManager.default.removeItem(at: run) }
             var frames: [AnimationExporter.Frame] = []
             let count = try AnimationExporter.frames(try Self.job(.process, .webp, runDir: run, length: nil)) { frames.append($0) }
-            let plan = Animation.plan(2, length: nil, fps: 20, hold: 0.5, format: .webp)  // (up to the best step: two)
+            let plan = SketchAnimation.plan(2, length: nil, fps: 20, hold: 0.5, format: .webp)  // (up to the best step: two)
             #expect(count == plan.frames.count && frames.map(\.milliseconds) == plan.durations)
             #expect(throws: AnimationError(code: "export_no_logs")) {
                 try AnimationExporter.frames(try Self.job(.process, .gif)) { _ in }
@@ -112,7 +112,7 @@
             job.options.paper = Paper(kind: .kraft)
             var first: CGImage?
             try AnimationExporter.frames(job) { if first == nil { first = $0.image } }
-            #expect(Self.colours(try #require(first)).count > Animation.inkLevels)  // (the paper's texture)
+            #expect(Self.colours(try #require(first)).count > SketchAnimation.inkLevels)  // (the paper's texture)
         }
 
         #if canImport(AVFoundation)

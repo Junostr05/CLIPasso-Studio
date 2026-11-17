@@ -39,7 +39,7 @@ struct ExportSheet: View {
     @State private var photo: SketchFraming.PhotoFrame?
     @State private var problem = ""
     // the animation: its choices, what the run and the sketch offer, and the export while it runs
-    @State private var mode: Animation.Mode
+    @State private var mode: SketchAnimation.Mode
     @State private var length = 2.0
     @State private var hold = 1.0
     @State private var steps = 0
@@ -53,7 +53,7 @@ struct ExportSheet: View {
         let last = ExportOptions.Format(rawValue: settings["export_last_format"]?.stringValue ?? "") ?? .png
         _format = State(initialValue: last)
         _options = State(initialValue: ExportOptions(settings: settings, format: last))
-        _mode = State(initialValue: Animation.Mode(rawValue: settings["export_anim_mode"]?.stringValue ?? "") ?? .process)
+        _mode = State(initialValue: SketchAnimation.Mode(rawValue: settings["export_anim_mode"]?.stringValue ?? "") ?? .process)
     }
 
     var body: some View {
@@ -146,13 +146,13 @@ struct ExportSheet: View {
         .task {
             let (run, svg) = (source.runDir, source.svg)
             let found = await Task.detached { () -> (SketchFraming.PhotoFrame?, Int, Drawing) in
-                (run.flatMap { SketchFraming.runFrame(runDir: $0) }, run.map { Animation.steps(runDir: $0).count } ?? 0,
+                (run.flatMap { SketchFraming.runFrame(runDir: $0) }, run.map { SketchAnimation.steps(runDir: $0).count } ?? 0,
                  Drawing(svg: svg, keepOrder: true))
             }.value
             photo = found.0
             if photo == nil, options.frame == .photo { options.frame = .square }
             steps = found.1
-            drawing = (found.2.strokeCount, Animation.defaultDrawingLength(strokes: found.2.strokeCount, line: found.2.line))
+            drawing = (found.2.strokeCount, SketchAnimation.defaultDrawingLength(strokes: found.2.strokeCount, line: found.2.line))
             if steps < 2 { mode = .strokes }  // (one saved step is no process to show)
             length = defaultLength
         }
@@ -163,7 +163,7 @@ struct ExportSheet: View {
     @ViewBuilder private func animationSection(_ t: Texts) -> some View {
         Section {
             Picker(t.tr("ui.export_mode.label"), selection: $mode) {
-                ForEach(Animation.Mode.allCases, id: \.self) { Text(t.tr("ui.export_mode.\($0.rawValue)")).tag($0) }
+                ForEach(SketchAnimation.Mode.allCases, id: \.self) { Text(t.tr("ui.export_mode.\($0.rawValue)")).tag($0) }
             }
             .help(t.tr("ui.export_mode.tip"))
             .disabled(steps < 2)
@@ -172,7 +172,7 @@ struct ExportSheet: View {
             }
             if mode == .process, steps > 1, let animation = format.animation {
                 Button(t.tr("ui.export_every_step")) {
-                    length = min(300, Animation.everyStepLength(steps, format: animation))
+                    length = min(300, SketchAnimation.everyStepLength(steps, format: animation))
                 }
                 .help(t.tr("ui.export_every_step_tip"))
             }
@@ -184,17 +184,17 @@ struct ExportSheet: View {
     }
 
     private var defaultLength: Double {
-        mode == .strokes ? drawing.length : Animation.defaultProcessLength(steps)
+        mode == .strokes ? drawing.length : SketchAnimation.defaultProcessLength(steps)
     }
 
     /// _update_timing: the frame rate, the number of frames and the whole length.
     private func timing(_ t: Texts) -> String {
         guard let animation = format.animation else { return "" }
-        let frames = mode == .strokes ? max(2, Int((length * Double(Animation.drawStepsPerSecond)).rounded(.toNearestOrEven)))
+        let frames = mode == .strokes ? max(2, Int((length * Double(SketchAnimation.drawStepsPerSecond)).rounded(.toNearestOrEven)))
             : steps
-        let plan = Animation.plan(frames, length: length, hold: hold, format: animation, size: options.size)
+        let plan = SketchAnimation.plan(frames, length: length, hold: hold, format: animation, size: options.size)
         guard !plan.frames.isEmpty else { return "" }
-        let fps = animation == .mp4 ? Double(Animation.mp4FPS) : Double(plan.frames.count) / length
+        let fps = animation == .mp4 ? Double(SketchAnimation.mp4FPS) : Double(plan.frames.count) / length
         return t.tr("ui.export_timing", ["fps": String(format: fps >= 10 ? "%.0f" : "%.1f", fps),
                                          "frames": "\(plan.frames.count)",
                                          "total": String(format: "%.1f", plan.durations.reduce(0, +) / 1000)])

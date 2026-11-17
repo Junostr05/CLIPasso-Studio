@@ -18,8 +18,8 @@ import Testing
         #expect(plans.count == 17)
         for p in plans {
             let n = p["n"]?.intValue ?? 0
-            let format = try #require(Animation.Format(rawValue: p["format"]?.stringValue ?? ""))
-            let plan = Animation.plan(n, length: p["length"]?.doubleValue, fps: p["fps"]?.doubleValue ?? 20,
+            let format = try #require(SketchAnimation.Format(rawValue: p["format"]?.stringValue ?? ""))
+            let plan = SketchAnimation.plan(n, length: p["length"]?.doubleValue, fps: p["fps"]?.doubleValue ?? 20,
                                       hold: p["hold"]?.doubleValue ?? 1, format: format, size: p["size"]?.intValue ?? 512)
             let what = "\(n) \(String(describing: p["length"])) \(format)"
             #expect(plan.frames.count == p["count"]?.intValue, "\(what)")
@@ -34,15 +34,15 @@ import Testing
     @Test func lengthsLikePython() throws {
         let lengths = try #require(Fixtures.json("animation/animation.json").objectValue?["lengths"]?.objectValue)
         for c in (lengths["every_step"]?.arrayValue ?? []).compactMap(\.arrayValue) {
-            let format = try #require(Animation.Format(rawValue: c[1].stringValue ?? ""))
-            #expect(Animation.everyStepLength(c[0].intValue ?? 0, format: format) == c[2].doubleValue, "\(c)")
+            let format = try #require(SketchAnimation.Format(rawValue: c[1].stringValue ?? ""))
+            #expect(SketchAnimation.everyStepLength(c[0].intValue ?? 0, format: format) == c[2].doubleValue, "\(c)")
         }
         for c in (lengths["drawing"]?.arrayValue ?? []).compactMap(\.arrayValue) {
-            #expect(Animation.defaultDrawingLength(strokes: c[0].intValue ?? 0, line: c[1].doubleValue ?? 0)
+            #expect(SketchAnimation.defaultDrawingLength(strokes: c[0].intValue ?? 0, line: c[1].doubleValue ?? 0)
                 == c[2].doubleValue, "\(c)")
         }
         for c in (lengths["process"]?.arrayValue ?? []).compactMap(\.arrayValue) {
-            #expect(Animation.defaultProcessLength(c[0].intValue ?? 0) == c[1].doubleValue, "\(c)")
+            #expect(SketchAnimation.defaultProcessLength(c[0].intValue ?? 0) == c[1].doubleValue, "\(c)")
         }
     }
 
@@ -86,11 +86,11 @@ import Testing
         for name in ["svg_iter10.svg", "svg_iter2.svg", "svg_iter0.svg", "svg_iter.svg", "notes.txt", "svg_iter7.png"] {
             try Data("<svg/>".utf8).write(to: logs.appending(path: name))
         }
-        #expect(Animation.steps(runDir: run).map(\.lastPathComponent) == ["svg_iter0.svg", "svg_iter2.svg", "svg_iter10.svg"])
+        #expect(SketchAnimation.steps(runDir: run).map(\.lastPathComponent) == ["svg_iter0.svg", "svg_iter2.svg", "svg_iter10.svg"])
         try Data(#"{"best_iter": 2, "method": "scenesketch"}"#.utf8).write(to: run.appending(path: "config.json"))
-        #expect(Animation.steps(runDir: run).map(\.lastPathComponent) == ["svg_iter0.svg", "svg_iter2.svg"])
-        #expect(Animation.steps(runDir: run, uptoBest: false).count == 3 && Animation.method(runDir: run) == "scenesketch")
+        #expect(SketchAnimation.steps(runDir: run).map(\.lastPathComponent) == ["svg_iter0.svg", "svg_iter2.svg"])
+        #expect(SketchAnimation.steps(runDir: run, uptoBest: false).count == 3 && SketchAnimation.method(runDir: run) == "scenesketch")
         try Data(#"{"best_iter": -1}"#.utf8).write(to: run.appending(path: "config.json"))
-        #expect(Animation.steps(runDir: run).count == 3 && Animation.method(runDir: run) == "clipasso")
+        #expect(SketchAnimation.steps(runDir: run).count == 3 && SketchAnimation.method(runDir: run) == "clipasso")
     }
 }
