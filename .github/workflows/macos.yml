@@ -89,7 +89,9 @@ jobs:
         working-directory: macos
         run: |
           xcodebuild -scheme CLIPassoStudio -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd build
-          xcodebuild -scheme StudioCore-Package -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd test
+          # (the tests' engine in this Python, which has Pillow – xcodebuild gives the tests the system's PATH)
+          TEST_RUNNER_CLIPASSO_TEST_PYTHON="$(command -v python)" \
+            xcodebuild -scheme StudioCore-Package -destination 'platform=macOS,arch=arm64' -derivedDataPath ../build/dd test
       - name: Cache the Python download
         uses: actions/cache@v4
         with:

@@ -60,13 +60,7 @@ import StudioCore
 
     /// The engine writes the WebP from the frames drawn here (and their folder goes again).
     @Test func webpByTheEngine() async throws {
-        let launch = EngineLaunch(executable: URL(filePath: "/usr/bin/env"),
-                                  arguments: ["python3", "-m", "clipasso_studio.headless"],
-                                  // (the Python of the tests first: it has Pillow)
-                                  environment: ["PYTHONPATH": AppModelTests.repo.path,
-                                                "PATH": (ProcessInfo.processInfo.environment["PATH"] ?? "")
-                                                    + ":/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"],
-                                  workingDirectory: AppModelTests.repo)
+        let launch = AppModelTests.realEngine()  // (the tests' Python: it has Pillow)
         let model = try AppModel(resources: AppModelTests.resources(engine: launch), store: AppModelTests.store(language: "en"))
         await model.startEngine()
         #expect(model.engineStatus == .ready)
@@ -77,6 +71,27 @@ import StudioCore
         let frames = try await model.exportAnimation(job, to: webp)
         let source = try #require(CGImageSourceCreateWithURL(webp as CFURL, nil))
         #expect(CGImageSourceGetCount(source) == frames)
+        await model.stopEngine()
+    }
+}
+
+/// The brush styles of the exports: the engine draws a sketch in a style (op "stylize") for an export's thread; plain,
+/// and a style the schema does not list, ask no one.
+@Suite(.serialized) struct BrushStyleTests {
+    @Test func theEngineDrawsAStyle() async throws {
+        let model = try AppModel(resources: AppModelTests.resources(engine: AppModelTests.realEngine()),
+                                 store: AppModelTests.store(language: "en"))
+        #expect(model.brushStyles.first == "plain" && model.brushStyles.contains("charcoal"))
+        #expect(model.stylist("plain").isPlain && model.stylist("glitter").isPlain)
+        #expect(model.stylist("neon").recolours && !model.stylist("charcoal").recolours)
+        await model.startEngine()
+        #expect(model.engineStatus == .ready)
+        let svg = String(decoding: try Data(contentsOf: AppModelTests.repo
+                .appending(path: "macos/Tests/StudioCoreTests/Fixtures/svg/lines.svg")), as: UTF8.self)
+        let stylist = model.stylist("charcoal")
+        let styled = try await Task.detached(executorPreference: OwnThreads.shared) { try stylist([svg, svg]) }.value
+        #expect(styled.count == 2 && styled[0] == styled[1] && styled[0].contains("stroke-dasharray"))
+        #expect(try SketchSVG.parse(styled[0]).strokes.count > SketchSVG.parse(svg).strokes.count)  // (grain)
         await model.stopEngine()
     }
 }

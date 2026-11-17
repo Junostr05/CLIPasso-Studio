@@ -52,6 +52,8 @@ public struct ExportOptions: Sendable, Equatable {
     }
 
     public var stroke = "#000000"
+    /// the brush style (brush.STYLES; the engine draws it – Stylist)
+    public var style = "plain"
     /// the strokes' width times this (0.1 … 10)
     public var widthScale = 1.0
     /// nil: transparent
@@ -83,6 +85,7 @@ public struct ExportOptions: Sendable, Equatable {
         size = format == .png || format == .matrix ? 1024 : 512
         pdfWidth = min(200, max(2, settings["export_pdf_width"]?.doubleValue ?? 15))
         paper = Paper.of(settings)
+        if let s = settings["export_style"]?.stringValue, !s.isEmpty { style = s }
     }
 
     /// ExportDialog._save: the choices kept for the next export (the plotter's SVG has no background or paper, the
@@ -90,6 +93,7 @@ public struct ExportOptions: Sendable, Equatable {
     public func remember(in settings: inout AppSettings, format: Format) {
         settings["export_stroke"] = .string(stroke)
         settings["export_width"] = .double(widthScale)
+        settings["export_style"] = .string(style)  // (kept also where the format draws plain lines)
         if format != .svg1 {
             settings["export_background"] = .string(background ?? "transparent")
             Paper.remember(paper, in: &settings)
@@ -114,11 +118,13 @@ public enum SketchExporter {
         SketchFraming.make(svg, mode: options.frame, frame: photo, margin: Double(options.margin) / 100)
     }
 
-    /// export.export_svg (the plain style): restyled, framed, then the paper.
-    public static func svg(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil) -> String {
+    /// export.export_svg: restyled, framed, drawn in the brush style, then the paper.
+    public static func svg(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil,
+                           stylist: Stylist = .plain) throws -> String
+    {
         let restyled = SketchExport.restyleSVG(svg, strokeColor: options.strokeColour, widthScale: options.widthScale,
                                                background: options.background)
-        let framed = framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
+        let framed = try stylist(framing(svg, options, photo: photo)?.apply(restyled) ?? restyled)
         #if canImport(ImageIO)
             return PaperPicture.svgWithPaper(framed, paper: options.paper, background: options.background)
         #else
@@ -128,26 +134,28 @@ public enum SketchExporter {
 
     /// The text formats of a sketch as the studio writes them: SVG, the plotter's one-layer SVG, the SceneSketch cell
     /// in two layers (`labels`; its run's object.svg tells them apart), the SVG that draws itself, Lottie and the web
-    /// page (named `name`) – framed first; a ControlSketch run's strokes drawn in their order.
+    /// page (named `name`) – framed first; a ControlSketch run's strokes drawn in their order. The brush style for
+    /// all but the plotter's SVG and Lottie (they stay plain lines).
     public static func text(_ svg: String, format: ExportOptions.Format, options: ExportOptions,
-                     photo: SketchFraming.PhotoFrame? = nil, runDir: URL? = nil, length: Double? = nil, hold: Double = 1,
-                     name: String = "sketch", labels: (String, String) = ("Background", "Object")) -> String
+                            photo: SketchFraming.PhotoFrame? = nil, runDir: URL? = nil, length: Double? = nil,
+                            hold: Double = 1, name: String = "sketch", labels: (String, String) = ("Background", "Object"),
+                            stylist: Stylist = .plain) throws -> String
     {
         let framed = framing(svg, options, photo: photo)?.apply(svg) ?? svg
         let keep = runDir.map { SketchAnimation.method(runDir: $0) == "controlsketch" } ?? false
-        func animated() -> String {
-            SketchFormats.animatedSVG(framed, length: length, hold: hold, strokeColor: options.strokeColour,
-                                      widthScale: options.widthScale, background: options.background, keepOrder: keep,
-                                      paper: options.paper)
+        func animated() throws -> String {
+            try SketchFormats.animatedSVG(framed, length: length, hold: hold, strokeColor: options.strokeColour,
+                                          widthScale: options.widthScale, background: options.background,
+                                          keepOrder: keep, paper: options.paper, stylist: stylist)
         }
         switch format {
         case .svg1:
             return SketchFormats.singleLayer(framed, strokeColor: options.strokeColour, widthScale: options.widthScale)
         case .svglayers:
             let layered = SketchFormats.layered(svg, objects: SketchFormats.objectStrokes(runDir: runDir), labels: labels)
-            return self.svg(layered, options: options, photo: photo)
+            return try self.svg(layered, options: options, photo: photo, stylist: stylist)
         case .svganim:
-            return animated()
+            return try animated()
         case .lottie:
             return PyJSON.dump(SketchFormats.lottie(framed, length: length, hold: hold, strokeColor: options.strokeColour,
                                                     widthScale: options.widthScale, background: options.background,
@@ -155,16 +163,19 @@ public enum SketchExporter {
                                asciiOnly: true, compact: true)  // (json.dump: ensure_ascii)
         case .html:
             let page = options.paper != nil ? Paper.colour(of: options.paper, background: options.background) : options.background
-            return SketchFormats.webPage(animated(), title: name, background: page)
+            return SketchFormats.webPage(try animated(), title: name, background: page)
         default:
-            return self.svg(svg, options: options, photo: photo)
+            return try self.svg(svg, options: options, photo: photo, stylist: stylist)
         }
     }
 
-    /// The restyled, framed sketch a PNG or PDF draws (its background is the picture's, not a rect).
-    static func drawn(_ svg: String, _ options: ExportOptions, photo: SketchFraming.PhotoFrame?) -> String {
+    /// The restyled, framed sketch in its brush style that a PNG or PDF draws (its background is the picture's, not
+    /// a rect).
+    static func drawn(_ svg: String, _ options: ExportOptions, photo: SketchFraming.PhotoFrame?,
+                      stylist: Stylist = .plain) throws -> String
+    {
         let restyled = SketchExport.restyleSVG(svg, strokeColor: options.strokeColour, widthScale: options.widthScale)
-        return framing(svg, options, photo: photo)?.apply(restyled) ?? restyled
+        return try stylist(framing(svg, options, photo: photo)?.apply(restyled) ?? restyled)
     }
 }
 
@@ -173,8 +184,10 @@ public enum SketchExporter {
 
     public extension SketchExporter {
         /// export.export_png: the longer side `options.size` pixels, in the frame's shape, on the background.
-        static func png(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil) throws -> Data {
-            let sketch = try SketchSVG.parse(drawn(svg, options, photo: photo))
+        static func png(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil,
+                        stylist: Stylist = .plain) throws -> Data
+        {
+            let sketch = try SketchSVG.parse(drawn(svg, options, photo: photo, stylist: stylist))
             let ground = options.background.flatMap { SketchSVG.color($0) }
             guard let paper = options.paper else {
                 return try SketchRenderer.pngData(SketchRenderer.image(sketch, longSide: options.size, background: ground))
@@ -186,10 +199,10 @@ public enum SketchExporter {
 
         /// export.export_pdf: one vector page `options.pdfWidth` cm wide in the sketch's shape (its viewBox), the
         /// background filled under the strokes – for printing.
-        static func pdf(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil, title: String)
-            throws -> Data
+        static func pdf(_ svg: String, options: ExportOptions, photo: SketchFraming.PhotoFrame? = nil, title: String,
+                        stylist: Stylist = .plain) throws -> Data
         {
-            let text = drawn(svg, options, photo: photo)
+            let text = try drawn(svg, options, photo: photo, stylist: stylist)
             let sketch = try SketchSVG.parse(text)
             let box = SketchEditing.viewBox(text)
             let aspect = box.width > 0 && box.height > 0 ? box.height / box.width : 1

@@ -14,6 +14,23 @@
   "cuda",
   "mps"
  ],
+ "brush_styles": [
+  "plain",
+  "ink",
+  "pencil",
+  "charcoal",
+  "chalk",
+  "ballpoint",
+  "marker",
+  "watercolor",
+  "neon",
+  "calligraphy"
+ ],
+ "brush_recolouring": [
+  "ballpoint",
+  "watercolor",
+  "neon"
+ ],
  "method": {
   "clipasso": {
    "name": "CLIPasso",

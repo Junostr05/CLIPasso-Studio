@@ -57,12 +57,21 @@ import StudioCore
         #expect(text.hasPrefix("The sketch engine could not be started"))
     }
 
+    /// The real engine from this checkout, in the tests' Python: the one CI names (CLIPASSO_TEST_PYTHON – xcodebuild
+    /// gives the tests the system's PATH, whose python3 has no Pillow), else python3 on the PATH.
+    static func realEngine() -> EngineLaunch {
+        let path = (ProcessInfo.processInfo.environment["PATH"] ?? "") + ":/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"
+        if let python = ProcessInfo.processInfo.environment["CLIPASSO_TEST_PYTHON"], !python.isEmpty {
+            return EngineLaunch(executable: URL(filePath: python), arguments: ["-m", "clipasso_studio.headless"],
+                                environment: ["PYTHONPATH": repo.path, "PATH": path], workingDirectory: repo)
+        }
+        return EngineLaunch(executable: URL(filePath: "/usr/bin/env"),
+                            arguments: ["python3", "-m", "clipasso_studio.headless"],
+                            environment: ["PYTHONPATH": repo.path, "PATH": path], workingDirectory: repo)
+    }
+
     @Test func readyWithTheRealEngine() async throws {
-        let launch = EngineLaunch(executable: URL(filePath: "/usr/bin/env"),
-                                  arguments: ["python3", "-m", "clipasso_studio.headless"],
-                                  environment: ["PYTHONPATH": Self.repo.path,
-                                                "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"],
-                                  workingDirectory: Self.repo)
+        let launch = Self.realEngine()
         let model = try AppModel(resources: Self.resources(engine: launch), store: Self.store(language: "en"))
         await model.startEngine()
         #expect(model.engineStatus == .ready)

@@ -130,6 +130,7 @@ struct ExportSheet: View {
         }
         .onChange(of: mode) { length = defaultLength }
         .task {
+            if !model.brushStyles.contains(options.style) { options.style = "plain" }
             let (run, svg) = (source.runDir, source.svg)
             let found = await Task.detached { () -> (SketchFraming.PhotoFrame?, Int, Drawing, Bool) in
                 (run.flatMap { SketchFraming.runFrame(runDir: $0) }, run.map { SketchAnimation.steps(runDir: $0).count } ?? 0,
@@ -166,12 +167,22 @@ struct ExportSheet: View {
         return formats.filter { source.formats.contains($0) }
     }
 
-    /// The strokes and the ground: colour, width, background or none, the paper (the plotter's SVG: lines only).
+    /// Whether the format is drawn in the brush style (the plotter's SVG and Lottie stay plain lines).
+    private func styled(_ format: ExportOptions.Format) -> Bool { format != .svg1 && format != .lottie }
+
+    /// The strokes and the ground: colour, width, brush style, background or none, the paper (the plotter's SVG:
+    /// lines only).
     @ViewBuilder private func lookSection(_ t: Texts) -> some View {
         Section {
             ColorPicker(t.tr("ui.stroke_color"), selection: color(\.stroke), supportsOpacity: false)
             Stepper(value: $options.widthScale, in: 0.1...10, step: 0.1) {
                 LabeledContent(t.tr("ui.stroke_width_scale"), value: String(format: "%.1f ×", options.widthScale))
+            }
+            if styled(format) {
+                Picker(t.tr("ui.brush.label"), selection: $options.style) {
+                    ForEach(model.brushStyles, id: \.self) { Text(t.tr("ui.brush.\($0)")).tag($0) }
+                }
+                .help(t.tr("ui.brush.tip"))
             }
             if format != .svg1 {
                 if format.allowsTransparent {
@@ -358,6 +369,7 @@ struct ExportSheet: View {
         let (runDir, jobDir, length, hold) = (source.runDir, source.jobDir, self.length, self.hold)
         let title = url.deletingPathExtension().lastPathComponent
         let labels = (model.texts.tr("ui.layer.background"), model.texts.tr("ui.layer.object"))
+        let stylist = styled(format) ? model.stylist(options.style) : .plain
         problem = ""
         (done, total) = (0, 0)
         work = Task {
@@ -368,22 +380,25 @@ struct ExportSheet: View {
             do {
                 if let animation = format.animation {
                     let job = AnimationJob(mode: mode, format: animation, options: options, length: length, hold: hold,
-                                           svg: svg, runDir: runDir, photo: photo)
+                                           svg: svg, runDir: runDir, photo: photo, stylist: stylist)
                     _ = try await model.exportAnimation(job, to: url) { progress.yield(($0, $1)) }
                 } else {
                     let data = try await Self.offMain { () throws -> Data in
                         switch format {
                         case .png:
-                            return try SketchExporter.png(svg, options: options, photo: photo)
+                            return try SketchExporter.png(svg, options: options, photo: photo, stylist: stylist)
                         case .pdf:
-                            return try SketchExporter.pdf(svg, options: options, photo: photo, title: title)
+                            return try SketchExporter.pdf(svg, options: options, photo: photo, title: title,
+                                                          stylist: stylist)
                         case .matrix:
                             guard let jobDir else { throw ExportError(code: "export_no_sketches") }
-                            return try MatrixExport.zip(jobDir: jobDir, options: options) { progress.yield(($0, $1)) }
+                            return try MatrixExport.zip(jobDir: jobDir, options: options, stylist: stylist) {
+                                progress.yield(($0, $1))
+                            }
                         default:
-                            let text = SketchExporter.text(svg, format: format, options: options, photo: photo,
-                                                           runDir: runDir, length: length, hold: hold, name: title,
-                                                           labels: labels)
+                            let text = try SketchExporter.text(svg, format: format, options: options, photo: photo,
+                                                               runDir: runDir, length: length, hold: hold, name: title,
+                                                               labels: labels, stylist: stylist)
                             return Data(text.utf8)
                         }
                     }

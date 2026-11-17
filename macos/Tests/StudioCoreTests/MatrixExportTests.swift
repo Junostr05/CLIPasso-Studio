@@ -52,7 +52,7 @@ import Testing
             defer { try? FileManager.default.removeItem(at: job.deletingLastPathComponent()) }
             var options = ExportOptions()
             options.size = 128
-            let cells = MatrixExport.cells(jobDir: job, options: options)
+            let cells = try MatrixExport.cells(jobDir: job, options: options)
             #expect(cells.map(\.cell) == [800, 804] && MatrixExport.name(804) == "L8_level4")
             var progress: [[Int]] = []
             let data = try MatrixExport.zip(jobDir: job, options: options) { progress.append([$0, $1]) }

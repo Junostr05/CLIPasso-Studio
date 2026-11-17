@@ -60,7 +60,7 @@ import Testing
         options.background = "#101010"
         options.frame = .content
         options.margin = 50
-        let out = SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options)
+        let out = try SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options)
         let root = try #require(SketchEditing.elements(out).first?.tag)
         let box = try #require(root.value("viewBox"))
         let background = try #require(SketchEditing.elements(out).first { $0.tag.name == "rect" }?.tag)
@@ -70,26 +70,56 @@ import Testing
         #expect(SketchExport.restyleSVG(try Self.sketch("svg/lines.svg")).contains(#"stroke-width="1.5""#))
         #expect(out.contains(#"stroke-width="3""#))  // 1.5 × 2
         options.frame = .photo
-        #expect(SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options).contains(#"viewBox="0 0 224 224""#))
+        #expect(try SketchExporter.svg(try Self.sketch("svg/lines.svg"), options: options).contains(#"viewBox="0 0 224 224""#))
     }
 
     /// The other formats through one door: framed first, then written as SketchFormats writes them.
     @Test func theTextFormats() throws {
         let svg = try Self.sketch("animation/drawing.svg")
         var options = ExportOptions()
-        #expect(SketchExporter.text(svg, format: .svg1, options: options) == SketchFormats.singleLayer(svg))
-        #expect(SketchExporter.text(svg, format: .svg, options: options) == SketchExporter.svg(svg, options: options))
-        let page = SketchExporter.text(svg, format: .html, options: options, name: "Kamel")
+        #expect(try SketchExporter.text(svg, format: .svg1, options: options) == SketchFormats.singleLayer(svg))
+        #expect(try SketchExporter.text(svg, format: .svg, options: options) == SketchExporter.svg(svg, options: options))
+        let page = try SketchExporter.text(svg, format: .html, options: options, name: "Kamel")
         #expect(page.hasPrefix("<!doctype html>") && page.contains("<title>Kamel</title>"))
-        let text = SketchExporter.text(svg, format: .lottie, options: options, name: "Kätzchen")
+        let text = try SketchExporter.text(svg, format: .lottie, options: options, name: "Kätzchen")
         #expect(text.contains(#""nm":"K\u00e4tzchen""#))  // (written as Python writes it: ASCII only)
         let lottie = try PyJSON.parse(Data(text.utf8))
         #expect(lottie.objectValue?["layers"]?.arrayValue?.count == 5)  // (one layer a stroke, no background)
         options.frame = .content
-        let framed = SketchExporter.text(svg, format: .svganim, options: options)
+        let framed = try SketchExporter.text(svg, format: .svganim, options: options)
         #expect(!framed.contains(#"viewBox="0 0 224 224""#) && framed.contains("@keyframes d4"))
-        let layered = SketchExporter.text(svg, format: .svglayers, options: options, labels: ("Hintergrund", "Objekt"))
+        let layered = try SketchExporter.text(svg, format: .svglayers, options: options, labels: ("Hintergrund", "Objekt"))
         #expect(layered.contains(#"inkscape:label="Hintergrund""#) && !layered.contains(#"viewBox="0 0 224 224""#))
+    }
+
+    /// The exports in a brush style (Fixtures/export/styled.json): the stylist answers as the engine answered the
+    /// studio – what it is asked must be the sketch Python asked about (the same strokes, the same path data, which a
+    /// style may copy) – and the SVG, and the SVG that draws itself stroke by stroke, are Python's to the character.
+    @Test func inABrushStyleLikePython() throws {
+        let cases = (try #require(Fixtures.json("export/styled.json").objectValue)["cases"]?.arrayValue ?? [])
+            .compactMap(\.objectValue)
+        #expect(cases.count == 6)
+        for c in cases {
+            let (kind, style) = (c["kind"]?.stringValue ?? "", c["style"]?.stringValue ?? "")
+            let calls = (c["calls"]?.arrayValue ?? []).compactMap(\.arrayValue)
+            let engine = RecordedEngine(calls.map { ($0[0].stringValue ?? "", $0[1].stringValue ?? "") })
+            let stylist = Stylist(style: style) { try engine.answer($0) }
+            let svg = try Self.sketch(c["svg"]?.stringValue ?? "")
+            let out: String
+            if kind == "svg" {
+                var options = ExportOptions()
+                options.widthScale = 1.5
+                options.background = "#FFFFFF"
+                options.frame = .content
+                options.margin = 10
+                out = try SketchExporter.svg(svg, options: options, stylist: stylist)
+            } else {
+                out = try SketchFormats.animatedSVG(svg, length: 2, hold: 0.5, widthScale: 1.5, background: "#fafafa",
+                                                    stylist: stylist)
+            }
+            #expect(engine.asked == calls.count && engine.unlike.isEmpty, "\(kind) \(style): \(engine.unlike)")
+            #expect(out == c["out"]?.stringValue, "\(kind) \(style)")
+        }
     }
 
     /// Black is no colour (ExportDialog._save): the strokes keep their own.
@@ -100,7 +130,7 @@ import Testing
         #expect(before.contains(RGB(0xAA, 0x33, 0x11)))
         let options = ExportOptions()
         #expect(options.strokeColour == nil)
-        #expect(try SketchSVG.parse(SketchExporter.svg(coloured, options: options)).strokes.map(\.color) == before)
+        #expect(try SketchSVG.parse(try SketchExporter.svg(coloured, options: options)).strokes.map(\.color) == before)
     }
 
     #if canImport(CoreGraphics)
@@ -134,12 +164,12 @@ import Testing
             let paper = PaperTexture.rgb(options.paper, width: 96, height: 96, background: options.background)
             #expect(Set(stride(from: 0, to: paper.count, by: 3).map { paper[$0] }).count > 3)  // (a texture, not a colour)
             options.background = "#101010"
-            let svg = SketchExporter.svg(try Self.sketch("svg/closed_bg.svg"), options: options)
+            let svg = try SketchExporter.svg(try Self.sketch("svg/closed_bg.svg"), options: options)
             #expect(svg.contains(#"<image data-bg="1" x="0" y="0" width="224" height="224" preserveAspectRatio="none""#))
             #expect(svg.contains("data:image/jpeg;base64,") && svg.contains("xmlns:xlink"))
             #expect(!svg.contains(#"data-bg="1" />"#))  // (the background rect made way for the paper)
             options.paper = nil
-            #expect(!SketchExporter.svg(try Self.sketch("svg/closed_bg.svg"), options: options).contains("<image"))
+            #expect(try !SketchExporter.svg(Self.sketch("svg/closed_bg.svg"), options: options).contains("<image"))
         }
 
         @Test func aPDFPageOfTheChosenWidth() throws {
@@ -155,4 +185,36 @@ import Testing
             #expect(abs(page.height / page.width - 1 / framed.aspect) < 1e-4)  // the strokes' box (written with 3 decimals)
         }
     #endif
+}
+
+/// The engine's answers to brush.stylize_svg as Python got them, in their order – each given when it is asked about
+/// the same sketch (its strokes and their path data); what was asked otherwise is kept in `unlike`.
+final class RecordedEngine: @unchecked Sendable {
+    private let lock = NSLock()
+    private let calls: [(asked: String, answer: String)]
+    private var next = 0
+    private var mismatches: [String] = []
+
+    init(_ calls: [(String, String)]) { self.calls = calls.map { (asked: $0.0, answer: $0.1) } }
+
+    var asked: Int { lock.withLock { next } }
+    var unlike: [String] { lock.withLock { mismatches } }
+
+    static func paths(_ svg: String) -> [String] {
+        SketchEditing.elements(svg).filter { $0.tag.name == "path" }.map { $0.tag.value("d") ?? "" }
+    }
+
+    func answer(_ svgs: [String]) throws -> [String] {
+        try lock.withLock {
+            try svgs.map { svg in
+                guard next < calls.count else { throw SketchSVG.ParseError(description: "asked more than Python") }
+                let call = calls[next]
+                next += 1
+                if try SketchSVG.parse(svg) != SketchSVG.parse(call.asked) || Self.paths(svg) != Self.paths(call.asked) {
+                    mismatches.append("call \(next): \(svg.prefix(300)) ≠ \(call.asked.prefix(300))")
+                }
+                return call.answer
+            }
+        }
+    }
 }

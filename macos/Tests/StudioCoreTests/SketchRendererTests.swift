@@ -70,6 +70,22 @@
             Self.likeQt(try Pixels(image), qt, style, clear: clear, near: clear * 38 / 102)
         }
 
+        /// A PNG in a brush style: the sketch restyled and framed is what the engine is asked about, its answer (the
+        /// one it gave the studio's export) is drawn – like Qt's PNG of that export.
+        @Test(arguments: ["ink", "charcoal", "neon"])
+        func aPNGInABrushStyle(_ style: String) throws {
+            let raw = String(decoding: try Fixtures.data("svg/lines.svg"), as: UTF8.self)
+            let answer = String(decoding: try Fixtures.data("export/styles/\(style).svg"), as: UTF8.self)
+            let engine = RecordedEngine([(SketchExport.restyleSVG(raw, strokeColor: nil, widthScale: 1), answer)])
+            var options = ExportOptions()
+            options.size = 256
+            options.background = "#FFFFFF"
+            let png = try SketchExporter.png(raw, options: options, stylist: Stylist(style: style) { try engine.answer($0) })
+            #expect(engine.asked == 1 && engine.unlike.isEmpty, "\(engine.unlike)")
+            Self.likeQt(try Pixels(Self.decode(png)), try Pixels(Self.decode(Fixtures.data("export/styles/\(style).png"))),
+                        style)
+        }
+
         /// Mine and Qt's: on average within 2 % per channel, and every clearly drawn pixel of Qt's (`clear` away from
         /// the paper) drawn here too (`near` away from it, at the pixel or a neighbour).
         static func likeQt(_ mine: Pixels, _ qt: Pixels, _ name: String, clear: Int = 102, near: Int = 38) {

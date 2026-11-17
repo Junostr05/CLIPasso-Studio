@@ -34,7 +34,7 @@ import Testing
         for c in cases {
             let name = c["svg"]?.stringValue ?? ""
             let python = c["out"]?.stringValue ?? ""
-            let swift = SketchFormats.animatedSVG(try Self.sketch(name), length: c["length"]?.doubleValue,
+            let swift = try SketchFormats.animatedSVG(try Self.sketch(name), length: c["length"]?.doubleValue,
                                                   hold: c["hold"]?.doubleValue ?? 1, strokeColor: c["stroke"]?.stringValue,
                                                   widthScale: c["width"]?.doubleValue ?? 1,
                                                   background: c["background"]?.stringValue,

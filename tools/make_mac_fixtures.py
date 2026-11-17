@@ -24,6 +24,7 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
 - ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them;
   ``paths_expected.json``: path data and what engine/svg_path.py reads from it
 - ``export/`` – ``restyle.json``: SVGs as gui/export.restyle_svg changes them (colour, width, background), and
+  ``styled.json``: exports in a brush style with every call of brush.stylize_svg (the engine's answers);
   ``qcolor.json``: Qt's colour names and what QColor makes of other texts (the web page's and Lottie's colours);
   ``render/*.png``: the ``svg/`` sketches as the studio exports them (gui/export.export_png, 256 px, Qt);
   ``styles/<style>.svg`` and ``.png``: a sketch in every brush style as the engine gives it to the Mac app
@@ -649,6 +650,46 @@ PAGE_CASES = (("Kamel", None), ("Kamel <1> & \"Zwei\"", "#2C3A33"), ("x", "#fff8
 LAYER_OBJECT = ("M 20 30 L 60 35 L 90 80", "M 100 100 C 120 60 160 60 180 100 Z")  # two strokes of drawing.svg
 
 
+STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
+
+
+def styled_cases(out: Path) -> dict:
+    """gui/export.py's exports in a brush style, every call of brush.stylize_svg recorded – what the Mac app asks the
+    engine and its answer – so that the Swift tests answer as the engine does: the SVG (framed to the strokes) and
+    the SVG that draws itself (each stroke styled on its own)."""
+    import tempfile
+
+    from clipasso_studio.gui import export
+
+    real, calls = export.stylize_svg, []
+
+    def recording(svg: str, style: str = "plain", seed: int = 0) -> str:
+        styled = real(svg, style, seed)
+        if style != "plain":
+            calls.append([svg, styled])
+        return styled
+
+    cases = []
+    drawing = (out / "animation" / "drawing.svg").read_text(encoding="utf-8")
+    export.stylize_svg = recording
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "styled.svg"
+            for style in STYLED_LOOKS:
+                calls.clear()
+                export.export_svg(str(out / "svg" / "cubic.svg"), str(dest), None, 1.5, "#FFFFFF", style, "content",
+                                  0.1)
+                cases.append({"kind": "svg", "style": style, "svg": "svg/cubic.svg", "calls": list(calls),
+                              "out": dest.read_text(encoding="utf-8")})
+                calls.clear()
+                animated = export.animated_svg(drawing, 2.0, 0.5, None, 1.5, "#fafafa", style, False)
+                cases.append({"kind": "animated", "style": style, "svg": "animation/drawing.svg", "calls": list(calls),
+                              "out": animated})
+    finally:
+        export.stylize_svg = real
+    return {"cases": cases}
+
+
 def format_cases(out: Path) -> dict:
     """gui/export.py's other formats of a sketch: one path in one layer for plotters (single_layer_svg), the SVG
     that draws itself (animated_svg) and its web page (web_page), Lottie (lottie), a SceneSketch cell in two layers
@@ -845,6 +886,7 @@ def build(out: Path) -> None:
     write_json(out / "paper" / "papers.json", paper_cases(out))
     write_json(out / "animation" / "animation.json", animation_cases(out))
     write_json(out / "export" / "formats.json", format_cases(out))
+    write_json(out / "export" / "styled.json", styled_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),

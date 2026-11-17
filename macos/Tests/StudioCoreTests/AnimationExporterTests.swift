@@ -81,6 +81,32 @@
             let full = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
             let end = try #require(CGImageSourceCreateImageAtIndex(full, CGImageSourceGetCount(full) - 1, nil))
             #expect(Self.colours(end).count > SketchAnimation.inkLevels)
+            // a style that colours black strokes (a ballpoint's blue …) is drawn in full colour too
+            job.options.stroke = "#336699"
+            job.stylist = Stylist(style: "neon", recolours: true) { $0 }
+            try AnimationExporter.gif(job, to: url)
+            let glow = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+            let lit = try #require(CGImageSourceCreateImageAtIndex(glow, CGImageSourceGetCount(glow) - 1, nil))
+            #expect(Self.colours(lit).count > SketchAnimation.inkLevels)
+        }
+
+        /// The frames in a brush style: the drawn frames go to the stylist a few at a time, restyled (black for the
+        /// ink), and what it answers is drawn.
+        @Test func framesInABrushStyle() throws {
+            var job = try Self.job(.strokes, .gif)
+            job.options.stroke = "#336699"
+            let asked = Asked()
+            job.stylist = Stylist(style: "ink") { svgs in
+                asked.add(svgs)
+                return svgs.map { $0.replacingOccurrences(of: "<path ", with: #"<path stroke-dasharray="1 1" "#) }
+            }
+            var count = 0
+            try AnimationExporter.frames(job) { _ in count += 1 }
+            let drawn = SketchAnimation.plan(50, length: 1, fps: 50, hold: 0.5, format: .gif, size: 64)
+            #expect(asked.batches.allSatisfy { $0.count <= AnimationExporter.styledAhead } && asked.batches.count > 1)
+            #expect(Set(asked.batches.joined()).count == Set(drawn.frames).count)  // (each drawn frame once)
+            #expect(asked.batches.joined().allSatisfy { !$0.contains("#336699") })  // (the ink is drawn black)
+            #expect(count == drawn.frames.count)
         }
 
         @Test func theDrawingProcessOfARun() throws {
@@ -141,5 +167,14 @@
                 #expect(size.width == 112 && size.height == 112)  // (100 → a multiple of 16)
             }
         #endif
+    }
+
+    /// What a stylist was asked, batch by batch (from the export's thread).
+    final class Asked: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [[String]] = []
+
+        func add(_ svgs: [String]) { lock.withLock { all.append(svgs) } }
+        var batches: [[String]] { lock.withLock { all } }
     }
 #endif

@@ -11,7 +11,7 @@ from pathlib import Path
 from .. import __version__, paths
 from .. import settings_schema as schema
 from ..engine import model_store
-from ..gui import methods_ui  # (no Qt: names and icons of the methods)
+from ..gui import brush, methods_ui  # (no Qt: the brush styles, names and icons of the methods)
 
 FORMAT = 1
 PRESET_ORDER = ("fast", "standard", "quality")
@@ -73,6 +73,8 @@ def export_schema() -> dict:
     return {"format": FORMAT, "app_version": __version__, "methods": list(schema.METHODS),
             "default_method": schema.DEFAULT_METHOD,
             "devices": list(schema.param(schema.DEFAULT_METHOD, "device").choices),
+            "brush_styles": list(brush.STYLES),  # (the exports' styles; their names: ui.brush.<style>)
+            "brush_recolouring": list(brush.RECOLOURING),  # (they colour black strokes: no animation in ink steps)
             "method": {m: _method(m) for m in schema.METHODS}}
 
 

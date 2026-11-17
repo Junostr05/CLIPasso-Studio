@@ -4,8 +4,10 @@ import Foundation
 /// one where a cell was touched up – as SVG and PNG (L<layer>_level<n>), and the overview sheet matrix.svg /
 /// matrix.png, in one ZIP file.
 public enum MatrixExport {
-    /// The cells of a job (cell number → its sketch restyled), in the order of the job's runs.
-    public static func cells(jobDir: URL, options: ExportOptions) -> [(cell: Int, svg: String)] {
+    /// The cells of a job (cell number → its sketch restyled, in the brush style), in the order of the job's runs.
+    public static func cells(jobDir: URL, options: ExportOptions, stylist: Stylist = .plain) throws
+        -> [(cell: Int, svg: String)]
+    {
         guard let summary = JobFolder.summary(at: jobDir) else { return [] }
         var cells: [(cell: Int, svg: String)] = []
         for run in summary.runs {
@@ -22,7 +24,8 @@ public enum MatrixExport {
                 cells.append((seed, restyled))
             }
         }
-        return cells
+        let styled = try stylist(cells.map(\.svg))  // (every cell in one request)
+        return Swift.zip(cells, styled).map { ($0.cell, $1) }  // (Swift.zip: this enum has a zip of its own)
     }
 
     /// The entry names of a cell.
@@ -36,8 +39,10 @@ public enum MatrixExport {
     public extension MatrixExport {
         /// The ZIP file; `progress` hears (cells written, cells) and (0, 0) while the sheet is drawn. A cancelled
         /// task stops between cells (CancellationError).
-        static func zip(jobDir: URL, options: ExportOptions, progress: (Int, Int) -> Void = { _, _ in }) throws -> Data {
-            let cells = cells(jobDir: jobDir, options: options)
+        static func zip(jobDir: URL, options: ExportOptions, stylist: Stylist = .plain,
+                        progress: (Int, Int) -> Void = { _, _ in }) throws -> Data
+        {
+            let cells = try cells(jobDir: jobDir, options: options, stylist: stylist)
             guard !cells.isEmpty else { throw ExportError(code: "export_no_sketches") }
             var zip = ZipWriter()
             let ground = options.background.flatMap { SketchSVG.color($0) }

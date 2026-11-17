@@ -8,6 +8,10 @@ public struct ParamSchema: Sendable {
     public let methods: [String]
     public let defaultMethod: String
     public let devices: [String]
+    /// the exports' brush styles (brush.STYLES, "plain" first; their names: ui.brush.<style>)
+    public let brushStyles: [String]
+    /// the styles that colour black strokes (brush.RECOLOURING) – an animation in them is not drawn in ink steps
+    public let brushRecolouring: [String]
     private let byID: [String: MethodSchema]
 
     public struct FormatError: Error, CustomStringConvertible, Sendable {
@@ -26,6 +30,8 @@ public struct ParamSchema: Sendable {
         methods = o["methods"]?.arrayValue?.compactMap(\.stringValue) ?? []
         defaultMethod = o["default_method"]?.stringValue ?? methods.first ?? ""
         devices = o["devices"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        brushStyles = o["brush_styles"]?.arrayValue?.compactMap(\.stringValue) ?? ["plain"]
+        brushRecolouring = o["brush_recolouring"]?.arrayValue?.compactMap(\.stringValue) ?? []
         var byID: [String: MethodSchema] = [:]
         for id in methods {
             guard let m = o["method"]?.objectValue?[id]?.objectValue else {

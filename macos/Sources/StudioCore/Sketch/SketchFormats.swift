@@ -94,20 +94,24 @@ public enum SketchFormats {
     // --------------------------------------------------------------------------------- animated SVG
 
     /// animated_svg: an SVG that draws itself in a browser (CSS, repeating) – every stroke uncovered by a mask whose
-    /// centre line grows along it; the background colour or the paper below.
+    /// centre line grows along it, drawn in the brush style; the background colour or the paper below.
     public static func animatedSVG(_ svg: String, length: Double? = nil, hold: Double = 1, strokeColor: String? = nil,
                                    widthScale: Double = 1, background: String? = nil, keepOrder: Bool = false,
-                                   paper: Paper? = nil) -> String
+                                   paper: Paper? = nil, stylist: Stylist = .plain) throws -> String
     {
         let drawing = Drawing(svg: svg, keepOrder: keepOrder)
         let n = drawing.strokeCount
         let length = length.map { max($0, 0.1) } ?? SketchAnimation.defaultDrawingLength(strokes: n, line: drawing.line)
         let cycle = length + max(hold, 0)
+        // (each stroke on its own in the style – all of them in one request)
+        let ones = try stylist((0 ..< n).map {
+            SketchExport.restyleSVG(drawing.head + drawing.strokes[$0].xml + "</svg>", strokeColor: strokeColor,
+                                    widthScale: widthScale)
+        })
         var css = "", defs = "", body = ""
         for i in 0 ..< n {
             let stroke = drawing.strokes[i]
-            let one = SketchExport.restyleSVG(drawing.head + stroke.xml + "</svg>", strokeColor: strokeColor,
-                                              widthScale: widthScale)
+            let one = ones[i]
             let styled = SketchEditing.elements(one).filter { $0.parent == 0 && $0.tag.name != "rect" }
                 .map { String(one[$0.start ..< $0.end]) }.joined()
             let (a, b) = drawing.spans[i]

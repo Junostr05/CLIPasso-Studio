@@ -14,12 +14,15 @@ public struct AnimationJob: Sendable {
     /// its run (the saved steps, its method)
     public var runDir: URL?
     public var photo: SketchFraming.PhotoFrame?
+    /// draws every frame in the brush style (options.style)
+    public var stylist: Stylist
 
     public init(mode: SketchAnimation.Mode, format: SketchAnimation.Format, options: ExportOptions, length: Double? = nil,
-                hold: Double = 1, svg: String, runDir: URL?, photo: SketchFraming.PhotoFrame? = nil)
+                hold: Double = 1, svg: String, runDir: URL?, photo: SketchFraming.PhotoFrame? = nil,
+                stylist: Stylist = .plain)
     {
         (self.mode, self.format, self.options, self.length, self.hold) = (mode, format, options, length, hold)
-        (self.svg, self.runDir, self.photo) = (svg, runDir, photo)
+        (self.svg, self.runDir, self.photo, self.stylist) = (svg, runDir, photo, stylist)
     }
 }
 
@@ -112,7 +115,9 @@ public struct DrawnFrames: Sendable {
 
         static func look(_ job: AnimationJob, _ frames: DrawnFrames) throws -> Look {
             let options = job.options
-            let ink = (options.strokeColour != nil || DrawnFrames.oneColour(frames.svg(frames.count - 1))) && options.paper == nil
+            // (one stroke colour, a style that keeps it, no paper: steps of ink)
+            let ink = (options.strokeColour != nil || DrawnFrames.oneColour(frames.svg(frames.count - 1)))
+                && !job.stylist.recolours && options.paper == nil
             var background = options.background.flatMap { SketchSVG.color($0) }
             if background == nil, job.format != .webp { background = RGB(255, 255, 255) }
             let stroke = SketchSVG.color(options.strokeColour ?? "#000000") ?? RGB(0, 0, 0)
@@ -153,15 +158,22 @@ public struct DrawnFrames: Sendable {
             return context
         }
 
-        /// One drawn frame: export._ink mapped onto the palette, or the full colour picture.
+        /// A frame's sketch restyled as it is drawn – black for the ink, else in the export's colour – before its brush
+        /// style (export._ink, _encode).
+        static func restyled(_ svg: String, _ job: AnimationJob, _ look: Look) -> String {
+            SketchExport.restyleSVG(svg, strokeColor: look.ink ? "#000000" : job.options.strokeColour,
+                                    widthScale: job.options.widthScale)
+        }
+
+        /// One drawn frame of its sketch restyled and styled: export._ink mapped onto the palette, or the full colour
+        /// picture.
         static func render(_ svg: String, _ job: AnimationJob, _ look: Look) throws -> CGImage {
             let (cw, ch) = look.canvas
             let (w, h) = look.size
             let rect = CGRect(x: Double(cw - w) / 2, y: Double(ch - h) / 2, width: Double(w), height: Double(h))
             let context = try context(cw, ch)
             if look.ink {  // black on white, its grey (PIL's "L") in eight steps, then the palette's colours
-                let sketch = try SketchSVG.parse(SketchExport.restyleSVG(svg, strokeColor: "#000000",
-                                                                         widthScale: job.options.widthScale))
+                let sketch = try SketchSVG.parse(svg)
                 context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
                 context.fill(CGRect(x: 0, y: 0, width: cw, height: ch))
                 SketchRenderer.draw(sketch, in: context, rect: rect)
@@ -177,8 +189,7 @@ public struct DrawnFrames: Sendable {
                                                 UInt8(Int(colour.b) * a / 255), colour.a)
                 }
             } else {
-                let sketch = try SketchSVG.parse(SketchExport.restyleSVG(svg, strokeColor: job.options.strokeColour,
-                                                                         widthScale: job.options.widthScale))
+                let sketch = try SketchSVG.parse(svg)
                 if let base = look.base {
                     context.draw(base, in: CGRect(x: 0, y: 0, width: cw, height: ch))
                 } else if let background = look.background {
@@ -191,6 +202,9 @@ public struct DrawnFrames: Sendable {
             return image
         }
 
+        /// how many drawn frames are put into the brush style at a time (one request to the engine)
+        static let styledAhead = 32
+
         /// The frames of the plan one after another (a drawn frame shown twice is drawn once); a cancelled task
         /// stops between frames (CancellationError). Returns the number of frames.
         @discardableResult
@@ -202,9 +216,24 @@ public struct DrawnFrames: Sendable {
                                       format: job.format, size: job.options.size)
             let look = try look(job, drawn)
             var last: (index: Int, image: CGImage)?
+            var styled: [Int: String] = [:]  // (the next drawn frames in the brush style, asked for together)
             for (k, (i, ms)) in zip(plan.frames, plan.durations).enumerated() {
                 if Task.isCancelled { throw CancellationError() }
-                let image = try last.flatMap { $0.index == i ? $0.image : nil } ?? render(drawn.svg(i), job, look)
+                let image: CGImage
+                if let last, last.index == i {
+                    image = last.image
+                } else {
+                    if styled[i] == nil {
+                        var ahead: [Int] = []
+                        for j in plan.frames[k...] where !ahead.contains(j) {
+                            ahead.append(j)
+                            if ahead.count == Self.styledAhead { break }
+                        }
+                        let svgs = try job.stylist(ahead.map { restyled(drawn.svg($0), job, look) })
+                        styled = Dictionary(uniqueKeysWithValues: zip(ahead, svgs))
+                    }
+                    image = try render(styled[i] ?? restyled(drawn.svg(i), job, look), job, look)
+                }
                 last = (i, image)
                 try each(Frame(image: image, milliseconds: ms))
                 progress(k + 1, plan.frames.count)

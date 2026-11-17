@@ -10,6 +10,7 @@ from pathlib import Path
 
 from clipasso_studio import settings_schema as schema
 from clipasso_studio.engine import model_store
+from clipasso_studio.gui import brush
 from clipasso_studio.headless import export
 
 I18N = Path(__file__).resolve().parent.parent / "clipasso_studio" / "resources" / "i18n"
@@ -41,6 +42,8 @@ def test_schema_has_every_param():
     assert data["format"] == 1 and data["methods"] == list(schema.METHODS)
     assert data["default_method"] == schema.DEFAULT_METHOD
     assert data["devices"] == list(schema.param("clipasso", "device").choices)
+    assert data["brush_styles"] == list(brush.STYLES) and data["brush_styles"][0] == "plain"
+    assert data["brush_recolouring"] == list(brush.RECOLOURING)
     for method in schema.METHODS:
         m = data["method"][method]
         assert m["name"] and m["icon"]
@@ -67,6 +70,7 @@ def test_text_keys_exist_in_both_languages():
         keys += list(m["text"].values()) + list(m["group_text"].values()) + list(m["preset_text"].values())
         for p in m["params"]:
             keys += [p["text"]["label"], p["text"].get("help")] + list(p["text"]["choices"].values())
+    keys += [f"ui.brush.{style}" for style in data["brush_styles"]]
     keys = [k for k in keys if k]
     assert keys and all(k in en and k in de for k in keys), [k for k in keys if k not in en or k not in de]
     # a method's own text wins over the shared one, like param_text_key of the studio
