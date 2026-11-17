@@ -37,17 +37,26 @@ enum Pillow {
         return 0
     }
 
-    /// precompute_coeffs: for every output pixel the first input pixel and the normalised weights.
-    static func coefficients(inSize: Int, outSize: Int) -> [(first: Int, weights: [Double])] {
+    /// bilinear_filter, support 1.
+    static func bilinear(_ x: Double) -> Double {
+        let x = abs(x)
+        return x < 1 ? 1 - x : 0
+    }
+
+    /// precompute_coeffs: for every output pixel the first input pixel and the normalised weights (the bicubic
+    /// filter, support 2, unless another is given).
+    static func coefficients(inSize: Int, outSize: Int, filter: (Double) -> Double = bicubic,
+                             support filterSupport: Double = 2) -> [(first: Int, weights: [Double])]
+    {
         let scale = Double(Float(inSize) - Float(0)) / Double(outSize)
         let filterscale = max(scale, 1)
-        let support = 2 * filterscale
+        let support = filterSupport * filterscale
         let inverse = 1 / filterscale
         return (0 ..< outSize).map { xx in
             let center = 0 + (Double(xx) + 0.5) * scale
             let first = max(Int(center - support + 0.5), 0)
             let last = min(Int(center + support + 0.5), inSize)
-            var weights = (0 ..< max(last - first, 0)).map { bicubic((Double($0 + first) - center + 0.5) * inverse) }
+            var weights = (0 ..< max(last - first, 0)).map { filter((Double($0 + first) - center + 0.5) * inverse) }
             var total = 0.0
             for w in weights { total += w }
             if total != 0 { weights = weights.map { $0 / total } }
@@ -99,6 +108,52 @@ enum Pillow {
                 }
                 out.values[yy * plane.width + x] = Float(sum)
             }
+        }
+        return out
+    }
+
+    /// PRECISION_BITS of the 8-bit passes (32 - 8 - 2)
+    static let precisionBits = 22
+
+    /// normalize_coeffs_8bpc: a weight in fixed point, rounded away from zero.
+    static func fixed(_ weight: Double) -> Int {
+        let scaled = weight * Double(1 << precisionBits)
+        return weight < 0 ? Int(-0.5 + scaled) : Int(0.5 + scaled)
+    }
+
+    /// clip8
+    static func clip8(_ value: Int) -> UInt8 {
+        if value >= (1 << precisionBits << 8) { return 255 }
+        if value <= 0 { return 0 }
+        return UInt8(value >> precisionBits)
+    }
+
+    /// Image.resize((w, h), BILINEAR) of a grey ("L") picture: the 8-bit passes of Resample.c – the weights in fixed
+    /// point, each pass rounded and clipped to a byte; the passes in the order the float resize takes them.
+    static func resizeBilinear(_ plane: Plane<UInt8>, width w: Int, height h: Int) -> Plane<UInt8> {
+        func pass(_ input: Plane<UInt8>, horizontal: Bool, to size: Int) -> Plane<UInt8> {
+            let kernels = coefficients(inSize: horizontal ? input.width : input.height, outSize: size, filter: bilinear,
+                                       support: 1).map { (first: $0.first, weights: $0.weights.map(fixed)) }
+            let (ow, oh) = horizontal ? (size, input.height) : (input.width, size)
+            var out = Plane<UInt8>(width: ow, height: oh, fill: 0)
+            for y in 0 ..< oh {
+                for x in 0 ..< ow {
+                    let kernel = kernels[horizontal ? x : y]
+                    var sum = 1 << (precisionBits - 1)
+                    for (i, weight) in kernel.weights.enumerated() {
+                        let index = horizontal ? y * input.width + kernel.first + i : (kernel.first + i) * input.width + x
+                        sum += Int(input.values[index]) * weight
+                    }
+                    out.values[y * ow + x] = clip8(sum)
+                }
+            }
+            return out
+        }
+        let horizontalFirst = !((plane.height - h) > 0 && (plane.height - h) > (plane.width - w) * 2)
+        var out = plane
+        for horizontal in horizontalFirst ? [true, false] : [false, true] {
+            if horizontal, w != out.width { out = pass(out, horizontal: true, to: w) }
+            if !horizontal, h != out.height { out = pass(out, horizontal: false, to: h) }
         }
         return out
     }

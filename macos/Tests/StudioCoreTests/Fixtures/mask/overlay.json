@@ -1,0 +1,26 @@
+[
+ {
+  "name": "small",
+  "size": [
+   60,
+   40
+  ],
+  "max_side": 900,
+  "overlay": [
+   60,
+   40
+  ]
+ },
+ {
+  "name": "large",
+  "size": [
+   1500,
+   1000
+  ],
+  "max_side": 700,
+  "overlay": [
+   700,
+   467
+  ]
+ }
+]

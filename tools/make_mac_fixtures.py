@@ -30,6 +30,7 @@ Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
   ``styles/<style>.svg`` and ``.png``: a sketch in every brush style as the engine gives it to the Mac app
   (gui/brush.stylize_svg) and as the studio exports it. Qt's pixels can differ by a step between platforms, so the
   test compares these by pixel, not by byte
+- ``mask/`` – masks and the overlay the studio draws of them over the photo (gui/mask_view.overlay) as classes
 
 ``tests/test_mac_fixtures.py`` checks that the committed files are current.
 """
@@ -650,6 +651,38 @@ PAGE_CASES = (("Kamel", None), ("Kamel <1> & \"Zwei\"", "#2C3A33"), ("x", "#fff8
 LAYER_OBJECT = ("M 20 30 L 60 35 L 90 80", "M 100 100 C 120 60 160 60 180 100 Z")  # two strokes of drawing.svg
 
 
+MASK_OVERLAYS = (("small", (60, 40), 900), ("large", (1500, 1000), 700))  # (name, size, max_side: large shrinks)
+
+
+def mask_cases(out: Path) -> list[dict]:
+    """gui/mask_view.overlay: masks (mask/<name>.png, white the object – an ellipse with a hole and a speck) and the
+    overlay Qt makes of them as classes (mask/<name>_overlay.png: 0 the object, 127 the veil, 254 the outline)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    import numpy as np
+    from PIL import Image
+    from PySide6.QtGui import QColor, QGuiApplication
+
+    from clipasso_studio.gui import mask_view
+
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "mask"
+    folder.mkdir()
+    cases = []
+    for name, (w, h), side in MASK_OVERLAYS:
+        yy, xx = np.mgrid[0:h, 0:w]
+        m = ((xx - w * 0.45) / (w * 0.3)) ** 2 + ((yy - h * 0.5) / (h * 0.35)) ** 2 <= 1
+        m &= ((xx - w * 0.45) / (w * 0.08)) ** 2 + ((yy - h * 0.5) / (h * 0.1)) ** 2 > 1
+        m[int(h * 0.1):int(h * 0.1) + 2, int(w * 0.85):int(w * 0.85) + 2] = True
+        Image.fromarray(m.astype(np.uint8) * 255).save(folder / f"{name}.png")
+        img = mask_view.overlay(m.astype(np.float32), QColor(240, 240, 236, 215), QColor(60, 110, 240), max_side=side)
+        rows = np.frombuffer(img.constBits(), np.uint8).reshape(img.height(), img.bytesPerLine())
+        rgba = rows[:, :img.width() * 4].reshape(img.height(), img.width(), 4)
+        classes = np.where(rgba[..., 3] == 255, 254, np.where(rgba[..., 3] == 215, 127, 0)).astype(np.uint8)
+        Image.fromarray(classes).save(folder / f"{name}_overlay.png")
+        cases.append({"name": name, "size": [w, h], "max_side": side, "overlay": [img.width(), img.height()]})
+    return cases
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -897,6 +930,7 @@ def build(out: Path) -> None:
     write_json(out / "animation" / "animation.json", animation_cases(out))
     write_json(out / "export" / "formats.json", format_cases(out))
     write_json(out / "export" / "styled.json", styled_cases(out))
+    write_json(out / "mask" / "overlay.json", mask_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
