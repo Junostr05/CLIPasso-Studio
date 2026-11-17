@@ -44,9 +44,13 @@
                                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
                 context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
             }
-            return Set(stride(from: 0, to: rgba.count, by: 4).map {
-                UInt32(rgba[$0]) << 24 | UInt32(rgba[$0 + 1]) << 16 | UInt32(rgba[$0 + 2]) << 8 | UInt32(rgba[$0 + 3])
-            })
+            var colours = Set<UInt32>()
+            for i in stride(from: 0, to: rgba.count, by: 4) {
+                let r = UInt32(rgba[i]) << 24, g = UInt32(rgba[i + 1]) << 16
+                let b = UInt32(rgba[i + 2]) << 8, a = UInt32(rgba[i + 3])
+                colours.insert(r | g | b | a)
+            }
+            return colours
         }
 
         @Test func aGIFStrokeByStroke() throws {
