@@ -127,6 +127,11 @@ jobs:
           name: screenshots-mac
           path: ${{ runner.temp }}/shots/*.png
           if-no-files-found: warn
+      - name: The app is still as it was signed (the self-test and the screenshots ran it)
+        run: |
+          # (a file written into the app after signing breaks its seal: macOS then will not open it from the Finder)
+          find "build/app/CLIPasso Studio.app" -newer app.txt -print | head -20
+          codesign --verify --deep --strict --verbose=2 "build/app/CLIPasso Studio.app"
       - name: Disk image
         run: macos/scripts/make_dmg.sh build/app | tee dmg.txt
       - name: Sizes and self-test in the summary

@@ -145,7 +145,14 @@ import Testing
                                                     stylist: stylist)
             }
             #expect(engine.asked == calls.count && engine.unlike.isEmpty, "\(kind) \(style): \(engine.unlike)")
-            #expect(out == c["out"]?.stringValue, "\(kind) \(style)")
+            let python = c["out"]?.stringValue ?? ""
+            if kind == "clipboard" {  // (restyled after the style: restyle_svg's text keeps the file's own white space)
+                #expect(try SketchSVG.parse(out) == SketchSVG.parse(python), "\(kind) \(style)")
+                #expect(RecordedEngine.paths(out) == RecordedEngine.paths(python), "\(kind) \(style)")
+                #expect(SketchExportTests.backgroundTag(out) == SketchExportTests.backgroundTag(python), "\(kind) \(style)")
+            } else {
+                #expect(out == python, "\(kind) \(style)")
+            }
         }
     }
 
