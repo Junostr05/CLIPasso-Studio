@@ -118,4 +118,20 @@ public final class GalleryModel {
         try? await index.setTitle(item.jobDir, title)
         await refresh()
     }
+
+    /// Every result of the output folder, unfiltered (the phone filters itself).
+    public var everything: [GalleryItem] { all }
+
+    /// The gallery's "Edit info": title, tags and notes at once.
+    public func setInfo(_ item: GalleryItem, title: String, tags: [String], notes: String) async throws {
+        try await index.setTitle(item.jobDir, title)
+        try await index.setTags(item.jobDir, tags)
+        try await index.setNotes(item.jobDir, notes)
+        await refresh()
+    }
+
+    /// A result's albums.
+    public func setAlbums(_ item: GalleryItem, _ albums: [String]) async throws {
+        try await index.setAlbums(item.jobDir, albums)
+    }
 }

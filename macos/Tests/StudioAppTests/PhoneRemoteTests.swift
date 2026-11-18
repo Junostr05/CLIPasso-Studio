@@ -146,6 +146,48 @@ import StudioCore
             == ["ok": false, "error": "unknown source"])
     }
 
+    @Test func theResultsFromThePhone() async throws {
+        let out = try GalleryModelTests.folder()
+        let (model, _) = try Self.model(["output_dir": .string(out.path)])
+        let first = try #require(Self.json(await model.phoneAnswer("get_results", [:], payload: nil)))
+        let results = (first["results"]?.arrayValue ?? []).compactMap(\.objectValue)
+        #expect(results.count >= 3 && first["total"] == .int(results.count) && first["offset"] == 0)
+        #expect(first["sorts"]?.arrayValue?.count == 6 && first["methods"]?.arrayValue?.count == 4)
+        let one = try #require(results.first), dir = try #require(one["dir"])
+        #expect(one["i"] == 0 && one["fav"] == false && one["name"]?.stringValue?.isEmpty == false)
+        // favourite, info, albums
+        #expect(Self.json(await model.phoneAnswer("do_fav", ["dir": dir, "value": true], payload: nil)) == ["ok": true])
+        #expect(Self.json(await model.phoneAnswer("do_info", ["dir": dir, "title": "Kamel", "tags": " Tier, Wüste ,",
+                                                             "notes": "am Abend"], payload: nil)) == ["ok": true])
+        #expect(Self.json(await model.phoneAnswer("do_album", ["op": "new", "name": "  Urlaub  2026 ", "dirs": [dir]],
+                                                  payload: nil)) == ["ok": true, "name": "Urlaub 2026"])
+        var shown = try #require(Self.json(await model.phoneAnswer("get_results", ["fav": "1"], payload: nil)))
+        var item = try #require(shown["results"]?.arrayValue?.first?.objectValue)
+        #expect(shown["total"] == 1 && item["dir"] == dir && item["title"] == "Kamel" && item["notes"] == "am Abend")
+        #expect(item["tags"] == ["Tier", "Wüste"] && item["albums"] == ["Urlaub 2026"])
+        #expect(shown["albums"] == ["Urlaub 2026"] && shown["tags"] == ["Tier", "Wüste"])
+        _ = await model.phoneAnswer("do_album", ["op": "rename", "name": "Urlaub 2026", "new": "Reise"], payload: nil)
+        shown = try #require(Self.json(await model.phoneAnswer("get_results", ["album": "Reise"], payload: nil)))
+        #expect(shown["total"] == 1)
+        _ = await model.phoneAnswer("do_album", ["op": "delete", "name": "Reise"], payload: nil)
+        shown = try #require(Self.json(await model.phoneAnswer("get_results", ["q": "kamel"], payload: nil)))
+        item = try #require(shown["results"]?.arrayValue?.first?.objectValue)
+        #expect(item["albums"] == [] && shown["albums"] == [])
+        #expect(Self.json(await model.phoneAnswer("do_album", ["op": "new", "name": "  "], payload: nil))?["ok"] == false)
+        // its sketch, and in the studio
+        guard case .bytes(let svg, let type, _) = await model.phoneAnswer("file_result", ["d": dir], payload: nil) else {
+            Issue.record("no sketch"); return
+        }
+        #expect(type == "image/svg+xml" && String(decoding: svg, as: UTF8.self).contains("<svg"))
+        #expect(Self.json(await model.phoneAnswer("do_open", ["dir": dir], payload: nil)) == ["ok": true])
+        #expect(model.studio.result?.jobDir.lastPathComponent == dir.stringValue)
+        #expect(Self.json(await model.phoneAnswer("do_open", ["dir": "gone"], payload: nil))
+            == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.list_changed"))])
+        // the queue without an engine: empty, with its switches
+        let queue = try #require(Self.json(await model.phoneAnswer("get_queue", [:], payload: nil)))
+        #expect(queue["jobs"] == [] && queue["auto_start"] == true && queue["done_actions"]?.arrayValue?.count == 3)
+    }
+
     @Test func aPortInUse() async throws {
         let (first, _) = try Self.model(["remote_port": 0])
         await first.setPhoneOn(true)

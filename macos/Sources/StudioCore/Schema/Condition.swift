@@ -67,7 +67,7 @@ public indirect enum Condition: Sendable, Hashable {
     }
 
     /// Python's `==`: numbers (and booleans, which are numbers there) compare by value.
-    static func pyEquals(_ a: JSONValue, _ b: JSONValue) -> Bool {
+    public static func pyEquals(_ a: JSONValue, _ b: JSONValue) -> Bool {
         func number(_ v: JSONValue) -> Double? {
             switch v {
             case .bool(let b): b ? 1 : 0

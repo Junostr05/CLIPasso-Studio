@@ -55,6 +55,21 @@ public final class StudioModel {
         preset = m.matchingPreset(settings)
     }
 
+    /// Back to the running job (after a result was opened during the run).
+    public func showLive() {
+        result = nil
+    }
+
+    /// A job's settings in the studio (its method and values, each as the parameter takes it).
+    public func adopt(_ values: JSONObject) {
+        if let id = values["method"]?.stringValue { selectMethod(id) }
+        guard let m = methodSchema else { return }
+        for param in m.params {
+            if let value = values[param.key] { settings[param.key] = m.clamp(param, value) }
+        }
+        preset = m.matchingPreset(settings)
+    }
+
     /// Back to the method's start (the studio's Reset).
     public func reset() {
         guard let m = methodSchema else { return }

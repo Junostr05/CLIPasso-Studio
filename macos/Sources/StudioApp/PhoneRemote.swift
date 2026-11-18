@@ -128,6 +128,21 @@ public final class PhoneRemote {
     public private(set) var revision = 0
     @ObservationIgnored public let keys: RemoteKeys
     @ObservationIgnored var server: RemoteServer?
+    /// the numbers the page knows the queue's jobs by (the studio's are numbers, the Mac app's UUIDs)
+    @ObservationIgnored private var jobNumbers: [UUID: Int] = [:]
+
+    /// The number of a job for the page (the same as long as the app runs).
+    func number(_ id: UUID) -> Int {
+        if let n = jobNumbers[id] { return n }
+        let n = jobNumbers.count + 1
+        jobNumbers[id] = n
+        return n
+    }
+
+    /// The job of a number the page sent.
+    func job(_ number: Int) -> UUID? {
+        jobNumbers.first { $0.value == number }?.key
+    }
 
     public init(store: any RemoteSecretStore) {
         keys = RemoteKeys(store: store)
@@ -443,7 +458,9 @@ public extension AppModel {
         case "do_start":
             return await phoneStart()  // (start or queue: the queue starts it when the job running ends)
         default:
-            return await phoneStudioAnswer(action, data) ?? no("unknown action")
+            if let answer = await phoneStudioAnswer(action, data) { return answer }
+            if let answer = await phoneQueueAnswer(action, data) { return answer }
+            return no("unknown action")
         }
     }
 
