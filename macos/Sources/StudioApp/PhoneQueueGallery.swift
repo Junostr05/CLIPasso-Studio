@@ -140,6 +140,11 @@ public extension AppModel {
     /// get_queue: the jobs with what they change of their method's defaults, the queue's own switches.
     func phoneQueue() -> JSONObject {
         let jobs = queueSnapshot?.jobs ?? []
+        let t = texts
+        func shown(_ v: JSONValue) -> String {
+            if case .bool(let b) = v { return t.tr(b ? "ui.on" : "ui.off") }
+            return PhoneStudio.pyStr(v)
+        }
         let out: [JSONValue] = jobs.map { j in
             let method = j.settings["method"]?.stringValue ?? "clipasso"
             let m = schema.method(method)
@@ -147,12 +152,8 @@ public extension AppModel {
             for (key, standard) in m?.defaults ?? [:] {
                 let value = j.settings[key] ?? .null
                 guard !Condition.pyEquals(value, standard) else { continue }
-                func shown(_ v: JSONValue) -> String {
-                    if case .bool(let b) = v { return texts.tr(b ? "ui.on" : "ui.off") }
-                    return PhoneStudio.pyStr(v)
-                }
                 let label = m?.param(key)?.text.label ?? "param.\(key).label"
-                changes.append(["name": .string(texts.tr(label)), "value": .string(shown(value)),
+                changes.append(["name": .string(t.tr(label)), "value": .string(shown(value)),
                                 "default": .string(shown(standard))])
             }
             return ["id": .int(phone.number(j.id)), "name": .string(j.target.lastPathComponent),

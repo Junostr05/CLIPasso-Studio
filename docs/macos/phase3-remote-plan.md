@@ -41,12 +41,12 @@ dieselben Dinge, und die Sicherheit ist dieselbe.
     `/api/preview.svg`, `/api/events`, `/api/upload`, `/api/details`.
   - Kopfzeilen: CSP, `nosniff`, `no-referrer`, `no-store`.
   - Die Fälle aus `tests/test_phone.py` als Swift-Tests über echte Verbindungen (URLSession).
-- [ ] **R3 · In der App**
+- [x] **R3 · In der App**
   - Einstellungen: Ein/Aus, Port, Tailnet, QR-Code (Core Image), Adresse, PIN neu.
   - Schlüsselbund.
   - Die Brücke zu `AppModel` (Aufrufe auf dem Main Actor, 20 s Zeitlimit → 503 „busy“).
   - Ein Upload geht in die Warteschlange oder ins Studio.
-- [ ] **R4 · Studio vom Handy** (`get_studio`, `get_schema`, `do_set`, `do_method`, `do_preset`, Start, Pause,
+- [x] **R4 · Studio vom Handy** (`get_studio`, `get_schema`, `do_set`, `do_method`, `do_preset`, Start, Pause,
   Abbrechen, `file_sketch`, `file_input`, `set_image`, Voreinstellungen)
 - [ ] **R5 · Warteschlange, Ergebnisse, Galerie** (`get_queue`, `do_move`, `do_retry`, `do_run_next`,
   `get_results`, `do_fav`, `do_album`, `do_info`, `file_result`, `file_download`)
