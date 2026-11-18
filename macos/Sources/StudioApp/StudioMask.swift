@@ -31,6 +31,8 @@ public final class StudioMask {
     public private(set) var height = 0
     /// the model's probability (the mask editor's candidates); nil without one
     @ObservationIgnored public private(set) var probability: [Float]?
+    /// the probability from which a pixel is the object (masking.OBJECT_THRESHOLD, as the engine says)
+    @ObservationIgnored public private(set) var threshold: Float = 0.5
     /// the image and model the mask was asked for
     @ObservationIgnored public private(set) var asked: (image: URL, model: String)?
 
@@ -61,7 +63,8 @@ public final class StudioMask {
         probability = nil
     }
 
-    func show(object: [Bool], width: Int, height: Int, probability: [Float]?, edited: Bool) {
+    func show(object: [Bool], width: Int, height: Int, probability: [Float]?, threshold: Float, edited: Bool) {
+        self.threshold = threshold
         self.object = object
         self.width = width
         self.height = height
@@ -165,7 +168,7 @@ public extension AppModel {
             guard mask.asked?.image == image, mask.asked?.model == model else { return }
             guard let read else { return mask.fail("the mask could not be read") }
             mask.show(object: read.object, width: read.width, height: read.height, probability: read.probability,
-                      edited: edited != nil)
+                      threshold: threshold, edited: edited != nil)
         #else
             mask.fail("no ImageIO")
         #endif
