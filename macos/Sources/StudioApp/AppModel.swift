@@ -41,19 +41,23 @@ public final class AppModel {
     @ObservationIgnored private var noticeListener: Task<Void, Never>?
     /// the object mask of the studio's image
     public let mask = StudioMask()
+    /// the phone remote (on and off as the settings say)
+    public let phone: PhoneRemote
     /// portrait mode's answers awaited (by image path), and those that came before they were awaited
     @ObservationIgnored var faceWaiters: [String: CheckedContinuation<EngineEvent, Never>] = [:]
     @ObservationIgnored var facesArrived: [String: EngineEvent] = [:]
     @ObservationIgnored private let transport: any HTTPTransport
     @ObservationIgnored private var download: Task<Void, Never>?
-    @ObservationIgnored private let resources: AppResources
+    @ObservationIgnored let resources: AppResources
     @ObservationIgnored public let store: SettingsStore
 
     public init(resources: AppResources, store: SettingsStore = .standard(),
                 transport: any HTTPTransport = URLSessionTransport(), power: any PowerActions = MacPower(),
-                whenDoneTiming: (seconds: Int, tick: Duration) = (60, .seconds(1))) throws
+                whenDoneTiming: (seconds: Int, tick: Duration) = (60, .seconds(1)),
+                secrets: (any RemoteSecretStore)? = nil) throws
     {
         self.resources = resources
+        phone = PhoneRemote(store: secrets ?? Self.defaultSecrets())
         self.transport = transport
         self.power = power
         self.whenDoneTiming = whenDoneTiming
@@ -137,6 +141,7 @@ public final class AppModel {
                     }
                 }
             }
+            await applyPhoneSettings()  // (the phone page, when the settings have it on)
         } catch {
             let log = await client.stderrTail().suffix(5).joined(separator: "\n")
             let details = log.isEmpty ? String(describing: error) : "\(error)\n\(log)"
@@ -154,15 +159,20 @@ public final class AppModel {
                                                  data: ["image": .string(image), "message": "the engine stopped"]))
         }
         faceWaiters = [:]
+        if let server = phone.server {
+            await server.stop()
+            phone.stopped()
+        }
         await engine?.stop()
     }
 
-    private func apply(_ snapshot: QueueSnapshot) {
+    func apply(_ snapshot: QueueSnapshot) {
         let finished = { (s: QueueSnapshot?) in s?.jobs.filter { $0.status == .done }.count ?? 0 }
         let newResult = finished(snapshot) > finished(queueSnapshot)
         let ranOut = snapshot.finished != nil && queueSnapshot?.finished == nil
         queueSnapshot = snapshot
         queuePage?.apply(snapshot)
+        phone.changed()  // (the phone pages ask again)
         if ranOut, let action = snapshot.finished, action != .nothing {
             // once: the choice goes back to "nothing" (as in the studio), then the countdown
             Task { await queuePage?.setWhenDone(.nothing) }

@@ -30,6 +30,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/CLIPassoStudio"
 cp -R "$ROOT/clipasso_studio/resources/i18n" "$APP/Contents/Resources/i18n"
 cp -R "$ROOT/clipasso_studio/resources/fonts" "$APP/Contents/Resources/fonts"  # (ATSApplicationFontsPath)
+# the phone page as the studio serves it (gui/remote.py): its files, the studio's icons, the app's icon
+cp -R "$ROOT/clipasso_studio/resources/phone" "$APP/Contents/Resources/phone"
+cp -R "$ROOT/clipasso_studio/resources/icons" "$APP/Contents/Resources/icons"
+cp "$ROOT/clipasso_studio/resources/app_icon.png" "$APP/Contents/Resources/app_icon.png"
 (cd "$ROOT" && PYTHONPATH="$ROOT" "$PYTHON" -m clipasso_studio.headless \
     --export-schema "$APP/Contents/Resources/schema.json" --export-models "$APP/Contents/Resources/models.json")
 if [ -d "$OUT/python" ]; then  # the app's own Python and the engine (build_python.sh)

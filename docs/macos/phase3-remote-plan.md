@@ -31,11 +31,11 @@ dieselben Dinge, und die Sicherheit ist dieselbe.
   - `RemoteAccess`: `allowedClient` (privat, link-local, loopback, IPv4 in IPv6; Tailnet 100.64/10 nur mit
     Schalter), Zugangscode (`token_urlsafe(18)`) und PIN (6 Ziffern).
   - `PinGuard`: 5 Versuche, dann 30 s Wartezeit, die sich bis 3600 s verdoppelt; 20 falsche PINs in 600 s sperren alle.
-  - `RemotePage`: `index.html` und `login.html` gefüllt (Sprache, JSON-Konfiguration mit `<`, Icons inline,
+  - `RemotePage`: `index.html` und `login.html` gefüllt (Sprache, JSON-Konfiguration mit `<`, `>` und `&` als `\u003c` usw., Icons inline,
     Farben der Leiste), `tokens.css`, Manifest.
   - `RemoteEvents`: Revision, höchstens 8 Ströme (der älteste geht), Ping nach 15 s.
   - Tests gegen Fixtures (Seiten byte-gleich, Adressen, PIN-Bremse mit eigener Uhr).
-- [ ] **R2 · Der Server** (`RemoteServer`, Network.framework)
+- [x] **R2 · Der Server** (`RemoteServer`, Network.framework)
   - HTTP/1.1 mit Content-Length, `HEAD`, Server-Sent Events.
   - Wege wie `_Handler`: `/`, `/login`, öffentliche Dateien, Schriften, `/api/get|file|do`, `/api/status`,
     `/api/preview.svg`, `/api/events`, `/api/upload`, `/api/details`.

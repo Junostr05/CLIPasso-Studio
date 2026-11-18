@@ -35,6 +35,7 @@ struct SettingsView: View {
                     Text(verbatim: problem).foregroundStyle(.secondary)
                 }
             }
+            PhoneSettings()
         }
         .formStyle(.grouped)
         .navigationTitle(model.texts.tr("ui.settings.title"))

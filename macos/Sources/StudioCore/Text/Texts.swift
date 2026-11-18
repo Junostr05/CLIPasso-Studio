@@ -44,6 +44,11 @@ public struct Texts: Sendable {
         return "en"
     }
 
+    /// i18n.keys: every key that starts with `prefix` (in either language), sorted.
+    public func keys(prefix: String) -> [String] {
+        Set(table.keys.filter { $0.hasPrefix(prefix) } + english.keys.filter { $0.hasPrefix(prefix) }).sorted()
+    }
+
     public func has(_ key: String) -> Bool {
         table[key] != nil || english[key] != nil
     }

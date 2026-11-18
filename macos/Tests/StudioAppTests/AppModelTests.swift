@@ -12,7 +12,8 @@ import StudioCore
         let fixtures = repo.appending(path: "macos/Tests/StudioCoreTests/Fixtures")
         return AppResources(i18n: repo.appending(path: "clipasso_studio/resources/i18n"),
                             schema: fixtures.appending(path: "schema.json"),
-                            models: fixtures.appending(path: "models.json"), engine: engine)
+                            models: fixtures.appending(path: "models.json"), engine: engine,
+                            web: repo.appending(path: "clipasso_studio/resources"))
     }
 
     /// A settings file of its own in a new folder, with the language set.

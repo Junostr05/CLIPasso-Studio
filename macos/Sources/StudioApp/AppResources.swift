@@ -12,13 +12,18 @@ public struct AppResources: Sendable {
     public let engine: EngineLaunch?
     /// the models that come with the app (BlazeFace)
     public let bundledModels: URL?
+    /// the studio's resources the phone page needs: phone/, icons/, fonts/ and app_icon.png (nil: no phone page)
+    public let web: URL?
 
-    public init(i18n: URL, schema: URL, models: URL, engine: EngineLaunch?, bundledModels: URL? = nil) {
+    public init(i18n: URL, schema: URL, models: URL, engine: EngineLaunch?, bundledModels: URL? = nil,
+                web: URL? = nil)
+    {
         self.i18n = i18n
         self.schema = schema
         self.models = models
         self.engine = engine
         self.bundledModels = bundledModels
+        self.web = web
     }
 
     /// The app's own Python (`Resources/python`) runs the engine (`Resources/engine`) with a clean environment:
@@ -36,7 +41,8 @@ public struct AppResources: Sendable {
                                   workingDirectory: resources)
         return AppResources(i18n: resources.appending(path: "i18n"), schema: resources.appending(path: "schema.json"),
                             models: resources.appending(path: "models.json"), engine: engine,
-                            bundledModels: resources.appending(path: "models", directoryHint: .isDirectory))
+                            bundledModels: resources.appending(path: "models", directoryHint: .isDirectory),
+                            web: resources)
     }
 
     /// The app's parts: from the bundle – or, with `CLIPASSO_DEV_REPO` set to the repository, from there (python3 of
@@ -54,7 +60,8 @@ public struct AppResources: Sendable {
             return AppResources(i18n: repo.appending(path: "clipasso_studio/resources/i18n"),
                                 schema: fixtures.appending(path: "schema.json"),
                                 models: fixtures.appending(path: "models.json"), engine: engine,
-                                bundledModels: repo.appending(path: "models", directoryHint: .isDirectory))
+                                bundledModels: repo.appending(path: "models", directoryHint: .isDirectory),
+                                web: repo.appending(path: "clipasso_studio/resources"))
         }
         return bundled(resources: bundle.resourceURL ?? bundle.bundleURL)
     }
