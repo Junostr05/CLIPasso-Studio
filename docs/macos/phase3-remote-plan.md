@@ -56,5 +56,5 @@ dieselben Dinge, und die Sicherheit ist dieselbe.
   - Vergleichen, Schritte, Simplify.
   - Modelle, App-Einstellungen.
   - Updates folgen mit Phase „Updates“.
-- [ ] **R7 · Testplan** (`docs/macos/testplan-mac.md`, Abschnitt Handy: iPhone und Android, QR-Code, PIN,
+- [x] **R7 · Testplan** (`docs/macos/testplan-mac.md`, Abschnitt Handy: iPhone und Android, QR-Code, PIN,
   Upload mit HEIC)

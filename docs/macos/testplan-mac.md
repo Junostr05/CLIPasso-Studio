@@ -1,6 +1,6 @@
 # CLIPasso Studio für macOS – Test auf einem echten Mac
 
-Stand: 17. November 2026 · Branch: `claude/zealous-einstein-6vb48i`
+Stand: 18. November 2026 · Branch: `claude/zealous-einstein-6vb48i`
 
 Dieser Plan ist für den Test am Ende, auf einem echten Mac mit Apple Silicon und macOS 26. Er enthält nur, was
 die automatischen Tests nicht prüfen können: was du siehst, hörst und anfasst, echte Geräte (Drucker, Trackpad,
@@ -8,7 +8,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 
 **Was die automatischen Tests schon prüfen (GitHub-Runner `macos-26`, bei jedem Push)**
 
-- Swift-Paket: rund 200 Tests. Dazu gehören Auftragsordner, Galerie, Warteschlange, Modell-Download (mit Abbruch,
+- Swift-Paket: rund 260 Tests, auch die Handy-Fernbedienung über echte Verbindungen. Dazu gehören Auftragsordner, Galerie, Warteschlange, Modell-Download (mit Abbruch,
   Fortsetzen und SHA-256), Engine-Protokoll und SVG lesen und zeichnen. Außerdem Rahmung, Papier (Pixel für
   Pixel wie die Windows-App), Druckseiten sowie GIF, MP4 und WebP. Die übrigen Exportformate werden Zeichen für
   Zeichen mit der Python-App verglichen.
@@ -18,7 +18,8 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Bildschirmfotos aller Seiten (Artefakt `screenshots-mac`).
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
-**Noch nicht in der Mac-App, also nicht testen:** Handy-Fernbedienung, Updates,
+**Noch nicht in der Mac-App, also nicht testen:** Updates, vom Handy aus Modelle und App-Einstellungen,
+Vergleichen, Schritte und Vereinfachen,
 die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon).
 
 ---
@@ -137,6 +138,23 @@ Prüfe dabei auch: Die Dateinamen haben die Endungen aus der Windows-App (`_1lay
 | G3 | Druckdialog → „Als PDF sichern“ und Papier „Kraft“. | Das PDF hat die Papierstruktur, ohne Kanten und Streifen. |
 | G4 | Letter statt A4 (Druckdialog → Papierformat). | Die Seite passt, nichts ist verschoben. |
 | G5 | Pinselstil „Bleistift“ im Druckblatt wählen. | Vorschau und Ausdruck zeigen den Stil. Das Druckblatt beginnt immer mit dem Stil des letzten Exports. |
+
+## G2. Handy-Fernbedienung
+
+Mac und Handy im selben WLAN. Einstellungen → „Handy & Nachrichten“ → „Steuerung vom Handy (WLAN)“ an. Beim
+ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erlauben“.
+
+| Nr. | Schritt | Erwartet |
+|-----|---------|----------|
+| P1 | QR-Code mit der Kamera des iPhones scannen, dann mit einem Android-Handy. | Die Handy-Seite öffnet sich ohne PIN, in der Sprache der App, im hellen oder dunklen Aussehen des Handys. |
+| P2 | Die feste Adresse (ohne Code) in einem privaten Browserfenster öffnen, die PIN eingeben. Danach fünfmal eine falsche PIN. | Die richtige PIN meldet an. Nach fünf falschen muss man 30 s warten. |
+| P3 | Auf dem Handy Methode, Voreinstellung und einige Regler ändern. | Das Studio am Mac zeigt die Änderungen sofort, und umgekehrt. |
+| P4 | Ein Foto mit der Handykamera aufnehmen (iPhone: HEIC) und ins Studio schicken, dann „Starten“. | Das Bild erscheint im Studio, der Auftrag läuft. Die Live-Skizze und der Fortschritt erscheinen auf dem Handy. Pause und Abbrechen gehen vom Handy. |
+| P5 | Auf dem Handy Warteschlange und Ergebnisse öffnen: einen Auftrag verschieben, ein Ergebnis als Favorit markieren, in ein Album legen, im Studio öffnen. | Alles wirkt sofort am Mac. Ein Auftrag, der gerade läuft, lässt sich nicht löschen. |
+| P6 | Auf dem Handy die Maske bearbeiten (Teil antippen, mit dem Finger malen, speichern) und den Detail-Pinsel benutzen (malen, „Gesicht finden“). | Unter dem Bild am Mac steht „Maske: von dir bearbeitet“. Die Detail-Karte gilt für den nächsten Auftrag. |
+| P7 | Auf dem Handy die Skizze als PNG, als GIF und als animiertes SVG exportieren und herunterladen. | Die Dateien kommen aufs Handy und sehen aus wie derselbe Export am Mac. |
+| P8 | „Neuer Zugangscode“ am Mac, dann auf dem alten Handy neu laden. Danach den Port auf einen belegten ändern (z. B. 5000 bei laufendem AirPlay-Empfänger). | Das alte Handy muss sich neu anmelden. Der belegte Port wird mit einem Hinweis gemeldet. |
+| P9 | Mit Tailscale auf Mac und Handy: „Auch über Tailscale“ an, unterwegs (Handy im Mobilfunk) den Tailscale-QR-Code scannen. | Die Seite geht auch unterwegs. Ohne den Schalter geht sie nur im WLAN. |
 
 ## H. Aussehen, Sprache, Bedienung
 
