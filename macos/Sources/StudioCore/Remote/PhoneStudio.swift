@@ -127,6 +127,9 @@ public enum PhoneStudio {
         }
     }
 
+    /// float(value) of what the phone sent (a place on the picture, a brush's size); nil where Python refuses.
+    public static func float(_ value: JSONValue) -> Double? { pyFloat(value) }
+
     /// int(value) of what the phone sent (a sketch's number, an index); nil where Python refuses.
     public static func int(_ value: JSONValue) -> Int? { pyInt(value) }
 

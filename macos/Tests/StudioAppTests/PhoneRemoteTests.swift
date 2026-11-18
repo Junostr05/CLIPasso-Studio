@@ -188,6 +188,52 @@ import StudioCore
         #expect(queue["jobs"] == [] && queue["auto_start"] == true && queue["done_actions"]?.arrayValue?.count == 3)
     }
 
+    #if canImport(ImageIO)
+    @Test func theMaskAndTheDetailsFromThePhone() async throws {
+        let engine = SelfTestTests.fake(["mask", StudioMaskTests.probability.path])
+        let secrets = MemorySecrets()
+        let model = try AppModel(resources: AppModelTests.resources(engine: engine),
+                                 store: AppModelTests.store(language: "de"), secrets: secrets)
+        await model.startEngine()
+        let notReady = Self.json(await model.phoneAnswer("do_mask_begin", [:], payload: nil))
+        #expect(notReady == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.mask_not_ready"))])
+        model.studio.image = SelfTestTests.fixtures.appending(path: "mask/small.png")
+        model.studio.selectMethod("swiftsketch")
+        model.studio.set("mask_object", to: true)
+        await model.updateMask()
+        for _ in 0 ..< 200 where model.mask.state != .ready { try await Task.sleep(for: .milliseconds(20)) }
+        guard case .bytes(let shown, "image/jpeg", _) = await model.phoneAnswer("file_mask", [:], payload: nil) else {
+            Issue.record("no mask picture"); return
+        }
+        #expect(shown.starts(with: [0xFF, 0xD8]))
+        let begun = try #require(Self.json(await model.phoneAnswer("do_mask_begin", [:], payload: nil)))
+        #expect(begun["ok"] == true && begun["undo"] == false && begun["rev"] == 0)
+        let share = begun["share"]?.doubleValue ?? 0
+        // the brush erases a stroke across the picture (places 0 … 1, the brush a share of its width)
+        let erased = try #require(Self.json(await model.phoneAnswer("do_mask_edit", [
+            "op": "erase", "size": 0.2, "points": [[0.0, 0.5], [1.0, 0.5]]], payload: nil)))
+        #expect(erased["ok"] == true && erased["undo"] == true && erased["rev"] == 1)
+        #expect((erased["share"]?.doubleValue ?? 1) < share)
+        let undone = try #require(Self.json(await model.phoneAnswer("do_mask_edit", ["op": "undo"], payload: nil)))
+        #expect(undone["share"]?.doubleValue == share && undone["redo"] == true)
+        _ = await model.phoneAnswer("do_mask_edit", ["op": "redo"], payload: nil)
+        #expect(Self.json(await model.phoneAnswer("do_mask_edit", ["op": "nope"], payload: nil))
+            == ["ok": false, "error": "unknown edit"])
+        guard case .bytes(_, "image/jpeg", _) = await model.phoneAnswer("file_mask_edit", [:], payload: nil) else {
+            Issue.record("no picture of the edit"); return
+        }
+        #expect(Self.json(await model.phoneAnswer("do_mask_save", [:], payload: nil)) == ["ok": true])
+        for _ in 0 ..< 200 where model.mask.state != .edited { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(model.mask.state == .edited)  // (the user's mask, kept by the engine)
+        #expect(Self.json(await model.phoneAnswer("do_mask_edit", ["op": "undo"], payload: nil))?["ok"] == false)
+        // the detail map: painted on the phone, kept, removed
+        let png = try Data(contentsOf: SelfTestTests.fixtures.appending(path: "mask/small.png"))
+        #expect(Self.json(await model.phoneAnswer("set_details", [:], payload: png)) == ["ok": true])
+        #expect(Self.json(await model.phoneAnswer("get_studio", [:], payload: nil))?["details"]?.objectValue?["rev"] == 1)
+        await model.stopEngine()
+    }
+    #endif
+
     @Test func aPortInUse() async throws {
         let (first, _) = try Self.model(["remote_port": 0])
         await first.setPhoneOn(true)

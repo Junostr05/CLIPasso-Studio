@@ -3,7 +3,8 @@
 studio; this module only translates.
 
 ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · mask · save_mask ·
-remove_mask · detail · save_detail · portrait · start · pause · resume · cancel · shutdown
+remove_mask · detail · save_detail ·
+phone_detail · remove_detail · portrait · start · pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -300,6 +301,18 @@ class EngineServer:
     def op_detail(self, args: dict) -> dict:
         """The detail map of an image as the detail brush starts from it (headless/detail_brush.py)."""
         return detail_brush.status(self._image(args))
+
+    def op_phone_detail(self, args: dict) -> dict:
+        """The detail map as the phone paints on it (at most ``side`` pixels, the image's shape): a temporary PNG."""
+        side = args.get("side", 900)
+        if not isinstance(side, int) or isinstance(side, bool) or not 16 <= side <= 4096:
+            raise _Fail("bad_request", "side is a whole number from 16 to 4096")
+        return {"map": detail_brush.phone_map(self._image(args), side)}
+
+    def op_remove_detail(self, args: dict) -> dict:
+        """The image without its detail map."""
+        detail_brush.remove(self._image(args))
+        return {}
 
     def op_save_detail(self, args: dict) -> dict:
         """The painted detail map kept at the image's size (all normal: removed – then ``path`` is None)."""

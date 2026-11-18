@@ -128,6 +128,23 @@ public final class PhoneRemote {
     public private(set) var revision = 0
     @ObservationIgnored public let keys: RemoteKeys
     @ObservationIgnored var server: RemoteServer?
+    /// the mask being touched up on the phone (nothing is kept until "Save")
+    @ObservationIgnored var maskSession: (image: URL, editor: MaskEditorModel, rev: Int)?
+    /// a message for the phone (e.g. what "find face" found), shown once – and its count
+    @ObservationIgnored private(set) var note = ""
+    @ObservationIgnored private(set) var noteID = 0
+    /// the detail map: its count of changes, whether one is kept for `detailsImage`
+    @ObservationIgnored var detailsRev = 0
+    @ObservationIgnored var detailsHas = false
+    @ObservationIgnored var detailsImage: URL?
+
+    /// _say: a message the page shows once.
+    func say(_ text: String) {
+        note = text
+        noteID += 1
+        changed()
+    }
+
     /// the numbers the page knows the queue's jobs by (the studio's are numbers, the Mac app's UUIDs)
     @ObservationIgnored private var jobNumbers: [UUID: Int] = [:]
 
@@ -418,6 +435,7 @@ public extension AppModel {
         case "set_image":
             guard let path = data["path"]?.stringValue else { return no(texts.tr("ui.phone.page.no_picture")) }
             studio.image = URL(filePath: path)
+            phone.say(texts.tr("ui.phone.received", ["name": URL(filePath: path).lastPathComponent]))
             return ok
         case "get_schema":
             let id = data["method"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 } ?? studio.method
@@ -460,6 +478,7 @@ public extension AppModel {
         default:
             if let answer = await phoneStudioAnswer(action, data) { return answer }
             if let answer = await phoneQueueAnswer(action, data) { return answer }
+            if let answer = await phonePaintAnswer(action, data, payload: payload) { return answer }
             return no("unknown action")
         }
     }

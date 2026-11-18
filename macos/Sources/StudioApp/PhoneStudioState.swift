@@ -37,7 +37,8 @@ public extension AppModel {
             "enabled": .object(JSONObject(params.map { ($0.key, .bool(studio.isEnabled($0.key))) })),
             "estimate": "",
             "image": image,
-            "details": ["has": false, "used": .bool(["clipasso", "controlsketch"].contains(method)), "rev": 0],
+            "details": ["has": .bool(phoneDetailsKept()), "used": .bool(["clipasso", "controlsketch"].contains(method)),
+                        "rev": .int(phone.detailsRev)],
             "busy": .bool(job != nil),
             "paused": .bool(job?.status == .paused),
             "running_here": .bool(job != nil && job?.id == studio.live.jobID),
@@ -61,7 +62,8 @@ public extension AppModel {
             "taste": ["up": 0, "down": 0, "need": 0],
             "style": .string(canvas["canvas_style"]?.stringValue ?? "plain"),
             "paper": .string(canvas["canvas_paper"]?.stringValue ?? "none"),
-            "note": .null, "scene": .null, "download": .null,
+            "note": phone.note.isEmpty ? .null : ["id": .int(phone.noteID), "text": .string(phone.note)],
+            "scene": .null, "download": .null,
             "mask": phoneMask(),
             "edit": .null, "views": [:], "hints": [],
             "vignette": .bool(canvas["canvas_vignette"]?.truthy ?? false),
@@ -80,6 +82,16 @@ public extension AppModel {
         let ready = used && (mask.state == .ready || mask.state == .edited)
         return ["used": .bool(used), "ready": .bool(ready),
                 "text": .string(used ? mask.status(texts, name: modelName(mask.model)) : "")]
+    }
+
+    /// Whether a detail map is kept for the studio's picture – asked of the engine again when the picture changed.
+    private func phoneDetailsKept() -> Bool {
+        if phone.detailsImage != studio.image {
+            phone.detailsImage = studio.image
+            phone.detailsHas = false
+            Task { await phoneDetailsChanged() }
+        }
+        return phone.detailsHas
     }
 
     /// A sketch of the studio the phone can choose: the finished job's runs, else the running job's items.

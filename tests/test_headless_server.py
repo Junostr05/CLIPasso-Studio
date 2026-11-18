@@ -623,6 +623,21 @@ def test_detail_brush(tmp_path, user_data, monkeypatch):
     assert not details.detail_path(im).is_file()
     assert server.handle(_req(6, "save_detail", image=str(large), map=str(tmp_path / "no.png")))["error"]["code"] \
         == "not_found"
+    # the phone's map (phone_api.file_details: at most 900 px, each side rounded) and removing it
+    Image.fromarray(painted, mode="L").save(path)
+    server.handle(_req(60, "save_detail", image=str(large), map=str(path)))
+    phone = server.handle(_req(61, "phone_detail", image=str(large), side=900))["result"]["map"]
+    with Image.open(phone) as m:
+        small = np.asarray(m)
+    os.remove(phone)
+    assert small.shape == (round(1001 * 900 / 2048), 900)
+    assert small[:, :400].min() == 255 and small[:, 480:].max() == 128
+    assert server.handle(_req(62, "phone_detail", image=str(large), side=True))["error"]["code"] == "bad_request"
+    assert server.handle(_req(63, "remove_detail", image=str(large)))["ok"] and details.detail_map(im) is None
+    plain = server.handle(_req(64, "phone_detail", image=str(image), side=900))["result"]["map"]
+    with Image.open(plain) as m:
+        assert m.size == (40, 30) and set(m.getdata()) == {128}  # (no map: all normal, never larger than the image)
+    os.remove(plain)
     # portrait mode
     monkeypatch.setattr(model_store, "is_available", lambda key: False)
     missing = server.handle(_req(7, "portrait", image=str(image)))["error"]

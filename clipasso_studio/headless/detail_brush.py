@@ -54,6 +54,32 @@ def status(image: str) -> dict:
             "normal": details.NORMAL}
 
 
+def phone_map(image: str, side: int) -> str:
+    """The map as the phone paints on it (phone_api.file_details): the image's size scaled to at most ``side``
+    pixels (each side rounded), all normal where no map is kept – a temporary 8-bit grey PNG."""
+    import numpy as np
+    from PIL import Image
+
+    from ..engine import details
+    from ..engine.imaging import load_rgb
+
+    im = load_rgb(image)
+    w, h = im.size
+    scale = min(1.0, side / max(w, h))
+    size = (max(1, round(w * scale)), max(1, round(h * scale)))
+    values = details.detail_map(im)
+    arr = np.full((h, w), details.NORMAL, np.uint8) if values is None else \
+        np.clip(np.round(details.NORMAL + values * 127), 0, 255).astype(np.uint8)
+    return _temp_png(Image.fromarray(arr, mode="L").resize(size, Image.BILINEAR))
+
+
+def remove(image: str) -> None:
+    from ..engine import details
+    from ..engine.imaging import load_rgb
+
+    details.remove_detail_map(load_rgb(image))
+
+
 def save(image: str, painted: str) -> str | None:
     """The painted map (8-bit grey, any size – the painting size) kept at the image's size, as the dialog's *Apply*
     does; None when it was all normal (then it is removed)."""
