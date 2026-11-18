@@ -120,6 +120,32 @@ import StudioCore
             && model.settings["canvas_paper"] == "kraft")
     }
 
+    @Test func theStudiosStateAndItsSketch() async throws {
+        let (model, _) = try Self.model()
+        let cases = try #require(try PyJSON.parse(Data(contentsOf: SelfTestTests.fixtures
+                .appending(path: "phone/studio.json"))).objectValue)
+        let keys = (cases["studio_keys"]?.arrayValue ?? []).compactMap(\.stringValue)
+        let state = try #require(Self.json(await model.phoneAnswer("get_studio", [:], payload: nil)))
+        #expect(state.keys == keys)  // (every field the page reads, in the studio's order)
+        #expect(state["image"] == .null && state["seeds"] == [] && state["shown"] == .null)
+        model.studio.image = SelfTestTests.fixtures.appending(path: "mask/small.png")
+        let image = try #require(Self.json(await model.phoneAnswer("get_studio", [:], payload: nil))?["image"]?
+            .objectValue)
+        #expect(image["name"] == "small.png" && image["size"]?.stringValue?.contains("×") == true)
+        // no sketch yet
+        let none = Self.json(await model.phoneAnswer("file_sketch", [:], payload: nil))
+        #expect(none == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.no_sketch"))])
+        #expect(Self.json(await model.phoneAnswer("do_select", ["seed": "x"], payload: nil))
+            == ["ok": false, "error": "unknown sketch"])
+        // the pictures to choose from: the samples of the studio
+        let images = try #require(Self.json(await model.phoneAnswer("get_images", [:], payload: nil)))
+        #expect((images["samples"]?.arrayValue?.count ?? 0) >= 5 && images["recent"] == [])
+        #expect(Self.json(await model.phoneAnswer("do_image", ["src": "sample", "i": 0], payload: nil)) == ["ok": true])
+        #expect(model.studio.image?.path.contains("samples") == true)
+        #expect(Self.json(await model.phoneAnswer("do_image", ["src": "nope", "i": 0], payload: nil))
+            == ["ok": false, "error": "unknown source"])
+    }
+
     @Test func aPortInUse() async throws {
         let (first, _) = try Self.model(["remote_port": 0])
         await first.setPhoneOn(true)

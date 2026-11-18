@@ -34,6 +34,7 @@ cp -R "$ROOT/clipasso_studio/resources/fonts" "$APP/Contents/Resources/fonts"  #
 cp -R "$ROOT/clipasso_studio/resources/phone" "$APP/Contents/Resources/phone"
 cp -R "$ROOT/clipasso_studio/resources/icons" "$APP/Contents/Resources/icons"
 cp "$ROOT/clipasso_studio/resources/app_icon.png" "$APP/Contents/Resources/app_icon.png"
+cp -R "$ROOT/clipasso_studio/resources/samples" "$APP/Contents/Resources/samples"  # (the phone's sample pictures)
 (cd "$ROOT" && PYTHONPATH="$ROOT" "$PYTHON" -m clipasso_studio.headless \
     --export-schema "$APP/Contents/Resources/schema.json" --export-models "$APP/Contents/Resources/models.json")
 if [ -d "$OUT/python" ]; then  # the app's own Python and the engine (build_python.sh)

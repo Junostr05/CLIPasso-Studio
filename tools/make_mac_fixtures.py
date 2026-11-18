@@ -955,7 +955,13 @@ def phone_cases(out: Path) -> dict:
                 else:
                     ok = True
                 coerced.append({"method": method, "key": p.key, "raw": raw, "ok": ok, "value": value})
-    return {"schemas": schemas, "coerce": coerced, "input_side": phone_api.INPUT_SIDE}
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(phone_api.PhoneApi.get_studio).strip().replace("\n    ", "\n"))
+    returned = next(n.value for n in ast.walk(tree) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict))
+    studio_keys = [k.value for k in returned.keys]  # (the keys of what get_studio gives the page)
+    return {"schemas": schemas, "coerce": coerced, "input_side": phone_api.INPUT_SIDE, "studio_keys": studio_keys}
 
 
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)

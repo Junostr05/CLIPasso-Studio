@@ -443,7 +443,7 @@ public extension AppModel {
         case "do_start":
             return await phoneStart()  // (start or queue: the queue starts it when the job running ends)
         default:
-            return no("unknown action")
+            return await phoneStudioAnswer(action, data) ?? no("unknown action")
         }
     }
 
