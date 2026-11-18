@@ -3,7 +3,7 @@
 studio; this module only translates.
 
 ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · mask · save_mask ·
-remove_mask · start · pause · resume · cancel · shutdown
+remove_mask · detail · save_detail · portrait · start · pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from typing import BinaryIO, Callable
 from .. import __version__
 from .. import settings_schema as schema
 from ..engine.errors import UserError
-from . import export, masks
+from . import detail_brush, export, masks
 from .protocol import PROTOCOL_VERSION, IterationThrottle, ProtocolError, Writer, decode
 
 TERMINAL = ("job_done", "job_failed", "job_ended")  # the last event of a job
@@ -112,7 +112,8 @@ def _text(args: dict, key: str, required: bool = True) -> str:
 
 class EngineServer:
     def __init__(self, writer: Writer, runner=None, clock: Callable[[], float] = time.monotonic,
-                 devices_probe: Callable[[], dict] = probe_devices, mask_work: Callable | None = None):
+                 devices_probe: Callable[[], dict] = probe_devices, mask_work: Callable | None = None,
+                 face_work: Callable | None = None):
         if runner is None:
             from ..engine.runner import JobRunner
 
@@ -129,8 +130,10 @@ class EngineServer:
         self._probe_lock = threading.Lock()
         self._stopping = False
         # (the object masks: one computed at a time, in a process of its own; ``mask_work`` stands in for it in tests)
-        self.masks = masks.Previews(lambda kind, data: self.writer.send({"event": kind, "job": None, "data": data}),
-                                    mask_work)
+        notice = lambda kind, data: self.writer.send({"event": kind, "job": None, "data": data})  # noqa: E731
+        self.masks = masks.Previews(notice, mask_work)
+        # (portrait mode's faces, the same way: BlazeFace in a process of its own)
+        self.faces = masks.Previews(notice, face_work, kind="portrait", worker=detail_brush.face_worker, result="map")
 
     # ------------------------------------------------------------------ requests
     def handle(self, req: dict) -> dict:
@@ -294,6 +297,28 @@ class EngineServer:
         masks.remove(self._image(args))
         return {}
 
+    def op_detail(self, args: dict) -> dict:
+        """The detail map of an image as the detail brush starts from it (headless/detail_brush.py)."""
+        return detail_brush.status(self._image(args))
+
+    def op_save_detail(self, args: dict) -> dict:
+        """The painted detail map kept at the image's size (all normal: removed – then ``path`` is None)."""
+        image, painted = self._image(args), _text(args, "map")
+        if not os.path.isfile(painted):
+            raise _Fail("not_found", f"no map {painted}")
+        return {"path": detail_brush.save(image, painted)}
+
+    def op_portrait(self, args: dict) -> dict:
+        """Portrait mode: the faces of an image are looked for in the background – "portrait_ready" (its ``map``,
+        None: no face) or "portrait_failed" follows. Without the face detector: ``missing_model``."""
+        from ..engine import model_store
+
+        image = self._image(args)
+        if not model_store.is_available(detail_brush.FACE_MODEL):
+            raise _Fail("missing_model", detail_brush.FACE_MODEL)
+        self.faces.request(image, detail_brush.FACE_MODEL, "cpu")
+        return {"computing": True}
+
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")
         if not isinstance(settings, dict):
@@ -343,7 +368,7 @@ class EngineServer:
 
     def pump(self) -> int:
         """Pass the job's new events (and a finished mask) on; returns how many came."""
-        sent = self.masks.poll()
+        sent = self.masks.poll() + self.faces.poll()
         if self.job is None:
             self.runner.release_idle(WARM_IDLE)
             return sent
@@ -399,4 +424,5 @@ class EngineServer:
         finally:
             self.runner.kill()  # the job stops and is marked interrupted, whatever ended the loop
             self.masks.shutdown()
+            self.faces.shutdown()
         return code

@@ -63,19 +63,24 @@ def _worker(image: str, model: str, device: str, results) -> None:
 
 class Previews:
     """One mask computed at a time; asked for another while one runs, the newest waits (and replaces one waiting).
-    ``send(kind, data)`` passes the events on; ``start`` (tests) begins the work and gives its result queue."""
+    ``send(kind, data)`` passes the events on; ``start`` (tests) begins the work and gives its result queue.
 
-    def __init__(self, send: Callable[[str, dict], None], start: Callable | None = None):
+    The same for other work on an image in a process of its own: ``worker(image, model, device, results)`` puts
+    ("done", {"path": …}) or ("error", message); the events are ``<kind>_ready`` (the path as ``result``) and
+    ``<kind>_failed``."""
+
+    def __init__(self, send: Callable[[str, dict], None], start: Callable | None = None, *, kind: str = "mask",
+                 worker: Callable = _worker, result: str = "probability"):
         self._send = send
+        self._kind, self._worker, self._result = kind, worker, result
         self._start_work = start or self._process
         self._running: tuple | None = None  # (image, model, results, process or None)
         self._waiting: tuple[str, str, str] | None = None
 
-    @staticmethod
-    def _process(image: str, model: str, device: str):
+    def _process(self, image: str, model: str, device: str):
         ctx = mp.get_context("spawn")
         results = ctx.Queue()
-        proc = ctx.Process(target=_worker, args=(image, model, device, results), daemon=True)
+        proc = ctx.Process(target=self._worker, args=(image, model, device, results), daemon=True)
         proc.start()
         return results, proc
 
@@ -101,14 +106,16 @@ class Previews:
         except queue_mod.Empty:
             if proc is None or proc.is_alive():
                 return 0
-            kind, data = "error", "the mask process ended unexpectedly"
+            kind, data = "error", f"the {self._kind} process ended unexpectedly"
         if proc is not None:
             proc.join(timeout=2)
         self._running = None
         if kind == "done":
-            self._send("mask_ready", {"image": image, "model": model, "probability": str(Path(data["path"]))})
+            path = data.get("path")
+            self._send(f"{self._kind}_ready", {"image": image, "model": model,
+                                               self._result: None if path is None else str(Path(path))})
         else:
-            self._send("mask_failed", {"image": image, "model": model, "message": str(data)})
+            self._send(f"{self._kind}_failed", {"image": image, "model": model, "message": str(data)})
         if self._waiting is not None:
             waiting, self._waiting = self._waiting, None
             self.request(*waiting)

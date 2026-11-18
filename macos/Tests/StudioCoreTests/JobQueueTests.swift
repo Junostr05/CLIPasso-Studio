@@ -96,6 +96,8 @@ actor FakeEngine: EngineControlling {
         await engine.emit("mask_ready", job: nil, ["image": "/a.png", "model": "u2net"])
         let notice = await notices.next()
         #expect(notice?.kind == "mask_ready" && notice?.job == nil && notice?.data["image"] == "/a.png")
+        await engine.emit("portrait_ready", job: nil, ["image": "/a.png", "map": nil])
+        #expect(await notices.next()?.kind == "portrait_ready")
     }
 
     @Test func autoStartOffWaits() async throws {

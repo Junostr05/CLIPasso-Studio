@@ -7,6 +7,7 @@ import json
 import os
 import threading
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 from clipasso_studio import __version__
@@ -568,6 +569,107 @@ def test_masks(tmp_path, user_data):
     assert masking.edited_mask(im) is None
     assert server.handle(_req(8, "mask", image=str(image), model="sam"))["error"]["code"] == "bad_request"
     assert server.handle(_req(9, "mask", image=str(tmp_path / "nope.png")))["error"]["code"] == "not_found"
+
+
+def test_detail_brush(tmp_path, user_data, monkeypatch):
+    """The Mac app's detail brush: the stored map at the size the studio paints it (the image at most 1024 pixels),
+    a painted map kept at the image's size (all normal: removed), and portrait mode's faces found in a process of
+    its own (here a stand-in) with "portrait_ready" / "portrait_failed" – without the detector: missing_model."""
+    import queue as queue_mod
+
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.engine import details, model_store
+    from clipasso_studio.engine.imaging import load_rgb
+    from clipasso_studio.gui import detail_edit, portrait
+    from clipasso_studio.headless import detail_brush
+
+    assert (detail_brush.EDIT_SIDE, detail_brush.FACE_MODEL) == (detail_edit.EDIT_SIDE, portrait.KEY)
+    image, large = tmp_path / "Gesicht ü.png", tmp_path / "groß.png"
+    Image.new("RGB", (40, 30), (200, 120, 60)).save(image)
+    Image.new("RGB", (2048, 1001), (20, 120, 60)).save(large)
+    started = []
+
+    def work(path, model, device):
+        started.append((path, model, device, queue_mod.Queue()))
+        return started[-1][3], None
+
+    server, out = _server(face_work=work)
+    first = server.handle(_req(1, "detail", image=str(image)))["result"]
+    assert first == {"map": None, "width": 40, "height": 30, "has": False, "normal": 128}
+    photo = load_rgb(str(large))
+    photo.thumbnail((1024, 1024))
+    sized = server.handle(_req(2, "detail", image=str(large)))["result"]
+    assert (sized["width"], sized["height"]) == photo.size == (1024, 501)
+    # a painted map: the left half "more", at the painting size of the large image – kept at the image's size
+    painted = np.full((501, 1024), 128, np.uint8)
+    painted[:, :512] = 255
+    path = tmp_path / "painted.png"
+    Image.fromarray(painted, mode="L").save(path)
+    saved = server.handle(_req(3, "save_detail", image=str(large), map=str(path)))["result"]["path"]
+    im = load_rgb(str(large))
+    assert saved == str(details.detail_path(im))
+    kept = details.detail_map(im)
+    assert kept is not None and kept.shape == (1001, 2048) and kept[:, :1000].min() > 0.99 and kept[:, 1040:].max() == 0
+    again = server.handle(_req(4, "detail", image=str(large)))["result"]
+    assert again["has"] and again["map"] is not None
+    with Image.open(again["map"]) as m:
+        start = np.asarray(m)
+    os.remove(again["map"])
+    assert start.shape == (501, 1024) and start[:, :500].min() == 255 and start[:, 530:].max() == 128
+    Image.fromarray(np.full((501, 1024), 129, np.uint8), mode="L").save(path)  # (all but normal: removed)
+    assert server.handle(_req(5, "save_detail", image=str(large), map=str(path)))["result"]["path"] is None
+    assert not details.detail_path(im).is_file()
+    assert server.handle(_req(6, "save_detail", image=str(large), map=str(tmp_path / "no.png")))["error"]["code"] \
+        == "not_found"
+    # portrait mode
+    monkeypatch.setattr(model_store, "is_available", lambda key: False)
+    missing = server.handle(_req(7, "portrait", image=str(image)))["error"]
+    assert missing == {"code": "missing_model", "message": "blazeface"}
+    monkeypatch.setattr(model_store, "is_available", lambda key: key == "blazeface")
+    assert server.handle(_req(8, "portrait", image=str(image)))["result"] == {"computing": True}
+    assert [s[:3] for s in started] == [(str(image), "blazeface", "cpu")]
+    started[0][3].put(("done", {"path": None}))  # (no face)
+    assert server.pump() == 1
+    assert out.lines()[-1] == {"event": "portrait_ready", "job": None,
+                               "data": {"image": str(image), "model": "blazeface", "map": None}}
+    server.handle(_req(9, "portrait", image=str(image)))
+    started[1][3].put(("done", {"path": "/tmp/faces.png"}))
+    server.pump()
+    assert out.lines()[-1]["data"]["map"] == str(Path("/tmp/faces.png"))
+    server.handle(_req(10, "portrait", image=str(image)))
+    started[2][3].put(("error", "RuntimeError: no torch"))
+    server.pump()
+    last = out.lines()[-1]
+    assert last["event"] == "portrait_failed" and last["data"]["message"] == "RuntimeError: no torch"
+
+
+def test_portrait_modes_map(tmp_path, monkeypatch):
+    """The faces' map is the studio's: portrait.detail_map of the plausible faces in the studio's photo."""
+    from PIL import Image
+
+    from clipasso_studio.engine import model_store, portrait
+    from clipasso_studio.headless import detail_brush
+
+    image = tmp_path / "face.png"
+    Image.new("RGB", (1600, 1200), (90, 90, 90)).save(image)
+    face = {"box": (300.0, 200.0, 600.0, 560.0), "score": 0.95,
+            "points": {"right_eye": (380.0, 320.0), "left_eye": (520.0, 320.0), "nose": (450.0, 400.0),
+                       "mouth": (450.0, 470.0), "right_ear": (310.0, 340.0), "left_ear": (590.0, 340.0)}}
+    seen = []
+    monkeypatch.setattr(model_store, "require", lambda key: tmp_path / f"{key}.pt")
+    monkeypatch.setattr(portrait, "load", lambda path, device="cpu": path)
+    unsure = {**face, "score": 0.5}
+    monkeypatch.setattr(portrait, "find_faces", lambda photo, net: seen.append(photo.size) or [face, unsure])
+    path = detail_brush.faces(str(image))
+    with Image.open(path) as m:
+        got = m.copy()
+    os.remove(path)
+    assert seen == [(1024, 768)] and got.size == (1024, 768) and got.mode == "L"
+    assert list(got.getdata()) == list(Image.fromarray(portrait.detail_map((1024, 768), [face]), mode="L").getdata())
+    monkeypatch.setattr(portrait, "find_faces", lambda photo, net: [unsure])
+    assert detail_brush.faces(str(image)) is None
 
 
 def test_the_engine_starts_without_numpy():

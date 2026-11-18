@@ -170,8 +170,11 @@ public actor JobQueue {
 
     // MARK: - the engine's events
 
+    /// Events of no job the app hears of (the queue's notices): the object mask, portrait mode's faces.
+    static let noticeKinds = ["mask_", "portrait_"]
+
     private func handle(_ event: EngineEvent) async {
-        if event.job == nil, event.kind.hasPrefix("mask_") {
+        if event.job == nil, Self.noticeKinds.contains(where: { event.kind.hasPrefix($0) }) {
             noticeSink.yield(event)
             return
         }

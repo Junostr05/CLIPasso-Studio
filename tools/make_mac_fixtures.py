@@ -747,6 +747,85 @@ def mask_edit_cases(out: Path) -> dict:
     return cases
 
 
+DETAIL_SIZE = (90, 60)
+DETAIL_STROKES = (  # (tool, brush, kind, from, to): dabs and lines over a map that is not all normal
+    ("more", 20, "dab", (30.0, 20.0), None),
+    ("less", 13, "line", (5.5, 50.25), (80.0, 41.0)),
+    ("normal", 9, "dab", (31.0, 22.5), None),
+    ("more", 7, "line", (60.0, 5.0), (61.5, 6.0)),
+    ("less", 30, "dab", (88.0, -2.0), None),
+    ("more", 6, "line", (-4.0, 30.0), (40.0, 58.0)),
+)
+DETAIL_PHOTOS = ((1024, 768), (300, 200), (100, 80), (60, 1024))  # (the default brush and the slider's end)
+
+
+def detail_cases(out: Path) -> dict:
+    """gui/detail_edit.py: the soft brush of the detail map – dabs and lines of each tool, one after the other, over
+    a map with a gradient (detail/edit_start.png, the map after each stroke detail/edit_<n>.png), the canvas's
+    overlay of the start and the end (detail/edit_overlay_*_alpha.png its opacity, *_kind.png its colour: 1 more,
+    2 less), the dialog's share line, the brush it
+    starts with for a photo and the slider's range (needs PySide6)."""
+    from types import SimpleNamespace
+
+    import numpy as np
+    from PIL import Image
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio.engine import details
+    from clipasso_studio.gui import detail_edit
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "detail"
+    folder.mkdir()
+    w, h = DETAIL_SIZE
+    yy, xx = np.mgrid[0:h, 0:w]
+    start = np.full((h, w), details.NORMAL, np.uint8)
+    start[:, 45:] = np.clip(np.round((xx[:, 45:] - 45) / 44 * 255), 0, 255).astype(np.uint8)  # (less … more)
+    start[5:15, 5:25] = 250
+    Image.fromarray(start, mode="L").save(folder / "edit_start.png")
+    canvas = SimpleNamespace(map=start.copy(), brush=0, tool="more", update=lambda: None)
+    canvas.dab = lambda x, y: detail_edit.DetailCanvas.dab(canvas, x, y)
+
+    def overlay(name: str) -> None:  # (as two grey pictures: ImageIO may premultiply an RGBA one)
+        detail_edit.DetailCanvas._rebuild(canvas)
+        img = canvas._overlay
+        rows = np.frombuffer(img.constBits(), np.uint8).reshape(img.height(), img.bytesPerLine())
+        rgba = rows[:, :img.width() * 4].reshape(img.height(), img.width(), 4)
+        more = np.all(rgba[..., :3] == detail_edit.MORE_RGB, axis=-1)
+        less = np.all(rgba[..., :3] == detail_edit.LESS_RGB, axis=-1)
+        assert ((rgba[..., 3] > 0) == (more | less)).all() and not rgba[~(more | less)].any()
+        Image.fromarray(rgba[..., 3].copy(), mode="L").save(folder / f"edit_overlay_{name}_alpha.png")
+        Image.fromarray((more * 1 + less * 2).astype(np.uint8), mode="L").save(folder / f"edit_overlay_{name}_kind.png")
+
+    def share() -> list[str]:
+        v = canvas.map.astype(np.int16) - details.NORMAL
+        return [f"{float((v > 8).mean()) * 100:.0f}", f"{float((v < -8).mean()) * 100:.0f}"]
+
+    overlay("start")
+    shares = [share()]
+    strokes = []
+    for i, (tool, brush, kind, a, b) in enumerate(DETAIL_STROKES):
+        canvas.tool, canvas.brush = tool, brush
+        if kind == "dab":
+            canvas.dab(*a)
+        else:
+            detail_edit.DetailCanvas._line(canvas, a, b)
+        Image.fromarray(canvas.map, mode="L").save(folder / f"edit_{i}.png")
+        shares.append(share())
+        strokes.append({"tool": tool, "brush": brush, "kind": kind, "from": list(a), "to": list(b) if b else None,
+                        "out": f"detail/edit_{i}.png"})
+    overlay("end")
+    photos = []
+    for pw, ph in DETAIL_PHOTOS:
+        brush = max(8, int(max(pw, ph) * 0.06))  # (DetailCanvas.__init__ and the dialog's slider)
+        photos.append({"size": [pw, ph], "brush": brush, "slider": [6, max(200, brush * 3)]})
+    return {"constants": {"edit_side": detail_edit.EDIT_SIDE, "undo_steps": detail_edit.UNDO_STEPS,
+                          "tools": detail_edit.TOOLS, "more_rgb": list(detail_edit.MORE_RGB),
+                          "less_rgb": list(detail_edit.LESS_RGB), "normal": details.NORMAL},
+            "start": "detail/edit_start.png", "strokes": strokes, "shares": shares, "photos": photos}
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -996,6 +1075,7 @@ def build(out: Path) -> None:
     write_json(out / "export" / "styled.json", styled_cases(out))
     write_json(out / "mask" / "overlay.json", mask_cases(out))
     write_json(out / "mask" / "edit.json", mask_edit_cases(out))
+    write_json(out / "detail" / "edit.json", detail_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
