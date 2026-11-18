@@ -18,7 +18,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Bildschirmfotos aller Seiten (Artefakt `screenshots-mac`).
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
-**Noch nicht in der Mac-App, also nicht testen:** Masken und Detailpinsel, Handy-Fernbedienung, Updates,
+**Noch nicht in der Mac-App, also nicht testen:** Handy-Fernbedienung, Updates,
 die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon).
 
 ---
@@ -88,6 +88,19 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | E3 | ⌘Z und ⇧⌘Z mehrmals, dann „Zurücksetzen“. | Rückgängig und Wiederholen laufen Schritt für Schritt. „Zurücksetzen“ stellt das Original wieder her. |
 | E4 | Öffne bei SceneSketch die Matrix und wähle eine andere Zelle. | Die Zelle erscheint groß und lässt sich bearbeiten. Die Matrix zeigt die Änderung. |
 | E5 | Pinsel-Knopf über der Skizze: „Kohle“ wählen, dann radieren | Die Skizze erscheint im Stil. Mit Radierer oder Stift in der Hand zeigt sie die einfachen Striche, gespeichert wird die einfache Skizze. |
+
+## E2. Maske und Detail-Pinsel
+
+| Nr. | Schritt | Erwartet |
+|-----|---------|----------|
+| M1 | Studio: ein Foto mit einem klaren Motiv, Methode CLIPasso, „Hintergrund entfernen“ an. | „Suche das Objekt …“, nach einigen Sekunden „Maske: …“. Der Hintergrund ist auf dem Bild abgedeckt, das Objekt blau umrandet. Das Auge blendet die Maske aus und ein. |
+| M2 | Pinsel-Knopf neben dem Auge: Maske bearbeiten. Einen Teil anklicken, dann daneben in den Hintergrund klicken. | Der Teil verschwindet. Der Klick daneben holt einen Bereich ähnlicher Farbe dazu. Wo nichts zu finden ist, steht „Hier wurde nichts gefunden …“. |
+| M3 | „Hinzufügen“ und „Entfernen“ (Tasten 2 und 3), Pinselgröße mit [ und ] ändern, mit Trackpad und Maus malen. | Der Kreis folgt dem Zeiger, der Pinsel malt genau dort. ⌘Z und ⇧⌘Z gehen ganze Pinselzüge zurück und vor. |
+| M4 | „Diese Maske verwenden“, dann den Auftrag rechnen. | Unter dem Bild steht „Maske: von dir bearbeitet“. Die Skizze lässt den abgedeckten Bereich weg. |
+| M5 | Pfeil-Knopf „Wieder die automatische Maske verwenden“. | Wieder „Maske: …“ mit der Maske des Modells. |
+| M6 | Sterne-Knopf neben „Bild ändern“: Detail-Pinsel. „Mehr Detail“ auf die Augen, „Weniger“ auf den Hintergrund malen, „Karte verwenden“. | Orange und blau wie in der Windows-App. Danach steht „Detail-Karte gespeichert …“ und der Tooltip des Knopfs sagt, dass eine Karte gespeichert ist. |
+| M7 | Detail-Pinsel bei einem Porträt: „Gesicht finden“ (beim ersten Mal wird BlazeFace geladen). | Augen, Nase und Mund werden orange. Bei einem Bild ohne Gesicht steht „Kein Gesicht gefunden …“. Das Fenster bleibt währenddessen bedienbar. |
+| M8 | Mit Karte einen CLIPasso-Auftrag rechnen und mit einem ohne Karte vergleichen. | Mehr Striche dort, wo es orange war; blaue Stellen weicher. |
 
 ## F. Exportieren (⌘E)
 
