@@ -84,6 +84,42 @@ import StudioCore
         await #expect(throws: (any Error).self) { _ = try await session.data(from: URL(string: base + "/")!) }
     }
 
+    static func json(_ answer: RemoteAnswer) -> JSONObject? {
+        if case .json(let value) = answer { return value.objectValue }
+        return nil
+    }
+
+    @Test func theStudioFromThePhone() async throws {
+        let (model, _) = try Self.model()
+        var answer = Self.json(await model.phoneAnswer("do_method", ["method": "swiftsketch"], payload: nil))
+        #expect(answer == ["ok": true] && model.studio.method == "swiftsketch")
+        answer = Self.json(await model.phoneAnswer("do_method", ["method": "nope"], payload: nil))
+        #expect(answer == ["ok": false, "error": "unknown method"])
+        let schema = Self.json(await model.phoneAnswer("get_schema", [:], payload: nil))
+        #expect(schema?["method"] == "swiftsketch" && schema?["groups"]?.arrayValue?.isEmpty == false)
+        let param = try #require(model.studio.methodSchema?.params.first { $0.kind == .int })
+        answer = Self.json(await model.phoneAnswer("do_set", ["key": .string(param.key), "value": "abc"], payload: nil))
+        #expect(answer?["ok"] == false && answer?["error"] == .string(model.texts.tr("ui.phone.page.bad_value")))
+        let wanted = Int(param.minimum ?? 1)
+        answer = Self.json(await model.phoneAnswer("do_set", ["key": .string(param.key), "value": .string(" \(wanted) ")],
+                                                   payload: nil))
+        #expect(answer == ["ok": true] && model.studio.settings[param.key] == .int(wanted))
+        answer = Self.json(await model.phoneAnswer("do_set", ["key": "nope", "value": 1], payload: nil))
+        #expect(answer == ["ok": false, "error": "unknown setting"])
+        answer = Self.json(await model.phoneAnswer("do_preset", ["preset": "fast"], payload: nil))
+        #expect(answer == ["ok": true] && model.studio.preset == "fast")
+        answer = Self.json(await model.phoneAnswer("do_start", [:], payload: nil))  // (no picture yet)
+        #expect(answer == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.no_picture"))])
+        model.studio.image = SelfTestTests.fixtures.appending(path: "mask/small.png")
+        guard case .bytes(let jpeg, let type, _) = await model.phoneAnswer("file_input", [:], payload: nil) else {
+            return Issue.record("no picture")
+        }
+        #expect(type == "image/jpeg" && jpeg.starts(with: [0xFF, 0xD8]))
+        answer = Self.json(await model.phoneAnswer("do_style", ["style": "charcoal", "paper": "kraft"], payload: nil))
+        #expect(answer == ["ok": true] && model.settings["canvas_style"] == "charcoal"
+            && model.settings["canvas_paper"] == "kraft")
+    }
+
     @Test func aPortInUse() async throws {
         let (first, _) = try Self.model(["remote_port": 0])
         await first.setPhoneOn(true)

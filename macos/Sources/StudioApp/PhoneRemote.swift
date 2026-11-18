@@ -393,17 +393,100 @@ public extension AppModel {
         phone.changed()
     }
 
-    /// PhoneApi.handle: what the page asks (the studio's parts follow step by step).
+    /// PhoneApi.handle: what the page asks (the studio's parts follow step by step). A refusal the phone shows:
+    /// {"ok": false, "error": why}.
     func phoneAnswer(_ action: String, _ data: JSONObject, payload: Data?) async -> RemoteAnswer {
+        func no(_ why: String) -> RemoteAnswer { .json(["ok": false, "error": .string(why)]) }
+        let ok: RemoteAnswer = .json(["ok": true])
+        defer { phone.changed() }
         switch action {
         case "set_image":
-            guard let path = data["path"]?.stringValue else { return .json(["ok": false, "error": "no picture"]) }
+            guard let path = data["path"]?.stringValue else { return no(texts.tr("ui.phone.page.no_picture")) }
             studio.image = URL(filePath: path)
-            phone.changed()
-            return .json(["ok": true])
+            return ok
+        case "get_schema":
+            let id = data["method"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 } ?? studio.method
+            guard let method = schema.method(id) else { return no("unknown method") }
+            return .json(.object(PhoneStudio.schema(method, texts: texts)))
+        case "do_method":
+            guard let id = data["method"]?.stringValue, schema.method(id) != nil else { return no("unknown method") }
+            studio.selectMethod(id)
+            return ok
+        case "do_preset":
+            guard let name = data["preset"]?.stringValue, studio.methodSchema?.presets[name] != nil else {
+                return no("unknown preset")
+            }
+            studio.applyPreset(name)
+            return ok
+        case "do_reset":
+            studio.reset()
+            return ok
+        case "do_set":
+            guard let key = data["key"]?.stringValue, let param = studio.methodSchema?.param(key), param.kind != .path
+            else { return no("unknown setting") }
+            guard let value = PhoneStudio.coerce(param, data["value"] ?? .null) else {
+                return no(texts.tr("ui.phone.page.bad_value"))
+            }
+            studio.set(key, to: value)
+            return ok
+        case "do_style":
+            if let style = data["style"]?.stringValue, schema.brushStyles.contains(style) { setCanvasStyle(style) }
+            if let kind = data["paper"]?.stringValue, Paper.Kind(rawValue: kind) != nil {
+                _ = updateSettings { $0["canvas_paper"] = .string(kind) }
+            }
+            return ok
+        case "file_input":
+            guard let image = studio.image, let jpeg = await Self.phoneJPEG(image, side: PhoneStudio.inputSide) else {
+                return no(texts.tr("ui.phone.page.no_picture"))
+            }
+            return .bytes(jpeg, type: "image/jpeg", name: nil)
+        case "do_start":
+            return await phoneStart()  // (start or queue: the queue starts it when the job running ends)
         default:
-            return .json(["ok": false, "error": "unknown action"])
+            return no("unknown action")
         }
+    }
+
+    /// do_start: the studio's picture with its settings into the queue – not without the models it needs.
+    private func phoneStart() async -> RemoteAnswer {
+        guard let image = studio.image, FileManager.default.fileExists(atPath: image.path) else {
+            return .json(["ok": false, "error": .string(texts.tr("ui.phone.page.no_picture"))])
+        }
+        if let engine, let answer = try? await engine.request("required_models",
+                                                              ["settings": .object(studio.jobSettings)]),
+           let missing = answer.objectValue?["missing"]?.arrayValue?.compactMap(\.stringValue), !missing.isEmpty
+        {
+            let mb = Double(missing.reduce(0) { $0 + (catalog.spec($1)?.downloadSize ?? 0) }) / 1e6
+            return .json(["ok": false, "error": .string(texts.tr("ui.phone.page.models_missing",
+                                                                 ["size": String(format: "%.0f", mb)]))])
+        }
+        let busy = queueSnapshot?.jobs.contains { $0.isActive } ?? false
+        await startSketch()
+        return .json(["ok": true, "queued": .bool(busy)])
+    }
+
+    /// _jpeg: a picture at most `side` pixels, upright, as JPEG (quality 85).
+    nonisolated static func phoneJPEG(_ url: URL, side: Int) async -> Data? {
+        #if canImport(ImageIO)
+            return await Task.detached(executorPreference: OwnThreads.shared) { () -> Data? in
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                      let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                          kCGImageSourceCreateThumbnailFromImageAlways: true,
+                          kCGImageSourceCreateThumbnailWithTransform: true,
+                          kCGImageSourceThumbnailMaxPixelSize: side,
+                      ] as CFDictionary)
+                else { return nil }
+                let out = NSMutableData()
+                guard let destination = CGImageDestinationCreateWithData(out, "public.jpeg" as CFString, 1, nil) else {
+                    return nil
+                }
+                CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.85]
+                    as CFDictionary)
+                return CGImageDestinationFinalize(destination) ? out as Data : nil
+            }.value
+        #else
+            return nil
+        #endif
     }
 
     /// Start or stop the phone page as the settings say (PhoneLink.apply_settings); its error text, "" when fine.

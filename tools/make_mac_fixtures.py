@@ -913,6 +913,51 @@ def remote_cases(out: Path) -> dict:
                 "upload_dir": remote.UPLOAD_DIR, "call_timeout": remote.CALL_TIMEOUT}}
 
 
+PHONE_RAW_VALUES = (None, True, False, 0, 1, -3, 2.7, 1e9, "", " 4 ", "7.9", "abc", "true", "off", "plain",
+                    "2,5", [1], {"a": 1})
+
+
+def phone_cases(out: Path) -> dict:
+    """gui/phone_api.py, the studio from the phone: the parameters of each method as the phone shows them (get_schema,
+    as on a Mac: the Apple GPU offered), in German and English, and what the phone's raw values become
+    (settings_schema.coerce – "error": the phone hears ui.phone.page.bad_value)."""
+    import sys
+    from types import SimpleNamespace
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui import phone_api
+    from clipasso_studio.gui.i18n import i18n
+
+    folder = out / "phone"
+    folder.mkdir()
+    before, platform = i18n.lang, sys.platform
+    schemas = {}
+    try:
+        sys.platform = "darwin"  # (offered_choices: the Mac's)
+        for lang in ("de", "en"):
+            i18n.set_language(lang)
+            for method in schema.METHODS:
+                schemas[f"{method}_{lang}"] = phone_api.PhoneApi.get_schema(SimpleNamespace(studio=None),
+                                                                            {"method": method})
+    finally:
+        sys.platform = platform
+        i18n.set_language(before)
+    coerced = []
+    for method in schema.METHODS:
+        for p in schema.params_for(method):
+            if p.kind in ("path", "layers") or p.hidden:
+                continue
+            for raw in PHONE_RAW_VALUES:
+                try:
+                    value = schema.coerce(p, raw)
+                except (TypeError, ValueError):
+                    value, ok = None, False
+                else:
+                    ok = True
+                coerced.append({"method": method, "key": p.key, "raw": raw, "ok": ok, "value": value})
+    return {"schemas": schemas, "coerce": coerced, "input_side": phone_api.INPUT_SIDE}
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -1164,6 +1209,7 @@ def build(out: Path) -> None:
     write_json(out / "mask" / "edit.json", mask_edit_cases(out))
     write_json(out / "detail" / "edit.json", detail_cases(out))
     write_json(out / "remote" / "remote.json", remote_cases(out))
+    write_json(out / "phone" / "studio.json", phone_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
