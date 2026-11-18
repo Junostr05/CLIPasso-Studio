@@ -42,6 +42,10 @@ public final class AppModel {
     public private(set) var queueSnapshot: QueueSnapshot?
     @ObservationIgnored public private(set) var engine: EngineClient?
     @ObservationIgnored public private(set) var queue: JobQueue?
+    /// the watched folder
+    @ObservationIgnored let folderWatcher: FolderWatcher
+    /// the watched folder's last notice ("" before the first)
+    public internal(set) var watchNote = ""
     @ObservationIgnored private var queueListener: Task<Void, Never>?
     @ObservationIgnored private var noticeListener: Task<Void, Never>?
     /// the object mask of the studio's image
@@ -68,6 +72,8 @@ public final class AppModel {
         self.power = power
         self.whenDoneTiming = whenDoneTiming
         self.store = store
+        folderWatcher = FolderWatcher(stateFile: store.url.deletingLastPathComponent()
+            .appending(path: FolderWatch.stateFile))
         let loaded = store.load()
         settings = loaded
         texts = try Texts(directory: resources.i18n, language: Texts.resolve(loaded.language))
@@ -148,6 +154,7 @@ public final class AppModel {
                 }
             }
             await applyPhoneSettings()  // (the phone page, when the settings have it on)
+            reconfigureWatch()  // (the watched folder, when it is on)
         } catch {
             let log = await client.stderrTail().suffix(5).joined(separator: "\n")
             let details = log.isEmpty ? String(describing: error) : "\(error)\n\(log)"
@@ -167,6 +174,7 @@ public final class AppModel {
         faceWaiters = [:]
         signals.keepAwake(false)
         signals.dockProgress(nil)
+        folderWatcher.stop()
         if let server = phone.server {
             await server.stop()
             phone.stopped()
@@ -179,6 +187,7 @@ public final class AppModel {
         let newResult = finished(snapshot) > finished(queueSnapshot)
         let ranOut = snapshot.finished != nil && queueSnapshot?.finished == nil
         signal(snapshot, before: queueSnapshot)
+        watchFinished(snapshot)
         queueSnapshot = snapshot
         queuePage?.apply(snapshot)
         phone.changed()  // (the phone pages ask again)

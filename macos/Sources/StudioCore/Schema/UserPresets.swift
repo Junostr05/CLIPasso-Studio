@@ -31,9 +31,19 @@ public enum UserPresets {
         return name.isEmpty ? nil : name
     }
 
-    /// _clean_settings: settings_schema.normalize (the method's defaults, the known keys coerced) with the paths and
-    /// the hidden settings at their defaults; nil where a value cannot be coerced.
+    /// _clean_settings: settings_schema.normalize with the paths and the hidden settings at their defaults; nil where
+    /// a value cannot be coerced.
     public static func clean(_ settings: JSONObject, schema: ParamSchema) -> JSONObject? {
+        guard var out = normalize(settings, schema: schema) else { return nil }
+        for p in schema.method(out["method"]?.stringValue ?? "")?.params ?? [] where p.kind == .path || p.hidden {
+            out[p.key] = p.default
+        }
+        return out
+    }
+
+    /// settings_schema.normalize: the method's defaults with the known keys coerced (unknown ones dropped); nil where
+    /// a value cannot be coerced.
+    public static func normalize(_ settings: JSONObject, schema: ParamSchema) -> JSONObject? {
         let wanted = settings["method"]?.stringValue ?? ""
         let id = schema.methods.contains(wanted) ? wanted : schema.defaultMethod
         guard let method = schema.method(id) else { return nil }
@@ -43,9 +53,6 @@ public enum UserPresets {
             guard let value = settings[p.key] else { continue }
             guard let coerced = PhoneStudio.coerce(p, value) else { return nil }
             out[p.key] = coerced
-        }
-        for p in method.params where p.kind == .path || p.hidden {
-            out[p.key] = p.default
         }
         return out
     }

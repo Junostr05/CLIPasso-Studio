@@ -69,6 +69,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C7 | Beende in der Aktivitätsanzeige den Prozess `python3` der App, während sie nichts rechnet. | Die App startet die Engine von selbst neu und zeigt einen kurzen Hinweis. |
 | C8 | Ändere in der Seitenleiste eine Voreinstellung und einzelne Parameter. | Abhängige Felder werden passend aktiv oder grau, wie in der Windows-App. |
 | C9 | Einige Parameter ändern, dann „Meine Voreinstellungen“ → „Aktuelle Einstellungen speichern …“ mit einem Namen. Methode wechseln und die Voreinstellung wieder wählen; danach eine löschen. Dieselbe `settings.json` in der Windows-App öffnen. | Die Voreinstellung schaltet auf ihre Methode und ihre Werte, der Knopf zeigt „Eigene Voreinstellung: …“. Auf dem Handy erscheint sie auch. Die Windows-App kennt sie ebenso. |
+| C10 | Einstellungen → „Überwachter Ordner“: einschalten, einen Ordner wählen, als Formate PNG und SVG, „Fertige Bilder … verschieben“ an. Dann ein Foto hineinkopieren (auch ein großes, z. B. per AirDrop). Danach die App neu starten. | Erst wenn das Bild fertig geschrieben ist, kommt es in die Warteschlange. Nach dem Auftrag liegen `…_clipasso.png` und `.svg` im Unterordner „sketches“, das Bild liegt in „done“. Nach dem Neustart wird es nicht noch einmal skizziert. |
 
 ## D. Warteschlange und Galerie
 
