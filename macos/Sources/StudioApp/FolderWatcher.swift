@@ -7,8 +7,8 @@ import StudioCore
 final class FolderWatcher {
     var watch: FolderWatch
     let stateFile: URL
-    /// the queued jobs of the folder → their image
-    var jobs: [QueuedJob.ID: URL] = [:]
+    /// the queued jobs of the folder → their image (its path as the folder lists it)
+    var jobs: [QueuedJob.ID: String] = [:]
     var loop: Task<Void, Never>?
     /// a change notification came (the folder is looked at at once)
     var poked = false
@@ -84,18 +84,17 @@ public extension AppModel {
         let config = watchConfig
         guard config.active, let queue else { return }
         if scan {
-            folderWatcher.watch.scan(URL(filePath: config.folder, directoryHint: .isDirectory),
-                                     waiting: Set(folderWatcher.jobs.values.map(\.path)), now: now)
+            folderWatcher.watch.scan(config.folder, waiting: Set(folderWatcher.jobs.values), now: now)
         }
         guard folderWatcher.watch.hasPending else { return }
         let ready = folderWatcher.watch.ready(now: now)
         guard !ready.isEmpty else { return }
         for item in ready {
-            let id = await queue.add(target: item.url, settings: watchSettings(config))
-            folderWatcher.jobs[id] = item.url
-            folderWatcher.watch.handled(item.url, stamp: item.stamp)  // (also after a restart: not again)
+            let id = await queue.add(target: URL(filePath: item.path), settings: watchSettings(config))
+            folderWatcher.jobs[id] = item.path
+            folderWatcher.watch.handled(item.path, stamp: item.stamp)  // (also after a restart: not again)
             folderWatcher.watch.save(folderWatcher.stateFile)
-            watchSay(texts.tr("ui.watch.queued", ["name": item.url.lastPathComponent]))
+            watchSay(texts.tr("ui.watch.queued", ["name": (item.path as NSString).lastPathComponent]))
         }
         apply(await queue.snapshot())
     }
@@ -127,7 +126,7 @@ public extension AppModel {
                   let dir = job.jobDir
             else { continue }
             #if canImport(ImageIO) && canImport(CoreText)
-                Task { await watchExport(dir, image: image) }
+                Task { await watchExport(dir, image: URL(filePath: image)) }
             #endif
         }
     }

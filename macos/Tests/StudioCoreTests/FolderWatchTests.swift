@@ -38,29 +38,29 @@ import Testing
         try Data([1]).write(to: dir.appending(path: "notes.txt"))
         try Data().write(to: dir.appending(path: "leer.jpg"))  // (empty: still being written)
         var watch = FolderWatch()
-        watch.scan(dir, waiting: [], now: 0)
+        watch.scan(dir.path, waiting: [], now: 0)
         #expect(watch.hasPending && watch.ready(now: 1).isEmpty)  // (not two seconds yet)
         try Data([1, 2, 3, 4]).write(to: image)  // written again: waits anew
         #expect(watch.ready(now: 2.5).isEmpty)
         let ready = watch.ready(now: 4.6)
-        #expect(ready.map(\.url.lastPathComponent) == ["Kamel.png"] && ready.first?.stamp.first == 4)
-        for item in ready { watch.handled(item.url, stamp: item.stamp) }
-        watch.scan(dir, waiting: [], now: 5)
+        #expect(ready.map { ($0.path as NSString).lastPathComponent } == ["Kamel.png"] && ready.first?.stamp.first == 4)
+        for item in ready { watch.handled(item.path, stamp: item.stamp) }
+        watch.scan(dir.path, waiting: [], now: 5)
         #expect(watch.ready(now: 10).isEmpty)  // handled: not again (the empty one still waits)
 
         let file = dir.appending(path: "state/watch_state.json")
         watch.save(file)
         var again = FolderWatch.load(file)
-        again.scan(dir, waiting: [], now: 0)
+        again.scan(dir.path, waiting: [], now: 0)
         #expect(again.ready(now: 3).isEmpty && again.state == watch.state)  // (after a restart, too)
         try Data([9, 9]).write(to: image)  // a new picture of the same name: sketched again
-        again.scan(dir, waiting: [], now: 4)
+        again.scan(dir.path, waiting: [], now: 4)
         let renewed = again.ready(now: 7)
-        #expect(renewed.map(\.url.lastPathComponent) == ["Kamel.png"])
-        for item in renewed { again.handled(item.url, stamp: item.stamp) }
+        #expect(renewed.map { ($0.path as NSString).lastPathComponent } == ["Kamel.png"])
+        for item in renewed { again.handled(item.path, stamp: item.stamp) }
         let gone = dir.appending(path: "Zebra.png")
         try Data([1]).write(to: gone)
-        again.scan(dir, waiting: [gone.path], now: 8)  // (queued already)
+        again.scan(dir.path, waiting: [FolderWatch.join(dir.path, "Zebra.png")], now: 8)  // (queued already)
         #expect(again.ready(now: 11).isEmpty)
     }
 
@@ -68,7 +68,7 @@ import Testing
         let dir = try Self.folder()
         let file = dir.appending(path: "watch_state.json")
         var watch = FolderWatch()
-        watch.handled(URL(filePath: "/Bilder/Bär.png"), stamp: [12, 1_700_000_000_123_456_789])
+        watch.handled("/Bilder/Bär.png", stamp: [12, 1_700_000_000_123_456_789])
         watch.save(file)
         let text = try String(contentsOf: file, encoding: .utf8)
         #expect(text == "{\n \"/Bilder/B\\u00e4r.png\": [\n  12,\n  1700000000123456789\n ]\n}")  // (json.dump, indent=1)

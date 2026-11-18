@@ -55,12 +55,13 @@ public struct FolderWatch: Sendable {
     }
 
     private struct Pending: Sendable {
-        let url: URL
+        let path: String
         let stamp: [Int]
         let since: Double
     }
 
-    /// path → [size, mtime in ns] of every image handled (as watch_state.json keeps it)
+    /// path → [size, mtime in ns] of every image handled (as watch_state.json keeps it). The paths are strings as
+    /// the folder lists its names (os.listdir) – not URL.path, which takes an "ä" apart.
     public private(set) var state: [String: [Int]]
     private var pending: [String: Pending] = [:]
 
@@ -71,9 +72,9 @@ public struct FolderWatch: Sendable {
     public var hasPending: Bool { !pending.isEmpty }
 
     /// [size, mtime in ns] of a file (os.stat's st_size and st_mtime_ns); nil when it is not one.
-    public static func stamp(_ url: URL) -> [Int]? {
+    public static func stamp(_ path: String) -> [Int]? {
         var st = stat()
-        guard stat(url.path, &st) == 0, (st.st_mode & S_IFMT) == S_IFREG else { return nil }
+        guard stat(path, &st) == 0, (st.st_mode & S_IFMT) == S_IFREG else { return nil }
         #if canImport(Darwin)
             let time = st.st_mtimespec
         #else
@@ -82,42 +83,46 @@ public struct FolderWatch: Sendable {
         return [Int(st.st_size), Int(time.tv_sec) * 1_000_000_000 + Int(time.tv_nsec)]
     }
 
+    /// os.path.join of the watched folder and a name it lists.
+    public static func join(_ folder: String, _ name: String) -> String {
+        folder.hasSuffix("/") ? folder + name : folder + "/" + name
+    }
+
     /// scan: note the folder's new or changed images (`waiting`: the paths queued already).
-    public mutating func scan(_ folder: URL, waiting: Set<String>, now: Double) {
-        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else { return }
+    public mutating func scan(_ folder: String, waiting: Set<String>, now: Double) {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder) else { return }
         for name in names where ImageFiles.isImage(name) {
-            let url = folder.appending(path: name)
-            guard let stamp = Self.stamp(url) else { continue }
-            let key = url.path
+            let key = Self.join(folder, name)
+            guard let stamp = Self.stamp(key) else { continue }
             if waiting.contains(key) || state[key] == stamp { continue }  // queued, or handled before
             if pending[key]?.stamp != stamp {
-                pending[key] = Pending(url: url, stamp: stamp, since: now)
+                pending[key] = Pending(path: key, stamp: stamp, since: now)
             }
         }
     }
 
     /// _check_pending: the images that stayed unchanged long enough – to be queued now (and remembered with
     /// `handled`); one that went away is forgotten, one still written waits.
-    public mutating func ready(now: Double) -> [(url: URL, stamp: [Int])] {
-        var out: [(url: URL, stamp: [Int])] = []
+    public mutating func ready(now: Double) -> [(path: String, stamp: [Int])] {
+        var out: [(path: String, stamp: [Int])] = []
         for (key, p) in pending.sorted(by: { $0.key < $1.key }) {
-            guard let stamp = Self.stamp(p.url) else {
+            guard let stamp = Self.stamp(p.path) else {
                 pending[key] = nil  // gone again
                 continue
             }
             if stamp != p.stamp || stamp[0] == 0 {
-                pending[key] = Pending(url: p.url, stamp: stamp, since: now)  // still being written
+                pending[key] = Pending(path: p.path, stamp: stamp, since: now)  // still being written
             } else if now - p.since >= Self.stable {
                 pending[key] = nil
-                out.append((p.url, stamp))
+                out.append((p.path, stamp))
             }
         }
         return out
     }
 
     /// The image is queued: not again, also after a restart.
-    public mutating func handled(_ url: URL, stamp: [Int]) {
-        state[url.path] = stamp
+    public mutating func handled(_ path: String, stamp: [Int]) {
+        state[path] = stamp
     }
 
     public mutating func forgetPending() {

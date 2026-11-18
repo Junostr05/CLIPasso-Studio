@@ -45,7 +45,7 @@ import StudioCore
 
             // remembered beside settings.json: the same picture put back is not sketched again
             let state = store.url.deletingLastPathComponent().appending(path: FolderWatch.stateFile)
-            #expect(FolderWatch.load(state).state.keys.contains(image.path))
+            #expect(FolderWatch.load(state).state.keys.contains(FolderWatch.join(watched.path, "Kamel.png")))
             try FileManager.default.moveItem(at: watched.appending(path: "done/Kamel.png"), to: image)
             await model.watchTick(now: 20)
             await model.watchTick(now: 23)
