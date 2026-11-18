@@ -82,7 +82,8 @@ public enum PhoneStudio {
             } else {
                 wanted = .string(pyStr(value))
             }
-            return p.choices.contains(wanted) ? wanted : nil
+            guard p.choices.contains(wanted) else { return nil }  // (not "? : nil": that would be JSON's null)
+            return wanted
         case .flags:
             let parts = Set(pyStr(value).replacingOccurrences(of: ",", with: "_").split(separator: "_").map(String.init))
             let kept = p.choices.compactMap(\.stringValue).filter { parts.contains($0) }
