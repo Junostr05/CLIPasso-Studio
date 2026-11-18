@@ -964,6 +964,57 @@ def phone_cases(out: Path) -> dict:
     return {"schemas": schemas, "coerce": coerced, "input_side": phone_api.INPUT_SIDE, "studio_keys": studio_keys}
 
 
+EXPORT_SETTINGS = (  # what the last exports may have left in settings.json
+    {},
+    {"export_stroke": "#336699", "export_width": "2.5", "export_style": "ink", "export_background": "transparent",
+     "export_paper": "kraft", "export_vignette": 30, "export_frame": "photo", "export_margin": 12,
+     "export_pdf_width": 20, "export_anim_mode": "strokes"},
+    {"export_background": "", "export_stroke": "", "export_frame": "nope", "export_width": "x",
+     "export_margin": "7.9", "export_vignette": None, "export_anim_mode": "process", "export_style": "chalk"},
+)
+EXPORT_SKETCHES = (
+    {"process_frames": 0, "strokes": 12, "draw_length": 3.2, "process_length": 2.0, "photo_frame": False},
+    {"process_frames": 40, "strokes": 30, "draw_length": 5.5, "process_length": 2.0, "photo_frame": True},
+)
+EXPORT_RAW = (None, {}, "nope",
+              {"stroke": "#abcdef", "width": 30, "style": "neon", "background": "transparent", "paper": "linen",
+               "vignette": 150, "frame": "photo", "margin": -3, "size": 99999, "width_cm": 1, "mode": "process",
+               "length": 0.1, "hold": 20},
+              {"stroke": "red", "width": "abc", "style": "nope", "background": "#12345", "frame": "content",
+               "size": "300", "mode": "strokes", "length": "7", "hold": True, "paper": 3, "vignette": "12.7"},
+              {"stroke": " #A1B2C3 ", "background": "#ffffff", "mode": "nope", "margin": 50.9, "width_cm": "33.3"})
+
+
+def export_cases() -> dict:
+    """gui/export_jobs.py, the export from the phone: which options a format has, what it starts with after the
+    last exports (the settings) for a sketch with and without saved steps, what the phone's options become – made
+    safe – and what is remembered for the next export."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui import export_jobs
+
+    real = export_jobs.app_settings
+    cases = []
+    try:
+        for n, stored in enumerate(EXPORT_SETTINGS):
+            for k, sketch in enumerate(EXPORT_SKETCHES):
+                for fmt in export_jobs.FORMATS:
+                    data = dict(stored)
+                    store = SimpleNamespace(data=data, get=lambda key, d=None, data=data: data.get(key, d),
+                                            save=lambda: None)
+                    export_jobs.app_settings = lambda store=store: store
+                    first = export_jobs.defaults(fmt, sketch)  # (before anything is remembered)
+                    checked = [export_jobs.check(fmt, raw, sketch) for raw in EXPORT_RAW]
+                    export_jobs.remember(fmt, checked[3])
+                    cases.append({"settings": n, "sketch": k, "fmt": fmt, "defaults": first, "checked": checked,
+                                  "remembered": data, "applies": export_jobs.applies(fmt, sketch["process_frames"])})
+    finally:
+        export_jobs.app_settings = real
+    return {"settings": list(EXPORT_SETTINGS), "sketches": list(EXPORT_SKETCHES), "raw": list(EXPORT_RAW),
+            "formats": list(export_jobs.FORMATS), "max_size": export_jobs.MAX_SIZE,
+            "content_types": export_jobs.CONTENT_TYPES, "cases": cases}
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -1216,6 +1267,7 @@ def build(out: Path) -> None:
     write_json(out / "detail" / "edit.json", detail_cases(out))
     write_json(out / "remote" / "remote.json", remote_cases(out))
     write_json(out / "phone" / "studio.json", phone_cases(out))
+    write_json(out / "phone" / "export.json", export_cases(), indent=None)
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),

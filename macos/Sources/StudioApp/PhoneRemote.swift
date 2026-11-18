@@ -128,6 +128,8 @@ public final class PhoneRemote {
     public private(set) var revision = 0
     @ObservationIgnored public let keys: RemoteKeys
     @ObservationIgnored var server: RemoteServer?
+    /// the exports started from the phone, by their id
+    @ObservationIgnored var exports: [String: PhoneExportJob] = [:]
     /// the mask being touched up on the phone (nothing is kept until "Save")
     @ObservationIgnored var maskSession: (image: URL, editor: MaskEditorModel, rev: Int)?
     /// a message for the phone (e.g. what "find face" found), shown once – and its count
@@ -479,6 +481,9 @@ public extension AppModel {
             if let answer = await phoneStudioAnswer(action, data) { return answer }
             if let answer = await phoneQueueAnswer(action, data) { return answer }
             if let answer = await phonePaintAnswer(action, data, payload: payload) { return answer }
+            #if canImport(ImageIO) && canImport(CoreText)
+                if let answer = await phoneExportAnswer(action, data) { return answer }
+            #endif
             return no("unknown action")
         }
     }

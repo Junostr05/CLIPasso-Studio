@@ -378,33 +378,10 @@ struct ExportSheet: View {
             let watch = Task { for await (a, b) in stream { (done, total) = (a, b) } }
             defer { watch.cancel() }
             do {
-                if let animation = format.animation {
-                    let job = AnimationJob(mode: mode, format: animation, options: options, length: length, hold: hold,
-                                           svg: svg, runDir: runDir, photo: photo, stylist: stylist)
-                    _ = try await model.exportAnimation(job, to: url) { progress.yield(($0, $1)) }
-                } else {
-                    let data = try await Self.offMain { () throws -> Data in
-                        switch format {
-                        case .png:
-                            return try SketchExporter.png(svg, options: options, photo: photo, stylist: stylist)
-                        case .pdf:
-                            return try SketchExporter.pdf(svg, options: options, photo: photo, title: title,
-                                                          stylist: stylist)
-                        case .matrix:
-                            guard let jobDir else { throw ExportError(code: "export_no_sketches") }
-                            return try MatrixExport.zip(jobDir: jobDir, options: options, stylist: stylist) {
-                                progress.yield(($0, $1))
-                            }
-                        default:
-                            let text = try SketchExporter.text(svg, format: format, options: options, photo: photo,
-                                                               runDir: runDir, length: length, hold: hold, name: title,
-                                                               labels: labels, stylist: stylist)
-                            return Data(text.utf8)
-                        }
-                    }
-                    try Task.checkCancellation()  // (made before the cancel arrived: nothing half-wanted is kept)
-                    try data.write(to: url, options: .atomic)
-                }
+                let request = ExportRequest(format: format, svg: svg, runDir: runDir, jobDir: jobDir, photo: photo,
+                                            options: options, mode: mode, length: length, hold: hold, title: title,
+                                            labels: labels, stylist: stylist)
+                try await model.runExport(request, to: url) { progress.yield(($0, $1)) }
                 progress.finish()
                 model.updateSettings {
                     options.remember(in: &$0, format: format)
@@ -420,11 +397,5 @@ struct ExportSheet: View {
                 problem = String(describing: error)
             }
         }
-    }
-
-    /// Work on threads of its own (the cooperative pool stays free) that stops when the calling task is cancelled.
-    private static func offMain<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
-        let task = Task.detached(executorPreference: OwnThreads.shared) { try work() }
-        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 }

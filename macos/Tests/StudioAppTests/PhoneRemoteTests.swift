@@ -191,6 +191,33 @@ import StudioCore
         #expect(model.studio.result?.jobDir.lastPathComponent == dir.stringValue)
         #expect(Self.json(await model.phoneAnswer("do_open", ["dir": "gone"], payload: nil))
             == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.list_changed"))])
+        // the shown sketch exported from the phone (the CLIPasso result of the fixtures): its formats, then an SVG
+        // in the background, downloaded
+        #expect(Self.json(await model.phoneAnswer("do_open", ["dir": "done_clipasso"], payload: nil)) == ["ok": true])
+        let info = try #require(Self.json(await model.phoneAnswer("get_export_info", [:], payload: nil)))
+        let formats = (info["formats"]?.arrayValue ?? []).compactMap { $0.objectValue?["fmt"]?.stringValue }
+        #expect(info["ok"] == true && formats.contains("svg") && formats.contains("gif") && !formats.contains("matrix"))
+        let started = try #require(Self.json(await model.phoneAnswer("do_export", [
+            "fmt": "svg", "options": ["stroke": "#336699", "background": "transparent", "frame": "content"]],
+                                                                     payload: nil)))
+        let id = try #require(started["id"])
+        #expect(started["ok"] == true && started["name"]?.stringValue?.hasSuffix(".svg") == true)
+        var state: JSONObject = [:]
+        for _ in 0 ..< 250 {
+            state = Self.json(await model.phoneAnswer("get_export", ["id": id], payload: nil)) ?? [:]
+            if state["status"] != "running" { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(state["status"] == "done" && (state["size"]?.intValue ?? 0) > 0, "\(state)")
+        guard case .file(let file, "image/svg+xml", let name) = await model.phoneAnswer("file_export", ["id": id],
+                                                                                         payload: nil)
+        else { Issue.record("no file"); return }
+        #expect(name == started["name"]?.stringValue)
+        #expect((try String(contentsOf: file, encoding: .utf8)).contains("#336699"))
+        #expect(model.settings["export_stroke"] == "#336699" && model.settings["export_last_format"] == "svg")
+        #expect(Self.json(await model.phoneAnswer("get_export", ["id": "nope"], payload: nil))?["ok"] == false)
+        #expect(Self.json(await model.phoneAnswer("do_export", ["fmt": "nope"], payload: nil))
+            == ["ok": false, "error": "unknown format"])
         // the queue without an engine: empty, with its switches
         let queue = try #require(Self.json(await model.phoneAnswer("get_queue", [:], payload: nil)))
         #expect(queue["jobs"] == [] && queue["auto_start"] == true && queue["done_actions"]?.arrayValue?.count == 3)
