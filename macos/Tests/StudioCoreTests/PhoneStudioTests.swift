@@ -22,7 +22,7 @@ import Testing
     @Test(arguments: ["de", "en"])
     func theParametersAsThePhoneShowsThem(_ lang: String) throws {
         let schema = try ParamSchema.load(Fixtures.url("schema.json"))
-        let texts = try Texts(directory: DesignTests.i18n, language: lang)
+        let texts = try Texts(directory: TextsTests.i18n, language: lang)
         let all = try #require(try Self.cases()["schemas"]?.objectValue)
         for id in schema.methods {
             let want = try #require(all["\(id)_\(lang)"])
