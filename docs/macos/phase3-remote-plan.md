@@ -27,7 +27,7 @@ dieselben Dinge, und die Sicherheit ist dieselbe.
 
 ## Schritte
 
-- [ ] **R1 · Grundlagen in StudioCore** (`Sources/StudioCore/Remote/`)
+- [x] **R1 · Grundlagen in StudioCore** (`Sources/StudioCore/Remote/`)
   - `RemoteAccess`: `allowedClient` (privat, link-local, loopback, IPv4 in IPv6; Tailnet 100.64/10 nur mit
     Schalter), Zugangscode (`token_urlsafe(18)`) und PIN (6 Ziffern).
   - `PinGuard`: 5 Versuche, dann 30 s Wartezeit, die sich bis 3600 s verdoppelt; 20 falsche PINs in 600 s sperren alle.
