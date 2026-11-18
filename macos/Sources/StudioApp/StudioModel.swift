@@ -85,6 +85,14 @@ public final class StudioModel {
     public var strokes: Int { methodSchema?.numStrokes(settings) ?? 0 }
 
     /// What a job gets: the settings with their method.
+    /// A method's settings as a job of it would take them: the shown ones, else the ones it had (or its start).
+    public func settings(for id: String) -> JSONObject {
+        guard id != method else { return jobSettings }
+        var out = perMethod[id] ?? schema.method(id)?.start ?? [:]
+        out["method"] = .string(id)
+        return out
+    }
+
     public var jobSettings: JSONObject {
         var out = settings
         out["method"] = .string(method)

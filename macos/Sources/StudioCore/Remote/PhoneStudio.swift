@@ -7,6 +7,17 @@ public enum PhoneStudio {
     /// INPUT_SIDE: the picture as the phone sees it (and paints the detail map on)
     public static let inputSide = 900
 
+    /// A parameter's label (_param_label_key), its key where there is no text.
+    public static func label(_ p: Param, texts: Texts) -> String {
+        texts.has(p.text.label) ? texts.tr(p.text.label) : p.key
+    }
+
+    /// _choice_label: a choice's text, the value itself where there is none.
+    public static func choiceLabel(_ p: Param, _ value: JSONValue, texts: Texts) -> String {
+        guard let key = p.text.choices[pyStr(value)], texts.has(key) else { return pyStr(value) }
+        return texts.tr(key)
+    }
+
     /// get_schema: the groups of the method's parameters (not paths, not hidden ones) with label, help, limits and
     /// choices, and its presets.
     public static func schema(_ method: MethodSchema, texts: Texts) -> JSONObject {
@@ -14,16 +25,14 @@ public enum PhoneStudio {
         for p in method.params where p.kind != .path && !p.hidden {
             var item: JSONObject = [
                 "key": .string(p.key), "kind": .string(p.kind.rawValue),
-                "label": .string(texts.has(p.text.label) ? texts.tr(p.text.label) : p.key),
+                "label": .string(label(p, texts: texts)),
                 "help": .string(p.text.help.map { texts.has($0) ? texts.tr($0) : "" } ?? ""),
                 "advanced": .bool(p.advanced), "min": number(p.minimum), "max": number(p.maximum),
                 "step": number(p.step), "decimals": .int(p.decimals),
             ]
             if p.kind == .choice || p.kind == .flags {
                 item["choices"] = .array(p.choices.map { value in
-                    let key = p.text.choices[pyStr(value)]
-                    return .object(["value": value,
-                                    "label": .string(key.map { texts.has($0) ? texts.tr($0) : pyStr(value) } ?? pyStr(value))])
+                    .object(["value": value, "label": .string(choiceLabel(p, value, texts: texts))])
                 })
             }
             if let i = groups.firstIndex(where: { $0.key == p.group }) {

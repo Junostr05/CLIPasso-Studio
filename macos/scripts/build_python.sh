@@ -51,16 +51,16 @@ find "$OUT/python" -name "__pycache__" -type d -prune -exec rm -rf {} +
 # bin/: only Python itself (the scripts pip wrote name this build machine's path)
 find "$OUT/python/bin" -mindepth 1 ! -name "python3" ! -name "python3.*" ! -name "python" -exec rm -f {} +
 
-# the engine: the package without the Qt studio (gui/ only methods_ui.py – names and icons of the methods – and
-# brush.py – the brush styles the app's exports are drawn in)
-# (the phone remote's page is not in the first Mac release)
+# the engine: the package without the Qt studio (gui/ only methods_ui.py – names and icons of the methods –,
+# brush.py – the brush styles the app's exports are drawn in – and model_roles.py – the models the settings choose,
+# by task); the phone page's files go to the app's resources (make_app.sh)
 "$PY" -I - "$ROOT/clipasso_studio" "$OUT/engine/clipasso_studio" <<'PY'
 import os, shutil, sys
 src, dst = (os.path.abspath(p) for p in sys.argv[1:3])
 def ignore(folder, names):
     skip = {n for n in names if n == "__pycache__" or n.endswith(".pyc")}
     if os.path.abspath(folder) == os.path.join(src, "gui"):
-        skip |= {n for n in names if n not in ("methods_ui.py", "brush.py")}
+        skip |= {n for n in names if n not in ("methods_ui.py", "brush.py", "model_roles.py")}
     if os.path.abspath(folder) == os.path.join(src, "resources"):
         skip |= {"phone"}
     return skip
@@ -74,6 +74,6 @@ PY
     || echo "note: some library files did not compile ahead (they are compiled when imported)"
 # the engine starts – without the user's Python settings, as the app starts it
 env -i PATH=/usr/bin:/bin HOME="$HOME" PYTHONPATH="$OUT/engine" PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
-    "$PY" -s -c "import torch, clipasso_studio.headless.server, clipasso_studio.engine.pipeline, clipasso_studio.gui.brush; \
+    "$PY" -s -c "import torch, clipasso_studio.headless.server, clipasso_studio.engine.pipeline, clipasso_studio.gui.brush, clipasso_studio.gui.model_roles; \
 print('torch', torch.__version__, '· MPS', torch.backends.mps.is_available())"
 du -sh "$OUT/python" "$OUT/engine"

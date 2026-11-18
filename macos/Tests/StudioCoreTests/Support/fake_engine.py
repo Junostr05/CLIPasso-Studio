@@ -7,7 +7,8 @@ MODE: echo · crash_after N (ends with exit code 3 after N answers) · garbage (
 (answers after 2 s) · stderr_secret (writes a secret to stderr) · protocol2 (speaks another protocol) · job DIR
 (``start`` "computes" by copying the finished job folder DIR into output_root) · job_fails (``start`` ends with
 job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEYS as missing until ``convert_model``
-found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR) · mask
+found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``model_roles`` has them for the
+mask's role; ``start`` as in job DIR) · mask
 PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked again it gives PNG as the model's
 probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` gives it as the user's – and
 ``remove_mask`` removes it; ``detail`` gives the map ``save_detail`` kept – a copy, at 32 × 24 –, ``portrait`` first
@@ -89,6 +90,15 @@ for raw in sys.stdin.buffer:
     elif op == "required_models":
         missing = [k for k in needed if k not in converted]
         send({"id": rid, "ok": True, "result": {"required": needed, "missing": missing}})
+    elif op == "model_roles":  # (the mask's role needs the KEYS of "needs")
+        missing = [k for k in needed if k not in converted]
+        send({"id": rid, "ok": True, "result": {
+            "roles": [{"category": "mask", "key": "mask_model", "value": args["settings"].get("mask_model", "birefnet"),
+                       "enabled": True, "models": needed, "missing": missing, "experimental": False,
+                       "choices": [{"value": "birefnet", "experimental": False},
+                                   {"value": "u2net", "experimental": True}]}],
+            "in_use": needed, "missing": missing,
+            "methods": {m: bool(missing) and m == args["method"] for m in args.get("methods", {})}}})
     elif op == "convert_model" and mode == "needs":
         part = os.path.join(args["dest_root"], ".partial", args["key"] + ".part")
         if os.path.isfile(part):  # (as model_store.convert_downloaded: the model in place, the download gone)

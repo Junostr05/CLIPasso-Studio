@@ -10,7 +10,11 @@ import StudioCore
 /// download running, …).
 public extension AppModel {
     /// get_studio: everything the page shows of the studio.
-    func phoneStudio() -> JSONObject {
+    /// `models`: the engine's model_roles for the studio's settings (what is missing).
+    func phoneStudio(models roles: JSONObject? = nil) -> JSONObject {
+        let missing = roles?["missing"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        let missingMB = Double(missing.reduce(0) { $0 + (catalog.spec($1)?.downloadSize ?? 0) }) / 1e6
+        let byMethod = roles?["methods"]?.objectValue ?? [:]
         let method = studio.method
         let values = studio.settings
         let params = (studio.methodSchema?.params ?? []).filter { $0.kind != .path && !$0.hidden }
@@ -29,9 +33,11 @@ public extension AppModel {
         return [
             "method": .string(method),
             "methods": .array(RemoteAccess.methods.filter { schema.method($0) != nil }.map {
-                ["key": .string($0), "name": .string(schema.method($0)?.name ?? $0), "missing": false]
+                ["key": .string($0), "name": .string(schema.method($0)?.name ?? $0),
+                 "missing": .bool(byMethod[$0]?.truthy ?? false)]
             }),
-            "missing": [], "missing_mb": 0,
+            "missing": .array(missing.map { .string(models.name($0)) }),
+            "missing_mb": .int(Int(missingMB.rounded(.toNearestOrEven))),
             "preset": .string(studio.preset ?? ""), "user_preset": "", "user_presets": [],
             "settings": .object(JSONObject(params.map { ($0.key, values[$0.key] ?? .null) })),
             "enabled": .object(JSONObject(params.map { ($0.key, .bool(studio.isEnabled($0.key))) })),
@@ -63,7 +69,7 @@ public extension AppModel {
             "style": .string(canvas["canvas_style"]?.stringValue ?? "plain"),
             "paper": .string(canvas["canvas_paper"]?.stringValue ?? "none"),
             "note": phone.note.isEmpty ? .null : ["id": .int(phone.noteID), "text": .string(phone.note)],
-            "scene": .null, "download": .null,
+            "scene": .null, "download": phoneDownloadState(),
             "mask": phoneMask(),
             "edit": .null, "views": [:], "hints": [],
             "vignette": .bool(canvas["canvas_vignette"]?.truthy ?? false),
@@ -170,7 +176,7 @@ public extension AppModel {
         func no(_ why: String) -> RemoteAnswer { .json(["ok": false, "error": .string(why)]) }
         switch action {
         case "get_studio":
-            return .json(.object(phoneStudio()))
+            return .json(.object(phoneStudio(models: await phoneModelRoles())))
         case "do_select":
             guard let seed = data["seed"].flatMap({ PhoneStudio.int($0) }) else { return no("unknown sketch") }
             guard let result = studio.result, let run = result.runs.first(where: { $0.seed == seed }) else {

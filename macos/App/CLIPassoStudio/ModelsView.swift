@@ -54,7 +54,7 @@ private struct ModelRow: View {
         HStack(alignment: .firstTextBaseline, spacing: Spacing.spaceM) {
             VStack(alignment: .leading, spacing: Spacing.spaceXs) {
                 Text(verbatim: spec.name).font(.headline)
-                Text(purpose).font(.callout).foregroundStyle(.secondary)
+                Text(verbatim: model.purpose(spec)).font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -77,11 +77,4 @@ private struct ModelRow: View {
                 : state == .included ? "ui.models.bundled" : "ui.models.installed")))
     }
 
-    private var purpose: String {
-        var params: [String: String] = [:]
-        for (name, key) in spec.purposeParams {
-            params[name] = model.texts.tr(key)
-        }
-        return model.texts.tr(spec.purpose, params)
-    }
 }

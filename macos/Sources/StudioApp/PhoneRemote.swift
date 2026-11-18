@@ -131,6 +131,8 @@ public final class PhoneRemote {
     /// the exports started from the phone, by their id
     @ObservationIgnored var exports: [String: PhoneExportJob] = [:]
     /// the mask being touched up on the phone (nothing is kept until "Save")
+    /// the models downloaded on the phone's request (the window's download – the window shows it, too)
+    @ObservationIgnored var download: PhoneDownload?
     @ObservationIgnored var maskSession: (image: URL, editor: MaskEditorModel, rev: Int)?
     /// a message for the phone (e.g. what "find face" found), shown once – and its count
     @ObservationIgnored private(set) var note = ""
@@ -481,6 +483,7 @@ public extension AppModel {
             if let answer = await phoneStudioAnswer(action, data) { return answer }
             if let answer = await phoneQueueAnswer(action, data) { return answer }
             if let answer = await phonePaintAnswer(action, data, payload: payload) { return answer }
+            if let answer = await phoneModelsAnswer(action, data) { return answer }
             #if canImport(ImageIO) && canImport(CoreText)
                 if let answer = await phoneExportAnswer(action, data) { return answer }
             #endif

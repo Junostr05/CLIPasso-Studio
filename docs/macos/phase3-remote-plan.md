@@ -48,13 +48,16 @@ dieselben Dinge, und die Sicherheit ist dieselbe.
   - Ein Upload geht in die Warteschlange oder ins Studio.
 - [x] **R4 · Studio vom Handy** (`get_studio`, `get_schema`, `do_set`, `do_method`, `do_preset`, Start, Pause,
   Abbrechen, `file_sketch`, `file_input`, `set_image`, Voreinstellungen)
-- [ ] **R5 · Warteschlange, Ergebnisse, Galerie** (`get_queue`, `do_move`, `do_retry`, `do_run_next`,
+- [x] **R5 · Warteschlange, Ergebnisse, Galerie** (`get_queue`, `do_move`, `do_retry`, `do_run_next`,
   `get_results`, `do_fav`, `do_album`, `do_info`, `file_result`, `file_download`)
 - [ ] **R6 · Der Rest**
-  - Maske und Detail-Pinsel (`do_mask_*`, `set_details`, `file_details`).
-  - Export (`do_export`, `get_export`).
-  - Vergleichen, Schritte, Simplify.
-  - Modelle, App-Einstellungen.
+  - [x] Maske und Detail-Pinsel (`do_mask_*`, `set_details`, `file_details`, `do_face`).
+  - [x] Export (`get_export_info`, `do_export`, `get_export`, `file_export`, `do_cancel_export`).
+  - [x] Modelle (`get_models` mit den Modellen nach Aufgabe aus der Engine-Abfrage `model_roles`,
+    `do_download_models` als Download des Fensters, `do_cancel_download`, `do_remove_model`) und was im Studio
+    fehlt (`missing`, `missing_mb`, je Methode).
+  - [x] App-Einstellungen: die Sprache. Wach halten, Mitteilungen und Updates kommen mit ihren Teilen der App.
+  - [ ] Vergleichen, Schritte, Vereinfachen – sobald die Mac-App sie hat.
   - Updates folgen mit Phase „Updates“.
 - [x] **R7 · Testplan** (`docs/macos/testplan-mac.md`, Abschnitt Handy: iPhone und Android, QR-Code, PIN,
   Upload mit HEIC)

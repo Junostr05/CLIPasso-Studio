@@ -362,6 +362,12 @@ public final class AppModel {
         return catalog.installedURL(key, dirs: [modelsDir]) != nil ? .installed : .missing
     }
 
+    /// What a model is for, as the Models page says it ("" when the list says nothing).
+    public func purpose(_ spec: ModelSpec) -> String {
+        guard !spec.purpose.isEmpty else { return "" }
+        return texts.tr(spec.purpose, spec.purposeParams.mapValues { texts.tr($0) })
+    }
+
     /// *Download* on the Models page: asked as before a job, but no job follows.
     public func downloadModels(_ keys: [String]) {
         guard !keys.isEmpty else { return }

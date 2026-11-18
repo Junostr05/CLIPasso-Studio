@@ -46,8 +46,11 @@ final class OneFileTransport: HTTPTransport {
     static func setup(_ transport: any HTTPTransport) throws -> (AppModel, URL) {
         let dir = FileManager.default.temporaryDirectory.appending(path: "flow-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let catalog: JSONValue = ["format": 1, "partial_dir": ".partial", "models": [[
-            "key": "tiny", "name": "Tiny", "filename": "tiny/tiny.pt", "urls": ["https://models.invalid/tiny.pt"],
+        let catalog: JSONValue = ["format": 1, "partial_dir": ".partial", "groups": [[
+            "id": "basic", "title": "ui.models.group.basic", "hint": "ui.models.group_hint.basic",
+        ]], "models": [[
+            "key": "tiny", "name": "Tiny", "group": "basic", "filename": "tiny/tiny.pt",
+            "urls": ["https://models.invalid/tiny.pt"],
             "sha256": .string(Sha256.hex(payload)), "download_size": .int(payload.count), "stored_size_mb": 1,
             "kind": "clip", "mac_bundled": false, "extra": [:],
         ]]]
@@ -140,6 +143,84 @@ final class OneFileTransport: HTTPTransport {
         #expect(model.queueSnapshot?.jobs.isEmpty ?? true)  // a download from the Models page starts no job
         try model.removeModel("tiny")
         #expect(model.modelState("tiny") == .missing)
+        await model.stopEngine()
+    }
+
+    /// The models from the phone (phone_api 3.8): what the studio's settings need, by task, downloaded on the phone's
+    /// request as the window downloads them (no job follows), removed – and the language, the one app setting the
+    /// Mac app has yet.
+    @Test func theModelsFromThePhone() async throws {
+        let (model, modelsDir) = try Self.setup(OneFileTransport(Self.payload))
+        await model.startEngine()
+        func ask(_ action: String, _ data: JSONObject = [:]) async -> JSONObject? {
+            PhoneRemoteTests.json(await model.phoneAnswer(action, data, payload: nil))
+        }
+        var studio = try #require(await ask("get_studio"))
+        #expect(studio["missing"] == ["Tiny"] && studio["missing_mb"] == 0 && studio["download"] == .null)  // (0.2 MB)
+        let methods = studio["methods"]?.arrayValue?.compactMap(\.objectValue) ?? []
+        #expect(methods.filter { $0["missing"]?.truthy == true }.map { $0["key"]?.stringValue } == [model.studio.method])
+
+        let page = try #require(await ask("get_models"))
+        let group = try #require(page["groups"]?.arrayValue?.first?.objectValue)
+        let tiny = try #require(group["models"]?.arrayValue?.first?.objectValue)
+        #expect(group["name"] == "Grundmodelle" && tiny["key"] == "tiny" && tiny["mb"] == 1)
+        #expect(tiny["available"] == false && tiny["used"] == true && tiny["bundled"] == false)
+        let role = try #require(page["roles"]?.arrayValue?.first?.objectValue)
+        #expect(role["category"] == "Maske" && role["key"] == "mask_model" && role["models"] == ["Tiny"])
+        #expect(role["missing"] == ["tiny"] && role["enabled"] == true)
+        let choices = role["choices"]?.arrayValue?.compactMap(\.objectValue) ?? []
+        #expect(choices.map { $0["value"]?.stringValue } == ["birefnet", "u2net"])
+        #expect(choices.map { $0["experimental"]?.truthy } == [false, true])
+        #expect(choices.allSatisfy { ($0["label"]?.stringValue ?? "").isEmpty == false })
+        #expect(page["download"] == .null)
+
+        #expect(await ask("do_remove_model", ["key": "tiny"])?["error"] == "Ging nicht.")  // (not there)
+        #expect(await ask("do_download_models") == ["ok": true, "count": 1])
+        let again = await ask("do_download_models", ["keys": ["tiny"]])?["error"]
+        #expect(again == "Es läuft schon ein Download." || again == "Es fehlen keine Modelle.")
+        try await Self.wait("the download") { model.modelState("tiny") == .installed && model.models.stage == .idle }
+        let state = try #require(await ask("get_models")?["download"]?.objectValue)
+        #expect(state["status"] == "done" && state["count"] == 1 && state["error"] == "")
+        #expect(model.queueSnapshot?.jobs.isEmpty ?? true)  // no job follows
+        studio = try #require(await ask("get_studio"))
+        #expect(studio["missing"] == [] && studio["download"]?.objectValue?["status"] == "done")
+        #expect(await ask("do_download_models")?["error"] == "Es fehlen keine Modelle.")
+
+        #expect(await ask("do_remove_model", ["key": "nope"])?["error"] == "Ging nicht.")
+        #expect(await ask("do_remove_model", ["key": "tiny"]) == ["ok": true])
+        #expect(model.modelState("tiny") == .missing)
+        #expect(!FileManager.default.fileExists(atPath: modelsDir.appending(path: "tiny/tiny.pt").path))
+
+        let settings = try #require(await ask("get_app_settings")?["settings"]?.arrayValue?.first?.objectValue)
+        #expect(settings["key"] == "language" && settings["kind"] == "choice" && settings["value"] == "de")
+        let languages = settings["choices"]?.arrayValue?.compactMap { $0.objectValue?["value"] } ?? []
+        #expect(languages == ["auto", "de", "en"])
+        #expect(await ask("do_app_setting", ["key": "notify", "value": true])?["error"] == "Ging nicht.")
+        #expect(await ask("do_app_setting", ["key": "language", "value": "fr"])?["error"] == "Ging nicht.")
+        #expect(await ask("do_app_setting", ["key": "language", "value": "en"]) == ["ok": true])
+        #expect(model.texts.language == "en" && model.settings.language == "en")
+        await model.stopEngine()
+    }
+
+    /// A download from the phone cancelled from the phone: what came so far stays; the phone hears "cancelled".
+    @Test func theModelsFromThePhoneCancelled() async throws {
+        let (model, modelsDir) = try Self.setup(OneFileTransport(Self.payload, stall: true))
+        await model.startEngine()
+        #expect(PhoneRemoteTests.json(await model.phoneAnswer("do_download_models", ["keys": ["tiny", "nope"]],
+                                                              payload: nil)) == ["ok": true, "count": 1])
+        try await Self.wait("half of the file") {
+            if case .downloading(_, let done, _) = model.models.stage { return done > 0 }
+            return false
+        }
+        let running = PhoneRemoteTests.json(await model.phoneAnswer("get_models", [:], payload: nil))?["download"]?
+            .objectValue
+        #expect(running?["status"] == "running" && running?["name"] == "Tiny" && running?["index"] == 1)
+        #expect(PhoneRemoteTests.json(await model.phoneAnswer("do_cancel_download", [:], payload: nil)) == ["ok": true])
+        try await Self.wait("the cancel") { model.models.stage == .idle }
+        let state = PhoneRemoteTests.json(await model.phoneAnswer("get_models", [:], payload: nil))?["download"]?
+            .objectValue
+        #expect(state?["status"] == "cancelled")
+        #expect(FileManager.default.fileExists(atPath: modelsDir.appending(path: ".partial/tiny.part").path))
         await model.stopEngine()
     }
 

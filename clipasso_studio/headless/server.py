@@ -2,9 +2,9 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · convert_model · encode_webp · stylize · mask · save_mask ·
-remove_mask · detail · save_detail ·
-phone_detail · remove_detail · portrait · start · pause · resume · cancel · shutdown
+ops: hello · devices · schema · models · required_models · model_roles · convert_model · encode_webp · stylize ·
+mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait ·
+start · pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -194,6 +194,35 @@ class EngineServer:
             raise _Fail("bad_request", "settings is a JSON object")
         required = list(methods.required_models(schema.normalize(settings)))
         return {"required": required, "missing": [k for k in required if not model_store.is_available(k)]}
+
+    def op_model_roles(self, args: dict) -> dict:
+        """The models the studio's settings choose, by task (gui/model_roles.py, the models page): each role with the
+        models its value needs and the models each of its choices would need; every model the settings need, the
+        missing ones, and the missing ones of the other methods with their settings (``methods``)."""
+        from .. import settings_schema as schema
+        from ..engine import methods, model_store
+        from ..gui import model_roles
+
+        method, settings, others = args.get("method"), args.get("settings"), args.get("methods") or {}
+        if method not in model_roles.ROLES:
+            raise _Fail("bad_request", f"unknown method {method}")
+        if not isinstance(settings, dict) or not isinstance(others, dict):
+            raise _Fail("bad_request", "settings and methods are JSON objects")
+        roles = []
+        for row in model_roles.rows(method, settings):
+            param = schema.param(method, row["key"])
+            choices = [{"value": c, "experimental": any(model_roles.experimental(k) for k in
+                                                        model_roles.choice_models(method, row["key"], c, settings))}
+                       for c in (param.choices or ())] if param.kind == "choice" else []
+            roles.append({**row, "choices": choices})
+
+        def missing(values: dict) -> list[str]:
+            return [k for k in methods.required_models(schema.normalize(values)) if not model_store.is_available(k)]
+
+        return {"roles": roles, "in_use": sorted(model_roles.in_use(method, settings)),
+                "missing": missing({**settings, "method": method}),
+                "methods": {m: bool(missing({**(v if isinstance(v, dict) else {}), "method": m}))
+                            for m, v in others.items() if m in model_roles.ROLES}}
 
     def op_convert_model(self, args: dict) -> dict:
         """A model the Mac app downloaded into ``dest_root``'s partial folder, converted (model_store)."""

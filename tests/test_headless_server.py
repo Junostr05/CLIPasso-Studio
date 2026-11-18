@@ -109,6 +109,27 @@ def test_required_models():
     assert "clip:RN101" in result["required"] and set(result["missing"]) <= set(result["required"])
 
 
+def test_model_roles():
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import methods, model_store
+    from clipasso_studio.gui import model_roles
+
+    server, _ = _server()
+    settings = {"clip_model_name": "RN101", "semantic_model": "clip"}
+    result = server.handle(_req(1, "model_roles", method="clipasso", settings=settings,
+                                methods={"swiftsketch": {}, "nope": {}}))["result"]
+    rows = model_roles.rows("clipasso", settings)
+    assert [{k: v for k, v in r.items() if k != "choices"} for r in result["roles"]] == rows
+    semantic = next(r for r in result["roles"] if r["key"] == "semantic_model")
+    assert [c["value"] for c in semantic["choices"]] == list(schema.param("clipasso", "semantic_model").choices)
+    assert any(c["experimental"] for c in semantic["choices"]) and not semantic["experimental"]
+    assert result["in_use"] == sorted(model_roles.in_use("clipasso", settings))
+    need = methods.required_models(schema.normalize({**settings, "method": "clipasso"}))
+    assert result["missing"] == [k for k in need if not model_store.is_available(k)]
+    assert set(result["methods"]) == {"swiftsketch"}
+    assert server.handle(_req(2, "model_roles", method="nope", settings={}))["error"]["code"] == "bad_request"
+
+
 def test_start_streams_events_with_job_id(tmp_path):
     runner = FakeRunner([("job_start", {"seeds": [0]}), ("stage", {"seed": 0, "name": "init"})])
     server, out = _server(runner)
