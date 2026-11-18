@@ -116,7 +116,8 @@ import Testing
         let waiting = Task { await events.waitChange(second, since: await events.revision, timeout: 10) }
         try await Task.sleep(for: .milliseconds(50))
         await events.endStreams()  // (the server stops: every stream ends, a waiting one too)
-        #expect(await waiting.value == nil && (await events.streams) == 0)
+        let ended = await waiting.value, left = await events.streams
+        #expect(ended == nil && left == 0)
         #expect(await events.waitChange(more[2], since: 0, timeout: 1) == nil)
     }
 
