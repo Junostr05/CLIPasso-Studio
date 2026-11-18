@@ -12,7 +12,7 @@ import Synchronization
 
 /// Where the phone remote's secrets live: the Keychain in the app, memory in tests. Never settings.json, a log, a
 /// backup or a diagnosis.
-public protocol RemoteSecretStore: Sendable {
+public nonisolated protocol RemoteSecretStore: Sendable {
     func get(_ name: String) -> String?
     func set(_ name: String, _ value: String)
 }
