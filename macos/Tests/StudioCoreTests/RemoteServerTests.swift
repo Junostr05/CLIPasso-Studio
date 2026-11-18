@@ -152,7 +152,8 @@
             #expect(try await r.post("/api/pause").0 == 403)  // (a page elsewhere cannot send this)
             #expect(try await r.post("/api/pause", headers: ["X-Access": "wrong"]).0 == 403)
             let (status, answer) = try await r.post("/api/pause", headers: ["X-Access": Self.token])
-            #expect(status == 200 && answer == ["ok": true] && (await r.app.commands) == ["pause"])
+            let commands = await r.app.commands
+            #expect(status == 200 && answer == ["ok": true] && commands == ["pause"])
             let (up, data) = try await r.post("/api/upload", Self.png(), headers: [
                 "X-Access": Self.token, "X-Filename": "my%20dog.png", "X-Method": "swiftsketch"])
             #expect(up == 200 && data["ok"] == true)
@@ -205,7 +206,8 @@
             defer { Task { await r.server.stop() } }
             let cookie = try await r.cookie()
             let (status, _, body) = try await r.get("/api/get/studio?x=1", cookie: cookie)
-            #expect(status == 200 && (try PyJSON.parse(body).objectValue?["action"]) == "get_studio")
+            let asked = try PyJSON.parse(body).objectValue?["action"]
+            #expect(status == 200 && asked == "get_studio")
             var last = await r.app.calls.last
             #expect(last?.action == "get_studio" && last?.data == ["x": "1"])
             let (fileStatus, fileResponse, file) = try await r.get("/api/file/thing?seed=3", cookie: cookie)
@@ -239,7 +241,8 @@
             // the app does not answer in time: "busy"
             await r.app.setSlow()
             let (busy, _, busyBody) = try await r.get("/api/get/studio", cookie: cookie)
-            #expect(busy == 503 && (try PyJSON.parse(busyBody).objectValue?["error"]) == "busy")
+            let why = try PyJSON.parse(busyBody).objectValue?["error"]
+            #expect(busy == 503 && why == "busy")
         }
 
         @Test func signingInWithThePin() async throws {
@@ -312,12 +315,12 @@
                                       iconFile: RemoteTests.resources.appending(path: "app_icon.png"),
                                       fontsDir: RemoteTests.resources.appending(path: "fonts"))
             let outside = RemoteRequest(method: "GET", target: "/", client: "8.8.8.8")
-            guard case .full(let status, _, _) = await router.respond(outside) else { return Issue.record("no answer") }
+            guard case .full(let status, _, _) = await router.respond(outside) else { Issue.record("no answer"); return }
             #expect(status == 403)  // (only the home network)
             // too large: answered before the body is read
             let large = RemoteRequest(method: "POST", target: "/api/upload", headers: [
                 "X-Access": Self.token, "Content-Length": "\(RemoteAccess.maxUpload + 1)"])
-            guard case .full(let tooLarge, _, _) = await router.respond(large) else { return Issue.record("no answer") }
+            guard case .full(let tooLarge, _, _) = await router.respond(large) else { Issue.record("no answer"); return }
             #expect(tooLarge == 413 && router.bodyLimit(method: "POST", path: "/api/upload") == RemoteAccess.maxUpload)
             #expect(router.bodyLimit(method: "GET", path: "/api/upload") == 0)
             for (name, stem, ext) in [("my dog.png", "my dog", ".png"), (".png", ".png", ""), ("a.b.JPG", "a.b", ".JPG"),

@@ -112,7 +112,7 @@ import StudioCore
         #expect(answer == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.no_picture"))])
         model.studio.image = SelfTestTests.fixtures.appending(path: "mask/small.png")
         guard case .bytes(let jpeg, let type, _) = await model.phoneAnswer("file_input", [:], payload: nil) else {
-            return Issue.record("no picture")
+            Issue.record("no picture"); return
         }
         #expect(type == "image/jpeg" && jpeg.starts(with: [0xFF, 0xD8]))
         answer = Self.json(await model.phoneAnswer("do_style", ["style": "charcoal", "paper": "kraft"], payload: nil))
