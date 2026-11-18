@@ -7,13 +7,15 @@ import StudioCore
 /// back and forth; back to the model's mask. "Use this mask" keeps it – or, when it is the model's again, removes
 /// the user's.
 @Observable
-public final class MaskEditorModel {
+public final class MaskEditorModel: Identifiable {
     public enum Tool: String, CaseIterable, Sendable {
         case part, add, erase
     }
 
     public let width: Int
     public let height: Int
+    /// the image the mask is of (nil: none – then nothing can be kept)
+    public let image: URL?
     public private(set) var mask: MaskPlane
     /// counts the changes (the view draws its veil anew for each)
     public private(set) var version = 0
@@ -26,8 +28,9 @@ public final class MaskEditorModel {
     let auto: MaskPlane
     /// what a click outside the mask may bring in: the model's less sure parts (≥ CANDIDATE) and the mask itself
     let candidate: MaskPlane
-    /// the image's RGB at the mask's size, for the magic wand (nil until it is read, or when it cannot be)
-    @ObservationIgnored public var photo: [UInt8]?
+    /// the image (at most 1600 pixels, as the studio shows it) – the picture under the mask and the magic wand's;
+    /// nil until it is read, or when it cannot be
+    public var photo: MaskPhoto?
     @ObservationIgnored private var undoStack: [Data] = []
     @ObservationIgnored private var redoStack: [Data] = []
     public private(set) var canUndo = false
@@ -35,9 +38,10 @@ public final class MaskEditorModel {
 
     /// The editor of `mask` (the user's or the model's), `probability` the model's (nil: none – then the model's
     /// mask is the one given and nothing is a candidate).
-    public init(mask: MaskPlane, probability: [Float]?, threshold: Float) {
+    public init(mask: MaskPlane, probability: [Float]?, threshold: Float, image: URL? = nil) {
         width = mask.width
         height = mask.height
+        self.image = image
         self.mask = mask
         if let probability, probability.count == mask.values.count {
             auto = MaskPlane(width: width, height: height, values: probability.map { $0 >= threshold })
@@ -137,23 +141,30 @@ public final class MaskEditorModel {
     import UniformTypeIdentifiers
 
     public extension AppModel {
-        /// The editor of the studio's mask (nil without one).
+        /// The editor of the studio's mask (nil without one – or without the model's probability, as the studio).
         func maskEditor() -> MaskEditorModel? {
-            guard mask.state == .ready || mask.state == .edited, !mask.object.isEmpty else { return nil }
+            guard mask.state == .ready || mask.state == .edited, !mask.object.isEmpty,
+                  let probability = mask.probability
+            else { return nil }
             let plane = MaskPlane(width: mask.width, height: mask.height, values: mask.object)
-            return MaskEditorModel(mask: plane, probability: mask.probability, threshold: mask.threshold)
+            return MaskEditorModel(mask: plane, probability: probability, threshold: mask.threshold,
+                                   image: mask.asked?.image)
         }
 
-        /// The image's RGB at the mask's size (upright, as the engine reads it), for the magic wand.
-        nonisolated static func photoRGB(_ url: URL, width: Int, height: Int) -> [UInt8]? {
+        /// The studio's photo of the editor: the image upright (as the engine reads it), at most `side` pixels.
+        nonisolated static func editorPhoto(_ url: URL, side: Int = 1600) -> MaskPhoto? {
             guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                  let pixelWidth = properties[kCGImagePropertyPixelWidth] as? Int,
+                  let pixelHeight = properties[kCGImagePropertyPixelHeight] as? Int,
                   let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                       kCGImageSourceCreateThumbnailFromImageAlways: true,
                       kCGImageSourceCreateThumbnailWithTransform: true,
-                      kCGImageSourceThumbnailMaxPixelSize: max(width, height),
+                      kCGImageSourceThumbnailMaxPixelSize: min(side, max(pixelWidth, pixelHeight)),  // (never larger)
                   ] as CFDictionary),
                   let space = CGColorSpace(name: CGColorSpace.sRGB)
             else { return nil }
+            let (width, height) = (image.width, image.height)
             var rgba = [UInt8](repeating: 0, count: width * height * 4)
             let drawn: Bool = rgba.withUnsafeMutableBytes { raw in
                 guard let context = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8,
@@ -169,21 +180,24 @@ public final class MaskEditorModel {
             for i in 0 ..< width * height {
                 (rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]) = (rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2])
             }
-            return rgb
+            return MaskPhoto(width: width, height: height, rgb: rgb)
         }
 
         /// Diese Maske verwenden: the engine keeps the user's mask (by the image's content) – or removes it when the
         /// mask is the model's again; then the studio shows it.
         func applyMask(_ editor: MaskEditorModel) async throws {
-            guard let asked = mask.asked, let engine else { return }
+            guard let image = editor.image else { return }
+            guard let engine else { throw EngineFailure(code: "engine_gone", message: "the engine is not running") }
             if editor.isAuto {
-                _ = try await engine.request("remove_mask", ["image": .string(asked.image.path)])
+                _ = try await engine.request("remove_mask", ["image": .string(image.path)])
             } else {
                 let file = FileManager.default.temporaryDirectory.appending(path: "mask-\(UUID().uuidString).png")
                 defer { try? FileManager.default.removeItem(at: file) }
-                try Self.writeMask(editor.mask, to: file)
-                _ = try await engine.request("save_mask", ["image": .string(asked.image.path),
-                                                           "mask": .string(file.path)])
+                let plane = editor.mask
+                try await Task.detached(executorPreference: OwnThreads.shared) {
+                    try AppModel.writeMask(plane, to: file)
+                }.value
+                _ = try await engine.request("save_mask", ["image": .string(image.path), "mask": .string(file.path)])
             }
             await reloadMask()
         }
@@ -202,6 +216,35 @@ public final class MaskEditorModel {
             guard CGImageDestinationFinalize(destination) else {
                 throw MaskFile.ReadError(description: "the mask could not be written")
             }
+        }
+    }
+
+    /// The mask's pictures for the screen, made off the main actor.
+    public nonisolated enum MaskPictures {
+        /// mask_view.overlay: the background under `veil`, the object's edge in `edge`, `maxSide` pixels at most.
+        public static func overlay(_ object: [Bool], width: Int, height: Int, veil: MaskOverlay.Colour,
+                                   edge: MaskOverlay.Colour, maxSide: Int) -> CGImage?
+        {
+            guard !object.isEmpty else { return nil }
+            let made = MaskOverlay.rgba(object, width: width, height: height, veil: veil, edge: edge, maxSide: maxSide)
+            guard let provider = CGDataProvider(data: Data(made.pixels) as CFData),
+                  let space = CGColorSpace(name: CGColorSpace.sRGB)
+            else { return nil }
+            return CGImage(width: made.width, height: made.height, bitsPerComponent: 8, bitsPerPixel: 32,
+                           bytesPerRow: made.width * 4, space: space,
+                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
+                           decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        }
+
+        /// The editor's photo as a picture.
+        public static func photo(_ photo: MaskPhoto) -> CGImage? {
+            guard let provider = CGDataProvider(data: Data(photo.rgb) as CFData),
+                  let space = CGColorSpace(name: CGColorSpace.sRGB)
+            else { return nil }
+            return CGImage(width: photo.width, height: photo.height, bitsPerComponent: 8, bitsPerPixel: 24,
+                           bytesPerRow: photo.width * 3, space: space,
+                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue), provider: provider,
+                           decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         }
     }
 #endif

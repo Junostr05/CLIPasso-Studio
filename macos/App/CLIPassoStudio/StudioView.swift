@@ -68,6 +68,8 @@ private struct ImageStep: View {
     @State private var targeted = false
     /// the object mask over the image (mask_view.overlay)
     @State private var overlay: CGImage?
+    /// the mask being touched up
+    @State private var editing: MaskEditorModel?
 
     var body: some View {
         let studio = model.studio
@@ -123,6 +125,7 @@ private struct ImageStep: View {
             preview = data.flatMap { NSImage(data: $0) }
         }
         .task(id: maskKey) { await model.updateMask() }
+        .sheet(item: $editing) { MaskEditorSheet(editor: $0) }
         .task(id: [model.mask.version, scheme == .dark ? 1 : 0]) {
             overlay = await Self.overlay(model.mask, dark: scheme == .dark)
         }
@@ -156,6 +159,12 @@ private struct ImageStep: View {
                 .labelStyle(.iconOnly)
                 .help(model.texts.tr("ui.mask.show"))
                 .disabled(mask.state != .ready && mask.state != .edited)
+                Button(model.texts.tr("ui.mask.edit"), systemImage: "paintbrush") {
+                    editing = model.maskEditor()
+                }
+                .labelStyle(.iconOnly)
+                .help(model.texts.tr("ui.mask.edit"))
+                .disabled(mask.state != .ready && mask.state != .edited)
                 if mask.state == .edited {
                     Button(model.texts.tr("ui.mask.reset"), systemImage: "arrow.uturn.backward") {
                         Task { await model.resetMask() }
@@ -181,16 +190,9 @@ private struct ImageStep: View {
         let edge = SketchSVG.color(palette.accent) ?? RGB(60, 110, 240)
         let (object, width, height) = (mask.object, mask.width, mask.height)
         return await Task.detached(executorPreference: OwnThreads.shared) { () -> CGImage? in
-            let made = MaskOverlay.rgba(object, width: width, height: height,
-                                        veil: (UInt8(veil.r), UInt8(veil.g), UInt8(veil.b), 215),
-                                        edge: (UInt8(edge.r), UInt8(edge.g), UInt8(edge.b), 255), maxSide: 700)
-            guard let provider = CGDataProvider(data: Data(made.pixels) as CFData),
-                  let space = CGColorSpace(name: CGColorSpace.sRGB)
-            else { return nil }
-            return CGImage(width: made.width, height: made.height, bitsPerComponent: 8, bitsPerPixel: 32,
-                           bytesPerRow: made.width * 4, space: space,
-                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
-                           decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+            MaskPictures.overlay(object, width: width, height: height,
+                                 veil: (UInt8(veil.r), UInt8(veil.g), UInt8(veil.b), 215),
+                                 edge: (UInt8(edge.r), UInt8(edge.g), UInt8(edge.b), 255), maxSide: 700)
         }.value
     }
 }

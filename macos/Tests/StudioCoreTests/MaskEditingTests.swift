@@ -47,8 +47,8 @@
                 .first { $0["name"]?.stringValue == name })
             let mask = try Self.mask("mask/edit_\(name)_mask.png")
             let candidate = try Self.mask("mask/edit_\(name)_candidate.png")
-            let photo = try Self.rgb("mask/edit_\(name).png")
-            #expect(photo.count == mask.width * mask.height * 3)
+            let photo = try #require(MaskPhoto(width: mask.width, height: mask.height,
+                                               rgb: try Self.rgb("mask/edit_\(name).png")))
             for (i, step) in (c["steps"]?.arrayValue ?? []).compactMap(\.objectValue).enumerated() {
                 let click = (step["click"]?.arrayValue ?? []).compactMap(\.doubleValue)
                 let made = MaskEditing.partClick(mask, candidate: candidate, photo: photo, x: click[0], y: click[1])

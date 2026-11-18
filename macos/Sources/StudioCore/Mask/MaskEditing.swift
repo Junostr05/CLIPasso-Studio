@@ -22,6 +22,19 @@ public struct MaskPlane: Sendable, Equatable {
     var plane: Plane<Bool> { Plane(width: width, height: height, values: values) }
 }
 
+/// The photo the magic wand looks at (any size – it is shrunk for the wand anyway; the studio gives it at most 1600
+/// pixels): RGB bytes, row after row.
+public struct MaskPhoto: Sendable {
+    public let width: Int
+    public let height: Int
+    public let rgb: [UInt8]
+
+    public init?(width: Int, height: Int, rgb: [UInt8]) {
+        guard width > 0, height > 0, rgb.count == width * height * 3 else { return nil }
+        (self.width, self.height, self.rgb) = (width, height, rgb)
+    }
+}
+
 /// Touching up the object mask as the studio does it (gui/mask_edit.py): a click on a part – inside the mask the
 /// part under it goes; outside, the part of the candidates (what the mask model was less sure about) comes in, or
 /// where the model saw nothing the magic wand's area of similar colours – and the brush, dabs and lines. The parts
@@ -37,8 +50,8 @@ public enum MaskEditing {
     public static let undoSteps = 30
 
     /// part_click: a click at image position (x, y) – the new mask, nil when there is nothing to change. `photo` is
-    /// the image's RGB bytes (row after row, at the mask's size) for the magic wand; nil: no wand.
-    public static func partClick(_ mask: MaskPlane, candidate: MaskPlane, photo: [UInt8]?, x: Double, y: Double)
+    /// the image for the magic wand; nil: no wand.
+    public static func partClick(_ mask: MaskPlane, candidate: MaskPlane, photo: MaskPhoto?, x: Double, y: Double)
         -> MaskPlane?
     {
         let (xi, yi) = (Int(x.rounded(.towardZero)), Int(y.rounded(.towardZero)))
@@ -176,17 +189,19 @@ public enum MaskEditing {
         return out
     }
 
-    /// wand: the connected area of colours like the clicked one, on a reduced (bilinear), slightly smoothed (median)
-    /// copy of the photo – as ImageDraw.floodfill finds it with its tolerance – as a mask of the photo's size.
-    static func wand(_ rgb: [UInt8], width w: Int, height h: Int, x: Int, y: Int, tolerance: Int = wandTolerance)
-        -> MaskPlane
+    /// wand: the connected area of colours like the clicked one (at mask position x, y), on a reduced (bilinear),
+    /// slightly smoothed (median) copy of the photo – as ImageDraw.floodfill finds it with its tolerance – as a mask
+    /// of the mask's size (w × h).
+    static func wand(_ photo: MaskPhoto, width w: Int, height h: Int, x: Int, y: Int,
+                     tolerance: Int = wandTolerance) -> MaskPlane
     {
         let (sw, sh, f) = pickSize(w, h)
+        let (pw, ph, rgb) = (photo.width, photo.height, photo.rgb)
         var channels: [Plane<UInt8>] = []
         for c in 0 ..< 3 {
-            var values = [UInt8](repeating: 0, count: w * h)
-            for i in 0 ..< w * h { values[i] = rgb[i * 3 + c] }
-            channels.append(Pillow.resizeBilinear(Plane(width: w, height: h, values: values), width: sw, height: sh))
+            var values = [UInt8](repeating: 0, count: pw * ph)
+            for i in 0 ..< pw * ph { values[i] = rgb[i * 3 + c] }
+            channels.append(Pillow.resizeBilinear(Plane(width: pw, height: ph, values: values), width: sw, height: sh))
         }
         var small = [UInt8](repeating: 0, count: sw * sh * 3)
         for i in 0 ..< sw * sh {

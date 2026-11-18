@@ -9,7 +9,8 @@ MODE: echo · crash_after N (ends with exit code 3 after N answers) · garbage (
 job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEYS as missing until ``convert_model``
 found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR) · mask
 PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked again it gives PNG as the model's
-probability).
+probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` gives it as the user's – and
+``remove_mask`` removes it).
 Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
@@ -18,6 +19,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 import time
 
 mode = sys.argv[1] if len(sys.argv) > 1 else "echo"
@@ -25,6 +27,7 @@ limit = int(sys.argv[2]) if len(sys.argv) > 2 and mode in ("crash_after", "event
 source = sys.argv[2] if mode in ("job", "mask") else sys.argv[3] if mode == "needs" else ""
 needed = sys.argv[2].split(",") if mode == "needs" else []
 converted = set()
+edited = os.path.join(tempfile.mkdtemp(prefix="fake-engine-"), "edited.png")
 out = sys.stdout.buffer
 
 
@@ -84,11 +87,19 @@ for raw in sys.stdin.buffer:
             send({"event": "job_failed", "job": "j1", "data": {"message": "RuntimeError: made up", "job_dir": job_dir}})
     elif op == "mask" and mode == "mask":
         computing = bool(args.get("compute"))
-        send({"id": rid, "ok": True, "result": {"probability": None if computing else source, "edited": None,
+        mine = edited if os.path.isfile(edited) else None
+        send({"id": rid, "ok": True, "result": {"probability": None if computing else source, "edited": mine,
                                                 "width": 32, "height": 24, "threshold": 0.5, "computing": computing}})
         if computing:
             send({"event": "mask_ready", "job": None, "data": {"image": args["image"], "model": args["model"],
                                                                "probability": source}})
+    elif op == "save_mask" and mode == "mask":
+        shutil.copyfile(args["mask"], edited)
+        send({"id": rid, "ok": True, "result": {"path": edited}})
+    elif op == "remove_mask" and mode == "mask":
+        if os.path.isfile(edited):
+            os.remove(edited)
+        send({"id": rid, "ok": True, "result": {}})
     elif op == "shutdown":
         send({"id": rid, "ok": True, "result": {}})
         sys.exit(0)
