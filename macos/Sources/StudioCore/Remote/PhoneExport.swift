@@ -72,6 +72,13 @@ public enum PhoneExport {
         ]
     }
 
+    /// The value when it is there and `ok` – else none (not JSON's null: a JSONValue takes nil as a literal, so
+    /// "? $0 : nil" would make one).
+    static func when(_ value: JSONValue?, _ ok: (JSONValue) -> Bool) -> JSONValue? {
+        guard let value, ok(value) else { return nil }
+        return value
+    }
+
     /// _number: float(value), else the fallback.
     static func number(_ value: JSONValue?, _ fallback: Double) -> Double {
         value.flatMap(PhoneStudio.pyFloat) ?? fallback
@@ -91,7 +98,7 @@ public enum PhoneExport {
 
     /// defaults: the options an export starts with – the choices of the last export.
     public static func defaults(_ fmt: String, sketch: Sketch, settings: AppSettings) -> JSONObject {
-        let stored = settings["export_background"].flatMap { $0.truthy ? $0 : nil }
+        let stored = when(settings["export_background"]) { $0.truthy }
         var bg = stored ?? .string(["svg", "svglayers", "svganim", "lottie"].contains(fmt) ? "transparent" : "#FFFFFF")
         if bg == "transparent", !transparentOK.contains(fmt) { bg = "#FFFFFF" }
         var frame = settings["export_frame"] ?? "square"
@@ -99,7 +106,7 @@ public enum PhoneExport {
         let mode: JSONValue = drawn.contains(fmt) || sketch.processFrames < 2
             ? "strokes" : settings["export_anim_mode"] ?? "process"
         let length = mode == "strokes" || drawn.contains(fmt) ? sketch.drawLength : sketch.processLength
-        let stroke = settings["export_stroke"].flatMap { $0.truthy ? $0 : nil }.map(PhoneStudio.pyStr) ?? "#000000"
+        let stroke = when(settings["export_stroke"]) { $0.truthy }.map(PhoneStudio.pyStr) ?? "#000000"
         return [
             "stroke": .string(stroke), "width": .double(number(settings["export_width"], 1)),
             "style": settings["export_style"] ?? "plain", "background": bg, "paper": settings["export_paper"] ?? "none",
@@ -125,11 +132,10 @@ public enum PhoneExport {
         var out = base
         out["stroke"] = .string(colour(r["stroke"], base["stroke"]?.stringValue ?? "#000000"))
         out["width"] = .double(clamp("width", 0.1, 10))
-        out["style"] = r["style"].flatMap { $0.stringValue.map(styles.contains) == true ? $0 : nil } ?? base["style"]
+        out["style"] = when(r["style"]) { $0.stringValue.map(styles.contains) == true } ?? base["style"]
         out["background"] = .string(colour(r["background"], base["background"]?.stringValue ?? "#FFFFFF",
                                            transparent: ok["transparent"]?.truthy ?? false))
-        out["paper"] = r["paper"].flatMap { $0.stringValue.flatMap(Paper.Kind.init(rawValue:)) != nil ? $0 : nil }
-            ?? base["paper"]
+        out["paper"] = when(r["paper"]) { $0.stringValue.flatMap(Paper.Kind.init(rawValue:)) != nil } ?? base["paper"]
         out["vignette"] = .int(Int(clamp("vignette", 0, 100)))
         let frame = r["frame"]?.stringValue ?? ""
         out["frame"] = .string(frames.contains(frame) && (frame != "photo" || sketch.photoFrame) ? frame : "square")

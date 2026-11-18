@@ -180,7 +180,8 @@ import StudioCore
         shown = try #require(Self.json(await model.phoneAnswer("get_results", ["q": "wasserloch"], payload: nil)))
         item = try #require(shown["results"]?.arrayValue?.first?.objectValue)
         #expect(shown["total"] == 1 && item["albums"] == [])
-        #expect(!(shown["albums"]?.arrayValue ?? []).contains("Reise"))
+        let left = (shown["albums"]?.arrayValue ?? []).compactMap(\.stringValue)
+        #expect(left == ["Tiere"])  // (only the fixtures' own album is left)
         #expect(Self.json(await model.phoneAnswer("do_album", ["op": "new", "name": "  "], payload: nil))?["ok"] == false)
         // its sketch, and in the studio
         guard case .bytes(let svg, let type, _) = await model.phoneAnswer("file_result", ["d": dir], payload: nil) else {
