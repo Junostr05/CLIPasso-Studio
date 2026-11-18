@@ -692,6 +692,61 @@ def mask_cases(out: Path) -> list[dict]:
     return cases
 
 
+MASK_EDIT_PHOTOS = (("photo_small", (300, 200)), ("photo_large", (700, 560)))  # (the large one is picked on a copy)
+
+
+def mask_edit_cases(out: Path) -> dict:
+    """gui/mask_edit.py: a click on a part (it goes; outside the mask a candidate part comes in, else the magic wand's
+    area of similar colours) and the brush (dabs, lines) – photos, masks and candidates (mask/edit_*.png) and the
+    masks each step makes (mask/edit_<photo>_<n>.png; "none": nothing changes)."""
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.gui import mask_edit
+
+    folder = out / "mask"
+    rng = np.random.default_rng(11)
+    cases = {"constants": {"candidate": mask_edit.CANDIDATE, "pick_side": mask_edit.PICK_SIDE,
+                           "wand_tolerance": mask_edit.WAND_TOLERANCE, "undo_steps": mask_edit.UNDO_STEPS},
+             "photos": []}
+    for name, (w, h) in MASK_EDIT_PHOTOS:
+        yy, xx = np.mgrid[0:h, 0:w]
+        rgb = np.zeros((h, w, 3), np.int64)
+        rgb[...] = (230, 225, 210)
+        blob = ((xx - w * 0.4) / (w * 0.2)) ** 2 + ((yy - h * 0.5) / (h * 0.3)) ** 2 <= 1
+        rgb[blob] = (60, 90, 140)
+        rgb[(xx > w * 0.7) & (yy < h * 0.4)] = (200, 60, 50)
+        grain = rng.integers(-12, 13, (h // 4 + 1, w // 4 + 1, 3)).repeat(4, 0).repeat(4, 1)[:h, :w]
+        photo = Image.fromarray(np.clip(rgb + grain, 0, 255).astype(np.uint8))
+        mask = blob & ~((xx > w * 0.35) & (xx < w * 0.45) & (yy > h * 0.45) & (yy < h * 0.55))  # (a hole)
+        mask |= (xx > w * 0.8) & (yy > h * 0.8)
+        candidate = mask | ((xx > w * 0.7) & (yy < h * 0.4))  # (the red part: the model was less sure)
+        photo.save(folder / f"edit_{name}.png")
+        for what, plane in (("mask", mask), ("candidate", candidate)):
+            Image.fromarray(plane.astype(np.uint8) * 255).save(folder / f"edit_{name}_{what}.png")
+        steps = []
+        for i, (x, y) in enumerate(((w * 0.4, h * 0.3), (w * 0.85, h * 0.9), (w * 0.8, h * 0.2), (w * 0.1, h * 0.1),
+                                    (w * 0.4, h * 0.5), (w + 5, h * 0.5))):
+            made = mask_edit.part_click(mask, candidate, photo, x, y)
+            if made is not None:
+                Image.fromarray(made.astype(np.uint8) * 255).save(folder / f"edit_{name}_{i}.png")
+            steps.append({"click": [x, y], "out": None if made is None else f"mask/edit_{name}_{i}.png"})
+        brushed = mask.copy()
+        strokes = [("dab", (w * 0.1, h * 0.2), None, 9.5, True),
+                   ("line", (w * 0.05, h * 0.9), (w * 0.6, h * 0.95), 6.0, True),
+                   ("line", (w * 0.4, h * 0.2), (w * 0.4, h * 0.8), 12.25, False),
+                   ("dab", (-3.0, 4.0), None, 5.0, True)]
+        for kind, a, b, r, value in strokes:
+            if kind == "dab":
+                mask_edit.dab(brushed, a[0], a[1], r, value)
+            else:
+                mask_edit.line(brushed, a, b, r, value)
+        Image.fromarray(brushed.astype(np.uint8) * 255).save(folder / f"edit_{name}_brushed.png")
+        cases["photos"].append({"name": name, "size": [w, h], "steps": steps,
+                                "strokes": [[k, list(a), list(b) if b else None, r, v] for k, a, b, r, v in strokes]})
+    return cases
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -940,6 +995,7 @@ def build(out: Path) -> None:
     write_json(out / "export" / "formats.json", format_cases(out))
     write_json(out / "export" / "styled.json", styled_cases(out))
     write_json(out / "mask" / "overlay.json", mask_cases(out))
+    write_json(out / "mask" / "edit.json", mask_edit_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),

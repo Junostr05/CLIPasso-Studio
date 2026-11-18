@@ -1,0 +1,208 @@
+{
+ "constants": {
+  "candidate": 0.15,
+  "pick_side": 512,
+  "wand_tolerance": 54,
+  "undo_steps": 30
+ },
+ "photos": [
+  {
+   "name": "photo_small",
+   "size": [
+    300,
+    200
+   ],
+   "steps": [
+    {
+     "click": [
+      120.0,
+      60.0
+     ],
+     "out": "mask/edit_photo_small_0.png"
+    },
+    {
+     "click": [
+      255.0,
+      180.0
+     ],
+     "out": "mask/edit_photo_small_1.png"
+    },
+    {
+     "click": [
+      240.0,
+      40.0
+     ],
+     "out": "mask/edit_photo_small_2.png"
+    },
+    {
+     "click": [
+      30.0,
+      20.0
+     ],
+     "out": "mask/edit_photo_small_3.png"
+    },
+    {
+     "click": [
+      120.0,
+      100.0
+     ],
+     "out": "mask/edit_photo_small_4.png"
+    },
+    {
+     "click": [
+      305,
+      100.0
+     ],
+     "out": null
+    }
+   ],
+   "strokes": [
+    [
+     "dab",
+     [
+      30.0,
+      40.0
+     ],
+     null,
+     9.5,
+     true
+    ],
+    [
+     "line",
+     [
+      15.0,
+      180.0
+     ],
+     [
+      180.0,
+      190.0
+     ],
+     6.0,
+     true
+    ],
+    [
+     "line",
+     [
+      120.0,
+      40.0
+     ],
+     [
+      120.0,
+      160.0
+     ],
+     12.25,
+     false
+    ],
+    [
+     "dab",
+     [
+      -3.0,
+      4.0
+     ],
+     null,
+     5.0,
+     true
+    ]
+   ]
+  },
+  {
+   "name": "photo_large",
+   "size": [
+    700,
+    560
+   ],
+   "steps": [
+    {
+     "click": [
+      280.0,
+      168.0
+     ],
+     "out": "mask/edit_photo_large_0.png"
+    },
+    {
+     "click": [
+      595.0,
+      504.0
+     ],
+     "out": "mask/edit_photo_large_1.png"
+    },
+    {
+     "click": [
+      560.0,
+      112.0
+     ],
+     "out": "mask/edit_photo_large_2.png"
+    },
+    {
+     "click": [
+      70.0,
+      56.0
+     ],
+     "out": "mask/edit_photo_large_3.png"
+    },
+    {
+     "click": [
+      280.0,
+      280.0
+     ],
+     "out": "mask/edit_photo_large_4.png"
+    },
+    {
+     "click": [
+      705,
+      280.0
+     ],
+     "out": null
+    }
+   ],
+   "strokes": [
+    [
+     "dab",
+     [
+      70.0,
+      112.0
+     ],
+     null,
+     9.5,
+     true
+    ],
+    [
+     "line",
+     [
+      35.0,
+      504.0
+     ],
+     [
+      420.0,
+      532.0
+     ],
+     6.0,
+     true
+    ],
+    [
+     "line",
+     [
+      280.0,
+      112.0
+     ],
+     [
+      280.0,
+      448.0
+     ],
+     12.25,
+     false
+    ],
+    [
+     "dab",
+     [
+      -3.0,
+      4.0
+     ],
+     null,
+     5.0,
+     true
+    ]
+   ]
+  }
+ ]
+}
