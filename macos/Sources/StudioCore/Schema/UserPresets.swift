@@ -93,7 +93,9 @@ public enum UserPresets {
     public static func delete(_ name: String, method: String, in stored: JSONValue?, schema: ParamSchema) -> JSONValue? {
         let presets = all(stored, schema: schema)
         let kept = presets.filter { !($0.name == name && $0.method == method) }
-        return kept.count == presets.count ? nil : store(kept)
+        // (a guard, not "? nil :" – a JSONValue takes nil as JSON's null)
+        guard kept.count < presets.count else { return nil }
+        return store(kept)
     }
 
     /// matching: the own preset the settings are equal to ("" when none).
