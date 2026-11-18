@@ -68,6 +68,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C6 | Klappe das MacBook während eines Auftrags zu, warte und klappe es wieder auf. | Der Auftrag läuft weiter oder meldet klar, was passiert ist. Die Engine ist wieder „bereit“. |
 | C7 | Beende in der Aktivitätsanzeige den Prozess `python3` der App, während sie nichts rechnet. | Die App startet die Engine von selbst neu und zeigt einen kurzen Hinweis. |
 | C8 | Ändere in der Seitenleiste eine Voreinstellung und einzelne Parameter. | Abhängige Felder werden passend aktiv oder grau, wie in der Windows-App. |
+| C9 | Einige Parameter ändern, dann „Meine Voreinstellungen“ → „Aktuelle Einstellungen speichern …“ mit einem Namen. Methode wechseln und die Voreinstellung wieder wählen; danach eine löschen. Dieselbe `settings.json` in der Windows-App öffnen. | Die Voreinstellung schaltet auf ihre Methode und ihre Werte, der Knopf zeigt „Eigene Voreinstellung: …“. Auf dem Handy erscheint sie auch. Die Windows-App kennt sie ebenso. |
 
 ## D. Warteschlange und Galerie
 

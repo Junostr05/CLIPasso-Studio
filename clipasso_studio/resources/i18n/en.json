@@ -1651,5 +1651,6 @@
  "ui.mac.dmg_models": "The models are downloaded once, when a method first needs them – the app shows their size first.",
  "ui.mac.settings.updates": "Updates",
  "ui.mac.phone.update_not_here": "On the Mac, updates are installed by hand: on the Mac, “Release page” opens the download – drag the new version onto Applications. Settings, models and results stay.",
+ "ui.mac.user_presets": "My presets",
  "ui.mac.dmg_update": "To update: drag the new version onto Applications and replace the old one – your settings, models and results stay. macOS asks again as in steps 2–4."
 }

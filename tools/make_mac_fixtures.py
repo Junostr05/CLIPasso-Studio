@@ -177,6 +177,61 @@ def preset_cases() -> list[dict]:
     return cases
 
 
+def user_preset_cases() -> dict:
+    """gui/user_presets.py on presets as settings.json may hold them (damaged ones, one of a newer method, a value
+    coerce refuses …): which remain, what saving and deleting keep, which preset the settings match."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui import user_presets
+
+    class Store(dict):
+        def set(self, key, value):
+            self[key] = json.loads(json.dumps(value))
+
+    rng = random.Random(11)
+    clip = schema.start_settings("clipasso")
+    swift = schema.apply_preset(schema.start_settings("swiftsketch"), "quality")
+    scene = {**schema.start_settings("scenesketch"), **_random_changes("scenesketch", rng)}
+    stored = [
+        {"name": "  Mein   Kamel ", "method": "clipasso",
+         "settings": {**clip, "num_iter": "800", "path_svg": "/Bilder/start.svg", "sketch_guide": True, "x": 1}},
+        {"name": 42, "method": "swiftsketch", "settings": swift},
+        {"name": "", "method": "clipasso", "settings": clip},
+        {"name": "Zukunft", "method": "newmethod", "settings": {}},
+        {"name": "kaputt", "method": "clipasso", "settings": "nope"},
+        "not a preset",
+        {"name": "Zahl", "method": "clipasso", "settings": {"num_iter": "abc"}},
+        {"name": "Ä" * 30 + " " + "ö" * 30, "method": "scenesketch", "settings": scene},
+        {"name": "Leer", "settings": clip},
+    ]
+    store = Store({user_presets.KEY: stored})
+    out = {"stored": stored, "ops": [], "matching": []}
+    with mock.patch.object(user_presets, "app_settings", lambda: store):
+        out["all"] = user_presets.all_presets()
+        quality = schema.apply_preset(schema.start_settings("clipasso"), "quality")
+        ops = [("save", "Neu ", {**quality, "method": "clipasso"}),
+               ("save", "Mein Kamel", {**clip, "num_iter": 1200, "method": "clipasso"}),
+               ("save", " \t ", clip),
+               ("save", "Bild", {**swift, "method": "swiftsketch", "num_sketches": "7"}),
+               ("delete", "Neu", "swiftsketch"),
+               ("delete", "Neu", "clipasso")]
+        for op in ops:
+            try:
+                result = user_presets.save(op[1], op[2]) if op[0] == "save" else user_presets.delete(op[1], op[2])
+            except ValueError:
+                result = "error"
+            out["ops"].append({"op": op[0], "name": op[1], "arg": op[2], "result": result,
+                               "stored": store[user_presets.KEY]})
+        for settings in ({**clip, "num_iter": 1200}, {**clip, "num_iter": 1200, "path_svg": "/a.svg"},
+                         {**clip, "num_iter": 1201}, {**swift, "num_sketches": 7}, clip):
+            out["matching"].append({"settings": settings, "name": user_presets.matching(settings)})
+        many = Store({user_presets.KEY: [{"name": f"P{i}", "method": "clipasso", "settings": clip}
+                                         for i in range(100)]})
+        with mock.patch.object(user_presets, "app_settings", lambda: many):
+            user_presets.save("Hundertundeins", clip)
+            out["trimmed"] = [p["name"] for p in many[user_presets.KEY]]
+    return out
+
+
 def settings_file() -> str:
     """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
     a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
@@ -1249,6 +1304,7 @@ def build(out: Path) -> None:
     write_json(out / "conditions.json", conditions(), indent=None)
     write_json(out / "pyjson.json", pyjson())
     write_json(out / "presets.json", preset_cases(), indent=None)
+    write_json(out / "user_presets.json", user_preset_cases(), indent=None)
     write_json(out / "versions.json", version_cases())
     write_json(out / "image_files.json", image_file_cases())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))

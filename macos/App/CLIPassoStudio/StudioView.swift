@@ -288,6 +288,60 @@ private struct MethodStep: View {
     }
 }
 
+/// "My presets" (param_panel's menu): the own presets of every method (one of another method switches to it),
+/// the current settings kept under a name, one deleted. Content: a menu button with an alert asking for the name.
+private struct UserPresetMenu: View {
+    @Environment(AppModel.self) private var model
+    @State private var naming = false
+    @State private var name = ""
+
+    var body: some View {
+        let t = model.texts
+        let presets = model.userPresets
+        let active = model.userPreset
+        Menu {
+            if presets.isEmpty {
+                Text(t.tr("ui.user_presets.none"))
+            }
+            ForEach(presets, id: \.self) { preset in
+                Button(title(preset)) { model.applyUserPreset(preset.name, method: preset.method) }
+            }
+            Divider()
+            Button(t.tr("ui.user_presets.save")) {
+                name = active
+                naming = true
+            }
+            if !presets.isEmpty {
+                Menu(t.tr("ui.user_presets.delete")) {
+                    ForEach(presets, id: \.self) { preset in
+                        Button(title(preset), role: .destructive) {
+                            model.deleteUserPreset(preset.name, method: preset.method)
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label(active.isEmpty ? t.tr("ui.mac.user_presets") : t.tr("ui.user_presets.active", ["name": active]),
+                  systemImage: "bookmark")
+        }
+        .fixedSize()
+        .help(t.tr("ui.user_presets.tip"))
+        .alert(t.tr("ui.user_presets.save_title"), isPresented: $naming) {
+            TextField(t.tr("ui.user_presets.name"), text: $name)
+            Button(t.tr("ui.save")) { model.saveUserPreset(name) }
+            Button(t.tr("ui.cancel"), role: .cancel) {}
+        } message: {
+            Text(t.tr("ui.user_presets.name"))
+        }
+    }
+
+    /// Its name – with its method's when that is not the studio's.
+    private func title(_ preset: UserPresets.Preset) -> String {
+        guard preset.method != model.studio.method else { return preset.name }
+        return "\(preset.name) · \(model.schema.method(preset.method)?.name ?? preset.method)"
+    }
+}
+
 private struct PresetStep: View {
     @Environment(AppModel.self) private var model
 
@@ -309,6 +363,7 @@ private struct PresetStep: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                UserPresetMenu()
                 DisclosureGroup(model.texts.tr("ui.step.adjust")) {
                     VStack(alignment: .leading, spacing: Spacing.spaceM) {
                         ForEach(method.groups, id: \.self) { group in

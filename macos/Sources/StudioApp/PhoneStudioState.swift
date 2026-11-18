@@ -38,7 +38,11 @@ public extension AppModel {
             }),
             "missing": .array(missing.map { .string(models.name($0)) }),
             "missing_mb": .int(Int(missingMB.rounded(.toNearestOrEven))),
-            "preset": .string(studio.preset ?? ""), "user_preset": "", "user_presets": [],
+            "preset": .string(studio.preset ?? ""), "user_preset": .string(userPreset),
+            "user_presets": .array(userPresets.map {
+                ["name": .string($0.name), "method": .string($0.method),
+                 "method_name": .string(schema.method($0.method)?.name ?? $0.method)]
+            }),
             "settings": .object(JSONObject(params.map { ($0.key, values[$0.key] ?? .null) })),
             "enabled": .object(JSONObject(params.map { ($0.key, .bool(studio.isEnabled($0.key))) })),
             "estimate": "",
@@ -177,6 +181,18 @@ public extension AppModel {
         switch action {
         case "get_studio":
             return .json(.object(phoneStudio(models: await phoneModelRoles())))
+        case "do_user_preset":  // (of any method: the studio switches to it)
+            guard applyUserPreset(PhoneStudio.pyStr(data["name"] ?? ""), method: PhoneStudio.pyStr(data["method"] ?? ""))
+            else { return no(texts.tr("ui.phone.page.preset_gone")) }
+            return .json(["ok": true])
+        case "do_save_preset":
+            let name = saveUserPreset(PhoneStudio.pyStr(data["name"] ?? ""))
+            guard !name.isEmpty else { return no(texts.tr("ui.phone.page.bad_value")) }
+            return .json(["ok": true, "name": .string(name)])
+        case "do_delete_preset":
+            guard deleteUserPreset(PhoneStudio.pyStr(data["name"] ?? ""), method: PhoneStudio.pyStr(data["method"] ?? ""))
+            else { return no(texts.tr("ui.phone.page.preset_gone")) }
+            return .json(["ok": true])
         case "do_select":
             guard let seed = data["seed"].flatMap({ PhoneStudio.int($0) }) else { return no("unknown sketch") }
             guard let result = studio.result, let run = result.runs.first(where: { $0.seed == seed }) else {
