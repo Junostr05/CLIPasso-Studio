@@ -78,7 +78,7 @@ public extension AppModel {
             "version": .string(version),
             "lang": .string(texts.language),
             "theme": .string(canvas.theme),
-            "update": .null,
+            "update": .string(updateState.rawValue),
         ]
     }
 

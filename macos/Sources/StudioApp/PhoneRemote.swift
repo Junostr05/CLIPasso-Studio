@@ -359,6 +359,8 @@ public extension AppModel {
         ]
         for (name, key) in more { out[name] = .string(t.tr(key)) }
         out["estimate_none"] = ""
+        // (the Mac app's own: an update is installed by hand – the studio's text speaks of running from source)
+        out["update_not_here"] = .string(t.tr("ui.mac.phone.update_not_here"))
         let export: [(String, String)] = [
             ("x_stroke", "ui.stroke_color"), ("x_width", "ui.stroke_width_scale"), ("x_style", "ui.brush.label"),
             ("x_background", "ui.background"), ("x_paper", "ui.paper.label"), ("x_vignette", "ui.paper.vignette"),

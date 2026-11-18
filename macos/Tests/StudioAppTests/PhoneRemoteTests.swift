@@ -23,7 +23,10 @@ import StudioCore
         let made = model.phoneTexts()
         let missing = want.keys.filter { made[$0] == nil }, extra = made.keys.filter { want[$0] == nil }
         #expect(missing.isEmpty && extra.isEmpty, "missing \(missing), extra \(extra)")
-        for (key, value) in want where made[key] != value {
+        // the one text of the Mac app's own: how an update is installed here
+        #expect(made["update_not_here"] == .string(model.texts.tr("ui.mac.phone.update_not_here")))
+        #expect(want["update_not_here"] != made["update_not_here"])
+        for (key, value) in want where made[key] != value && key != "update_not_here" {
             Issue.record("\(key): \(made[key].map { "\($0)" } ?? "–") instead of \(value)")
         }
     }

@@ -3,8 +3,8 @@ import StudioApp
 import StudioCore
 import SwiftUI
 
-/// The settings page: language and appearance, the output folder and the folder of the downloaded models – saved at
-/// once in the settings.json the Python app uses too. Content: a grouped form.
+/// The settings page: language and appearance, the output folder and the folder of the downloaded models, the
+/// search for updates – saved at once in the settings.json the Python app uses too. Content: a grouped form.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var problem: String?
@@ -33,6 +33,24 @@ struct SettingsView: View {
                 }
                 if let problem {
                     Text(verbatim: problem).foregroundStyle(.secondary)
+                }
+            }
+            Section(model.texts.tr("ui.mac.settings.updates")) {
+                Toggle(model.texts.tr("ui.settings.check_updates"), isOn: Binding(
+                    get: { model.checksForUpdates }, set: { model.setChecksForUpdates($0) }))
+                LabeledContent {
+                    HStack {
+                        if model.updateState == .checking { ProgressView().controlSize(.small) }
+                        if model.updateState == .found, let latest = model.latest {
+                            Button(model.texts.tr("ui.update.download")) { NSWorkspace.shared.open(latest.page) }
+                        }
+                        Button(model.texts.tr("ui.update.check_now")) { Task { await model.checkUpdateNow() } }
+                            .disabled(model.updateState == .checking)
+                    }
+                } label: {
+                    // (before the first search: the version that runs)
+                    Text(verbatim: model.updateMessage.isEmpty ? "CLIPasso Studio \(model.version)" : model.updateMessage)
+                        .foregroundStyle(.secondary)
                 }
             }
             PhoneSettings()

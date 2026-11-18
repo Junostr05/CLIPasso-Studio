@@ -123,23 +123,42 @@ public extension AppModel {
             }
             return .json(["ok": true])
         case "get_app_settings":
-            // (the Mac app's settings the phone may change: the language – keeping awake, notifications and the
-            // updates follow with their parts of the app)
-            return .json(["ok": true, "settings": [[
-                "key": "language", "label": .string(texts.tr("ui.settings.language")), "kind": "choice",
-                "value": .string(settings.language),
-                "choices": .array(languageChoices.map { ["value": .string($0.id), "label": .string($0.label)] }),
-            ]]])
+            // (the Mac app's settings the phone may change: the language and the search for updates – keeping
+            // awake and the notifications follow with their parts of the app)
+            return .json(["ok": true, "settings": [
+                ["key": "language", "label": .string(texts.tr("ui.settings.language")), "kind": "choice",
+                 "value": .string(settings.language),
+                 "choices": .array(languageChoices.map { ["value": .string($0.id), "label": .string($0.label)] })],
+                ["key": "check_updates", "label": .string(texts.tr("ui.settings.check_updates")), "kind": "bool",
+                 "value": .bool(checksForUpdates)],
+            ]])
         case "do_app_setting":
-            guard data["key"]?.stringValue == "language", let value = data["value"]?.stringValue,
-                  languageChoices.contains(where: { $0.id == value })
-            else { return no(failed) }
-            do {
-                try setLanguage(value)
-            } catch {
+            switch data["key"]?.stringValue {
+            case "language":
+                guard let value = data["value"]?.stringValue, languageChoices.contains(where: { $0.id == value }),
+                      (try? setLanguage(value)) != nil
+                else { return no(failed) }
+            case "check_updates":
+                setChecksForUpdates(data["value"]?.truthy ?? false)
+            default:
                 return no(failed)
             }
             return .json(["ok": true])
+        case "get_update":
+            // (mode "none": the phone offers no installing – on the Mac it is done by hand, the page says how)
+            return .json(["ok": true, "version": .string(version), "phase": .string(updateState.rawValue),
+                          "error": .string(updateState == .failed ? texts.tr("ui.update.check_failed") : ""),
+                          "latest": .string(Self.plainVersion(latest?.version ?? "")),
+                          "notes": .string(latest?.notes ?? ""), "can_install": false, "mode": "none",
+                          "done": 0, "total": 0, "last": .null])
+        case "do_check_update":
+            guard updateState != .checking else { return no(texts.tr("ui.remote_update.busy")) }
+            Task { await checkUpdateNow() }  // (the phone asks again in a moment)
+            return .json(["ok": true])
+        case "do_install_update":
+            return no(texts.tr("ui.mac.phone.update_not_here"))
+        case "do_cancel_update":
+            return .json(["ok": false])
         default:
             return nil
         }

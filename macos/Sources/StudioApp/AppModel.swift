@@ -29,6 +29,9 @@ public final class AppModel {
     public private(set) var queuePage: QueueModel?
     /// A newer release with a Mac disk image (announced; its page opens on request).
     public private(set) var update: UpdateCheck.Release?
+    /// the last search's state and what it found (the settings page, the phone)
+    public private(set) var updateState: UpdateState = .idle
+    public private(set) var latest: UpdateCheck.Release?
     /// The countdown before the Mac sleeps or shuts down, once the queue ran out with that chosen.
     public private(set) var countdown: WhenDoneCountdown?
     @ObservationIgnored private let power: any PowerActions
@@ -200,8 +203,51 @@ public final class AppModel {
     public func checkForUpdate(current: String? = nil) async {
         guard settings["check_updates"]?.truthy ?? true else { return }
         guard let found = try? await UpdateCheck.newer(than: current ?? version, transport: transport) else { return }
+        (updateState, latest) = (.found, found)
         if settings["skipped_version"]?.stringValue == found.version { return }
         update = found
+    }
+
+    /// How the last search for a newer version went (remote_update's phases, as far as the Mac app has them: it
+    /// announces an update and opens its page – installing is done by hand, the app is not signed).
+    public enum UpdateState: String, Sendable {
+        case idle, checking, current, found, failed
+    }
+
+    /// *Check now* (the settings page, the phone): the newest release, whatever the settings and a skipped version
+    /// say – announced in the window, too, when it is newer.
+    public func checkUpdateNow(current: String? = nil) async {
+        guard updateState != .checking else { return }
+        (updateState, latest) = (.checking, nil)
+        do {
+            latest = try await UpdateCheck.newer(than: current ?? version, transport: transport)
+            updateState = latest == nil ? .current : .found
+            if let latest { update = latest }
+        } catch {
+            updateState = .failed
+        }
+        phone.changed()
+    }
+
+    /// The line under *Check now*: up to date, a newer version, could not look ("" before the first search).
+    public var updateMessage: String {
+        switch updateState {
+        case .idle: ""
+        case .checking: texts.tr("ui.phone.page.update_checking")
+        case .current: texts.tr("ui.update.up_to_date", ["version": version])
+        case .found: texts.tr("ui.update.found", ["version": Self.plainVersion(latest?.version ?? "")])
+        case .failed: texts.tr("ui.update.check_failed")
+        }
+    }
+
+    /// A release's tag as the app names its versions ("v4.4.0" → "4.4.0").
+    nonisolated static func plainVersion(_ tag: String) -> String { String(tag.drop { $0 == "v" }) }
+
+    /// Whether the window looks for a newer version when the app starts (check_updates).
+    public var checksForUpdates: Bool { settings["check_updates"]?.truthy ?? true }
+
+    public func setChecksForUpdates(_ on: Bool) {
+        updateSettings { $0["check_updates"] = .bool(on) }
     }
 
     /// *Skip this version* (skipped_version, as the Python app keeps it).

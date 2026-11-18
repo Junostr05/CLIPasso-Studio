@@ -1649,5 +1649,7 @@
  "ui.mac.dmg_step_settings": "3. Öffne Systemeinstellungen → Datenschutz & Sicherheit, scrolle nach unten zum Hinweis zu CLIPasso Studio und klicke auf „Dennoch öffnen“. Bestätige mit deinem Passwort.",
  "ui.mac.dmg_step_again": "4. Öffne CLIPasso Studio noch einmal und klicke auf „Öffnen“. Danach startet die App wie jede andere.",
  "ui.mac.dmg_models": "Die Modelle werden einmalig geladen, wenn eine Methode sie zum ersten Mal braucht – die App zeigt vorher, wie groß sie sind.",
+ "ui.mac.settings.updates": "Updates",
+ "ui.mac.phone.update_not_here": "Auf dem Mac installierst du Updates von Hand: Am Mac öffnet „Release-Seite“ den Download – zieh die neue Version auf „Programme“. Einstellungen, Modelle und Ergebnisse bleiben.",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

@@ -9,6 +9,12 @@ public enum UpdateCheck {
     public struct Release: Sendable, Hashable {
         public let version: String
         public let page: URL
+        /// what is new (the release's text)
+        public let notes: String
+
+        public init(version: String, page: URL, notes: String = "") {
+            (self.version, self.page, self.notes) = (version, page, notes)
+        }
     }
 
     public struct CheckError: Error, CustomStringConvertible, Sendable {
@@ -58,6 +64,6 @@ public enum UpdateCheck {
         }
         let page = o["html_url"]?.stringValue.flatMap(URL.init(string:))
             ?? URL(string: "https://github.com/Junostr05/CLIPasso-Studio/releases/latest")!
-        return Release(version: tag, page: page)
+        return Release(version: tag, page: page, notes: o["body"]?.stringValue ?? "")
     }
 }

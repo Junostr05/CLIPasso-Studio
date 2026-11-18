@@ -18,8 +18,8 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Bildschirmfotos aller Seiten (Artefakt `screenshots-mac`).
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
-**Noch nicht in der Mac-App, also nicht testen:** Updates, vom Handy aus Modelle und App-Einstellungen,
-Vergleichen, Schritte und Vereinfachen,
+**Noch nicht in der Mac-App, also nicht testen:** ein Update, das sich selbst installiert (die App ist nicht
+signiert: sie meldet die neue Version, installiert wird von Hand), Vergleichen, Schritte und Vereinfachen,
 die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon).
 
 ---
@@ -155,6 +155,16 @@ ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erl
 | P7 | Auf dem Handy die Skizze als PNG, als GIF und als animiertes SVG exportieren und herunterladen. | Die Dateien kommen aufs Handy und sehen aus wie derselbe Export am Mac. |
 | P8 | „Neuer Zugangscode“ am Mac, dann auf dem alten Handy neu laden. Danach den Port auf einen belegten ändern (z. B. 5000 bei laufendem AirPlay-Empfänger). | Das alte Handy muss sich neu anmelden. Der belegte Port wird mit einem Hinweis gemeldet. |
 | P9 | Mit Tailscale auf Mac und Handy: „Auch über Tailscale“ an, unterwegs (Handy im Mobilfunk) den Tailscale-QR-Code scannen. | Die Seite geht auch unterwegs. Ohne den Schalter geht sie nur im WLAN. |
+| P10 | Auf dem Handy unter „App“ die Modelle öffnen: ein fehlendes Modell laden, abbrechen, wieder laden; ein geladenes löschen. Die Sprache auf Englisch stellen. | Der Download erscheint auch am Mac (Fortschritt im Fenster) und startet keinen Auftrag. Abgebrochen bleibt das Geladene für das nächste Mal. Die Seite und die App wechseln die Sprache. |
+| P11 | Auf dem Handy „Nach Updates suchen“. | Es steht da, ob es eine neuere Version gibt. Statt „Installieren“ erklärt ein Hinweis, wie man am Mac von Hand aktualisiert. |
+
+## G3. Updates
+
+| Nr. | Schritt | Erwartet |
+|-----|---------|----------|
+| U1 | Einstellungen → Updates → „Jetzt suchen“, einmal mit und einmal ohne Internet. | Mit Internet steht da „Du hast die neueste Version (…)“ oder „Version … ist verfügbar“ mit „Release-Seite“. Ohne Internet: „Konnte nicht nach Updates suchen“. |
+| U2 | Gibt es eine neuere Version: „Release-Seite“, das DMG laden, die neue App auf „Programme“ ziehen und die alte ersetzen. | Einstellungen, Modelle und Ergebnisse sind danach noch da. macOS fragt einmal wie beim ersten Start. |
+| U3 | „Beim Start nach einer neuen Version suchen“ aus, App neu starten. | Beim Start erscheint keine Leiste mit einer neuen Version mehr. |
 
 ## H. Aussehen, Sprache, Bedienung
 
