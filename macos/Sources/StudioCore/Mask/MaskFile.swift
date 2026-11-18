@@ -8,6 +8,10 @@
     public enum MaskFile {
         public struct ReadError: Error, CustomStringConvertible, Sendable {
             public let description: String
+
+            public init(description: String) {
+                self.description = description
+            }
         }
 
         /// The values 0 … 1, row after row, as masking reads them (in float: the 16 bits / 65535, the 8 bits / 255) –

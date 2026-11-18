@@ -70,6 +70,10 @@ private struct ImageStep: View {
     @State private var overlay: CGImage?
     /// the mask being touched up
     @State private var editing: MaskEditorModel?
+    /// the detail map being painted, whether the engine keeps one for the image, what became of the last
+    @State private var detailing: DetailEditorModel?
+    @State private var hasDetails = false
+    @State private var detailNote = ""
 
     var body: some View {
         let studio = model.studio
@@ -109,11 +113,21 @@ private struct ImageStep: View {
                 }
             }
             maskRow
-            Button(model.texts.tr(studio.image == nil ? "ui.step.open" : "ui.step.change"), systemImage: "folder") {
-                importing = true
+            HStack(spacing: Spacing.spaceS) {
+                Button(model.texts.tr(studio.image == nil ? "ui.step.open" : "ui.step.change"), systemImage: "folder") {
+                    importing = true
+                }
+                .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
+                    if case .success(let url) = result { studio.image = url }
+                }
+                Button(model.texts.tr("ui.detail.title"), systemImage: "sparkles") { openDetails() }
+                    .labelStyle(.iconOnly)
+                    .help(detailTip)
+                    .disabled(studio.image == nil || !engineReady)
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
-                if case .success(let url) = result { studio.image = url }
+            if !detailNote.isEmpty {
+                Text(verbatim: detailNote).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .task(id: studio.image) {
@@ -126,8 +140,43 @@ private struct ImageStep: View {
         }
         .task(id: maskKey) { await model.updateMask() }
         .sheet(item: $editing) { MaskEditorSheet(editor: $0) }
+        .sheet(item: $detailing) { editor in
+            DetailEditorSheet(editor: editor) {
+                hasDetails = true
+                detailNote = model.texts.tr("ui.detail.saved")
+            }
+        }
+        .task(id: [studio.image?.path ?? "", "\(engineReady)"]) {
+            detailNote = ""
+            hasDetails = await model.hasDetails()
+        }
         .task(id: [model.mask.version, scheme == .dark ? 1 : 0]) {
             overlay = await Self.overlay(model.mask, dark: scheme == .dark)
+        }
+    }
+
+    private var engineReady: Bool {
+        if case .ready = model.engineStatus { return true }
+        return false
+    }
+
+    /// _update_detail_button: the brush, whether a map is kept for the image, whether the method uses it.
+    private var detailTip: String {
+        let t = model.texts
+        var tip = t.tr("ui.detail.tip")
+        if hasDetails { tip += "\n" + t.tr("ui.detail.has") }
+        if !["clipasso", "controlsketch"].contains(model.studio.method) { tip += "\n" + t.tr("ui.detail.not_used") }
+        return tip
+    }
+
+    private func openDetails() {
+        detailNote = ""
+        Task {
+            do {
+                detailing = try await model.detailEditor()
+            } catch {
+                detailNote = String(describing: error)
+            }
         }
     }
 

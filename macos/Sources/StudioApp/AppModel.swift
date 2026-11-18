@@ -41,6 +41,9 @@ public final class AppModel {
     @ObservationIgnored private var noticeListener: Task<Void, Never>?
     /// the object mask of the studio's image
     public let mask = StudioMask()
+    /// portrait mode's answers awaited (by image path), and those that came before they were awaited
+    @ObservationIgnored var faceWaiters: [String: CheckedContinuation<EngineEvent, Never>] = [:]
+    @ObservationIgnored var facesArrived: [String: EngineEvent] = [:]
     @ObservationIgnored private let transport: any HTTPTransport
     @ObservationIgnored private var download: Task<Void, Never>?
     @ObservationIgnored private let resources: AppResources
@@ -127,7 +130,11 @@ public final class AppModel {
             // the self-test reads them itself, and the engine's stream has one reader at a time)
             noticeListener = Task { [weak self] in
                 for await notice in queue.notices {
-                    await self?.maskNotice(notice)
+                    if notice.kind.hasPrefix("portrait_") {
+                        self?.faceNotice(notice)
+                    } else {
+                        await self?.maskNotice(notice)
+                    }
                 }
             }
         } catch {
@@ -142,6 +149,11 @@ public final class AppModel {
         queueListener = nil
         noticeListener?.cancel()
         noticeListener = nil
+        for (image, waiter) in faceWaiters {  // (no answer will come)
+            waiter.resume(returning: EngineEvent(kind: "portrait_failed", job: nil,
+                                                 data: ["image": .string(image), "message": "the engine stopped"]))
+        }
+        faceWaiters = [:]
         await engine?.stop()
     }
 

@@ -10,7 +10,8 @@ job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEY
 found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``start`` as in job DIR) · mask
 PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked again it gives PNG as the model's
 probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` gives it as the user's – and
-``remove_mask`` removes it).
+``remove_mask`` removes it; ``detail`` gives the map ``save_detail`` kept – a copy, at 32 × 24 –, ``portrait`` first
+answers missing_model, then finds a "face": the left half more).
 Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
@@ -19,15 +20,39 @@ import json
 import os
 import shutil
 import sys
+import struct
 import tempfile
 import time
+import zlib
 
 mode = sys.argv[1] if len(sys.argv) > 1 else "echo"
 limit = int(sys.argv[2]) if len(sys.argv) > 2 and mode in ("crash_after", "events") else 0
 source = sys.argv[2] if mode in ("job", "mask") else sys.argv[3] if mode == "needs" else ""
 needed = sys.argv[2].split(",") if mode == "needs" else []
 converted = set()
-edited = os.path.join(tempfile.mkdtemp(prefix="fake-engine-"), "edited.png")
+kept = tempfile.mkdtemp(prefix="fake-engine-")
+edited = os.path.join(kept, "edited.png")
+detail = os.path.join(kept, "detail.png")
+portraits = 0
+
+
+def grey_png(path, width, height, value):
+    """An 8-bit grey PNG; ``value(x, y)`` its bytes."""
+    raw = b"".join(b"\0" + bytes(value(x, y) for x in range(width)) for y in range(height))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def temp_copy(path):
+    fd, copy = tempfile.mkstemp(suffix=".png", dir=kept)
+    os.close(fd)
+    shutil.copyfile(path, copy)
+    return copy
 out = sys.stdout.buffer
 
 
@@ -100,6 +125,23 @@ for raw in sys.stdin.buffer:
         if os.path.isfile(edited):
             os.remove(edited)
         send({"id": rid, "ok": True, "result": {}})
+    elif op == "detail" and mode == "mask":
+        has = os.path.isfile(detail)
+        send({"id": rid, "ok": True, "result": {"map": temp_copy(detail) if has else None, "width": 32, "height": 24,
+                                                "has": has, "normal": 128}})
+    elif op == "save_detail" and mode == "mask":
+        shutil.copyfile(args["map"], detail)
+        send({"id": rid, "ok": True, "result": {"path": detail}})
+    elif op == "portrait" and mode == "mask":
+        portraits += 1
+        if portraits == 1:
+            send({"id": rid, "ok": False, "error": {"code": "missing_model", "message": "blazeface"}})
+        else:
+            send({"id": rid, "ok": True, "result": {"computing": True}})
+            faces = os.path.join(kept, f"faces{portraits}.png")
+            grey_png(faces, 32, 24, lambda x, y: 200 if x < 16 else 128)
+            send({"event": "portrait_ready", "job": None, "data": {"image": args["image"], "model": "blazeface",
+                                                                   "map": faces}})
     elif op == "shutdown":
         send({"id": rid, "ok": True, "result": {}})
         sys.exit(0)

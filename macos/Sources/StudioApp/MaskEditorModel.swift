@@ -204,18 +204,7 @@ public final class MaskEditorModel: Identifiable {
 
         /// The mask as an 8-bit grey PNG (white the object), as the engine reads a painted one.
         nonisolated static func writeMask(_ mask: MaskPlane, to url: URL) throws {
-            let bytes = mask.values.map { $0 ? UInt8(255) : 0 }
-            guard let provider = CGDataProvider(data: Data(bytes) as CFData),
-                  let image = CGImage(width: mask.width, height: mask.height, bitsPerComponent: 8, bitsPerPixel: 8,
-                                      bytesPerRow: mask.width, space: CGColorSpaceCreateDeviceGray(),
-                                      bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-                                      provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent),
-                  let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
-            else { throw MaskFile.ReadError(description: "the mask could not be written") }
-            CGImageDestinationAddImage(destination, image, nil)
-            guard CGImageDestinationFinalize(destination) else {
-                throw MaskFile.ReadError(description: "the mask could not be written")
-            }
+            try writeGrey(mask.values.map { $0 ? 255 : 0 }, width: mask.width, height: mask.height, to: url)
         }
     }
 
@@ -232,6 +221,18 @@ public final class MaskEditorModel: Identifiable {
             else { return nil }
             return CGImage(width: made.width, height: made.height, bitsPerComponent: 8, bitsPerPixel: 32,
                            bytesPerRow: made.width * 4, space: space,
+                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
+                           decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        }
+
+        /// RGBA pixels (not premultiplied) as a picture.
+        public static func rgba(_ pixels: [UInt8], width: Int, height: Int) -> CGImage? {
+            guard width > 0, height > 0, pixels.count == width * height * 4,
+                  let provider = CGDataProvider(data: Data(pixels) as CFData),
+                  let space = CGColorSpace(name: CGColorSpace.sRGB)
+            else { return nil }
+            return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                           bytesPerRow: width * 4, space: space,
                            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
                            decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         }
