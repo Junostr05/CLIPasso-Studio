@@ -177,6 +177,9 @@ ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erl
 | H5 | Bediene die App nur mit der Tastatur (Systemeinstellungen → Tastatur → Tastaturnavigation an). | Mit Tab und Leertaste erreichst du jeden Knopf. Der Fokus ist immer sichtbar. |
 | H6 | Schalte VoiceOver ein (⌘F5) und geh durch Studio, Galerie und Export. | Jeder Knopf hat einen verständlichen Namen. Bilder haben eine Beschreibung. |
 | H7 | Systemeinstellungen → Bedienungshilfen → Anzeige: „Kontrast erhöhen“ und „Bewegung reduzieren“. | Die App bleibt lesbar und verzichtet auf unnötige Animationen. |
+| H8 | Einen längeren Auftrag starten und im Terminal `pmset -g assertions` aufrufen. Danach in den Einstellungen „Energiesparmodus verhindern …“ aus und wieder nachsehen. | Solange der Auftrag läuft, steht CLIPasso Studio unter den Prozessen, die den Ruhezustand verhindern; nach dem Auftrag oder mit dem Schalter aus nicht mehr. |
+| H9 | Während ein Auftrag läuft, auf das Dock-Symbol schauen. | Unten im Symbol wächst ein Fortschrittsbalken. Nach dem Auftrag ist das Symbol wieder normal. |
+| H10 | Einen Auftrag starten und in eine andere App wechseln, bis er fertig ist. Beim ersten Mal fragt macOS nach Mitteilungen: „Erlauben“. Danach dasselbe mit einem Auftrag, der scheitert (z. B. Bild während des Auftrags löschen). | Eine Mitteilung „Skizze fertig“ bzw. „Auftrag beendet“ mit dem Grund; das Dock-Symbol hüpft einmal. Mit der App im Vordergrund oder mit dem Schalter aus kommt keine. |
 
 ## I. Dauer und Last
 

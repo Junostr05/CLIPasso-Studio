@@ -35,6 +35,8 @@ public final class AppModel {
     /// The countdown before the Mac sleeps or shuts down, once the queue ran out with that chosen.
     public private(set) var countdown: WhenDoneCountdown?
     @ObservationIgnored private let power: any PowerActions
+    /// no sleep while computing, the Dock's progress, the notification when a job ends
+    @ObservationIgnored let signals: any AppSignals
     @ObservationIgnored private let whenDoneTiming: (seconds: Int, tick: Duration)
     /// The queue as it was last reported (nil before the engine runs).
     public private(set) var queueSnapshot: QueueSnapshot?
@@ -57,8 +59,9 @@ public final class AppModel {
     public init(resources: AppResources, store: SettingsStore = .standard(),
                 transport: any HTTPTransport = URLSessionTransport(), power: any PowerActions = MacPower(),
                 whenDoneTiming: (seconds: Int, tick: Duration) = (60, .seconds(1)),
-                secrets: (any RemoteSecretStore)? = nil) throws
+                secrets: (any RemoteSecretStore)? = nil, signals: (any AppSignals)? = nil) throws
     {
+        self.signals = signals ?? MacSignals()
         self.resources = resources
         phone = PhoneRemote(store: secrets ?? Self.defaultSecrets())
         self.transport = transport
@@ -162,6 +165,8 @@ public final class AppModel {
                                                  data: ["image": .string(image), "message": "the engine stopped"]))
         }
         faceWaiters = [:]
+        signals.keepAwake(false)
+        signals.dockProgress(nil)
         if let server = phone.server {
             await server.stop()
             phone.stopped()
@@ -173,6 +178,7 @@ public final class AppModel {
         let finished = { (s: QueueSnapshot?) in s?.jobs.filter { $0.status == .done }.count ?? 0 }
         let newResult = finished(snapshot) > finished(queueSnapshot)
         let ranOut = snapshot.finished != nil && queueSnapshot?.finished == nil
+        signal(snapshot, before: queueSnapshot)
         queueSnapshot = snapshot
         queuePage?.apply(snapshot)
         phone.changed()  // (the phone pages ask again)
@@ -188,6 +194,42 @@ public final class AppModel {
         studio.showFinishedJob()
         if newResult {
             Task { await gallery.refresh() }  // (a finished job is a new result)
+        }
+    }
+
+    // MARK: - while jobs run
+
+    /// controller._keep_awake while a job runs (keep_awake), its progress on the Dock icon, and – with the window in
+    /// the background (notify) – a notification when a job is done or failed (main_window._on_job_finished).
+    private func signal(_ snapshot: QueueSnapshot, before: QueueSnapshot?) {
+        let running = snapshot.jobs.first { $0.isActive }
+        signals.keepAwake(running != nil && isOn("keep_awake"))
+        signals.dockProgress(running.map(\.progress))
+        guard isOn("notify"), !signals.isActive, let before else { return }
+        // (a job that ended since: the snapshots in between may have been skipped – only the newest one waits)
+        let was = Dictionary(before.jobs.map { ($0.id, $0.status) }, uniquingKeysWith: { a, _ in a })
+        for job in snapshot.jobs {
+            guard let old = was[job.id], ![.done, .failed, .cancelled].contains(old) else { continue }
+            let name = job.target.lastPathComponent
+            switch job.status {
+            case .done:
+                signals.notify(title: texts.tr("ui.notify_done_title"), body: texts.tr("ui.toast_done", ["name": name]))
+            case .failed:
+                signals.notify(title: texts.tr("ui.notify_failed_title"),
+                               body: job.message.isEmpty ? job.status.rawValue : job.message)
+            default:
+                break
+            }
+        }
+    }
+
+    /// The app's switches that are on unless turned off (app_settings.DEFAULTS: keep_awake, notify, check_updates).
+    public func isOn(_ key: String) -> Bool { settings[key]?.truthy ?? true }
+
+    public func setOn(_ key: String, _ on: Bool) {
+        updateSettings { $0[key] = .bool(on) }
+        if key == "keep_awake" {
+            signals.keepAwake(on && (queueSnapshot?.jobs.contains { $0.isActive } ?? false))
         }
     }
 
@@ -244,11 +286,9 @@ public final class AppModel {
     nonisolated static func plainVersion(_ tag: String) -> String { String(tag.drop { $0 == "v" }) }
 
     /// Whether the window looks for a newer version when the app starts (check_updates).
-    public var checksForUpdates: Bool { settings["check_updates"]?.truthy ?? true }
+    public var checksForUpdates: Bool { isOn("check_updates") }
 
-    public func setChecksForUpdates(_ on: Bool) {
-        updateSettings { $0["check_updates"] = .bool(on) }
-    }
+    public func setChecksForUpdates(_ on: Bool) { setOn("check_updates", on) }
 
     /// *Skip this version* (skipped_version, as the Python app keeps it).
     public func skipUpdate() {

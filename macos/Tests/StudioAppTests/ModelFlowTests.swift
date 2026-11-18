@@ -195,7 +195,7 @@ final class OneFileTransport: HTTPTransport {
         #expect(settings["key"] == "language" && settings["kind"] == "choice" && settings["value"] == "de")
         let languages = settings["choices"]?.arrayValue?.compactMap { $0.objectValue?["value"] } ?? []
         #expect(languages == ["auto", "de", "en"])
-        #expect(await ask("do_app_setting", ["key": "notify", "value": true])?["error"] == "Ging nicht.")
+        #expect(await ask("do_app_setting", ["key": "keep_models_loaded", "value": true])?["error"] == "Ging nicht.")
         #expect(await ask("do_app_setting", ["key": "language", "value": "fr"])?["error"] == "Ging nicht.")
         #expect(await ask("do_app_setting", ["key": "language", "value": "en"]) == ["ok": true])
         #expect(model.texts.language == "en" && model.settings.language == "en")

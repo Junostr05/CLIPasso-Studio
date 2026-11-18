@@ -49,6 +49,9 @@ public extension AppModel {
                 "error": .string(d.error)]
     }
 
+    /// The app's switches the phone may change, in the order of APP_SETTINGS.
+    internal static let phoneSwitches = ["check_updates", "keep_awake", "notify"]
+
     /// The answers about the models and the app's settings (3.8); nil: not one of them.
     internal func phoneModelsAnswer(_ action: String, _ data: JSONObject) async -> RemoteAnswer? {
         func no(_ why: String) -> RemoteAnswer { .json(["ok": false, "error": .string(why)]) }
@@ -123,23 +126,24 @@ public extension AppModel {
             }
             return .json(["ok": true])
         case "get_app_settings":
-            // (the Mac app's settings the phone may change: the language and the search for updates – keeping
-            // awake and the notifications follow with their parts of the app)
-            return .json(["ok": true, "settings": [
-                ["key": "language", "label": .string(texts.tr("ui.settings.language")), "kind": "choice",
-                 "value": .string(settings.language),
-                 "choices": .array(languageChoices.map { ["value": .string($0.id), "label": .string($0.label)] })],
-                ["key": "check_updates", "label": .string(texts.tr("ui.settings.check_updates")), "kind": "bool",
-                 "value": .bool(checksForUpdates)],
-            ]])
+            // (APP_SETTINGS as far as the Mac app has them: no experimental sketch, betas or warm worker)
+            let language: JSONValue = [
+                "key": "language", "label": .string(texts.tr("ui.settings.language")), "kind": "choice",
+                "value": .string(settings.language),
+                "choices": .array(languageChoices.map { ["value": .string($0.id), "label": .string($0.label)] }),
+            ]
+            return .json(["ok": true, "settings": .array([language] + Self.phoneSwitches.map {
+                ["key": .string($0), "label": .string(texts.tr("ui.settings.\($0)")), "kind": "bool",
+                 "value": .bool(isOn($0))]
+            })])
         case "do_app_setting":
             switch data["key"]?.stringValue {
             case "language":
                 guard let value = data["value"]?.stringValue, languageChoices.contains(where: { $0.id == value }),
                       (try? setLanguage(value)) != nil
                 else { return no(failed) }
-            case "check_updates":
-                setChecksForUpdates(data["value"]?.truthy ?? false)
+            case let key? where Self.phoneSwitches.contains(key):
+                setOn(key, data["value"]?.truthy ?? false)
             default:
                 return no(failed)
             }
