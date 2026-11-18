@@ -33,7 +33,10 @@ import StudioCore
         var faces = DetailMap(width: 40, height: 30)
         faces.values[0] = 255
         editor.faces(faces)
-        #expect(!editor.noFace && editor.map.values[0] == 255 && editor.share.less > 0)  // (over the painted map)
+        // (as the studio's find_face: the larger value kept – the faces' map is normal elsewhere, so what was painted
+        // "less" is normal again, "more" stays)
+        #expect(!editor.noFace && editor.map.values[0] == 255 && editor.share.less == 0)
+        #expect(editor.map.values.filter { $0 > 128 }.count == painted.values.filter { $0 > 128 }.count + 1)
     }
 
     @Test func theBrushsSizeAndThirtySteps() {
