@@ -68,6 +68,45 @@ public enum Radius {
     public static let float: Double = 12
 }
 
+/// The phone page's colours (gui/theme.py PHONE_COLOURS: the CSS name, the palette's colour) and the scrim over a sketch.
+public enum PhoneColours {
+    public static func all(_ p: Palette) -> [(css: String, colour: String)] {
+        [
+            ("bg", p.bg),
+            ("chrome", p.chrome),
+            ("card", p.surface),
+            ("surface-2", p.surface2),
+            ("surface-3", p.surface3),
+            ("line", p.border),
+            ("control", p.control),
+            ("field", p.field),
+            ("text", p.text),
+            ("muted", p.muted),
+            ("faint", p.faint),
+            ("accent", p.accent),
+            ("accent-hover", p.accent_hover),
+            ("accent-soft", p.accent_soft),
+            ("on-accent", p.on_accent),
+            ("on-accent-soft", p.on_accent_soft),
+            ("accent-text", p.accent_text),
+            ("accent-text-hover", p.accent_text_hover),
+            ("focus", p.focus),
+            ("success", p.success),
+            ("warning", p.warning),
+            ("danger", p.danger),
+            ("danger-text", p.danger_text),
+            ("on-status", p.on_status),
+            ("paper", p.paper),
+            ("ink", p.ink),
+            ("on-paper", p.on_paper),
+            ("more", p.detail_more),
+            ("less", p.detail_less),
+        ]
+    }
+
+    public static let scrimAlpha = "0.72"
+}
+
 /// The colour pairs tests/test_theme_contrast.py measures: (palette, what, foreground, background, the lowest contrast allowed).
 public enum ContrastPairs {
     public static let all: [(palette: String, what: String, fg: String, bg: String, minimum: Double)] = [

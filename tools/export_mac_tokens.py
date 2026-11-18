@@ -49,6 +49,12 @@ def swift() -> str:
         swift_name = name.split("_", 1)[1].lower()
         lines.append(f"    public static let {swift_name}: Double = {getattr(theme, name)}")
     lines += ["}", "",
+              "/// The phone page's colours (gui/theme.py PHONE_COLOURS: the CSS name, the palette's colour) and the "
+              "scrim over a sketch.", "public enum PhoneColours {",
+              "    public static func all(_ p: Palette) -> [(css: String, colour: String)] {", "        ["]
+    lines += [f"            ({_swift_string(css)}, p.{field})," for css, field in theme.PHONE_COLOURS]
+    lines += ["        ]", "    }", "",
+              f"    public static let scrimAlpha = {_swift_string(repr(theme.SCRIM_ALPHA))}", "}", "",
               "/// The colour pairs tests/test_theme_contrast.py measures: (palette, what, foreground, background, the "
               "lowest contrast allowed).", "public enum ContrastPairs {",
               "    public static let all: [(palette: String, what: String, fg: String, bg: String, "

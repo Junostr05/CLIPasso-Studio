@@ -826,6 +826,93 @@ def detail_cases(out: Path) -> dict:
             "start": "detail/edit_start.png", "strokes": strokes, "shares": shares, "photos": photos}
 
 
+REMOTE_CLIENTS = ("192.168.1.20", "10.0.0.5", "172.16.3.4", "172.32.0.1", "127.0.0.1", "127.8.9.1", "::1",
+                  "fe80::1%eth0", "::ffff:192.168.0.2", "169.254.10.1", "8.8.8.8", "2001:4860:4860::8888",
+                  "::ffff:8.8.8.8", "nonsense", "", "100.64.0.1", "100.127.255.254", "100.128.0.1", "100.63.255.255",
+                  "fd7a:115c:a1e0::1", "fc00::1", "::ffff:100.100.1.1", "0.0.0.0", "255.255.255.255", "192.0.2.1",
+                  "1.2.3", "192.168.1.300", "::", "fe80::1", "fec0::1", "224.0.0.1", "100.100.100.100%x",
+                  # (every network Python's ipaddress calls private, its edges and its exceptions)
+                  "192.0.0.9", "192.0.0.10", "192.0.0.11", "192.0.0.255", "192.0.1.0", "192.0.0.170", "192.0.0.171",
+                  "192.0.0.172", "198.18.5.5", "198.19.255.255", "198.20.0.0", "198.51.100.7", "203.0.113.9",
+                  "240.1.2.3", "239.255.255.255", "11.0.0.0", "9.255.255.255", "172.31.255.255", "169.255.0.0",
+                  "2001:db8::1", "2002::1", "3fff::1", "3fff:1000::", "2001:1::1", "2001:1::3", "2001::5",
+                  "2001:200::", "64:ff9b:1::1", "64:ff9b::1", "100::1", "100::1:0:0:0", "2001:20::1", "2001:3::1",
+                  "2001:4:112::1", "fe80::1%en0", "fe81::1", "febf::1", "fec0::", "fbff::1", "fe00::1",
+                  "::ffff:10.0.0.1", "::ffff:0a00:0001", "::ffff:1.1.1.1", "01.2.3.4", "1.2.3.4.5", " 10.0.0.1",
+                  "10.0.0.1 ", "0x7f.0.0.1", "::1::", "1::2::3", "::ffff:192.168.1.1%eth0", "FE80::ABCD",
+                  "1:2:3:4:5:6:7:8", "::ffff:127.0.0.1", "%eth0", "127.1")
+REMOTE_PIN = "246810"
+REMOTE_TRIES = (  # (address, PIN given, time): the brakes on guessing, per address and for everybody
+    *[("10.0.0.2", "000000", 1000.0 + i) for i in range(5)],  # five wrong: 30 s to wait
+    ("10.0.0.2", REMOTE_PIN, 1010.0), ("10.0.0.2", REMOTE_PIN, 1036.0),  # (still waiting; then right)
+    *[("10.0.0.3", "11111", 1100.0 + i) for i in range(10)],  # ten wrong (not even six digits): 30 s, then 60 s
+    ("10.0.0.3", REMOTE_PIN, 1140.0), ("10.0.0.3", REMOTE_PIN, 1200.0),
+    *[(f"10.0.1.{i}", "999999", 1300.0 + i) for i in range(20)],  # twenty wrong from many: nobody for 600 s
+    ("10.0.2.1", REMOTE_PIN, 1330.0), ("10.0.2.1", REMOTE_PIN, 1920.0), ("10.0.2.1", REMOTE_PIN, 1925.0),
+    *[("10.0.0.4", "123", 3000.0 + i * 0.5) for i in range(40)],  # the wait doubles, at most an hour
+)
+REMOTE_TOKEN = "Kamel-Zugang_0123456789ab"
+
+
+def remote_cases(out: Path) -> dict:
+    """gui/remote.py: who may connect (the home network; the tailnet when switched on), the brakes on guessing the
+    PIN (an address's own and everybody's, against a clock of its own), the phone page and the PIN page as the app
+    serves them (remote/page_<lang>.html, remote/login_<lang>.html: the texts of PhoneLink.retranslate, the access
+    code, the icons inline), tokens.css and the manifest (needs PySide6)."""
+    from types import SimpleNamespace
+
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio import __version__
+    from clipasso_studio.gui import phone, remote, theme
+    from clipasso_studio.gui.i18n import i18n
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "remote"
+    folder.mkdir()
+    clients = [{"ip": ip, "tailscale": t, "allowed": remote.allowed_client(ip, t)}
+               for ip in REMOTE_CLIENTS for t in (False, True)]
+    real_pin, remote.pin = remote.pin, lambda: REMOTE_PIN
+    try:
+        guard = remote._PinGuard()
+        tries = [{"ip": ip, "pin": given, "now": now, "ok": ok, "wait": wait}
+                 for ip, given, now in REMOTE_TRIES for ok, wait in [guard.check(ip, given, now)]]
+        now = 10000.0  # rounds of five wrong PINs, each after the wait: it doubles up to an hour
+        for _ in range(9):
+            for _ in range(5):
+                ok, wait = guard.check("10.0.0.9", "654321", now)
+                tries.append({"ip": "10.0.0.9", "pin": "654321", "now": now, "ok": ok, "wait": wait})
+                now += 1.0
+            now += wait + 0.25
+    finally:
+        remote.pin = real_pin
+    texts = {}
+    before = i18n.lang
+    try:
+        for lang in ("de", "en"):
+            i18n.set_language(lang)
+            link = SimpleNamespace(bridge=SimpleNamespace())
+            phone.PhoneLink.retranslate(link)
+            texts[lang] = link.bridge.texts
+            (folder / f"page_{lang}.html").write_bytes(remote.page(link.bridge.texts, REMOTE_TOKEN).encode("utf-8"))
+            (folder / f"login_{lang}.html").write_bytes(remote.login_page(link.bridge.texts).encode("utf-8"))
+    finally:
+        i18n.set_language(before)
+    (folder / "tokens.css").write_bytes(theme.tokens_css().encode("utf-8"))
+    (folder / "manifest.webmanifest").write_bytes(remote.manifest())
+    icons = {name: remote.icon_svg(name) for name in ("pen-tool", "list-todo", "images", "ellipsis", "brush")}
+    return {"version": __version__, "token": REMOTE_TOKEN, "pin": REMOTE_PIN, "clients": clients, "tries": tries,
+            "texts": texts, "icons": icons, "constants": {
+                "port": remote.DEFAULT_PORT, "max_upload": remote.MAX_UPLOAD, "max_json": remote.MAX_JSON,
+                "event_streams": remote.EVENT_STREAMS, "event_ping": remote.EVENT_PING, "pin_digits": remote.PIN_DIGITS,
+                "pin_tries": remote.PIN_TRIES, "pin_wait": remote.PIN_WAIT, "pin_wait_max": remote.PIN_WAIT_MAX,
+                "pin_global": remote.PIN_GLOBAL, "pin_window": remote.PIN_WINDOW, "cookie": remote.COOKIE,
+                "cookie_age": remote.COOKIE_AGE, "page_csp": remote.PAGE_CSP, "svg_csp": remote.SVG_CSP,
+                "fonts": list(remote.FONTS), "font_cache": remote.FONT_CACHE, "methods": list(remote.METHODS),
+                "upload_dir": remote.UPLOAD_DIR, "call_timeout": remote.CALL_TIMEOUT}}
+
+
 STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
 
 
@@ -1076,6 +1163,7 @@ def build(out: Path) -> None:
     write_json(out / "mask" / "overlay.json", mask_cases(out))
     write_json(out / "mask" / "edit.json", mask_edit_cases(out))
     write_json(out / "detail" / "edit.json", detail_cases(out))
+    write_json(out / "remote" / "remote.json", remote_cases(out))
     real_strftime = time.strftime
     with tempfile.TemporaryDirectory() as tmp, \
             mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
