@@ -30,8 +30,9 @@ public final class DetailEditorModel: Identifiable {
     public init(image: URL, map: DetailMap) {
         self.image = image
         self.map = map
-        brush = DetailEditing.startBrush(width: map.width, height: map.height)
-        brushes = DetailEditing.brushRange(start: brush)
+        let start = DetailEditing.startBrush(width: map.width, height: map.height)  // (self is not ready yet)
+        brush = start
+        brushes = DetailEditing.brushRange(start: start)
     }
 
     public var width: Int { map.width }
