@@ -34,6 +34,10 @@ public enum Backup {
 
     public struct Failure: Error, CustomStringConvertible, Sendable {
         public let description: String
+
+        public init(description: String) {
+            self.description = description
+        }
     }
 
     /// What a restore did.

@@ -57,11 +57,11 @@ public extension AppModel {
         }
         var data = settings.data
         let known = backupQueueItems.map { ($0["target"]?.stringValue ?? "", $0["settings"]?.objectValue ?? [:]) }
-        let out = settings.outputDir, models = modelsDir
+        let out = settings.outputDir, modelsFolder = modelsDir
         let inputs = store.url.deletingLastPathComponent().appending(path: "restored_inputs", directoryHint: .isDirectory)
         let work = Task.detached { () throws -> (Backup.Report, JSONObject) in
             var changed = data
-            let report = try Backup.restore(url, parts: parts, settings: &changed, outputDir: out, modelsDir: models,
+            let report = try Backup.restore(url, parts: parts, settings: &changed, outputDir: out, modelsDir: modelsFolder,
                                             inputsDir: inputs, known: known, progress: progress)
             return (report, changed)
         }
