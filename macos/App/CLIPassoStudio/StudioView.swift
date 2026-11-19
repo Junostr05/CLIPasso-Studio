@@ -64,6 +64,8 @@ private struct ImageStep: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     @State private var importing = false
+    /// the image editor (crop, turn, mirror)
+    @State private var cropping = false
     @State private var preview: NSImage?
     @State private var targeted = false
     /// the object mask over the image (mask_view.overlay)
@@ -120,6 +122,10 @@ private struct ImageStep: View {
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
                     if case .success(let url) = result { studio.image = url }
                 }
+                Button(model.texts.tr("ui.edit_image.button"), systemImage: "crop") { cropping = true }
+                    .labelStyle(.iconOnly)
+                    .help(model.texts.tr("ui.edit_image.tip"))
+                    .disabled(studio.image == nil)
                 Button(model.texts.tr("ui.detail.title"), systemImage: "sparkles") { openDetails() }
                     .labelStyle(.iconOnly)
                     .help(detailTip)
@@ -140,6 +146,9 @@ private struct ImageStep: View {
         }
         .task(id: maskKey) { await model.updateMask() }
         .sheet(item: $editing) { MaskEditorSheet(editor: $0) }
+        .sheet(isPresented: $cropping) {
+            if let image = studio.image { ImageEditSheet(source: image) }
+        }
         .sheet(item: $detailing) { editor in
             DetailEditorSheet(editor: editor) {
                 hasDetails = true

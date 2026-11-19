@@ -181,6 +181,11 @@ public extension AppModel {
         switch action {
         case "get_studio":
             return .json(.object(phoneStudio(models: await phoneModelRoles())))
+        #if canImport(ImageIO) && canImport(CoreGraphics)
+            case "do_crop":
+                if let problem = await phoneCrop(data) { return no(problem) }
+                return .json(["ok": true])
+        #endif
         case "do_user_preset":  // (of any method: the studio switches to it)
             guard applyUserPreset(PhoneStudio.pyStr(data["name"] ?? ""), method: PhoneStudio.pyStr(data["method"] ?? ""))
             else { return no(texts.tr("ui.phone.page.preset_gone")) }

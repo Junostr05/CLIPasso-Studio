@@ -89,15 +89,18 @@ public struct PixelImage: Sendable, Equatable {
             return drawn ? PixelImage(width: w, height: h, bytes: bytes) : nil
         }
 
+        /// The picture to draw.
+        var cgImage: CGImage? {
+            guard width > 0, height > 0, let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+            return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                           space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                           provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        }
+
         /// The picture as a PNG file's bytes.
         func png() -> Data? {
-            guard width > 0, height > 0,
-                  let provider = CGDataProvider(data: Data(bytes) as CFData),
-                  let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-                                      bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                                      provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-            else { return nil }
+            guard let image = cgImage else { return nil }
             let out = NSMutableData()
             guard let destination = CGImageDestinationCreateWithData(out, "public.png" as CFString, 1, nil) else {
                 return nil
