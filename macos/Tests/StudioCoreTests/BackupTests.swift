@@ -92,7 +92,7 @@ import Testing
              "status": "failed", "job_dir": .string(job.path), "message": "Abbruch"],
         ]
         let settings: JSONObject = [
-            "telegram_token": "GEHEIM", "remote_pin": "123456", "remote_token": "abc", "watch_folder": "/A/Eingang",
+            "language": "de", "telegram_token": "GEHEIM", "remote_pin": "123456", "remote_token": "abc", "watch_folder": "/A/Eingang",
             "recent_images": [.string(a.out.path + "/_pasted/Bär.png"), "/woanders/x.png"],
             "last_image": .string(a.out.path + "/_pasted/Bär.png"), "export_style": "charcoal",
             "user_presets": [["name": "Mein", "method": "clipasso", "settings": [:]]],
