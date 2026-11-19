@@ -55,7 +55,7 @@ public extension AppModel {
         if queueSnapshot?.jobs.contains(where: \.isActive) ?? false {
             throw Backup.Failure(description: texts.tr("ui.backup.busy"))
         }
-        var data = settings.data
+        let data = settings.data
         let known = backupQueueItems.map { ($0["target"]?.stringValue ?? "", $0["settings"]?.objectValue ?? [:]) }
         let out = settings.outputDir, modelsFolder = modelsDir
         let inputs = store.url.deletingLastPathComponent().appending(path: "restored_inputs", directoryHint: .isDirectory)
@@ -67,9 +67,8 @@ public extension AppModel {
         }
         let (report, changed) = try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel() }
         if report.settings {
-            data = changed
             updateSettings { s in
-                for (key, value) in data { s[key] = value }
+                for (key, value) in changed { s[key] = value }
             }
             try? setLanguage(settings.language)
         }
