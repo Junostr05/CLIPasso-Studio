@@ -183,6 +183,7 @@ ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erl
 | H8 | Einen längeren Auftrag starten und im Terminal `pmset -g assertions` aufrufen. Danach in den Einstellungen „Energiesparmodus verhindern …“ aus und wieder nachsehen. | Solange der Auftrag läuft, steht CLIPasso Studio unter den Prozessen, die den Ruhezustand verhindern; nach dem Auftrag oder mit dem Schalter aus nicht mehr. |
 | H9 | Während ein Auftrag läuft, auf das Dock-Symbol schauen. | Unten im Symbol wächst ein Fortschrittsbalken. Nach dem Auftrag ist das Symbol wieder normal. |
 | H10 | Einen Auftrag starten und in eine andere App wechseln, bis er fertig ist. Beim ersten Mal fragt macOS nach Mitteilungen: „Erlauben“. Danach dasselbe mit einem Auftrag, der scheitert (z. B. Bild während des Auftrags löschen). | Eine Mitteilung „Skizze fertig“ bzw. „Auftrag beendet“ mit dem Grund; das Dock-Symbol hüpft einmal. Mit der App im Vordergrund oder mit dem Schalter aus kommt keine. |
+| H11 | Einstellungen → „System“: „Diagnose kopieren“ und in ein Textfeld einfügen, „Diagnose speichern …“, dann „Problem melden …“ → „Auf GitHub melden“. | Der Text nennt Version, macOS, Chip, Arbeitsspeicher, PyTorch und MPS, die Ordner mit freiem Platz und die Modelle; kein Telegram-Token, kein Zugangscode, keine PIN. Im Fehlerbericht steht statt des Benutzerordners `~`; GitHub öffnet ein neues Issue mit dem Text. |
 
 ## I. Dauer und Last
 

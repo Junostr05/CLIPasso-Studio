@@ -232,6 +232,31 @@ def user_preset_cases() -> dict:
     return out
 
 
+def report_cases() -> dict:
+    """gui/report.py: the home folder made "~" (both slashes), the issue's title and Markdown text, and its address –
+    whole, or cut to the limit with the note (the version fixed, so the cases stay)."""
+    from clipasso_studio.gui import report
+
+    home = "/Users/anna"
+    diag = f"CLIPasso Studio diagnostics\nOutput: {home}/Documents/CLIPasso Studio\nData: C:\\Users\\anna\\x"
+    out = {"home": home, "anonymize": [], "bodies": [], "urls": []}
+    with mock.patch.object(report, "__version__", "9.9.9"), \
+            mock.patch.object(report.Path, "home", lambda: report.Path(home)), \
+            mock.patch.object(report.os.path, "expanduser", lambda p: home if p == "~" else p):
+        for text in (f"{home}/Bilder/Kamel.jpg", "C:\\Users\\anna\\Desktop", "/Users/annabel/x", "frei"):
+            out["anonymize"].append({"text": text, "out": report.anonymize(text)})
+        for message, tb in (("", ""), ("Absturz beim Export\nzweite Zeile", "Traceback …\n  File x"),
+                            ("x" * 150, "")):
+            out["bodies"].append({"message": message, "traceback": tb, "diagnostics": diag,
+                                  "title": report.issue_title(message),
+                                  "body": report.issue_body(message, tb, diag)})
+        body = report.issue_body("Fehler: ä & ß / ? = + #", "", diag)
+        for limit in (7000, 400, 260):
+            url, cut = report.issue_url("[9.9.9] Ä & B", body, limit)
+            out["urls"].append({"title": "[9.9.9] Ä & B", "body": body, "limit": limit, "url": url, "cut": cut})
+    return out
+
+
 def settings_file() -> str:
     """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
     a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
@@ -1305,6 +1330,7 @@ def build(out: Path) -> None:
     write_json(out / "pyjson.json", pyjson())
     write_json(out / "presets.json", preset_cases(), indent=None)
     write_json(out / "user_presets.json", user_preset_cases(), indent=None)
+    write_json(out / "report.json", report_cases())
     write_json(out / "versions.json", version_cases())
     write_json(out / "image_files.json", image_file_cases())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))

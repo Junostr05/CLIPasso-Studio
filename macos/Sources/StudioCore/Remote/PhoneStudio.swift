@@ -166,7 +166,7 @@ public enum PhoneStudio {
         return pyRepr(value)
     }
 
-    static func pyRepr(_ value: JSONValue) -> String {
+    public static func pyRepr(_ value: JSONValue) -> String {
         switch value {
         case .null: return "None"
         case .bool(let b): return b ? "True" : "False"

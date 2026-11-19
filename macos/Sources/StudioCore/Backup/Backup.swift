@@ -90,7 +90,7 @@ public enum Backup {
         !folder.isEmpty && path.hasPrefix(folder.hasSuffix("/") ? folder : folder + "/")
     }
 
-    static func timestamp(_ date: Date) -> String {
+    public static func timestamp(_ date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd HH:mm:ss"
