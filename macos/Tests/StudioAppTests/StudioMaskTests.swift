@@ -22,7 +22,7 @@ import StudioCore
         model.studio.set("mask_object", to: true)
         #expect(model.studio.isEnabled("mask_model"))
         await model.updateMask()
-        for _ in 0 ..< 200 where model.mask.state == .busy { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the mask") { model.mask.state != .busy }
         #expect(model.mask.state == .ready && model.mask.width == 32 && model.mask.height == 24)
         #expect(model.mask.object.filter { $0 }.count == 384)  // (the probability ≥ ½, as masking counts it)
         #expect(model.mask.probability?.count == 32 * 24)

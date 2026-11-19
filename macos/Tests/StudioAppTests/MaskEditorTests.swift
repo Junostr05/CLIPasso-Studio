@@ -73,7 +73,7 @@ import StudioCore
         model.studio.selectMethod("swiftsketch")
         model.studio.set("mask_object", to: true)
         await model.updateMask()
-        for _ in 0 ..< 200 where model.mask.state != .ready { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the model's mask") { model.mask.state == .ready }
         #expect(model.mask.state == .ready)
 
         let editor = try #require(model.maskEditor())
@@ -84,15 +84,16 @@ import StudioCore
         let mine = editor.mask.values
         #expect(mine.filter { $0 }.count < 384)
         try await model.applyMask(editor)
-        for _ in 0 ..< 200 where model.mask.state != .edited { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the user's mask") { model.mask.state == .edited }
         #expect(model.mask.state == .edited && model.mask.object == mine)  // (the user's mask, as painted)
 
-        for _ in 0 ..< 200 where model.mask.probability == nil { try await Task.sleep(for: .milliseconds(20)) }
+        // (the model's probability comes again after the save – on a busy machine some seconds later)
+        try await ModelFlowTests.wait("the probability again") { model.mask.probability != nil }
         let again = try #require(model.maskEditor())
         #expect(!again.isAuto && again.mask.values == mine)
         again.reset()
         try await model.applyMask(again)  // (the model's mask again: the user's is removed)
-        for _ in 0 ..< 200 where model.mask.state != .ready { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the model's mask again") { model.mask.state == .ready }
         #expect(model.mask.state == .ready && model.mask.object.filter { $0 }.count == 384)
         await model.stopEngine()
     }

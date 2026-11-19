@@ -240,7 +240,7 @@ import StudioCore
         model.studio.selectMethod("swiftsketch")
         model.studio.set("mask_object", to: true)
         await model.updateMask()
-        for _ in 0 ..< 200 where model.mask.state != .ready { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the model's mask") { model.mask.state == .ready }
         guard case .bytes(let shown, "image/jpeg", _) = await model.phoneAnswer("file_mask", [:], payload: nil) else {
             Issue.record("no mask picture"); return
         }
@@ -262,7 +262,7 @@ import StudioCore
             Issue.record("no picture of the edit"); return
         }
         #expect(Self.json(await model.phoneAnswer("do_mask_save", [:], payload: nil)) == ["ok": true])
-        for _ in 0 ..< 200 where model.mask.state != .edited { try await Task.sleep(for: .milliseconds(20)) }
+        try await ModelFlowTests.wait("the user's mask") { model.mask.state == .edited }
         #expect(model.mask.state == .edited)  // (the user's mask, kept by the engine)
         #expect(Self.json(await model.phoneAnswer("do_mask_edit", ["op": "undo"], payload: nil))?["ok"] == false)
         // the detail map: painted on the phone, kept, removed
