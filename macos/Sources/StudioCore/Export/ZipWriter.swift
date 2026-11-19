@@ -17,9 +17,18 @@ public struct ZipWriter {
     }
 
     public static func crc32(_ data: Data) -> UInt32 {
-        var c: UInt32 = 0xFFFF_FFFF
-        for byte in data { c = table[Int((c ^ UInt32(byte)) & 0xFF)] ^ (c >> 8) }
-        return c ^ 0xFFFF_FFFF
+        update(0xFFFF_FFFF, data) ^ 0xFFFF_FFFF
+    }
+
+    /// The running CRC (started with 0xFFFFFFFF, finished with ^ 0xFFFFFFFF) after `data`.
+    static func update(_ crc: UInt32, _ data: Data) -> UInt32 {
+        var c = crc
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            table.withUnsafeBufferPointer { t in
+                for byte in bytes { c = t[Int((c ^ UInt32(byte)) & 0xFF)] ^ (c >> 8) }
+            }
+        }
+        return c
     }
 
     static func deflated(_ data: Data) -> Data? {
