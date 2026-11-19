@@ -72,7 +72,7 @@ public enum Backup {
     }
 
     /// (file, name in the ZIP with "/") of every file below `folder`, sorted by that name.
-    static func files(_ folder: URL) -> [(URL, String)] {
+    public static func files(_ folder: URL) -> [(URL, String)] {
         let manager = FileManager.default
         return ((try? manager.subpathsOfDirectory(atPath: folder.path)) ?? []).sorted().compactMap { rel in
             let url = folder.appending(path: rel)
@@ -81,7 +81,7 @@ public enum Backup {
         }
     }
 
-    static func size(_ url: URL) -> Int64 {
+    public static func size(_ url: URL) -> Int64 {
         ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? NSNumber)?.int64Value ?? 0
     }
 

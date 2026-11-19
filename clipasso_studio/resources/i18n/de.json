@@ -1653,5 +1653,6 @@
  "ui.mac.phone.update_not_here": "Auf dem Mac installierst du Updates von Hand: Am Mac öffnet „Release-Seite“ den Download – zieh die neue Version auf „Programme“. Einstellungen, Modelle und Ergebnisse bleiben.",
  "ui.mac.user_presets": "Meine Voreinstellungen",
  "ui.mac.reset": "Zurücksetzen",
+ "ui.mac.backup": "Backup & Umzug",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

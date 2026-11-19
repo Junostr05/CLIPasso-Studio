@@ -4,8 +4,8 @@ import StudioCore
 import SwiftUI
 
 /// The settings page: language and appearance, the output folder and the folder of the downloaded models, keeping
-/// the Mac awake and notifications while jobs run, the search for updates, the watched folder – saved at once in
-/// the settings.json the Python app uses too. Content: a grouped form.
+/// the Mac awake and notifications while jobs run, the search for updates, the watched folder, backups – saved at
+/// once in the settings.json the Python app uses too. Content: a grouped form.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var problem: String?
@@ -61,6 +61,7 @@ struct SettingsView: View {
                 }
             }
             WatchSettings()
+            BackupSettings()
             PhoneSettings()
         }
         .formStyle(.grouped)
