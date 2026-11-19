@@ -257,6 +257,83 @@ def report_cases() -> dict:
     return out
 
 
+def crop_cases(out: Path) -> dict:
+    """gui/image_edit.py's crop frame, by its own methods on a stand-in view: the aspect fitted, the frame moved and
+    its handles dragged (with and without an aspect, past the picture's edges, below the smallest side), turned and
+    mirrored with the picture; and the pixels of a picture turned, mirrored and cropped (QImage.transformed,
+    mirrored, copy), saved as PNG."""
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QPointF, QRectF
+    from PySide6.QtGui import QColor, QImage
+
+    from clipasso_studio.gui import image_edit
+
+    def rect(r: QRectF) -> list:
+        return [round(r.x(), 6), round(r.y(), 6), round(r.width(), 6), round(r.height(), 6)]
+
+    def view(w: int, h: int, crop=None, aspect=None):
+        v = SimpleNamespace(image=QImage(w, h, QImage.Format_RGB32), crop=QRectF(*crop) if crop else QRectF(),
+                            aspect=aspect, update=lambda: None, changed=SimpleNamespace(emit=lambda: None))
+        v._bounds = lambda: image_edit.CropView._bounds(v)
+        v._fit_aspect = lambda: image_edit.CropView._fit_aspect(v)
+
+        def set_image(image, keep_crop=False):
+            v.image = image
+            if not keep_crop or v.crop.isNull():
+                v.crop = QRectF(0, 0, image.width(), image.height())
+            v._fit_aspect()
+        v.set_image = set_image
+        return v
+
+    out_cases = {"fit": [], "drag": [], "turn": []}
+    for size, crop, aspect in (((400, 300), None, 1.0), ((400, 300), (50, 20, 300, 200), 4 / 3),
+                               ((300, 400), (10, 10, 100, 300), 3 / 4), ((400, 300), (350, 250, 100, 100), None)):
+        v = view(*size, crop, aspect)
+        image_edit.CropView._fit_aspect(v)
+        out_cases["fit"].append({"size": size, "crop": crop, "aspect": aspect, "out": rect(v.crop)})
+    for aspect in (None, 4 / 3):
+        for handle, point in (("move", (500, -50)), ("move", (180, 140)), ("se", (390, 299)), ("nw", (-20, -40)),
+                              ("e", (60, 0)), ("n", (0, 280)), ("sw", (5, 500)), ("ne", (395, 10))):
+            v = view(400, 300, (100, 80, 160, 120), aspect)
+            start = QRectF(100, 80, 160, 120)
+            image_edit.CropView.drag_to(v, handle, QPointF(*point), start, QPointF(150, 100))
+            out_cases["drag"].append({"aspect": aspect, "handle": handle, "point": point, "out": rect(v.crop)})
+    for steps in ((90,), (-90,), ("flip",), (90, "flip", 90), (-90, -90, "flip")):
+        for aspect in (None, 4 / 3):
+            d = SimpleNamespace(view=view(400, 300, (30, 40, 200, 150), aspect),
+                                aspect=SimpleNamespace(blockSignals=lambda b: None, setCurrentIndex=lambda i: None,
+                                                       findData=lambda x: 0))
+            for step in steps:
+                if step == "flip":
+                    image_edit.ImageEditDialog.flip(d)
+                else:
+                    image_edit.ImageEditDialog.rotate(d, step)
+            out_cases["turn"].append({"steps": list(steps), "aspect": aspect, "crop": rect(d.view.crop),
+                                      "size": [d.view.image.width(), d.view.image.height()],
+                                      "after": d.view.aspect})
+    # the pixels: a picture of its own colours, turned, mirrored, cropped
+    folder = out / "crop"
+    folder.mkdir(parents=True, exist_ok=True)
+    img = QImage(7, 5, QImage.Format_RGB32)
+    for y in range(5):
+        for x in range(7):
+            img.setPixelColor(x, y, QColor(x * 36, y * 60, (x * 7 + y * 13) % 256))
+    img.save(str(folder / "input.png"))
+    from PySide6.QtGui import QTransform
+    pictures = []
+    for steps, crop in (((90,), (1, 1, 3, 4)), ((-90, "flip"), (0, 2, 5, 5)), (("flip", 90, 90), (2, 0, 4, 3))):
+        pic = QImage(str(folder / "input.png"))
+        for step in steps:
+            pic = pic.mirrored(True, False) if step == "flip" else pic.transformed(QTransform().rotate(step))
+        part = pic.copy(QRectF(*crop).toRect())
+        name = f"out_{len(pictures)}.png"
+        part.save(str(folder / name))
+        pictures.append({"steps": list(steps), "crop": list(crop), "file": name})
+    out_cases["pictures"] = pictures
+    return out_cases
+
+
 def settings_file() -> str:
     """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
     a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
@@ -1331,6 +1408,7 @@ def build(out: Path) -> None:
     write_json(out / "presets.json", preset_cases(), indent=None)
     write_json(out / "user_presets.json", user_preset_cases(), indent=None)
     write_json(out / "report.json", report_cases())
+    write_json(out / "crop" / "crop.json", crop_cases(out), indent=None)
     write_json(out / "versions.json", version_cases())
     write_json(out / "image_files.json", image_file_cases())
     (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
