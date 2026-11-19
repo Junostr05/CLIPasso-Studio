@@ -82,6 +82,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | D4 | Kopiere einen Auftragsordner aus der Windows-App (USB-Stick oder Cloud) in den Ergebnisordner. | Er erscheint in der Galerie mit Bild, Skizze, Score und Datum, obwohl er Windows-Pfade enthält. |
 | D5 | Suche, filtere und sortiere in der Galerie. Setze einen Favoriten und einen Titel. | Ergebnisse stimmen. Favorit und Titel sind nach einem Neustart noch da. |
 | D6 | Kopiere einen auf dem Mac gerechneten Auftrag nach Windows und öffne ihn dort. | Die Windows-App zeigt ihn vollständig, auch Favorit, Titel und nachbearbeitete Skizze. |
+| D7 | In der Galerie ein Ergebnis markieren und Leertaste (oder Menü → „Groß ansehen“): mit ←/→ blättern, mit zwei Fingern zoomen, gezoomt ziehen, Doppelklick, `0`. Dann in der Symbolleiste „Diashow“, das Intervall ändern, Leertaste. | Das Ergebnis füllt das Blatt, Name und Zeile darunter (Methode, CLIP, Striche, Zeit) stimmen. Zoom und Verschieben folgen dem Trackpad, Doppelklick und `0` passen ein. Die Diashow läuft nach dem letzten wieder vorne los und hält mit der Leertaste an. |
 
 ## E. Skizze nachbearbeiten
 

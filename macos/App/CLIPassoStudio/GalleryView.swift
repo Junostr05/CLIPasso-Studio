@@ -6,17 +6,23 @@ import UniformTypeIdentifiers
 
 /// The gallery page: every result of the output folder as a sketch on paper, searched (toolbar search field),
 /// filtered and sorted from the toolbar; a result's menu opens it in the studio, marks it, renames it, exports it as
-/// SVG, PNG or PDF, prints it, shows it in the Finder or continues it; the toolbar prints the results shown. Content: a
-/// grid, no glass.
+/// SVG, PNG or PDF, prints it, shows it in the Finder or continues it, or shows it large (the viewer, also as a
+/// slideshow from the toolbar); the toolbar prints the results shown. Content: a grid, no glass.
 struct GalleryView: View {
     @Environment(AppModel.self) private var model
     @State private var printing: PrintRequest?
+    /// the large view over the results shown (a result's menu, Space on a result, the toolbar's slideshow)
+    @State private var viewing: ViewerModel?
 
     var body: some View {
         @Bindable var gallery = model.gallery
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: Spacing.spaceL)], spacing: Spacing.spaceL) {
-                ForEach(gallery.items) { GalleryCell(item: $0) }
+                ForEach(gallery.items) { item in
+                    GalleryCell(item: item) {
+                        viewing = ViewerModel(items: gallery.items, index: gallery.items.firstIndex { $0.id == item.id } ?? 0)
+                    }
+                }
             }
             .padding(Spacing.spaceL)
         }
@@ -37,8 +43,18 @@ struct GalleryView: View {
             }
         }
         .searchable(text: $gallery.query.text, prompt: model.texts.tr("ui.gallery.search"))
+        .sheet(isPresented: Binding(get: { viewing != nil }, set: { if !$0 { viewing = nil } })) {
+            if let viewing { GalleryViewer(viewer: viewing) }
+        }
         .toolbar {
             ToolbarItemGroup {
+                Button(model.texts.tr("ui.viewer.slideshow"), systemImage: "play.rectangle") {
+                    let viewer = ViewerModel(items: gallery.items)
+                    viewer.setSlideshow(true)
+                    viewing = viewer
+                }
+                .help(model.texts.tr("ui.viewer.slideshow_gallery_tip"))
+                .disabled(gallery.items.count < 2)
                 Picker(model.texts.tr("ui.gallery.method"), selection: $gallery.query.method) {
                     Text(model.texts.tr("ui.gallery.all")).tag(String?.none)
                     ForEach(model.schema.methods, id: \.self) { id in
@@ -84,6 +100,8 @@ struct GalleryView: View {
 private struct GalleryCell: View {
     @Environment(AppModel.self) private var model
     let item: GalleryItem
+    /// the large view, at this result
+    let view: () -> Void
     @State private var sketch: Sketch?
     @State private var renaming = false
     @State private var title = ""
@@ -118,9 +136,14 @@ private struct GalleryCell: View {
             open()
             return .handled
         }
+        .onKeyPress(.space) {
+            view()
+            return .handled
+        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { open() }
+        .accessibilityAction(named: Text(model.texts.tr("ui.viewer.show"))) { view() }
         .accessibilityAction(named: Text(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite"))) {
             Task { await model.gallery.setFavourite(item, !item.favourite) }
         }
@@ -144,6 +167,7 @@ private struct GalleryCell: View {
 
     @ViewBuilder private var menu: some View {
         Button(model.texts.tr("ui.gallery.open")) { open() }
+        Button(model.texts.tr("ui.viewer.show")) { view() }
         Button(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite")) {
             Task { await model.gallery.setFavourite(item, !item.favourite) }
         }
