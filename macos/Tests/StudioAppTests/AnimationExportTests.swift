@@ -105,6 +105,29 @@ import StudioCore
         #expect(try SketchSVG.parse(styled[0]).strokes.count > SketchSVG.parse(svg).strokes.count)  // (grain)
         await model.stopEngine()
     }
+
+    /// The gallery's results in the studio's style (thumbs.sketch_thumbnail): drawn by the engine once, kept beside
+    /// settings.json; plain without a style; a changed file is drawn again.
+    @Test func theGalleryInTheStyle() async throws {
+        let store = try AppModelTests.store(language: "de")
+        let model = try AppModel(resources: AppModelTests.resources(engine: AppModelTests.realEngine()), store: store)
+        await model.startEngine()
+        let file = FileManager.default.temporaryDirectory.appending(path: "thumb-\(UUID().uuidString).svg")
+        try FileManager.default.copyItem(at: AppModelTests.repo
+            .appending(path: "macos/Tests/StudioCoreTests/Fixtures/svg/lines.svg"), to: file)
+        let plain = try #require(await model.gallerySketch(file))
+        model.setCanvasStyle("charcoal")
+        let styled = try #require(await model.gallerySketch(file))
+        #expect(styled.strokes.count > plain.strokes.count)  // (the charcoal's grain)
+        let cache = store.url.deletingLastPathComponent().appending(path: "cache/thumbs")
+        #expect((try FileManager.default.contentsOfDirectory(atPath: cache.path)).count == 1)
+        #expect(await model.gallerySketch(file) == styled)  // (kept)
+        try Data(try String(contentsOf: file, encoding: .utf8).replacingOccurrences(of: "</svg>", with: " </svg>").utf8)
+            .write(to: file)
+        _ = await model.gallerySketch(file)
+        #expect((try FileManager.default.contentsOfDirectory(atPath: cache.path)).count == 2)  // (changed: anew)
+        await model.stopEngine()
+    }
 }
 
 /// A frame that waits until the test has cancelled the export (at most half a minute).

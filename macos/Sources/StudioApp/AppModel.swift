@@ -44,6 +44,12 @@ public final class AppModel {
     @ObservationIgnored public private(set) var queue: JobQueue?
     /// the watched folder
     @ObservationIgnored let folderWatcher: FolderWatcher
+    /// the gallery's sketches in the brush style (KEEP: about the last few hundred)
+    @ObservationIgnored let thumbnails: NSCache<NSString, ThumbnailBox> = {
+        let cache = NSCache<NSString, ThumbnailBox>()
+        cache.countLimit = 400
+        return cache
+    }()
     /// the watched folder's last notice ("" before the first)
     public internal(set) var watchNote = ""
     @ObservationIgnored private var queueListener: Task<Void, Never>?

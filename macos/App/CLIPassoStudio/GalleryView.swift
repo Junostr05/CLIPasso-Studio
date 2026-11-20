@@ -157,11 +157,9 @@ private struct GalleryCell: View {
             Button(model.texts.tr("ui.cancel"), role: .cancel) {}
             Button("OK") { Task { await model.gallery.rename(item, title) } }
         }
-        .task(id: item.bestSketch) {
+        .task(id: "\(item.bestSketch?.path ?? "")|\(model.canvasStyle)") {
             guard let url = item.bestSketch else { return }
-            sketch = await Task.detached {
-                (try? String(contentsOf: url, encoding: .utf8)).flatMap { try? SketchSVG.parse($0) }
-            }.value
+            sketch = await model.gallerySketch(url)  // (in the studio's brush style)
         }
     }
 

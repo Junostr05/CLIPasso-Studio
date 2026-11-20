@@ -24,7 +24,6 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
 - die Ansichten Aufmerksamkeit, Maske und Bedingung im Studio, eine Zelle der SceneSketch-Matrix neu rechnen,
 - mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
-- die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon),
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
@@ -90,6 +89,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | D5 | Suche, filtere und sortiere in der Galerie. Setze einen Favoriten und einen Titel. | Ergebnisse stimmen. Favorit und Titel sind nach einem Neustart noch da. |
 | D6 | Kopiere einen auf dem Mac gerechneten Auftrag nach Windows und öffne ihn dort. | Die Windows-App zeigt ihn vollständig, auch Favorit, Titel und nachbearbeitete Skizze. |
 | D7 | In der Galerie ein Ergebnis markieren und Leertaste (oder Menü → „Groß ansehen“): mit ←/→ blättern, mit zwei Fingern zoomen, gezoomt ziehen, Doppelklick, `0`. Dann in der Symbolleiste „Diashow“, das Intervall ändern, Leertaste. | Das Ergebnis füllt das Blatt, Name und Zeile darunter (Methode, CLIP, Striche, Zeit) stimmen. Zoom und Verschieben folgen dem Trackpad, Doppelklick und `0` passen ein. Die Diashow läuft nach dem letzten wieder vorne los und hält mit der Leertaste an. |
+| D8 | Im Studio den Pinselstil „Kohle“ wählen, dann die Galerie öffnen; danach wieder „Schlicht“. | Die Vorschaubilder erscheinen im Kohle-Stil (beim ersten Mal nacheinander, danach sofort), mit „Schlicht“ wieder einfach. |
 
 ## E. Skizze nachbearbeiten
 
