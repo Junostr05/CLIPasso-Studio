@@ -9,12 +9,14 @@ struct ViewModePicker: View {
     @Environment(AppModel.self) private var model
     @Binding var mode: String
     var matrix = false
+    /// a menu instead of the segments (a narrow canvas)
+    var compact = false
 
     var body: some View {
         let t = model.texts
         let views = model.studioViews
         if !views.isEmpty || matrix {
-            Picker(t.tr("ui.mac.result.view"), selection: $mode) {
+            let picker = Picker(t.tr("ui.mac.result.view"), selection: $mode) {
                 Text(t.tr("ui.mode.sketch")).tag("sketch")
                 ForEach(views, id: \.self) { kind in
                     Text(t.tr(kind == "condition" && model.viewMethod == "scenesketch" ? "ui.mode.background"
@@ -22,11 +24,15 @@ struct ViewModePicker: View {
                 }
                 if matrix { Text(t.tr("ui.mode.matrix")).tag("matrix") }
             }
-            .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()
             .onChange(of: views) { _, now in
                 if !["sketch", "matrix"].contains(mode), !now.contains(mode) { mode = "sketch" }
+            }
+            if compact {
+                picker.pickerStyle(.menu)
+            } else {
+                picker.pickerStyle(.segmented)
             }
         }
     }

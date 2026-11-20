@@ -72,27 +72,40 @@ struct CompareView: View {
             VStack(alignment: .leading, spacing: Spacing.spaceXs) {
                 Text(verbatim: model.studio.image?.lastPathComponent ?? "").font(.headline)
                 Text(t.tr("ui.compare.image_hint")).font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: Spacing.spaceL) {
-                    ForEach(model.schema.methods, id: \.self) { method in
-                        Toggle(model.schema.method(method)?.name ?? method, isOn: Binding(
-                            get: { compare.chosen.contains(method) },
-                            set: { if $0 { compare.chosen.insert(method) } else { compare.chosen.remove(method) } }))
-                            .toggleStyle(.switch)
-                            .help(t.tr("method.\(method).tagline"))
+                // (the methods as boxes to tick, each name whole; in two rows where one is too narrow)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Spacing.spaceL) { methodBoxes(compare, model.schema.methods) }
+                    VStack(alignment: .leading, spacing: Spacing.spaceXs) {
+                        HStack(spacing: Spacing.spaceL) { methodBoxes(compare, Array(model.schema.methods.prefix(2))) }
+                        HStack(spacing: Spacing.spaceL) { methodBoxes(compare, Array(model.schema.methods.dropFirst(2))) }
                     }
                 }
+                .padding(.top, Spacing.spaceXs)
                 Toggle(t.tr("ui.compare.use_studio"), isOn: $compare.useStudio)
-                    .toggleStyle(.switch)
+                    .toggleStyle(.checkbox)
                     .help(t.tr("ui.compare.use_studio_tip"))
             }
-            Spacer()
+            Spacer(minLength: Spacing.spaceM)
             Button(t.tr("ui.compare.start"), systemImage: "play.fill") { start(compare) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .fixedSize()
                 .disabled(compare.chosen.isEmpty || model.engine == nil)
         }
         .padding(Spacing.spaceL)
-        .background(RoundedRectangle(cornerRadius: Radius.card).fill(Color(nsColor: .controlBackgroundColor)))
+        .background(CompareCard.surface)
+    }
+
+    @ViewBuilder
+    private func methodBoxes(_ compare: CompareModel, _ methods: [String]) -> some View {
+        ForEach(methods, id: \.self) { method in
+            Toggle(model.schema.method(method)?.name ?? method, isOn: Binding(
+                get: { compare.chosen.contains(method) },
+                set: { if $0 { compare.chosen.insert(method) } else { compare.chosen.remove(method) } }))
+                .toggleStyle(.checkbox)
+                .fixedSize()
+                .help(model.texts.tr("method.\(method).tagline"))
+        }
     }
 
     private func verdict(_ entries: [CompareModel.Entry]) -> String {
@@ -125,7 +138,7 @@ struct CompareView: View {
 
 /// One method's column (compare.CompareCard): its name and tagline, the best's badge, the sketch, the job's progress,
 /// CLIP score, time and strokes, where the result is from; open it in the studio or export it.
-private struct CompareCard: View {
+struct CompareCard: View {
     @Environment(AppModel.self) private var model
     let entry: CompareModel.Entry
     @State private var sketch: Sketch?
@@ -147,16 +160,18 @@ private struct CompareCard: View {
             Text(t.tr("method.\(entry.method).tagline")).font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             ZStack {
+                RoundedRectangle(cornerRadius: Radius.card).fill(Color(nsColor: .textBackgroundColor).opacity(0.5))
                 if sketch != nil {
                     SketchView(sketch: sketch, label: t.tr("ui.mac.canvas_label", [
                         "image": entry.item?.name ?? "", "strokes": "\(sketch?.strokes.count ?? 0)"]))
                         .environment(\.canvasStretch, model.canvasStretch(runDir: entry.item.flatMap { ExportSource.bestRun(of: $0) }))
                 } else {
                     Text(t.tr("ui.compare.placeholder")).font(.caption).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center).padding()
+                        .multilineTextAlignment(.center).padding(Spacing.spaceL)
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .frame(minHeight: 220)
+            // (as wide as the card, as high as wide: the sketch large, the note across)
             .frame(maxWidth: .infinity)
             .aspectRatio(1, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: Radius.card))
@@ -169,7 +184,7 @@ private struct CompareCard: View {
                 stat(entry.item != nil ? "\(entry.strokes)" : "–", t.tr("ui.compare.strokes"))
             }
             Text(verbatim: state).font(.caption).foregroundStyle(.secondary)
-            HStack {
+            HStack(spacing: Spacing.spaceS) {
                 Button(t.tr("ui.compare.open"), systemImage: "paintbrush.pointed") {
                     if let item = entry.item { model.studio.open(item) }
                 }
@@ -177,12 +192,16 @@ private struct CompareCard: View {
                 Button(t.tr("ui.compare.export"), systemImage: "square.and.arrow.up") {
                     exporting = entry.item.flatMap { ExportSource.best(of: $0) }
                 }
+                .labelStyle(.iconOnly)
+                .help(t.tr("ui.compare.export"))
                 .disabled(entry.item?.bestSketch == nil)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .lineLimit(1)
         }
         .padding(Spacing.spaceL)
-        .background(RoundedRectangle(cornerRadius: Radius.card).fill(Color(nsColor: .controlBackgroundColor)))
+        .background(Self.surface)
         .accessibilityElement(children: .contain)
         .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
         .task(id: "\(entry.item?.bestSketch?.path ?? "")|\(model.canvasStyle)") {
@@ -192,6 +211,13 @@ private struct CompareCard: View {
             }
             sketch = await model.gallerySketch(url)
         }
+    }
+
+    /// A card on the page: a surface a step off the window's, with an edge (in both themes).
+    static var surface: some View {
+        RoundedRectangle(cornerRadius: Radius.card)
+            .fill(Color(nsColor: .controlBackgroundColor))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Color(nsColor: .separatorColor)))
     }
 
     private var state: String {

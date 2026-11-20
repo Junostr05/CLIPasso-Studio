@@ -148,27 +148,18 @@ private struct ImageStep: View {
                 }
             }
             maskRow
-            HStack(spacing: Spacing.spaceS) {
-                Button(model.texts.tr(studio.image == nil ? "ui.step.open" : "ui.step.change"), systemImage: "folder") {
-                    importing = true
+            // (one row where there is room, else the picture's choices above its tools – the button keeps its words)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.spaceS) { pictureChoices; pictureTools }
+                VStack(alignment: .leading, spacing: Spacing.spaceS) {
+                    HStack(spacing: Spacing.spaceS) { pictureChoices }
+                    HStack(spacing: Spacing.spaceS) { pictureTools }
                 }
-                .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
-                    if case .success(let url) = result { studio.image = url }
-                }
-                PictureMenu()
-                Button(model.texts.tr("ui.webcam.tip"), systemImage: "camera") { photographing = true }
-                    .labelStyle(.iconOnly)
-                    .help(model.texts.tr("ui.webcam.tip"))
-                    .sheet(isPresented: $photographing) { WebcamSheet().environment(model) }
-                Button(model.texts.tr("ui.edit_image.button"), systemImage: "crop") { cropping = true }
-                    .labelStyle(.iconOnly)
-                    .help(model.texts.tr("ui.edit_image.tip"))
-                    .disabled(studio.image == nil)
-                Button(model.texts.tr("ui.detail.title"), systemImage: "sparkles") { openDetails() }
-                    .labelStyle(.iconOnly)
-                    .help(detailTip)
-                    .disabled(studio.image == nil || !engineReady)
             }
+            .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
+                if case .success(let url) = result { studio.image = url }
+            }
+            .sheet(isPresented: $photographing) { WebcamSheet().environment(model) }
             if !detailNote.isEmpty {
                 Text(verbatim: detailNote).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -200,6 +191,30 @@ private struct ImageStep: View {
         .task(id: [model.mask.version, scheme == .dark ? 1 : 0]) {
             overlay = await Self.overlay(model.mask, dark: scheme == .dark)
         }
+    }
+
+    /// Open or change the picture, and the recent ones and the samples.
+    @ViewBuilder private var pictureChoices: some View {
+        Button(model.texts.tr(model.studio.image == nil ? "ui.step.open" : "ui.step.change"), systemImage: "folder") {
+            importing = true
+        }
+        .fixedSize()
+        PictureMenu()
+    }
+
+    /// The camera, the image editor, the detail brush.
+    @ViewBuilder private var pictureTools: some View {
+        Button(model.texts.tr("ui.webcam.tip"), systemImage: "camera") { photographing = true }
+            .labelStyle(.iconOnly)
+            .help(model.texts.tr("ui.webcam.tip"))
+        Button(model.texts.tr("ui.edit_image.button"), systemImage: "crop") { cropping = true }
+            .labelStyle(.iconOnly)
+            .help(model.texts.tr("ui.edit_image.tip"))
+            .disabled(model.studio.image == nil)
+        Button(model.texts.tr("ui.detail.title"), systemImage: "sparkles") { openDetails() }
+            .labelStyle(.iconOnly)
+            .help(detailTip)
+            .disabled(model.studio.image == nil || !engineReady)
     }
 
     private var engineReady: Bool {
@@ -561,8 +576,13 @@ private struct LiveCanvas: View {
                     .padding(Spacing.spaceXl)
             }
         }
-        .overlay(alignment: .top) {
-            ViewModePicker(mode: $mode).padding(.top, Spacing.spaceS)
+        .safeAreaInset(edge: .top, spacing: 0) {  // (within the canvas; a menu where the segments do not fit)
+            ViewThatFits(in: .horizontal) {
+                ViewModePicker(mode: $mode)
+                ViewModePicker(mode: $mode, compact: true)
+            }
+            .padding(.horizontal, Spacing.spaceM)
+            .padding(.top, Spacing.spaceS)
         }
         .safeAreaInset(edge: .bottom) {
             if live.sketches.count > 1 { JobSketches(sketches: live.sketches) }

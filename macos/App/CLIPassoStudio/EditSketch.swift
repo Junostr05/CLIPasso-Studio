@@ -48,34 +48,15 @@ struct ResultCanvas: View {
                     .frame(maxWidth: Spacing.readingWidth)
             }
         }
-        .overlay(alignment: .top) {
-            HStack(spacing: Spacing.spaceM) {
-                ViewModePicker(mode: $view, matrix: result.matrix != nil)
-                if view == "sketch", bar == nil, let editor = result.editor {
-                    EditTools(editor: editor, tool: $tool) {
-                        exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name, jobDir: result.jobDir,
-                                                 method: result.method, runs: result.runs.count)
-                    } printSketch: {
-                        printing = request(editor)
-                    } copySketch: {
-                        copy(editor)
-                    } steps: {
-                        tool = .none
-                        bar = model.openSteps(editor)
-                        noSteps = bar == nil
-                    } simplify: {
-                        tool = .none
-                        bar = model.openSimplify(editor)
-                    } continueSketch: {
-                        tool = .none
-                        Task {
-                            guard let info = await model.continueInfo(editor) else { return NSSound.beep() }
-                            if info.canContinue { continuing = info } else { continueNote = model.texts.tr("ui.continue.no_input") }
-                        }
-                    }
-                    .tourTarget("result")
-                }
+        // the canvas's modes and the tools above it, within the canvas: side by side where there is room, else one
+        // above the other – the modes as a menu when even their row is too wide (a small window)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.spaceM) { modes(compact: false); tools }
+                VStack(spacing: Spacing.spaceS) { modes(compact: false); tools }
+                VStack(spacing: Spacing.spaceS) { modes(compact: true); tools }
             }
+            .padding(.horizontal, Spacing.spaceM)
             .padding(.top, Spacing.spaceS)
         }
         .safeAreaInset(edge: .bottom) {
@@ -134,6 +115,37 @@ struct ResultCanvas: View {
         }
         .onChange(of: ScreenshotMode.requests.printSheet) { _, open in
             printing = open ? result.editor.map(request) : nil
+        }
+    }
+
+    private func modes(compact: Bool) -> some View {
+        ViewModePicker(mode: $view, matrix: result.matrix != nil, compact: compact)
+    }
+
+    @ViewBuilder private var tools: some View {
+        if view == "sketch", bar == nil, let editor = result.editor {
+            EditTools(editor: editor, tool: $tool) {
+                exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name, jobDir: result.jobDir,
+                                         method: result.method, runs: result.runs.count)
+            } printSketch: {
+                printing = request(editor)
+            } copySketch: {
+                copy(editor)
+            } steps: {
+                tool = .none
+                bar = model.openSteps(editor)
+                noSteps = bar == nil
+            } simplify: {
+                tool = .none
+                bar = model.openSimplify(editor)
+            } continueSketch: {
+                tool = .none
+                Task {
+                    guard let info = await model.continueInfo(editor) else { return NSSound.beep() }
+                    if info.canContinue { continuing = info } else { continueNote = model.texts.tr("ui.continue.no_input") }
+                }
+            }
+            .tourTarget("result")
         }
     }
 
