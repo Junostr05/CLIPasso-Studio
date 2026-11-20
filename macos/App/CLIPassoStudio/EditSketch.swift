@@ -401,17 +401,6 @@ struct ResultSketches: View {
         }
         .padding(.horizontal, Spacing.spaceXl)
         .padding(.bottom, Spacing.spaceS)
-        .confirmationDialog(model.texts.tr("ui.matrix.rerun"), isPresented: Binding(
-            get: { rerun != nil }, set: { if !$0 { rerun = nil } })) {
-            Button(model.texts.tr("ui.matrix.rerun")) { if let rerun { doRerun(rerun.cell) } }
-            Button(model.texts.tr("ui.cancel"), role: .cancel) {}
-        } message: {
-            if let rerun {
-                let (layer, level) = SceneMatrix.split(rerun.cell)
-                Text(model.texts.tr("ui.matrix.rerun_q", ["layer": String(layer), "level": String(level),
-                                                          "later": rerun.later.map(String.init).joined(separator: ", ")]))
-            }
-        }
         .task(id: [shown ?? ""] + result.runs.map(\.name)) {
             let runs = result.runs
             let current = (selected, shown)
@@ -499,6 +488,17 @@ struct MatrixGrid: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .confirmationDialog(model.texts.tr("ui.matrix.rerun"), isPresented: Binding(
+            get: { rerun != nil }, set: { if !$0 { rerun = nil } })) {
+            Button(model.texts.tr("ui.matrix.rerun")) { if let rerun { doRerun(rerun.cell) } }
+            Button(model.texts.tr("ui.cancel"), role: .cancel) {}
+        } message: {
+            if let rerun {
+                let (layer, level) = SceneMatrix.split(rerun.cell)
+                Text(model.texts.tr("ui.matrix.rerun_q", ["layer": String(layer), "level": String(level),
+                                                          "later": rerun.later.map(String.init).joined(separator: ", ")]))
             }
         }
         .task(id: [shown ?? ""] + result.runs.map(\.name)) {
