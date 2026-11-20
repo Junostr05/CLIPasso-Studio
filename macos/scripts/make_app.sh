@@ -72,6 +72,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key><true/>
     <key>ATSApplicationFontsPath</key><string>fonts</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSCameraUsageDescription</key><string>CLIPasso Studio takes the photo to sketch with the camera (only when you ask for it) / nimmt das Foto zum Skizzieren mit der Kamera auf (nur wenn du es möchtest).</string>
 </dict>
 </plist>
 PLIST

@@ -97,6 +97,8 @@ private struct ImageStep: View {
     @State private var importing = false
     /// the image editor (crop, turn, mirror)
     @State private var cropping = false
+    /// the camera's sheet
+    @State private var photographing = false
     @State private var preview: NSImage?
     @State private var targeted = false
     /// the object mask over the image (mask_view.overlay)
@@ -154,6 +156,10 @@ private struct ImageStep: View {
                     if case .success(let url) = result { studio.image = url }
                 }
                 PictureMenu()
+                Button(model.texts.tr("ui.webcam.tip"), systemImage: "camera") { photographing = true }
+                    .labelStyle(.iconOnly)
+                    .help(model.texts.tr("ui.webcam.tip"))
+                    .sheet(isPresented: $photographing) { WebcamSheet().environment(model) }
                 Button(model.texts.tr("ui.edit_image.button"), systemImage: "crop") { cropping = true }
                     .labelStyle(.iconOnly)
                     .help(model.texts.tr("ui.edit_image.tip"))

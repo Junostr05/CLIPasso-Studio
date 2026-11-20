@@ -1660,5 +1660,6 @@
  "ui.mac.tour.start.text": "“Create sketch” starts right away and shows the drawing live (⌘↩). Put more images into the queue; they run one after another – e.g. overnight, and the Mac can go to sleep afterwards.",
  "ui.mac.tour.result.text": "Above the finished sketch: the eraser, the pen, undo, saved steps and Simplify; Export (⌘E) as SVG, PNG, PDF or an animation, Print (⌘P) and Copy (⇧⌘C) – with brush styles like ink or pencil.",
  "ui.mac.tour.models.text": "On the left in the sidebar: “Models” – SwiftSketch, ControlSketch, SceneSketch and the precise BiRefNet mask download their models on first use; there you can see and manage them –, “Compare” for the methods, and the settings with theme, language, folders, the phone and Telegram. This guide is in the Help menu again.",
+ "ui.mac.webcam.denied": "CLIPasso Studio may not use the camera. Allow it in System Settings under “Privacy & Security” → “Camera”.",
  "ui.mac.dmg_update": "To update: drag the new version onto Applications and replace the old one – your settings, models and results stay. macOS asks again as in steps 2–4."
 }

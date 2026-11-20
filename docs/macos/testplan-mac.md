@@ -20,8 +20,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 
 **Noch nicht in der Mac-App, also nicht testen:**
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
-  wird von Hand),
-- Fotos mit der Kamera des Macs.
+  wird von Hand).
 
 ---
 
@@ -81,6 +80,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C18 | Im Studio ein Bild wählen, links „Vergleich“: CLIPasso und SwiftSketch an, „Vergleich starten“. Warten, bis beide fertig sind; dann „Im Studio öffnen“ bei einem. | Zwei Aufträge stehen in der Warteschlange, SwiftSketch zuerst. Die Karten zeigen „Läuft …“ mit Fortschritt, danach Skizze, CLIP-Score, Rechenzeit und Striche; die mit dem höheren Score trägt „★ Beste“, darunter steht das Urteil. „Im Studio öffnen“ zeigt das Ergebnis im Studio. Auf einem Mac mit Apple-Chip fragt die App nicht nach einer NVIDIA-GPU. |
 | C19 | Ein fertiges CLIPasso-Ergebnis im Studio, mit dem Stift einen Strich dazu, dann über der Skizze „Mit CLIPasso weiterrechnen …“: 4 neue Striche, 300 Iterationen, „Meine 1 gezeichneten Striche festhalten“ an, „Starten“. | Der Auftrag erscheint in der Warteschlange und läuft; die neue Skizze baut auf der alten auf, der eigene Strich bleibt, wo er war. Die alte Skizze bleibt unverändert. Ohne Eingabebild (ältere Ergebnisse) sagt die App, dass es nicht geht. |
 | C20 | Die App zum ersten Mal starten (oder in settings.json „tour_done“ löschen). Durch die Einführung mit „Weiter“, →, ← und „Zurück“ gehen; beim zweiten Start nichts. Dann Hilfe → „Einführung zeigen“ und mit Esc überspringen. | Beim ersten Start dunkelt die Einführung das Fenster ab; nur der erklärte Teil (Bild, Methode, Voreinstellung, „Skizze erstellen“, Werkzeuge über einer fertigen Skizze) bleibt hell mit farbigem Rand, die Karte steht daneben. Galerie und Modelle zeigen ihre Seite. Die Texte nennen Mac-Tasten (⌘). Danach kommt sie nicht wieder von selbst. |
+| C21 | Im Studio neben „Bild öffnen …“ das Kamera-Symbol. Beim ersten Mal die Frage von macOS erlauben. Eine andere Kamera wählen (z. B. das iPhone als Continuity-Kamera), „Spiegeln“ aus und wieder an, „Auslösen (3 s)“. Dann noch einmal, die Frage in den Systemeinstellungen aber vorher verbieten. | Das Live-Bild erscheint, gespiegelt wie ein Spiegel, wenn „Spiegeln“ an ist. Nach 3, 2, 1 ist das Foto das Bild des Studios und liegt im Ergebnisordner unter _webcam. Ohne Erlaubnis erklärt das Blatt, wo man sie gibt; ohne Kamera steht „Keine Kamera gefunden.“ |
 
 ## D. Warteschlange und Galerie
 
