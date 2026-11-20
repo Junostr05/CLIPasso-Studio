@@ -13,14 +13,17 @@ struct GalleryView: View {
     @State private var printing: PrintRequest?
     /// the large view over the results shown (a result's menu, Space on a result, the toolbar's slideshow)
     @State private var viewing: ViewerModel?
+    /// the marked results (Cmd-click), in the order marked: two of them can be compared in the viewer
+    @State private var marked: [GalleryItem.ID] = []
 
     var body: some View {
         @Bindable var gallery = model.gallery
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: Spacing.spaceL)], spacing: Spacing.spaceL) {
                 ForEach(gallery.items) { item in
-                    GalleryCell(item: item) {
-                        viewing = ViewerModel(items: gallery.items, index: gallery.items.firstIndex { $0.id == item.id } ?? 0)
+                    GalleryCell(item: item, marked: marked.contains(item.id), mark: { toggle(item) }) {
+                        viewing = ViewerModel(items: gallery.items, index: gallery.items.firstIndex { $0.id == item.id } ?? 0,
+                                              pair: pair)
                     }
                 }
             }
@@ -42,6 +45,10 @@ struct GalleryView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if !marked.isEmpty { markBar }
+        }
+        .onChange(of: gallery.items.map(\.id)) { _, ids in marked.removeAll { !ids.contains($0) } }
         .searchable(text: $gallery.query.text, prompt: model.texts.tr("ui.gallery.search"))
         .sheet(isPresented: Binding(get: { viewing != nil }, set: { if !$0 { viewing = nil } })) {
             if let viewing { GalleryViewer(viewer: viewing) }
@@ -90,6 +97,38 @@ struct GalleryView: View {
         .task { await gallery.refresh() }
     }
 
+    /// The two marked results (in the order marked), else none.
+    private var pair: [GalleryItem] {
+        guard marked.count == 2 else { return [] }
+        return marked.compactMap { id in model.gallery.items.first { $0.id == id } }
+    }
+
+    private func toggle(_ item: GalleryItem) {
+        if let i = marked.firstIndex(of: item.id) { marked.remove(at: i) } else { marked.append(item.id) }
+    }
+
+    /// What is marked: how many, compare (exactly two), and unmark.
+    private var markBar: some View {
+        HStack(spacing: Spacing.spaceM) {
+            Text(model.texts.tr("ui.gallery.selected", ["n": "\(marked.count)"])).monospacedDigit()
+            Button(model.texts.tr("ui.viewer.compare"), systemImage: "rectangle.split.2x1") {
+                let viewer = ViewerModel(items: pair, pair: pair)
+                viewer.setCompare(true)
+                viewing = viewer
+            }
+            .help(model.texts.tr("ui.viewer.compare_tip"))
+            .disabled(pair.count != 2)
+            Button { marked = [] } label: { Image(systemName: "xmark.circle.fill") }
+                .buttonStyle(.borderless)
+                .help(model.texts.tr("ui.cancel"))
+                .accessibilityLabel(model.texts.tr("ui.cancel"))
+        }
+        .padding(.horizontal, Spacing.spaceL)
+        .padding(.vertical, Spacing.spaceS)
+        .glassEffect(.regular, in: .capsule)
+        .padding(Spacing.spaceL)
+    }
+
     /// gallery.print_items: the results shown, in the gallery's order, named as there.
     private var shownRequest: PrintRequest {
         PrintRequest(entries: model.gallery.items.compactMap { PrintEntry.best(of: $0) },
@@ -100,6 +139,9 @@ struct GalleryView: View {
 private struct GalleryCell: View {
     @Environment(AppModel.self) private var model
     let item: GalleryItem
+    /// marked (Cmd-click toggles it)
+    let marked: Bool
+    let mark: () -> Void
     /// the large view, at this result
     let view: () -> Void
     @State private var sketch: Sketch?
@@ -114,6 +156,11 @@ private struct GalleryCell: View {
                 "image": item.name, "strokes": "\(sketch?.strokes.count ?? item.strokes)"]))
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+                .overlay {
+                    if marked {
+                        RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Color.accentColor, lineWidth: 3)
+                    }
+                }
                 .overlay(alignment: .topTrailing) {
                     if item.favourite {
                         Image(systemName: "star.fill")
@@ -129,6 +176,7 @@ private struct GalleryCell: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { open() }  // (as the studio's gallery: a double-click continues in the studio)
+        .simultaneousGesture(TapGesture().modifiers(.command).onEnded { mark() })
         .contextMenu { menu }
         // keyboard and VoiceOver reach every result: focus, Return opens it, the menu's actions by name
         .focusable()
@@ -144,6 +192,7 @@ private struct GalleryCell: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { open() }
         .accessibilityAction(named: Text(model.texts.tr("ui.viewer.show"))) { view() }
+        .accessibilityAddTraits(marked ? .isSelected : [])
         .accessibilityAction(named: Text(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite"))) {
             Task { await model.gallery.setFavourite(item, !item.favourite) }
         }

@@ -45,5 +45,19 @@ import StudioCore
         let line = ViewerModel.describe(viewer.items[0], texts: model.texts)
         #expect(line.hasPrefix(viewer.items[0].methodName))
         #expect(ViewerModel(items: []).position.isEmpty)
+
+        // two marked results compared: no going through, no slideshow; one result marked: no comparing
+        let pair = ViewerModel(items: viewer.items, index: 0, pair: Array(viewer.items.prefix(2)))
+        pair.setCompare(true)
+        #expect(pair.comparing && pair.pairSVG.0?.contains("<svg") == true && pair.pairSVG.1 != nil)
+        pair.next()
+        pair.setSlideshow(true)
+        #expect(pair.index == 0 && !pair.playing)
+        pair.setCompare(false)
+        pair.next()
+        #expect(pair.index == 1)
+        let single = ViewerModel(items: viewer.items, pair: [viewer.items[0]])
+        single.setCompare(true)
+        #expect(!single.comparing)
     }
 }

@@ -22,12 +22,32 @@ public final class ViewerModel {
     /// for the tests: how a slideshow waits
     @ObservationIgnored var sleep: @Sendable (Int) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
 
-    public init(items: [GalleryItem], index: Int = 0) {
+    /// two marked results to compare on top of each other (empty: none)
+    public let pair: [GalleryItem]
+    public private(set) var comparing = false
+    /// the pair's sketches while comparing
+    public private(set) var pairSVG: (String?, String?) = (nil, nil)
+
+    public init(items: [GalleryItem], index: Int = 0, pair: [GalleryItem] = []) {
         let shown = items.filter { $0.bestSketch.map { FileManager.default.fileExists(atPath: $0.path) } ?? false }
         let wanted = index < items.count ? items[index] : nil
         self.items = shown
         self.index = wanted.flatMap { w in shown.firstIndex { $0.id == w.id } } ?? 0
+        self.pair = pair.count >= 2 ? Array(pair.prefix(2)) : []
         load()
+    }
+
+    /// set_compare: the two marked results on top of each other (the slideshow stops; going through stops too).
+    public func setCompare(_ on: Bool) {
+        comparing = on && pair.count == 2
+        if comparing {
+            setSlideshow(false)
+            pairSVG = (Self.read(pair[0]), Self.read(pair[1]))
+        }
+    }
+
+    static func read(_ item: GalleryItem) -> String? {
+        item.bestSketch.flatMap { try? String(contentsOf: $0, encoding: .utf8) }
     }
 
     deinit {
@@ -48,7 +68,7 @@ public final class ViewerModel {
 
     /// The next result; after the last the first again in a slideshow (or with `wrap`).
     public func next(wrap: Bool = false) {
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, !comparing else { return }
         if index + 1 < items.count {
             show(index + 1)
         } else if wrap || playing {
@@ -58,7 +78,7 @@ public final class ViewerModel {
 
     /// The one before; before the first the last in a slideshow.
     public func previous() {
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, !comparing else { return }
         if index > 0 {
             show(index - 1)
         } else if playing {
@@ -68,7 +88,7 @@ public final class ViewerModel {
 
     /// set_slideshow: on only with more than one result.
     public func setSlideshow(_ on: Bool) {
-        playing = on && items.count > 1
+        playing = on && items.count > 1 && !comparing
         ticker?.cancel()
         ticker = nil
         if playing { restart() }

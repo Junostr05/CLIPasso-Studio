@@ -22,7 +22,6 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
 - Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
-- mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
@@ -91,6 +90,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | D6 | Kopiere einen auf dem Mac gerechneten Auftrag nach Windows und öffne ihn dort. | Die Windows-App zeigt ihn vollständig, auch Favorit, Titel und nachbearbeitete Skizze. |
 | D7 | In der Galerie ein Ergebnis markieren und Leertaste (oder Menü → „Groß ansehen“): mit ←/→ blättern, mit zwei Fingern zoomen, gezoomt ziehen, Doppelklick, `0`. Dann in der Symbolleiste „Diashow“, das Intervall ändern, Leertaste. | Das Ergebnis füllt das Blatt, Name und Zeile darunter (Methode, CLIP, Striche, Zeit) stimmen. Zoom und Verschieben folgen dem Trackpad, Doppelklick und `0` passen ein. Die Diashow läuft nach dem letzten wieder vorne los und hält mit der Leertaste an. |
 | D8 | Im Studio den Pinselstil „Kohle“ wählen, dann die Galerie öffnen; danach wieder „Schlicht“. | Die Vorschaubilder erscheinen im Kohle-Stil (beim ersten Mal nacheinander, danach sofort), mit „Schlicht“ wieder einfach. |
+| D9 | In der Galerie mit ⌘-Klick zwei Ergebnisse markieren, unten „Vergleichen“. Den Trennschieber ziehen, dann Umschalt+←/→. Ein drittes markieren, das ✕ unten. | Unten steht „2 ausgewählt“; die markierten haben einen farbigen Rahmen. Der Vergleich zeigt beide übereinander, links das zuerst markierte; der Schieber folgt Maus und Tasten. Mit drei markierten ist „Vergleichen“ aus; ✕ hebt alle Markierungen auf. Im Betrachter schaltet „Vergleichen“ zwischen Vergleich und Einzelansicht. |
 
 ## E. Skizze nachbearbeiten
 
