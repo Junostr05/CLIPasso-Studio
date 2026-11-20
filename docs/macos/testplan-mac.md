@@ -18,9 +18,16 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - Bildschirmfotos aller Seiten (Artefakt `screenshots-mac`).
 - Die Engine-Tests auf dem Apple-Grafikprozessor (`mps`), mit einer Messung CPU gegen GPU.
 
-**Noch nicht in der Mac-App, also nicht testen:** ein Update, das sich selbst installiert (die App ist nicht
-signiert: sie meldet die neue Version, installiert wird von Hand), Vergleichen, Schritte und Vereinfachen,
-die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon).
+**Noch nicht in der Mac-App, also nicht testen:**
+- ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
+  wird von Hand),
+- Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
+- die Ansichten Aufmerksamkeit, Maske und Bedingung im Studio, eine Zelle der SceneSketch-Matrix neu rechnen,
+- „Zuletzt verwendet“ und die Beispielbilder im Studio,
+- mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
+- die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon),
+- fehlgeschlagene oder abgebrochene Aufträge aus einer Sicherung in der Warteschlange,
+- Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
 
