@@ -535,19 +535,28 @@ private struct CanvasArea: View {
 private struct LiveCanvas: View {
     @Environment(AppModel.self) private var model
     @State private var sketch: Sketch?
+    /// "sketch" or a view of JobViews the engine sent
+    @State private var mode = "sketch"
 
     var body: some View {
         let live = model.studio.live
         let source = live.liveSVG ?? live.bestSVG ?? ""
         ZStack {
-            if sketch == nil {
-                Text(model.texts.tr("ui.canvas_placeholder"))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: Spacing.readingWidth)
+            if mode != "sketch" {
+                ViewPicture(kind: mode, sketch: sketch).padding(Spacing.spaceXl)
+            } else {
+                if sketch == nil {
+                    Text(model.texts.tr("ui.canvas_placeholder"))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: Spacing.readingWidth)
+                }
+                SketchView(sketch: sketch, label: model.studio.canvasLabel(model.texts, sketch: sketch))
+                    .padding(Spacing.spaceXl)
             }
-            SketchView(sketch: sketch, label: model.studio.canvasLabel(model.texts, sketch: sketch))
-                .padding(Spacing.spaceXl)
+        }
+        .overlay(alignment: .top) {
+            ViewModePicker(mode: $mode).padding(.top, Spacing.spaceS)
         }
         .safeAreaInset(edge: .bottom) {
             if live.sketches.count > 1 { JobSketches(sketches: live.sketches) }

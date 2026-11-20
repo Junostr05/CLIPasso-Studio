@@ -24,6 +24,10 @@ public struct QueuedJob: Sendable, Identifiable, Hashable {
     public var eta: Double?
     public var message: String = ""
     public var bestSVG: String?
+    /// the views the engine sent while it ran (JobViews: "compare", "mask", "condition" as PNG)
+    public var views: [String: Data] = [:]
+    /// the attention map of every seed, as PNG
+    public var attention: [Int: Data] = [:]
 
     public init(id: UUID = UUID(), target: URL, settings: JSONObject, resumeDir: URL? = nil) {
         self.id = id

@@ -8,10 +8,6 @@ enum EditTool: Equatable {
     case none, eraser, pen
 }
 
-/// What the canvas shows of a SceneSketch result: one sketch, or the whole matrix (studio.py's view tabs).
-enum ResultView: Hashable {
-    case sketch, matrix
-}
 
 /// A finished job on the studio's canvas: its sketch, which can be touched up with the tools above it, and below it
 /// the job's other sketches to choose from – for SceneSketch the matrix of its cells instead (studio.py, canvas.py).
@@ -19,14 +15,18 @@ struct ResultCanvas: View {
     @Environment(AppModel.self) private var model
     let result: StudioResult
     @State private var tool = EditTool.none
-    @State private var view = ResultView.sketch
+    /// the canvas's mode: "sketch", a view of JobViews, or "matrix"
+    @State private var view = "sketch"
     @State private var exporting: ExportSource?
     @State private var printing: PrintRequest?
 
     var body: some View {
         ZStack {
-            if view == .matrix, let matrix = result.matrix {
-                MatrixGrid(result: result, matrix: matrix) { view = .sketch }
+            if view == "matrix", let matrix = result.matrix {
+                MatrixGrid(result: result, matrix: matrix) { view = "sketch" }
+                    .padding(Spacing.spaceXl)
+            } else if view != "sketch" {
+                ViewPicture(kind: view, sketch: result.editor.flatMap { try? SketchSVG.parse($0.svg) })
                     .padding(Spacing.spaceXl)
             } else if let editor = result.editor {
                 EditableSketch(editor: editor, tool: tool)
@@ -40,16 +40,8 @@ struct ResultCanvas: View {
         }
         .overlay(alignment: .top) {
             HStack(spacing: Spacing.spaceM) {
-                if result.matrix != nil {
-                    Picker(model.texts.tr("ui.mac.result.view"), selection: $view) {
-                        Text(model.texts.tr("ui.mode.sketch")).tag(ResultView.sketch)
-                        Text(model.texts.tr("ui.mode.matrix")).tag(ResultView.matrix)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                if view == .sketch, let editor = result.editor {
+                ViewModePicker(mode: $view, matrix: result.matrix != nil)
+                if view == "sketch", let editor = result.editor {
                     EditTools(editor: editor, tool: $tool) {
                         exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name, jobDir: result.jobDir,
                                                  method: result.method, runs: result.runs.count)
@@ -68,10 +60,10 @@ struct ResultCanvas: View {
         .onChange(of: view) { tool = .none }
         .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
         .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
-        .focusedSceneValue(\.printAction, view == .sketch ? result.editor.map { editor in
+        .focusedSceneValue(\.printAction, view == "sketch" ? result.editor.map { editor in
             PrintAction { printing = request(editor) }
         } : nil)
-        .focusedSceneValue(\.copySketchAction, view == .sketch ? result.editor.map { editor in
+        .focusedSceneValue(\.copySketchAction, view == "sketch" ? result.editor.map { editor in
             CopySketchAction { copy(editor) }
         } : nil)
         .onChange(of: result.editor?.canErase ?? false) { _, can in

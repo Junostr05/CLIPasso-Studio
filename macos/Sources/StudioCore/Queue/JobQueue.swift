@@ -188,6 +188,11 @@ public actor JobQueue {
     /// Events of no job the app hears of (the queue's notices): the object mask, portrait mode's faces.
     static let noticeKinds = ["mask_", "portrait_"]
 
+    /// A picture an event sent (bytes travel as base64 in "<field>_b64").
+    static func png(_ value: JSONValue?) -> Data? {
+        value?.stringValue.flatMap { Data(base64Encoded: $0) }
+    }
+
     private func handle(_ event: EngineEvent) async {
         if event.job == nil, Self.noticeKinds.contains(where: { event.kind.hasPrefix($0) }) {
             noticeSink.yield(event)
@@ -217,6 +222,13 @@ public actor JobQueue {
             if let eta = event.data["eta"]?.doubleValue { job.eta = eta }
         case "preview":
             if let seed, let svg = event.data["svg"]?.stringValue { job.liveSVG[seed] = svg }
+        case "input":  // the photo as the method uses it, and its mask (pipeline: "input")
+            job.views["compare"] = Self.png(event.data["png_b64"])
+            job.views["mask"] = Self.png(event.data["mask_png_b64"])
+        case "attention":
+            if let seed, let png = Self.png(event.data["png_b64"]) { job.attention[seed] = png }
+        case "condition":
+            job.views["condition"] = Self.png(event.data["png_b64"])
         case "seed_done":
             if let seed { job.seedProgress[seed] = 1 }
         case "error":

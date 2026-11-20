@@ -163,6 +163,10 @@ public final class LiveJob {
     public private(set) var sketches: [SeedSketch] = []
     public private(set) var jobDir: URL?
     public private(set) var message = ""
+    /// the views the engine sent (JobViews: "compare", "mask", "condition" as PNG), and the attention map of the
+    /// item under way
+    public private(set) var views: [String: Data] = [:]
+    public private(set) var attention: Data?
     @ObservationIgnored private var starting = false
 
     public init() {}
@@ -182,6 +186,8 @@ public final class LiveJob {
         sketches = []
         jobDir = nil
         message = ""
+        views = [:]
+        attention = nil
     }
 
     /// Take over what the queue says about this job (only what changed, so views redraw only for that).
@@ -201,5 +207,8 @@ public final class LiveJob {
         if bestSVG != job.bestSVG { bestSVG = job.bestSVG }
         if jobDir != job.jobDir { jobDir = job.jobDir }
         if message != job.message { message = job.message }
+        if views != job.views { views = job.views }
+        let shown = underWay.flatMap { job.attention[$0] } ?? job.seeds.last.flatMap { job.attention[$0] }
+        if attention != shown { attention = shown }
     }
 }

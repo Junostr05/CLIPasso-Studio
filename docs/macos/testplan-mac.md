@@ -22,7 +22,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
 - Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
-- die Ansichten Aufmerksamkeit, Maske und Bedingung im Studio, eine Zelle der SceneSketch-Matrix neu rechnen,
+- eine Zelle der SceneSketch-Matrix neu rechnen,
 - mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
@@ -77,6 +77,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C11 | Einstellungen → „Backup & Umzug“ → „Backup erstellen …“, einmal ohne, einmal mit Modellen. Die Datei auf einem zweiten Mac (oder in einem neuen Benutzerkonto) mit „Backup wiederherstellen …“ zurückspielen, danach noch einmal. Dieselbe Datei auch in der Windows-App wiederherstellen, und ein Windows-Backup am Mac. | Galerie, Alben, Voreinstellungen und die wartenden Aufträge sind auf dem neuen Mac da, die Ordner des neuen Macs bleiben. Beim zweiten Mal wird nichts doppelt geholt. Ein fehlgeschlagener Auftrag kommt als „Fehlgeschlagen“ zurück und lässt sich mit „Erneut versuchen“ wieder einreihen. Telegram-Token und Handy-PIN stehen nicht in der Datei. |
 | C12 | Im Studio ein Bild wählen und daneben auf das Zuschneide-Symbol: „Quer 4:3“, einmal nach rechts drehen, spiegeln, die Ecken ziehen und den Rahmen verschieben, „Dieses Bild verwenden“. Danach auf dem Handy „Zuschneiden / drehen“. | Der Rahmen bleibt im Bild und im Seitenverhältnis (nach dem Drehen 3:4). Das zugeschnittene Bild erscheint im Studio und liegt als `…-edited-….png` im Ordner `_edited` des Ausgabeordners, das Original bleibt. Ein zu kleiner Ausschnitt auf dem Handy wird abgelehnt. |
 | C13 | Neben „Bild ändern“ das Uhr-Symbol: ein Beispiel wählen, dann zwei eigene Bilder nacheinander. App beenden und neu starten. | Das Menü zeigt die zuletzt benutzten Bilder (das neueste oben, keine Beispiele) und die Beispiele. Nach dem Neustart ist das zuletzt gewählte Bild wieder im Studio, beim allerersten Start das Kamel. |
+| C14 | Einen CLIPasso-Auftrag starten und oben über der Zeichenfläche „Bild/Skizze“, „Aufmerksamkeit“ und „Maske“ wählen, schon während er rechnet und wieder, wenn er fertig ist. Bei „Bild/Skizze“ den Trennstrich ziehen. Dann ein ControlSketch- und ein SceneSketch-Ergebnis aus der Galerie öffnen. Auf dem Handy dieselben Ansichten. | Die Ansichten zeigen das Bild, wie die Methode es benutzt, die Aufmerksamkeitskarte der gezeigten Skizze und die Maske; bei ControlSketch „Bedingung“, bei SceneSketch „Hintergrund“. SwiftSketch hat keine Aufmerksamkeit. Der Trennstrich deckt die Skizze über dem Bild auf. |
 
 ## D. Warteschlange und Galerie
 

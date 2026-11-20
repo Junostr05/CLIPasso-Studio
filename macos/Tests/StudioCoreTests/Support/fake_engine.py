@@ -5,7 +5,8 @@ with ways to misbehave.
 
 MODE: echo · crash_after N (ends with exit code 3 after N answers) · garbage (a line that is not JSON first) · slow
 (answers after 2 s) · stderr_secret (writes a secret to stderr) · protocol2 (speaks another protocol) · job DIR
-(``start`` "computes" by copying the finished job folder DIR into output_root) · job_fails (``start`` ends with
+(``start`` "computes" by copying the finished job folder DIR into output_root, sending input and attention
+pictures first) · job_fails (``start`` ends with
 job_failed) · needs KEYS DIR (``required_models`` lists the comma-separated KEYS as missing until ``convert_model``
 found each downloaded in dest_root's partial folder – then moved to KEY/KEY.pt; ``model_roles`` has them for the
 mask's role; ``start`` as in job DIR) · mask
@@ -17,6 +18,7 @@ Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`
 ``shutdown``.
 """
 
+import base64
 import json
 import os
 import shutil
@@ -113,6 +115,11 @@ for raw in sys.stdin.buffer:
         job_dir = os.path.join(args["output_root"], os.path.basename(source) if source else "failed-job")
         send({"id": rid, "ok": True, "result": {"job": "j1", "job_dir": job_dir}})
         total = int(args["settings"].get("num_iter", 5))
+        grey_png(os.path.join(kept, "view.png"), 4, 3, lambda x, y: 200)  # (the views the pipeline sends)
+        with open(os.path.join(kept, "view.png"), "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+        send({"event": "input", "job": "j1", "data": {"seed": 1000, "png_b64": b64, "mask_png_b64": b64}})
+        send({"event": "attention", "job": "j1", "data": {"seed": 1000, "png_b64": b64}})
         for i in range(total):
             send({"event": "iteration", "job": "j1", "data": {"seed": 1000, "it": i, "total": total}})
         if mode in ("job", "needs"):

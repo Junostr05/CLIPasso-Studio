@@ -75,7 +75,11 @@ public extension AppModel {
             "note": phone.note.isEmpty ? .null : ["id": .int(phone.noteID), "text": .string(phone.note)],
             "scene": .null, "download": phoneDownloadState(),
             "mask": phoneMask(),
-            "edit": .null, "views": [:], "hints": [],
+            "edit": .null,
+            "views": .object(JSONObject(studioViews.compactMap { kind in  // {kind: revision}
+                studioView(kind).map { (kind, .string("\($0.count)-\($0.hashValue)")) }
+            })),
+            "hints": [],
             "vignette": .bool(canvas["canvas_vignette"]?.truthy ?? false),
             "history_n": 0,
             "paper_color": .string(canvas["canvas_paper_color"]?.stringValue ?? ""),
@@ -182,6 +186,11 @@ public extension AppModel {
         case "get_studio":
             return .json(.object(phoneStudio(models: await phoneModelRoles())))
         #if canImport(ImageIO) && canImport(CoreGraphics)
+            case "file_view":  // (the photo as used, the attention map, the mask, the condition – at most 900 px)
+                guard let data = studioView(PhoneStudio.pyStr(data["kind"] ?? "")),
+                      let png = await Self.phoneViewPNG(data)
+                else { return no(texts.tr("ui.phone.page.no_sketch")) }
+                return .bytes(png, type: "image/png", name: nil)
             case "do_crop":
                 if let problem = await phoneCrop(data) { return no(problem) }
                 return .json(["ok": true])
@@ -245,6 +254,25 @@ public extension AppModel {
             return nil
         }
     }
+
+    #if canImport(ImageIO) && canImport(CoreGraphics)
+        /// VIEW_SIDE: a view's picture as PNG, at most 900 pixels on its longer side.
+        nonisolated static func phoneViewPNG(_ data: Data) async -> Data? {
+            await Task.detached(executorPreference: OwnThreads.shared) { () -> Data? in
+                guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                      let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                      let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int,
+                      let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                          kCGImageSourceCreateThumbnailFromImageAlways: true,
+                          kCGImageSourceCreateThumbnailWithTransform: true,
+                          kCGImageSourceThumbnailMaxPixelSize: min(900, max(w, h)),  // (never larger)
+                      ] as CFDictionary),
+                      let picture = PixelImage.from(image)
+                else { return nil }
+                return picture.png()
+            }.value
+        }
+    #endif
 
     nonisolated static func round4(_ x: Double) -> Double { (x * 10000).rounded(.toNearestOrEven) / 10000 }
 
