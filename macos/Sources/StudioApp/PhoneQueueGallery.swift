@@ -77,9 +77,10 @@ public extension AppModel {
             return .json(.object(phoneResults(data)))
         case "file_result":
             guard let item = phoneResult(data, byPlace: data["i"] != nil || data["d"] == nil),
-                  let sketch = item.bestSketch, let svg = try? Data(contentsOf: sketch)
+                  let sketch = item.bestSketch, let svg = try? String(contentsOf: sketch, encoding: .utf8)
             else { return no(texts.tr("ui.phone.page.no_sketch")) }
-            return .bytes(svg, type: "image/svg+xml", name: nil)
+            let shaped = SketchFraming.stretchedForDisplay(svg, stretch: canvasStretch(runDir: Self.bestRunDir(item)))
+            return .bytes(Data(shaped.utf8), type: "image/svg+xml", name: nil)
         case "do_open":
             guard let item = phoneResult(data) else { return no(changed) }
             studio.open(item)

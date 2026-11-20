@@ -38,4 +38,27 @@ import StudioCore
         #expect(abs(model.liveStretch - 1.5) < 1e-9)
         await model.stopEngine()
     }
+
+    /// The phone gets the pictures in the photo's shape, too: the shown sketch and the result as SVG told to be 3:2
+    /// (its strokes where they were); square where nothing is known.
+    @Test func onThePhone() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "shape-\(UUID().uuidString)")
+        let job = base.appending(path: "done_clipasso")
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: SelfTestTests.fixtures.appending(path: "jobs/done_clipasso"), to: job)
+        let model = try AppModel(resources: AppModelTests.resources(engine: nil),
+                                 store: AppModelTests.store(language: "de", ["output_dir": .string(base.path)]))
+        model.studio.reload(job)
+        let run = try #require(model.studio.result?.editor?.runDir)
+        try Data(#"{"photo_frame": {"aspect": 1.5, "rect": [0, 0, 1, 1]}}"#.utf8).write(to: run.appending(path: "config.json"))
+        guard case .bytes(let sketch, _, _) = await model.phoneAnswer("file_sketch", [:], payload: nil) else {
+            Issue.record("no sketch"); return
+        }
+        let text = String(decoding: sketch, as: UTF8.self)
+        #expect(text.contains(#"width="336" height="224" preserveAspectRatio="none""#))
+        await model.gallery.refresh()
+        guard case .bytes(let result, _, _) = await model.phoneAnswer("file_result", ["d": "done_clipasso"], payload: nil)
+        else { Issue.record("no result"); return }
+        #expect(String(decoding: result, as: UTF8.self).contains(#"preserveAspectRatio="none""#))
+    }
 }

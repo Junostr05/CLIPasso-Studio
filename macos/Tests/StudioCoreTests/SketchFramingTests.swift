@@ -97,4 +97,17 @@ import Testing
         #expect(SketchFraming.PhotoFrame(aspect: 40, rect: [0, 0, 1, 1]).canvasStretch == 5)
         #expect(SketchFraming.PhotoFrame(aspect: 1.5, rect: [0, 0, 0, 1]).canvasStretch == 1)
     }
+
+    /// The phone's picture of a sketch in the photo's shape: its size stretched, its strokes where they were.
+    @Test func aPictureInThePhotosShape() {
+        let svg = #"<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224" preserveAspectRatio="xMidYMid"><path d="M0 0 L5 5"/></svg>"#
+        let wide = SketchFraming.stretchedForDisplay(svg, stretch: 1.5)
+        #expect(wide.contains(#"width="336" height="224" preserveAspectRatio="none""#))
+        #expect(!wide.contains(#"width="224""#) && !wide.contains("xMidYMid") && wide.contains(#"viewBox="0 0 224 224""#))
+        #expect(wide.contains(#"<path d="M0 0 L5 5"/>"#) && wide.hasPrefix(#"<?xml version="1.0"?><svg"#))
+        let tall = SketchFraming.stretchedForDisplay(svg, stretch: 0.5)
+        #expect(tall.contains(#"width="224" height="448""#))
+        #expect(SketchFraming.stretchedForDisplay(svg, stretch: 1) == svg)
+        #expect(SketchFraming.stretchedForDisplay("not a sketch", stretch: 2) == "not a sketch")
+    }
 }

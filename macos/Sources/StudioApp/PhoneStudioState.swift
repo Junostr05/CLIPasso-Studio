@@ -189,7 +189,7 @@ public extension AppModel {
             case "file_view":  // (the photo as used, the attention map, the mask, the condition – at most 900 px)
                 let kind = PhoneStudio.pyStr(data["kind"] ?? "")
                 guard studioViews.contains(kind), let data = studioView(kind),  // (only the views the studio shows)
-                      let png = await Self.phoneViewPNG(data)
+                      let png = await Self.phoneViewPNG(data, stretch: studioStretch)
                 else { return no(texts.tr("ui.phone.page.no_sketch")) }
                 return .bytes(png, type: "image/png", name: nil)
             case "do_crop":
@@ -224,6 +224,7 @@ public extension AppModel {
             let seed = data["seed"].flatMap { $0 == "" ? nil : PhoneStudio.int($0) }
             guard let svg = phoneSketch(seed) else { return no(texts.tr("ui.phone.page.no_sketch")) }
             let look = phoneLook()
+            let stretch = phoneStretch(seed: seed)  // (in the photo's shape, as in the window)
             let stylist = stylist(look.style)
             let full = data["full"]?.truthy == true
             let made = await Task.detached(executorPreference: OwnThreads.shared) { () -> String in
@@ -234,7 +235,7 @@ public extension AppModel {
                         out = PaperPicture.svgWithPaper(out, paper: look.paper, background: look.background)
                     }
                 #endif
-                return out
+                return SketchFraming.stretchedForDisplay(out, stretch: stretch)
             }.value
             return .bytes(Data(made.utf8), type: "image/svg+xml", name: nil)
         case "get_images":
@@ -263,7 +264,8 @@ public extension AppModel {
 
     #if canImport(ImageIO) && canImport(CoreGraphics)
         /// VIEW_SIDE: a view's picture as PNG, at most 900 pixels on its longer side.
-        nonisolated static func phoneViewPNG(_ data: Data) async -> Data? {
+        /// A view of the canvas for the phone: at most 900 px, in the photo's shape (`stretch`, as the window shows it).
+        nonisolated static func phoneViewPNG(_ data: Data, stretch: Double = 1) async -> Data? {
             await Task.detached(executorPreference: OwnThreads.shared) { () -> Data? in
                 guard let source = CGImageSourceCreateWithData(data as CFData, nil),
                       let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
@@ -275,7 +277,19 @@ public extension AppModel {
                       ] as CFDictionary),
                       let picture = PixelImage.from(image)
                 else { return nil }
-                return picture.png()
+                guard abs(stretch - 1) > 1e-3, let drawn = picture.cgImage else { return picture.png() }
+                // (stretched across or down – never larger than 900 px)
+                var (sw, sh) = (Double(picture.width) * stretch, Double(picture.height))
+                let fit = min(1, 900 / max(sw, sh))
+                (sw, sh) = (sw * fit, sh * fit)
+                let (pw, ph) = (max(1, Int(sw.rounded())), max(1, Int(sh.rounded())))
+                guard let context = CGContext(data: nil, width: pw, height: ph, bitsPerComponent: 8, bytesPerRow: pw * 4,
+                                              space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                else { return picture.png() }
+                context.interpolationQuality = .high
+                context.draw(drawn, in: CGRect(x: 0, y: 0, width: pw, height: ph))
+                return context.makeImage().flatMap { PixelImage.from($0) }?.png() ?? picture.png()
             }.value
         }
     #endif

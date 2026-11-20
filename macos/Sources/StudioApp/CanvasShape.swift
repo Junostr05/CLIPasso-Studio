@@ -12,12 +12,12 @@ public extension AppModel {
         let key = runDir.path
         if let known = stretches[key] { return known }
         #if canImport(ImageIO)
-            let stretch = SketchFraming.runFrame(runDir: runDir)?.canvasStretch ?? 1
+            guard let frame = SketchFraming.runFrame(runDir: runDir) else { return 1 }  // (not known yet: asked again)
+            stretches[key] = frame.canvasStretch
+            return frame.canvasStretch
         #else
-            let stretch = 1.0
+            return 1
         #endif
-        stretches[key] = stretch
-        return stretch
     }
 
     /// The canvas of the studio's job under way (its config.json may not be written yet): worked out from its picture
@@ -36,5 +36,26 @@ public extension AppModel {
         #endif
         stretches[key] = stretch
         return stretch
+    }
+
+    /// The run whose sketch stands for a result (its best run).
+    nonisolated static func bestRunDir(_ item: GalleryItem) -> URL? {
+        item.summary.runs.first { $0["run_name"]?.stringValue == item.summary.bestRun }?["run_dir"]?.stringValue
+            .map { URL(filePath: $0, directoryHint: .isDirectory) }
+    }
+
+    /// The canvas of what the studio shows now: the run chosen of the finished job, else the job under way.
+    var studioStretch: Double {
+        if let result = studio.result, !studio.live.isActive {
+            return canvasStretch(runDir: result.runs.first { $0.name == result.selected }?.runDir)
+        }
+        return liveStretch
+    }
+
+    /// The canvas of a sketch the phone asks for: its run's, or the job under way's.
+    func phoneStretch(seed: Int?) -> Double {
+        let wanted = seed ?? phoneShownSeed()
+        guard let item = phoneSeeds().first(where: { $0.seed == wanted }) else { return studioStretch }
+        return item.runDir.map { canvasStretch(runDir: $0) } ?? liveStretch
     }
 }

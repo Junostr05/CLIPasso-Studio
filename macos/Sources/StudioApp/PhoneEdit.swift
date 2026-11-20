@@ -47,12 +47,13 @@ public extension AppModel {
     }
 
     /// The sketch as the phone shows it (_styled): the studio's background and brush style.
-    private func phoneStyled(_ svg: String) async -> RemoteAnswer {
+    private func phoneStyled(_ svg: String, runDir: URL) async -> RemoteAnswer {
         let look = phoneLook()
         let stylist = stylist(look.style)
+        let stretch = canvasStretch(runDir: runDir)  // (in the photo's shape, as in the window)
         let made = await Task.detached(executorPreference: OwnThreads.shared) { () -> String in
             let out = SketchExport.restyleSVG(svg, background: look.background)
-            return (try? stylist(out)) ?? out
+            return SketchFraming.stretchedForDisplay((try? stylist(out)) ?? out, stretch: stretch)
         }.value
         return .bytes(Data(made.utf8), type: "image/svg+xml", name: nil)
     }
@@ -153,7 +154,7 @@ public extension AppModel {
             return .json(["ok": true, "ready": false])
         case "file_simplified":
             guard let kept = await phoneKept(editor, data) else { return no(texts.tr("ui.edit_bar.measuring")) }
-            return await phoneStyled(kept)
+            return await phoneStyled(kept, runDir: editor.runDir)
         case "do_simplify_apply":
             guard let kept = await phoneKept(editor, data) else { return no(texts.tr("ui.edit_bar.measuring")) }
             editor.take(kept)
@@ -166,7 +167,7 @@ public extension AppModel {
             guard let i = data["i"].flatMap({ PhoneStudio.int($0) }), frames.indices.contains(i),
                   let svg = try? String(contentsOf: frames[i], encoding: .utf8)
             else { return no(texts.tr("ui.edit_bar.no_steps")) }
-            if action == "file_step" { return await phoneStyled(svg) }
+            if action == "file_step" { return await phoneStyled(svg, runDir: editor.runDir) }
             editor.take(svg)
             return .json(["ok": true])
         default:

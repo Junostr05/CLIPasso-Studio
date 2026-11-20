@@ -42,6 +42,27 @@ public enum SketchFraming {
         }
     }
 
+    /// The sketch to show in the photo's shape where a picture of it is shown as it is (the phone page): it is told to
+    /// be `stretch` times as wide for its height as its viewBox, and to be stretched to that (preserveAspectRatio
+    /// none) – the strokes stay where they are, so 0 … 1 of the picture is still 0 … 1 of the sketch. 1: unchanged.
+    public static func stretchedForDisplay(_ svg: String, stretch: Double) -> String {
+        guard stretch.isFinite, stretch > 0, abs(stretch - 1) > 1e-3,
+              let open = svg.range(of: "<svg"), let close = svg[open.upperBound...].firstIndex(of: ">")
+        else { return svg }
+        let box = SketchEditing.viewBox(svg)
+        guard box.width > 0, box.height > 0 else { return svg }
+        var tag = String(svg[open.lowerBound ..< close])
+        let old = try! NSRegularExpression(pattern: #"\s(width|height|preserveAspectRatio)\s*=\s*("[^"]*"|'[^']*')"#)
+        tag = old.stringByReplacingMatches(in: tag, range: NSRange(tag.startIndex..., in: tag), withTemplate: "")
+        let (w, h) = stretch >= 1 ? (box.width * stretch, box.height) : (box.width, box.height / stretch)
+        func number(_ v: Double) -> String {  // (never in exponent form)
+            let r = (v * 100).rounded() / 100
+            return r == r.rounded() ? String(Int(r)) : String(format: "%.2f", r)
+        }
+        tag += " width=\"\(number(w))\" height=\"\(number(h))\" preserveAspectRatio=\"none\""
+        return String(svg[..<open.lowerBound]) + tag + String(svg[close...])
+    }
+
     /// A new frame for the sketches of a run: `box` is the new viewBox; with `yScale` ≠ 1 the points are first
     /// moved vertically by that factor around `originY`.
     public struct Framing: Sendable, Equatable {
