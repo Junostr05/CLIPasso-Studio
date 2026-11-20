@@ -124,6 +124,11 @@ private struct QueueRow: View {
             }
             Spacer()
             Text(status).foregroundStyle(.secondary)
+            if [.failed, .cancelled, .interrupted].contains(job.status) {
+                Button(model.texts.tr("ui.queue.retry"), systemImage: "arrow.clockwise") { Task { await page.retry(job) } }
+                    .labelStyle(.iconOnly)
+                    .help(model.texts.tr("ui.queue.retry"))
+            }
             if !job.isActive {
                 Button(model.texts.tr("ui.queue.up"), systemImage: "chevron.up") { Task { await page.move(job.id, by: -1) } }
                     .labelStyle(.iconOnly)

@@ -70,6 +70,21 @@ public actor JobQueue {
         await append(QueuedJob(target: target, settings: settings, resumeDir: jobDir))
     }
 
+    /// A job that ended before (failed or cancelled – e.g. from a backup): in the list as it was, never started by
+    /// itself; "Try again" queues it anew.
+    @discardableResult
+    public func addEnded(target: URL, settings: JSONObject, status: QueuedJob.Status, jobDir: URL?, message: String,
+                         resumeDir: URL? = nil) -> QueuedJob.ID
+    {
+        var job = QueuedJob(target: target, settings: settings, resumeDir: resumeDir)
+        job.status = [.failed, .cancelled].contains(status) ? status : .failed
+        job.jobDir = jobDir
+        job.message = message
+        jobs.append(job)
+        publish()
+        return job.id
+    }
+
     private func append(_ job: QueuedJob) async -> QueuedJob.ID {
         listen()
         jobs.append(job)

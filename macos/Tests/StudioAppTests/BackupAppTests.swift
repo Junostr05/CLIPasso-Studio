@@ -34,4 +34,38 @@ import StudioCore
         let again = try await b.restoreBackup(from: file, parts: ["gallery"])
         #expect(again.jobs == 0 && again.skippedJobs == 1)
     }
+
+    /// The queue of a backup: a waiting job is queued (and runs), a failed one comes back failed – not started by
+    /// itself – and "Try again" queues it anew.
+    @Test func theQueueComesBack() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "backup-queue-\(UUID().uuidString)")
+        let out = base.appending(path: "out"), pictures = base.appending(path: "Bilder")
+        try FileManager.default.createDirectory(at: pictures, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        for name in ["a.png", "b.png"] { try Data([1]).write(to: pictures.appending(path: name)) }
+        let settings: JSONObject = ["method": "clipasso", "num_iter": 3]
+        let file = base.appending(path: "q.clipbackup")
+        _ = try Backup.create(file, settings: [:], queue: [
+            ["target": .string(pictures.path + "/a.png"), "settings": .object(settings)],
+            ["target": .string(pictures.path + "/b.png"), "settings": .object(settings), "status": "failed",
+             "job_dir": "", "message": "RuntimeError: made up"],
+        ], outputDir: out, modelsDir: base.appending(path: "models"), includeModels: false, version: "4.4.0")
+
+        let done = SelfTestTests.fixtures.appending(path: "jobs/done_clipasso")
+        let model = try AppModel(resources: AppModelTests.resources(engine: SelfTestTests.fake(["job", done.path])),
+                                 store: AppModelTests.store(language: "de", ["output_dir": .string(out.path)]))
+        await model.startEngine()
+        await model.queuePage?.setAutoStart(false)
+        let report = try await model.restoreBackup(from: file, parts: ["queue"])
+        #expect(report.queue.count == 2)
+        let jobs = model.queueSnapshot?.jobs ?? []
+        #expect(jobs.map(\.target.lastPathComponent).sorted() == ["a.png", "b.png"])
+        let failed = try #require(jobs.first { $0.target.lastPathComponent == "b.png" })
+        #expect(failed.status == .failed && failed.message == "RuntimeError: made up")
+        #expect(jobs.first { $0.target.lastPathComponent == "a.png" }?.status == .queued)
+        await model.queuePage?.retry(failed)
+        let now = model.queuePage?.jobs ?? []
+        #expect(now.filter { $0.target.lastPathComponent == "b.png" }.map(\.status) == [.queued])
+        await model.stopEngine()
+    }
 }

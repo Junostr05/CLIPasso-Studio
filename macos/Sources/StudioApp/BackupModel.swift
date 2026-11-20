@@ -47,7 +47,8 @@ public extension AppModel {
     }
 
     /// restore: the chosen parts put back – the settings saved (the language at once), the gallery read again, the
-    /// queue's entries added (failed or cancelled ones are not started again), the models counted again. Refused
+    /// queue's entries added (failed or cancelled ones as such, not started: "Try again" is theirs), the models
+    /// counted again. Refused
     /// while a job runs (ui.backup.busy).
     func restoreBackup(from url: URL, parts: Set<String>,
                        progress: @escaping @Sendable (Int64, Int64) -> Void = { _, _ in }) async throws -> Backup.Report
@@ -73,9 +74,15 @@ public extension AppModel {
             try? setLanguage(settings.language)
         }
         if let queue {
-            for item in report.queue where item["status"] == nil {
+            for item in report.queue {
                 guard let target = item["target"]?.stringValue, let s = item["settings"]?.objectValue else { continue }
-                if let resume = item["resume_dir"]?.stringValue, !resume.isEmpty {
+                let resume = item["resume_dir"]?.stringValue.flatMap { $0.isEmpty ? nil : URL(filePath: $0) }
+                if let status = item["status"]?.stringValue {  // (failed or cancelled: kept as such, not started)
+                    let dir = item["job_dir"]?.stringValue.flatMap { $0.isEmpty ? nil : URL(filePath: $0) }
+                    await queue.addEnded(target: URL(filePath: target), settings: s,
+                                         status: QueuedJob.Status(rawValue: status) ?? .failed, jobDir: dir,
+                                         message: item["message"]?.stringValue ?? "", resumeDir: resume)
+                } else if let resume = item["resume_dir"]?.stringValue, !resume.isEmpty {
                     await queue.addContinuation(jobDir: URL(filePath: resume), target: URL(filePath: target), settings: s)
                 } else {
                     _ = await queue.add(target: URL(filePath: target), settings: s)

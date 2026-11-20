@@ -46,14 +46,9 @@ public extension AppModel {
             studio.adopt(job.settings)
             return ok
         case "do_retry":
-            guard let job = phoneJob(data), [.failed, .cancelled, .interrupted].contains(job.status), let queue
+            guard let job = phoneJob(data), [.failed, .cancelled, .interrupted].contains(job.status), let queuePage
             else { return no(changed) }
-            if let dir = job.jobDir, let summary = JobFolder.summary(at: dir), JobFolder.canContinue(summary) {
-                await queue.addContinuation(jobDir: dir, target: job.target, settings: job.settings)
-            } else {
-                await queue.add(target: job.target, settings: job.settings)
-            }
-            await queuePage?.remove(job.id)
+            await queuePage.retry(job)
             return ok
         case "do_remove":
             guard let n = data["id"].flatMap({ PhoneStudio.int($0) }) else { return no("unknown job") }

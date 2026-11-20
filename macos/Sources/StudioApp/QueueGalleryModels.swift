@@ -41,6 +41,19 @@ public final class QueueModel {
         await reload()
     }
 
+    /// *Try again* (controller.retry): a failed, cancelled or interrupted job queued anew – continued in its folder
+    /// where it can be, else from the start – in place of the old entry.
+    public func retry(_ job: QueuedJob) async {
+        guard [.failed, .cancelled, .interrupted].contains(job.status) else { return }
+        if let dir = job.jobDir, let summary = JobFolder.summary(at: dir), JobFolder.canContinue(summary) {
+            await queue.addContinuation(jobDir: dir, target: job.target, settings: job.settings)
+        } else {
+            await queue.add(target: job.target, settings: job.settings)
+        }
+        await queue.remove(job.id)
+        await reload()
+    }
+
     /// *Remove finished*: the done, failed and cancelled jobs leave the list.
     public func removeFinished() async {
         for job in jobs where [.done, .failed, .cancelled].contains(job.status) {
