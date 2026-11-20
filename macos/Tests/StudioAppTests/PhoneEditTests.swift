@@ -35,7 +35,7 @@ import StudioCore
         #expect(await ask("do_edit", ["op": "pen", "points": [[0.1, 0.5]]])?["ok"] == false)
         _ = await ask("do_edit", ["op": "undo"])
         #expect(editor.svg == original)
-        let erased = await ask("do_edit", ["op": "erase", "points": [[105.0 / 224, 25.1 / 224]]])
+        let erased = await ask("do_edit", ["op": "erase", "points": [[.double(105.0 / 224), .double(25.1 / 224)]]])
         #expect(erased == ["ok": true, "erased": 1] && SketchEditing.count(editor.svg) == 1)
         #expect(await ask("do_edit", ["op": "erase", "points": [[0.5, 0.5]]])?["error"]
             == .string(t.tr("ui.phone.page.edit_one_line")))
