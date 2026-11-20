@@ -35,9 +35,9 @@ private struct StepsColumn: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.spaceXl) {
-                Step(number: 1, title: model.texts.tr("ui.step.image")) { ImageStep() }
-                Step(number: 2, title: model.texts.tr("ui.step.method")) { MethodStep() }
-                Step(number: 3, title: model.texts.tr("ui.step.preset")) { PresetStep() }
+                Step(number: 1, title: model.texts.tr("ui.step.image")) { ImageStep() }.tourTarget("input")
+                Step(number: 2, title: model.texts.tr("ui.step.method")) { MethodStep() }.tourTarget("methods")
+                Step(number: 3, title: model.texts.tr("ui.step.preset")) { PresetStep() }.tourTarget("params")
             }
             .padding(Spacing.columnPadding)
         }
@@ -661,6 +661,7 @@ private struct JobBar: View {
                 .buttonStyle(.glassProminent)
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(!ready || !model.studio.canStart)
+                .tourTarget("start")
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)

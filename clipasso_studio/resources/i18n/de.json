@@ -1656,5 +1656,9 @@
  "ui.mac.backup": "Backup & Umzug",
  "ui.mac.yes": "Ja",
  "ui.mac.no": "Nein",
+ "ui.mac.tour.input.text": "Leg ein Bild hier ab oder öffne es mit „Bild öffnen …“ – das Uhr-Symbol daneben bringt die zuletzt benutzten und die Beispiele. Mit dem Zuschneide-Symbol schneidest du es zu, drehst oder spiegelst es. Auf dem Bild siehst du, welches Objekt skizziert wird; in der Zeile darunter korrigierst du die Maske.",
+ "ui.mac.tour.start.text": "„Skizze erstellen“ startet sofort und zeigt das Zeichnen live (⌘↩). Weitere Bilder legst du in der Warteschlange ab; sie laufen nacheinander – z. B. über Nacht, danach kann der Mac schlafen gehen.",
+ "ui.mac.tour.result.text": "Über der fertigen Skizze: Radierer, Stift, Rückgängig, Zwischenstände und Vereinfachen; Exportieren (⌘E) als SVG, PNG, PDF oder Animation, Drucken (⌘P) und Kopieren (⇧⌘C) – mit Pinselstilen wie Tusche oder Bleistift.",
+ "ui.mac.tour.models.text": "Links in der Seitenleiste: „Modelle“ – SwiftSketch, ControlSketch, SceneSketch und die genaue BiRefNet-Maske laden ihre Modelle beim ersten Einsatz, dort siehst und verwaltest du sie –, der „Vergleich“ der Methoden und die Einstellungen mit Design, Sprache, Ordnern, Handy und Telegram. Diese Einführung findest du wieder im Menü „Hilfe“.",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

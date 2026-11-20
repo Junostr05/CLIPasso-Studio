@@ -55,7 +55,10 @@ struct CLIPassoStudioApp: App {
                 RootView()
                     .environment(model)
                     .task {
-                        if ScreenshotMode.options == nil { model.restoreLastImage() }  // (the last picture, or the camel)
+                        if ScreenshotMode.options == nil {
+                            model.restoreLastImage()  // (the last picture, or the camel)
+                            model.maybeShowTour()  // (once, after a new installation)
+                        }
                         await model.startEngine()
                         if ScreenshotMode.options == nil { await model.checkForUpdate() }
                     }
@@ -70,6 +73,7 @@ struct CLIPassoStudioApp: App {
         .commands {
             PrintCommands(texts: model?.texts)
             CopySketchCommands(texts: model?.texts)
+            TourCommands(model: model)
         }
     }
 }

@@ -73,6 +73,7 @@ struct ResultCanvas: View {
                             if info.canContinue { continuing = info } else { continueNote = model.texts.tr("ui.continue.no_input") }
                         }
                     }
+                    .tourTarget("result")
                 }
             }
             .padding(.top, Spacing.spaceS)

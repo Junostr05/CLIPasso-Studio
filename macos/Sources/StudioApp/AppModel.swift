@@ -58,6 +58,8 @@ public final class AppModel {
     public let mask = StudioMask()
     /// the phone remote (on and off as the settings say)
     public let phone: PhoneRemote
+    /// the first-start guide
+    public let tour = TourModel()
     /// the Telegram messages and their settings' state
     public let telegram = TelegramLink()
     /// how the bot's calls go out (the tests answer as Telegram would) and how long "Connect" waits for /start

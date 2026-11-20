@@ -60,6 +60,14 @@ struct RootView: View {
         }
         .preferredColorScheme(model.appearance == .system ? nil : model.appearance == .dark ? .dark : .light)
         .onChange(of: model.studio.opened) { page = .studio }  // (a result opened from the gallery)
+        // the guide: over the whole window, each step on its page
+        .overlayPreferenceValue(TourAnchors.self) { anchors in
+            if model.tour.step != nil { TourOverlay(anchors: anchors) }
+        }
+        .onChange(of: model.tour.index) {
+            if let step = model.tour.step, let shown = Page(rawValue: step.page) { page = shown }
+            if model.tour.index == nil { page = .studio }
+        }
         .task {
             if let options = ScreenshotMode.options {
                 await ScreenshotMode.run(options, model: model) { page = $0 }
