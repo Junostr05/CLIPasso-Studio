@@ -213,8 +213,10 @@ public final class LiveJob {
         if jobDir != job.jobDir { jobDir = job.jobDir }
         if message != job.message { message = job.message }
         if views != job.views { views = job.views }
-        // (the item under way's map – else the latest one that came: the engine sends one per item, not for each)
+        // (the item under way's map – else the last item's that has one; the engine sends one per item, not for each –
+        // and before the job's items are known, the one there is)
         let shown = underWay.flatMap { job.attention[$0] } ?? job.seeds.reversed().lazy.compactMap { job.attention[$0] }.first
+            ?? job.attention.keys.max().flatMap { job.attention[$0] }
         if attention != shown { attention = shown }
     }
 }
