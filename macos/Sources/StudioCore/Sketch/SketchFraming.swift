@@ -25,6 +25,15 @@ public enum SketchFraming {
             self.rect = rect
         }
 
+        /// How much wider than high the method's square canvas is to be shown so that the photo on it has its own
+        /// shape again: the photo's aspect over the shape of the part of the canvas it covers – 1 for a photo padded
+        /// (fix_scale) or cropped square, its aspect when it was stretched onto the canvas (kept within 1/5 … 5).
+        public var canvasStretch: Double {
+            let (w, h) = (rect[2] - rect[0], rect[3] - rect[1])
+            guard w > 1e-9, h > 1e-9, aspect.isFinite, aspect > 0 else { return 1 }
+            return min(max(aspect * h / w, 0.2), 5)
+        }
+
         init?(_ json: JSONValue?) {
             guard let o = json?.objectValue, let aspect = o["aspect"]?.doubleValue, aspect != 0,
                   let rect = o["rect"]?.arrayValue?.compactMap(\.doubleValue), rect.count == 4

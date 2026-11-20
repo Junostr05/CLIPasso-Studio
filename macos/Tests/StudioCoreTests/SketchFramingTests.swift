@@ -82,4 +82,19 @@ import Testing
         #expect(guessed == SketchFraming.guessFrame(method: "clipasso", settings: ["fix_scale": true], width: 300, height: 200))
         #expect(SketchFraming.runFrame(runDir: run) { _ in nil } == nil)  // (the photo cannot be measured)
     }
+
+    /// The canvas shown in the photo's shape: stretched onto the square (no fix_scale) → the photo's aspect; padded
+    /// (fix_scale) or a square part of the photo → square; the frames as framing.photo_frame writes them.
+    @Test func theCanvasInThePhotosShape() {
+        #expect(SketchFraming.PhotoFrame(aspect: 4.0 / 3, rect: [0, 0, 1, 1]).canvasStretch == 4.0 / 3)  // (stretched)
+        #expect(abs(SketchFraming.PhotoFrame(aspect: 0.75, rect: [0, 0, 1, 1]).canvasStretch - 0.75) < 1e-12)
+        // fix_scale: 400 × 300 at (10, 60) on a square of 420 (framing.fix_scale_pad)
+        let padded = SketchFraming.PhotoFrame(aspect: 4.0 / 3, rect: [10.0 / 420, 60.0 / 420, 410.0 / 420, 360.0 / 420])
+        #expect(abs(padded.canvasStretch - 1) < 1e-9)
+        // SceneSketch: the middle square of a 300 × 200 photo (the photo reaches beyond the canvas)
+        let cropped = SketchFraming.PhotoFrame(aspect: 1.5, rect: [-0.25, 0, 1.25, 1])
+        #expect(abs(cropped.canvasStretch - 1) < 1e-9)
+        #expect(SketchFraming.PhotoFrame(aspect: 40, rect: [0, 0, 1, 1]).canvasStretch == 5)
+        #expect(SketchFraming.PhotoFrame(aspect: 1.5, rect: [0, 0, 0, 1]).canvasStretch == 1)
+    }
 }

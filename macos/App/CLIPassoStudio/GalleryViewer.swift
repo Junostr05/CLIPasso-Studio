@@ -43,6 +43,7 @@ struct GalleryViewer: View {
             if viewer.comparing {
                 SplitSketches(first: viewer.pairSVG.0.flatMap { try? SketchSVG.parse($0) },
                               second: viewer.pairSVG.1.flatMap { try? SketchSVG.parse($0) }, split: $split)
+                    .environment(\.canvasStretch, model.canvasStretch(runDir: ExportSource.bestRun(of: viewer.pair[0])))
                     .help(t.tr("ui.viewer.split_tip"))
             } else {
             GeometryReader { _ in
@@ -52,6 +53,7 @@ struct GalleryViewer: View {
                         Text(t.tr("ui.viewer.missing")).foregroundStyle(.secondary)
                     }
                     SketchView(sketch: sketch, label: viewer.current?.name ?? "")
+                        .environment(\.canvasStretch, model.canvasStretch(runDir: viewer.current.flatMap { ExportSource.bestRun(of: $0) }))
                         .scaleEffect(zoom * pinch)
                         .offset(x: offset.width + dragged.width, y: offset.height + dragged.height)
                 }

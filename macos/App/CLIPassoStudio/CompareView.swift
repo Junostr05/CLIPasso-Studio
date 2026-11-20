@@ -150,6 +150,7 @@ private struct CompareCard: View {
                 if sketch != nil {
                     SketchView(sketch: sketch, label: t.tr("ui.mac.canvas_label", [
                         "image": entry.item?.name ?? "", "strokes": "\(sketch?.strokes.count ?? 0)"]))
+                        .environment(\.canvasStretch, model.canvasStretch(runDir: entry.item.flatMap { ExportSource.bestRun(of: $0) }))
                 } else {
                     Text(t.tr("ui.compare.placeholder")).font(.caption).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding()

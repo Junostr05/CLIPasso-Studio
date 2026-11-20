@@ -36,6 +36,8 @@ struct ViewModePicker: View {
 /// divider to drag (the canvas's photo / sketch slider).
 struct ViewPicture: View {
     @Environment(AppModel.self) private var model
+    /// the views are pictures of the method's canvas: shown in the photo's shape as the sketch is
+    @Environment(\.canvasStretch) private var stretch
     let kind: String
     let sketch: Sketch?
     @State private var split: CGFloat = 0.5
@@ -43,7 +45,8 @@ struct ViewPicture: View {
     var body: some View {
         let image = model.studioView(kind).flatMap { NSImage(data: $0) }
         GeometryReader { geo in
-            let fitted = Self.fit(image?.size ?? .zero, in: geo.size)
+            let fitted = Self.fit(image.map { CGSize(width: $0.size.width * stretch, height: $0.size.height) } ?? .zero,
+                                  in: geo.size)
             ZStack(alignment: .topLeading) {
                 if let image {
                     Image(nsImage: image).resizable().interpolation(.high)

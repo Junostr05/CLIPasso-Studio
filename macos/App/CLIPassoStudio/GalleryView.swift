@@ -154,6 +154,7 @@ private struct GalleryCell: View {
         VStack(alignment: .leading, spacing: Spacing.spaceXs) {
             SketchView(sketch: sketch, label: model.texts.tr("ui.mac.canvas_label", [
                 "image": item.name, "strokes": "\(sketch?.strokes.count ?? item.strokes)"]))
+                .environment(\.canvasStretch, model.canvasStretch(runDir: ExportSource.bestRun(of: item)))
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.card))
                 .overlay {

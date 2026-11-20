@@ -58,6 +58,8 @@ public final class AppModel {
     public let mask = StudioMask()
     /// the phone remote (on and off as the settings say)
     public let phone: PhoneRemote
+    /// how much wider than high each run's canvas is shown (CanvasShape), by run folder
+    @ObservationIgnored var stretches: [String: Double] = [:]
     /// the first-start guide
     public let tour = TourModel()
     /// the Telegram messages and their settings' state

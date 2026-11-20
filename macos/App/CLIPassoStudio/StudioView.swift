@@ -567,6 +567,7 @@ private struct LiveCanvas: View {
         .safeAreaInset(edge: .bottom) {
             if live.sketches.count > 1 { JobSketches(sketches: live.sketches) }
         }
+        .environment(\.canvasStretch, model.liveStretch)  // (the job's canvas in the photo's shape)
         .task(id: source) {
             guard !source.isEmpty else {
                 sketch = nil

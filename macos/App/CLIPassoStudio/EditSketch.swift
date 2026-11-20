@@ -114,6 +114,8 @@ struct ResultCanvas: View {
                 .environment(model)
             }
         }
+        // (the canvas of the run shown in the photo's shape; the sketches below and the matrix set their own runs')
+        .environment(\.canvasStretch, model.canvasStretch(runDir: result.runs.first { $0.name == result.selected }?.runDir))
         .onChange(of: view) {
             tool = .none
             bar = nil
@@ -162,6 +164,7 @@ struct ResultCanvas: View {
 /// own. Content: the paper and its strokes; the red stroke and the line being drawn are drawn over them.
 struct EditableSketch: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.canvasStretch) private var stretch
     let editor: SketchEditor
     let tool: EditTool
     @State private var sketch: Sketch?
@@ -178,7 +181,7 @@ struct EditableSketch: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let paper = Self.paper(for: sketch, in: geometry.size)
+            let paper = Self.paper(for: sketch, stretch: stretch, in: geometry.size)
             ZStack {
                 SketchView(sketch: tool == .none ? styled ?? sketch : sketch,
                            label: model.studio.canvasLabel(model.texts, sketch: sketch))
@@ -220,12 +223,11 @@ struct EditableSketch: View {
         }
     }
 
-    /// Where the paper is in a view of `size`: the sketch scaled to fit with its shape kept (as SketchView draws it).
-    static func paper(for sketch: Sketch?, in size: CGSize) -> CGRect {
-        guard let sketch, sketch.width > 0, sketch.height > 0 else { return .zero }
-        let scale = min(size.width / CGFloat(sketch.width), size.height / CGFloat(sketch.height))
-        let (w, h) = (CGFloat(sketch.width) * scale, CGFloat(sketch.height) * scale)
-        return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
+    /// Where the paper is in a view of `size`: the sketch scaled to fit in the canvas's shape (as SketchView draws
+    /// it) – the pointer is turned into the sketch's coordinates across and down each by its own scale.
+    static func paper(for sketch: Sketch?, stretch: Double = 1, in size: CGSize) -> CGRect {
+        guard let sketch else { return .zero }
+        return SketchView.layout(width: Double(sketch.width), height: Double(sketch.height), stretch: stretch, in: size).paper
     }
 
     /// The sketch, its strokes for the hit test and its viewBox – again after each change (an erased stroke changes
@@ -417,6 +419,7 @@ struct ResultSketches: View {
                             result.select(run.name)
                         } label: {
                             SketchView(sketch: parsed[run.name], label: name)
+                                .environment(\.canvasStretch, model.canvasStretch(runDir: run.runDir))
                                 .frame(width: 88, height: 88)
                                 .clipShape(RoundedRectangle(cornerRadius: Radius.control))
                                 .overlay {
@@ -558,6 +561,7 @@ struct MatrixGrid: View {
                 result.select(run.name)
             } label: {
                 SketchView(sketch: parsed[id], label: name)
+                    .environment(\.canvasStretch, model.canvasStretch(runDir: run.runDir))
                     .frame(width: size, height: size)
                     .overlay {
                         RoundedRectangle(cornerRadius: Radius.control)
