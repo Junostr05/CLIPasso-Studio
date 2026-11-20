@@ -1,0 +1,260 @@
+import AppKit
+import StudioApp
+import StudioCore
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// The gallery page: every result of the output folder as a sketch on paper, searched (toolbar search field),
+/// filtered and sorted from the toolbar; a result's menu opens it in the studio, marks it, renames it, exports it as
+/// SVG, PNG or PDF, prints it, shows it in the Finder or continues it, or shows it large (the viewer, also as a
+/// slideshow from the toolbar); the toolbar prints the results shown. Content: a grid, no glass.
+struct GalleryView: View {
+    @Environment(AppModel.self) private var model
+    @State private var printing: PrintRequest?
+    /// the large view over the results shown (a result's menu, Space on a result, the toolbar's slideshow)
+    @State private var viewing: ViewerModel?
+    /// the marked results (Cmd-click), in the order marked: two of them can be compared in the viewer
+    @State private var marked: [GalleryItem.ID] = []
+
+    var body: some View {
+        @Bindable var gallery = model.gallery
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: Spacing.spaceL)], spacing: Spacing.spaceL) {
+                ForEach(gallery.items) { item in
+                    GalleryCell(item: item, marked: marked.contains(item.id), mark: { toggle(item) }) {
+                        viewing = ViewerModel(items: gallery.items, index: gallery.items.firstIndex { $0.id == item.id } ?? 0,
+                                              pair: pair)
+                    }
+                }
+            }
+            .padding(Spacing.spaceL)
+        }
+        .overlay {
+            if gallery.items.isEmpty {
+                if gallery.total == 0 {
+                    ContentUnavailableView(model.texts.tr("ui.gallery.empty_title"), systemImage: "square.grid.2x2",
+                                           description: Text(model.texts.tr("ui.gallery.empty_how")))
+                } else {
+                    ContentUnavailableView {
+                        Label(model.texts.tr("ui.gallery.empty_match_title"), systemImage: "magnifyingglass")
+                    } description: {
+                        Text(model.texts.tr("ui.gallery.empty_match"))
+                    } actions: {
+                        Button(model.texts.tr("ui.gallery.empty_reset")) { gallery.query = GalleryQuery() }
+                    }
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if !marked.isEmpty { markBar }
+        }
+        .onChange(of: gallery.items.map(\.id)) { _, ids in marked.removeAll { !ids.contains($0) } }
+        .searchable(text: $gallery.query.text, prompt: model.texts.tr("ui.gallery.search"))
+        .sheet(isPresented: Binding(get: { viewing != nil }, set: { if !$0 { viewing = nil } })) {
+            if let viewing { GalleryViewer(viewer: viewing) }
+        }
+        .toolbar {
+            ToolbarItemGroup {
+                Button(model.texts.tr("ui.viewer.slideshow"), systemImage: "play.rectangle") {
+                    let viewer = ViewerModel(items: gallery.items)
+                    viewer.setSlideshow(true)
+                    viewing = viewer
+                }
+                .help(model.texts.tr("ui.viewer.slideshow_gallery_tip"))
+                .disabled(gallery.items.count < 2)
+                Picker(model.texts.tr("ui.gallery.method"), selection: $gallery.query.method) {
+                    Text(model.texts.tr("ui.gallery.all")).tag(String?.none)
+                    ForEach(model.schema.methods, id: \.self) { id in
+                        Text(verbatim: model.schema.method(id)?.name ?? id).tag(String?.some(id))
+                    }
+                }
+                if !gallery.tags.isEmpty {
+                    Picker(model.texts.tr("ui.gallery.tag"), selection: $gallery.query.tag) {
+                        Text(model.texts.tr("ui.gallery.all")).tag(String?.none)
+                        ForEach(gallery.tags, id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+                    }
+                }
+                Toggle(model.texts.tr("ui.gallery.favourites"), systemImage: "star", isOn: $gallery.query.favouritesOnly)
+                    .help(model.texts.tr("ui.gallery.favourites_tip"))
+                Picker(selection: $gallery.query.sort) {
+                    ForEach(GallerySort.allCases, id: \.self) { sort in
+                        Text(model.texts.tr("ui.gallery.sort_\(sort.rawValue)")).tag(sort)
+                    }
+                } label: {
+                    Label(model.texts.tr("ui.gallery.sort_newest"), systemImage: "arrow.up.arrow.down")
+                }
+                Button(model.texts.tr("ui.print.selected", ["n": "\(gallery.items.count)"]), systemImage: "printer") {
+                    printing = shownRequest
+                }
+                .help(model.texts.tr("ui.print.tip"))
+                .disabled(gallery.items.isEmpty)
+            }
+        }
+        .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
+        .focusedSceneValue(\.printAction, gallery.items.isEmpty ? nil : PrintAction { printing = shownRequest })
+        .navigationTitle(model.texts.tr("ui.gallery.title"))
+        .navigationSubtitle(gallery.countText(model.texts))
+        .task { await gallery.refresh() }
+    }
+
+    /// The two marked results (in the order marked), else none.
+    private var pair: [GalleryItem] {
+        guard marked.count == 2 else { return [] }
+        return marked.compactMap { id in model.gallery.items.first { $0.id == id } }
+    }
+
+    private func toggle(_ item: GalleryItem) {
+        if let i = marked.firstIndex(of: item.id) { marked.remove(at: i) } else { marked.append(item.id) }
+    }
+
+    /// What is marked: how many, compare (exactly two), and unmark.
+    private var markBar: some View {
+        HStack(spacing: Spacing.spaceM) {
+            Text(model.texts.tr("ui.gallery.selected", ["n": "\(marked.count)"])).monospacedDigit()
+            Button(model.texts.tr("ui.viewer.compare"), systemImage: "rectangle.split.2x1") {
+                let viewer = ViewerModel(items: pair, pair: pair)
+                viewer.setCompare(true)
+                viewing = viewer
+            }
+            .help(model.texts.tr("ui.viewer.compare_tip"))
+            .disabled(pair.count != 2)
+            Button { marked = [] } label: { Image(systemName: "xmark.circle.fill") }
+                .buttonStyle(.borderless)
+                .help(model.texts.tr("ui.cancel"))
+                .accessibilityLabel(model.texts.tr("ui.cancel"))
+        }
+        .padding(.horizontal, Spacing.spaceL)
+        .padding(.vertical, Spacing.spaceS)
+        .glassEffect(.regular, in: .capsule)
+        .padding(Spacing.spaceL)
+    }
+
+    /// gallery.print_items: the results shown, in the gallery's order, named as there.
+    private var shownRequest: PrintRequest {
+        PrintRequest(entries: model.gallery.items.compactMap { PrintEntry.best(of: $0) },
+                     name: model.texts.tr("ui.gallery.title"))
+    }
+}
+
+private struct GalleryCell: View {
+    @Environment(AppModel.self) private var model
+    let item: GalleryItem
+    /// marked (Cmd-click toggles it)
+    let marked: Bool
+    let mark: () -> Void
+    /// the large view, at this result
+    let view: () -> Void
+    @State private var sketch: Sketch?
+    @State private var renaming = false
+    @State private var title = ""
+    @State private var exporting: ExportSource?
+    @State private var printing: PrintRequest?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.spaceXs) {
+            SketchView(sketch: sketch, label: model.texts.tr("ui.mac.canvas_label", [
+                "image": item.name, "strokes": "\(sketch?.strokes.count ?? item.strokes)"]))
+                .environment(\.canvasStretch, model.canvasStretch(runDir: ExportSource.bestRun(of: item)))
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+                .overlay {
+                    if marked {
+                        RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Color.accentColor, lineWidth: 3)
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if item.favourite {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.yellow)
+                            .padding(Spacing.spaceS)
+                            .accessibilityLabel(Text(model.texts.tr("ui.gallery.favourite")))
+                    }
+                }
+            Text(verbatim: item.name).font(.headline).lineLimit(1)
+            Text(model.texts.tr("ui.gallery.meta", ["strokes": "\(item.strokes)", "date": item.created]))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { open() }  // (as the studio's gallery: a double-click continues in the studio)
+        .simultaneousGesture(TapGesture().modifiers(.command).onEnded { mark() })
+        .contextMenu { menu }
+        // keyboard and VoiceOver reach every result: focus, Return opens it, the menu's actions by name
+        .focusable()
+        .onKeyPress(.return) {
+            open()
+            return .handled
+        }
+        .onKeyPress(.space) {
+            view()
+            return .handled
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { open() }
+        .accessibilityAction(named: Text(model.texts.tr("ui.viewer.show"))) { view() }
+        .accessibilityAddTraits(marked ? .isSelected : [])
+        .accessibilityAction(named: Text(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite"))) {
+            Task { await model.gallery.setFavourite(item, !item.favourite) }
+        }
+        .accessibilityAction(named: Text(model.texts.tr("ui.gallery.show_folder"))) {
+            NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
+        }
+        .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
+        .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
+        .alert(model.texts.tr("ui.gallery.info_name"), isPresented: $renaming) {
+            TextField(model.texts.tr("ui.gallery.info_name"), text: $title)
+            Button(model.texts.tr("ui.cancel"), role: .cancel) {}
+            Button("OK") { Task { await model.gallery.rename(item, title) } }
+        }
+        .task(id: "\(item.bestSketch?.path ?? "")|\(model.canvasStyle)") {
+            guard let url = item.bestSketch else { return }
+            sketch = await model.gallerySketch(url)  // (in the studio's brush style)
+        }
+    }
+
+    @ViewBuilder private var menu: some View {
+        Button(model.texts.tr("ui.gallery.open")) { open() }
+        Button(model.texts.tr("ui.viewer.show")) { view() }
+        Button(model.texts.tr(item.favourite ? "ui.gallery.unfavourite" : "ui.gallery.favourite")) {
+            Task { await model.gallery.setFavourite(item, !item.favourite) }
+        }
+        Button(model.texts.tr("ui.albums.rename")) {
+            title = item.summary.title
+            renaming = true
+        }
+        Divider()
+        Button(model.texts.tr("ui.export") + " …") { exporting = ExportSource.best(of: item) }
+        Button(model.texts.tr("ui.copy")) { copy(item) }
+            .help(model.texts.tr("ui.copy_tip"))
+        Button(model.texts.tr("ui.print.button")) {
+            printing = PrintEntry.best(of: item).map { PrintRequest(entries: [$0], name: item.name) }
+        }
+        Button(model.texts.tr("ui.gallery.show_folder")) {
+            NSWorkspace.shared.activateFileViewerSelecting([item.jobDir])
+        }
+        if JobFolder.canContinue(item.summary), let page = model.queuePage {
+            Divider()
+            Button(model.texts.tr("ui.continue")) { Task { await page.continueJob(item) } }
+        }
+    }
+
+    /// The result back in the studio: its image, its method and its sketches (to touch up).
+    private func open() {
+        model.studio.open(item)
+    }
+
+    /// Its best sketch on the clipboard (as the studio's Copy; a beep when it cannot be made).
+    private func copy(_ item: GalleryItem) {
+        guard let file = item.bestSketch else { return NSSound.beep() }
+        let run = ExportSource.bestRun(of: item)
+        Task {
+            do {
+                let svg = try await Task.detached { try String(contentsOf: file, encoding: .utf8) }.value
+                try await SketchClipboard.copy(svg: svg, runDir: run, model: model)
+            } catch {
+                NSSound.beep()
+            }
+        }
+    }
+}

@@ -641,34 +641,45 @@ def _convert_hf_file(src: Path, dst: Path, f: HFFile) -> None:
     save_file(out, str(dst), metadata={"format": "pt"})
 
 
-def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
-                cancel: Callable[[], bool] | None) -> Path:
+def _hf_raw_dir(spec: ModelSpec, dest_root: Path) -> Path:
+    return partial_dir(dest_root) / _safe_name(spec.key)
+
+
+def download_hf_raw(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None = None,
+                    cancel: Callable[[], bool] | None = None) -> Path:
+    """Download the files of a Hugging Face model into the partial folder (``<safe key>/`` with ``revision.txt``),
+    so an interrupted install continues where it stopped; returns that folder."""
     repo, revision, files = spec.extra["repo"], spec.extra["revision"], spec.extra["files"]
-    dest = (dest_root / spec.filename).parent
-    dest.parent.mkdir(parents=True, exist_ok=True)
     total = sum(f.size or 0 for f in files) or 1
-    # the raw files wait in the partial folder, so an interrupted install continues where it stopped
-    raw_dir = partial_dir(dest_root) / _safe_name(spec.key)
+    raw_dir = _hf_raw_dir(spec, dest_root)
     stamp = raw_dir / "revision.txt"
     if raw_dir.exists() and (not stamp.is_file() or stamp.read_text(encoding="utf-8") != revision):
         shutil.rmtree(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     stamp.write_text(revision, encoding="utf-8")
+    done = 0
+    for f in files:
+        target = raw_dir / f.remote
+        base = done
+        prog = (lambda d, t, base=base: progress(min(base + d, total), total)) if progress else None
+        _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel, size=f.size)
+        size = target.stat().st_size
+        if f.size and size != f.size:
+            raise UserError("download_size", f"Could not download {spec.key}: {f.remote} has {size} bytes, "
+                            f"expected {f.size}", model=spec.key, file=f.remote)
+        done += f.size or size
+    return raw_dir
+
+
+def convert_hf_raw(spec: ModelSpec, dest_root: Path) -> Path:
+    """Turn the downloaded files of a Hugging Face model (``download_hf_raw``) into the stored model folder and remove
+    them; returns its ``manifest.json``."""
+    repo, revision, files = spec.extra["repo"], spec.extra["revision"], spec.extra["files"]
+    raw_dir = _hf_raw_dir(spec, dest_root)
+    dest = (dest_root / spec.filename).parent
+    dest.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=dest.parent) as tmp:
         out_dir = Path(tmp) / "out"
-        done = 0
-        for f in files:
-            target = raw_dir / f.remote
-            base = done
-            prog = (lambda d, t, base=base: progress(min(base + d, total), total)) if progress else None
-            _hf_download(f"{_HF}/{repo}/resolve/{revision}/{f.remote}", target, prog, cancel, size=f.size)
-            size = target.stat().st_size
-            if f.size and size != f.size:
-                raise UserError("download_size", f"Could not download {spec.key}: {f.remote} has {size} bytes, "
-                                f"expected {f.size}", model=spec.key, file=f.remote)
-            done += f.size or size
-        if progress:
-            progress(0, 0)  # converting
         for f in files:
             _convert_hf_file(raw_dir / f.remote, out_dir / f.local, f)
             (raw_dir / f.remote).unlink()
@@ -679,6 +690,49 @@ def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
         os.replace(out_dir, dest)
     shutil.rmtree(raw_dir, ignore_errors=True)
     return dest / "manifest.json"
+
+
+def _install_hf(spec: ModelSpec, dest_root: Path, progress: ProgressFn | None,
+                cancel: Callable[[], bool] | None) -> Path:
+    download_hf_raw(spec, dest_root, progress, cancel)
+    if progress:
+        progress(0, 0)  # converting
+    return convert_hf_raw(spec, dest_root)
+
+
+def convert_downloaded(spec_key: str, dest_root: Path | None = None) -> Path:
+    """Convert a model downloaded by someone else – the Mac app downloads (resumable, checked) into the same partial
+    folder this module uses: ``.partial/<safe key>.part`` for a single file, ``.partial/<safe key>/`` with
+    ``revision.txt`` for a Hugging Face model. The download is checked again and removed after the conversion."""
+    spec = SPECS[spec_key]
+    dest_root = dest_root or paths.downloaded_models_dir()
+    if spec.kind == "hf":
+        raw_dir = _hf_raw_dir(spec, dest_root)
+        stamp = raw_dir / "revision.txt"
+        complete = stamp.is_file() and stamp.read_text(encoding="utf-8") == spec.extra["revision"] and all(
+            (raw_dir / f.remote).is_file() for f in spec.extra["files"])
+        if not complete:
+            raise UserError("not_downloaded", f"{spec.key} is not downloaded completely", model=spec.key)
+        for f in spec.extra["files"]:
+            size = (raw_dir / f.remote).stat().st_size
+            if f.size and size != f.size:
+                raise UserError("download_size", f"Could not download {spec.key}: {f.remote} has {size} bytes, "
+                                f"expected {f.size}", model=spec.key, file=f.remote)
+        return convert_hf_raw(spec, dest_root)
+    raw = partial_dir(dest_root) / f"{_safe_name(spec.key)}.part"
+    if not raw.is_file():
+        raise UserError("not_downloaded", f"{spec.key} is not downloaded completely", model=spec.key)
+    size = raw.stat().st_size
+    wrong = (_sha256(raw) != spec.download_sha256) if spec.download_sha256 else abs(size - spec.download_size) > 1024
+    if wrong:
+        _drop_partial(raw)
+        details = f"{raw.name}: checksum or size does not match"
+        raise UserError("download_failed", f"Could not download {spec.key}:\n{details}", model=spec.key,
+                        details=details)
+    dest = dest_root / spec.filename
+    convert(spec, raw, dest)
+    _drop_partial(raw)
+    return dest
 
 
 def install_from_file(spec_key: str, raw: str | Path, dest_root: Path | None = None) -> Path:

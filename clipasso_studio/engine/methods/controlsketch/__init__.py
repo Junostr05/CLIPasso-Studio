@@ -130,7 +130,7 @@ def run_single(settings, target, run_dir, seed, reporter=None, control=None, dev
         if warning:
             code, _, text = warning.partition(":")
             reporter.event("warning", message=text, code=code)
-    if device.type != "cuda":
+    if device.type == "cpu":
         reporter.event("warning", code="controlsketch_cpu",
                        message="ControlSketch runs on the CPU – this takes hours; an NVIDIA GPU is recommended.")
 

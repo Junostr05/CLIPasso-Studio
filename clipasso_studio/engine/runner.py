@@ -59,9 +59,9 @@ def spreads_over_gpus(settings: dict, n_seeds: int, cuda: bool, gpus: int) -> bo
 
 
 def plan_workers(settings: dict, n_seeds: int, auto: bool = True, cuda: bool = False,
-                 hw: tuple[int, int] | None = None, gpus: int = 0) -> int:
+                 hw: tuple[int, int] | None = None, gpus: int = 0, mps: bool = False) -> int:
     """How many worker processes compute the seeds of a job at the same time. ``gpus``: graphics cards the
-    sketches may be spread over (0 / 1: no spreading)."""
+    sketches may be spread over (0 / 1: no spreading); ``mps``: the Apple GPU is usable (one worker uses it)."""
     from .. import settings_schema as schema
 
     if n_seeds <= 1 or schema.turbo_prunes(settings):  # (turbo: the seeds are compared halfway)
@@ -72,7 +72,8 @@ def plan_workers(settings: dict, n_seeds: int, auto: bool = True, cuda: bool = F
         return min(n_seeds, MAX_PARALLEL_WORKERS)
     method = schema.method_of(settings)
     device = settings.get("device", "auto")
-    if not auto or method not in RAM_PER_WORKER or device == "cuda" or (device == "auto" and cuda):
+    on_gpu = device in ("cuda", "mps") or (device == "auto" and (cuda or (mps and method in schema.MPS_AUTO)))
+    if not auto or method not in RAM_PER_WORKER or on_gpu:
         return 1
     cores, available = hw or hardware_info()
     if cores < AUTO_MIN_CORES:
@@ -93,16 +94,31 @@ class _QueueReporter:
         self.q.put((kind, data))
 
 
+PARENT_CHECK = 1.0  # s – how often a worker looks whether the process that started it is still there
+
+
 class _EventControl:
+    """Pause / cancel of a worker – and a stop when the process that started it is gone (killed, crashed): an orphan
+    must not go on computing and holding its memory."""
+
     def __init__(self, stop_event, pause_event):
         self.stop_event = stop_event
         self.pause_event = pause_event
+        self._parent = mp.parent_process()  # None in the main process (tests)
+        self._checked = 0.0
+        self._orphan = False
 
     def should_stop(self):
-        return self.stop_event.is_set()
+        if self.stop_event.is_set():
+            return True
+        now = time.monotonic()
+        if self._parent is not None and not self._orphan and now - self._checked >= PARENT_CHECK:
+            self._checked = now
+            self._orphan = not self._parent.is_alive()
+        return self._orphan
 
     def wait_if_paused(self):
-        while self.pause_event.is_set() and not self.stop_event.is_set():
+        while self.pause_event.is_set() and not self.should_stop():
             time.sleep(0.1)
 
 
@@ -379,7 +395,7 @@ class JobRunner:
 
     # ----------------------------------------------------------------- control
     def start(self, settings: dict, target: str, output_root: str, job_dir: str = "", auto_parallel: bool = False,
-              cuda: bool = False, gpus: tuple[int, ...] = ()) -> Job:
+              cuda: bool = False, gpus: tuple[int, ...] = (), mps: bool = False) -> Job:
         """Start a job; with ``job_dir`` an interrupted / cancelled job continues in its folder.
         ``auto_parallel``: run the seeds in parallel when the CPU is big enough (``cuda``: a GPU is there).
         ``gpus``: the indices of the graphics cards the seeds may be spread over (one worker per card)."""
@@ -404,7 +420,7 @@ class JobRunner:
         seeds = jobs.job_seeds(settings)
         if resume and schema.method_of(settings) != "scenesketch":
             seeds = [s for s in seeds if s not in job.resumed]
-        n_workers = plan_workers(settings, len(seeds), auto=auto_parallel, cuda=cuda, gpus=len(gpus))
+        n_workers = plan_workers(settings, len(seeds), auto=auto_parallel, cuda=cuda, gpus=len(gpus), mps=mps)
         job.parallel = n_workers > 1
         per_gpu = spreads_over_gpus(settings, len(seeds), cuda, len(gpus))
         threads = int(settings.get("num_threads", 0))

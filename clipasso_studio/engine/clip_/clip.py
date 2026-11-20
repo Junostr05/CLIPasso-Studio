@@ -60,14 +60,21 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
             model = build_model(state_dict).to(device)
-        if torch.device(device).type == "cpu":
+        if torch.device(device).type != "cuda":  # (half precision only on an NVIDIA card)
             model.float()
         model.requires_grad_(False)
         model.eval()
-        if name.startswith("RN"):  # the convolutions in channels-last layout: measured 1.4x on a CPU
+        if name.startswith("RN") and channels_last_ok(torch.device(device)):
             model.visual.to(memory_format=torch.channels_last)
         _loaded[key] = (model, _transform(model.visual.input_resolution))
     return _loaded[key]
+
+
+def channels_last_ok(device: torch.device) -> bool:
+    """The convolutions of the ResNet models in channels-last layout: measured 1.4x on a CPU (and used on NVIDIA
+    cards). Not on the Apple GPU – its backward pass fails there ("view size is not compatible with input tensor's
+    size and stride", macOS runner, PyTorch 2.11)."""
+    return device.type in ("cpu", "cuda")
 
 
 def release_models() -> None:

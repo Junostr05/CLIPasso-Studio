@@ -1,0 +1,14 @@
+{
+  "seed": 800,
+  "run_name": "Kamel_scenesketch_L8_level0",
+  "run_dir": "/Users/studio/Documents/CLIPasso Studio/scenesketch_matrix/Kamel_scenesketch_L8_level0",
+  "best_loss": 0.5,
+  "best_iter": 400,
+  "iterations_done": 501,
+  "best_svg": "/Users/studio/Documents/CLIPasso Studio/scenesketch_matrix/Kamel_scenesketch_L8_level0/best_iter.svg",
+  "status": "done",
+  "method": "scenesketch",
+  "clip_score": 30.5,
+  "seconds": 12.5,
+  "pruned": false
+}

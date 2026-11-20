@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>CLIPasso Studio</title>
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/phone.css">
+<link rel="icon" href="/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0D11">
+</head>
+<body>
+<script id="cfg" type="application/json">{"token": "Kamel-Zugang_0123456789ab", "texts": {"add_many": "\uff0b Several images into the queue", "add_queue": "Add to queue", "added": "Added to the queue.", "advanced": "Also show advanced parameters", "album_add": "Album \u2026", "album_added": "Put into \u201c{name}\u201d.", "album_delete": "Delete album", "album_delete_ask": "Delete the album \u201c{name}\u201d? The results in it stay.", "album_name": "Please enter a name for the album.", "album_name_ask": "Name of the album:", "album_new": "+ New album", "album_new_option": "+ New album \u2026", "album_removed": "Taken out of \u201c{name}\u201d.", "album_rename": "Rename album", "all_albums": "All albums", "all_defaults": "All as in the preset.", "all_methods": "All methods", "all_tags": "All tags", "anyway": "Start anyway", "app_settings": "The app's settings", "app_settings_hint": "They apply on the PC, as in its settings. Folders, backups, the phone and Telegram stay with the PC.", "app_title": "App \u0026 updates", "app_version": "Version on the PC", "auto_start": "Start the next job by itself", "bad_value": "This value does not fit.", "best_choose": "Choose as the best", "best_is": "Result", "brush_size": "Brush", "bundled": "included", "busy": "The app is busy right now \u2013 try again in a moment.", "camera": "Take photo", "cancel": "Cancel", "cancel_ask": "Cancel the running job?", "cannot_continue": "This job cannot be continued.", "cell": "Layer {layer}, level {level}", "changed_settings": "Changed settings", "choose": "Choose image", "clear_done": "Remove finished", "cleared": "{n} removed", "close": "Close", "compare": "Compare methods", "compare_best": "Most similar: {name}", "compare_go": "Compare", "compare_hint": "Sketch the studio's image with several methods \u2013 the results appear here side by side, the best one with \u2605.", "compare_none": "Please choose at least one method.", "compare_queued": "{n} jobs in the queue", "compare_queued_one": "1 job in the queue", "compare_studio": "Use the studio's settings (instead of \u201cStandard\u201d)", "continue": "Continue", "continued": "The job goes on \u2013 it is in the queue.", "crop": "\u2702 Crop / turn", "crop_apply": "Apply", "crop_hint": "Drag the corners to crop, the frame to move it. The original stays; the crop is saved as a new image.", "crop_reset": "Reset", "crop_small": "The crop is too small.", "crop_title": "Crop and turn", "cropped": "Cropped image in use", "default_was": "default", "delete": "Delete", "delete_ask": "Move \u201c{name}\u201d with all its sketches to the PC's recycle bin?", "deleted": "Moved to the recycle bin", "details": "Details", "details_clear": "Clear map", "details_has": "A detail map is saved for this image.", "details_none": "No detail map \u2013 normal everywhere.", "details_not_used": "(The chosen method does not use it \u2013 only CLIPasso and ControlSketch.)", "details_paint": "Detail brush", "done": "Done", "done_prefix": "Then: ", "download_ask": "The comparison needs models that are missing. Download them on the PC now?", "download_cancelled": "Download cancelled.", "download_done": "Models downloaded.", "download_failed": "Download failed: {error}", "download_models": "Download models ({size} MB)", "download_nothing": "No models are missing.", "download_png": "Download PNG", "download_running": "A download is running already.", "download_svg": "Download SVG", "download_these": "Download", "download_this": "Download", "downloading": "Downloading {name} ({i}/{n}) \u2026 {pct} %", "drag": "Drag to move", "edit_apply": "Apply", "edit_continue": "Continue with CLIPasso", "edit_continue_go": "Continue", "edit_continue_hint": "A new CLIPasso job starts from this sketch: its strokes are improved further, new ones are added.", "edit_continue_queued": "The job is in the queue.", "edit_continue_started": "The job starts.", "edit_eraser": "Eraser", "edit_hint_erase": "Swipe over strokes to remove them \u2013 or tap one.", "edit_hint_pen": "Draw strokes of your own. They stay when CLIPasso continues the sketch.", "edit_iterations": "Iterations", "edit_keep": "{n} of {total} strokes", "edit_keep_drawn": "Keep the strokes drawn by hand", "edit_lapse": "\u25b6 Time lapse", "edit_measure_failed": "Measuring did not work.", "edit_measuring": "CLIP measures once how much each stroke adds \u2013 a moment \u2026", "edit_new_strokes": "New strokes", "edit_no_steps": "No steps were saved for this sketch.", "edit_none": "This sketch cannot be edited right now.", "edit_one_line": "A sketch of one single line cannot be erased.", "edit_pen": "Pen", "edit_revert": "Original", "edit_simplify": "Simplify", "edit_simplify_note": "To the left: the strokes that add least go first.", "edit_step": "Step {i} of {n}", "edit_steps": "Saved steps", "edit_steps_note": "The steps saved while computing \u2013 one of them can become the result.", "edit_take": "Take as the result", "edit_taken": "Done \u2013 \u21b6 undoes it.", "edit_too_short": "The stroke is too short.", "empty": "Nothing here yet.", "eta": "left:", "experimental": "experimental", "export": "Export", "export_cancelled": "Export cancelled.", "export_download": "Download", "export_failed": "Export failed: {error}", "export_go": "Export {fmt}", "export_gone": "This export is gone \u2013 please export again.", "export_ready": "Ready: {name} \u00b7 {size}", "export_running": "Exporting \u2026 {pct} %", "face_busy": "Looking for the face \u2026", "face_found": "Face found \u2013 the eyes, nose and mouth are marked.", "failed": "That did not work.", "filter_album": "Album", "filter_fav": "Favourite", "filter_method": "Method", "from_pc": "From the PC", "full_screen": "Full screen", "help_about": "What does \u201c{name}\u201d do?", "hint_dismiss": "Don't show again", "history_title": "Earlier jobs of this image ({n})", "idle": "Ready", "in_studio": "in the studio", "info_edit": "Title \u0026 tags", "info_notes": "Notes", "info_tags": "Tags, separated by commas", "info_title": "Title", "layer_all": "All", "layer_background": "Background only", "layer_object": "Object only", "layout_auto": "Automatic", "layout_hint": "Automatic: on a wide screen held across (a computer, a tablet) the page looks almost like the studio on the PC \u2013 three columns, the areas on the left. The choice is kept in this browser.", "layout_phone": "Phone", "layout_studio": "Studio", "layout_title": "View", "list_changed": "The list has changed meanwhile \u2013 please try again.", "load_in_studio": "Load into the studio", "login_button": "Sign in", "login_hint": "Enter the 6-digit PIN \u2013 you find it on the PC under Settings \u2192 Phone \u0026 messages.", "login_six": "The PIN has 6 digits.", "login_wait": "Too many tries \u2013 please wait {s} s.", "login_wrong": "Wrong PIN.", "look": "Look \u0026 download", "mask_edit": "Edit mask", "mask_edit_hint": "Part: tap a part of the object to remove it \u2013 or next to it to add one that is missing. With Add and Remove you paint with your finger. Every method then uses your mask.", "mask_edit_title": "Edit the mask", "mask_hide": "Show image", "mask_not_ready": "The mask is still being computed \u2013 try again in a moment.", "mask_reset": "Automatic", "mask_saved": "The mask is saved.", "mask_share": "Object: {pct} % of the image", "mask_show": "Show mask", "mask_tool_add": "Add", "mask_tool_erase": "Remove", "mask_tool_part": "Part", "matrix_hint": "Tap a cell to see it large. Green frame: the best one.", "memory_ask": "Memory is getting short: {text}", "method": "Method", "missing_badge": "Models missing", "model_busy": "No model can be deleted while a job is computing.", "models_missing": "Models are missing for these settings (\u2248 {size} MB) \u2013 please download them on the PC under \u201cModels\u201d.", "models_title": "Models", "more": "Load more", "my_presets": "My presets", "no_background": "No background (transparent)", "no_background_yet": "The background image is made at the start of the job: SceneSketch cuts out the object and fills in the background behind it (LaMa).", "no_live": "No job is running right now.", "no_picture": "No image chosen yet.", "no_presets": "No own presets yet. Set everything up and save it under a name \u2013 it is then in the app on the PC, too.", "no_sketch": "No sketch yet \u2013 start one or open a result in the gallery.", "no_studio": "The studio is not connected.", "not_deleted": "\u201c{name}\u201d could not be deleted.", "not_used": "not used with these settings", "of": "{i} of {n}", "offline": "No connection to the app", "open_studio": "Open in the studio", "page_theme": "Colours of this page", "pair_remember": "Remember to compare", "pair_remembered": "Remembered \u2013 open another result and tap \u201cCompare\u201d.", "pair_title": "Compare two results", "pair_with": "Compare with \u201c{name}\u201d", "paper": "Paper", "paper_color_reset": "Paper's own colour", "params": "Parameters", "pause": "Pause", "paused": "Paused", "picture": "Image", "preset": "Preset", "preset_delete_ask": "Delete the preset \u201c{name}\u201d?", "preset_deleted": "Preset deleted", "preset_gone": "This preset no longer exists.", "preset_placeholder": "Name of the preset, e.g. Fine portrait", "preset_replace_ask": "Overwrite the preset \u201c{name}\u201d with the current settings?", "preset_save": "Save", "preset_save_hint": "Saves the method and every parameter as they are set now \u2013 to be chosen on the PC under \u201cMy presets\u201d, too. The same name updates the preset.", "preset_saved": "Preset \u201c{name}\u201d saved", "queue_empty": "The queue is empty.", "queue_total": "About {time} left for the whole queue", "queued": "In the queue:", "rating": "Do you like this sketch?", "recent": "Recently used", "remove": "Remove", "remove_model": "Delete", "remove_model_ask": "Delete \u201c{name}\u201d from the PC? It can be downloaded again any time.", "rerun_ask": "Compute cell L{layer} \u00b7 level {level} again with a new start? The later levels of this layer build on it and are computed again, too.", "rerun_cell": "Compute cell again", "rerun_queued": "The cell is computed again \u2013 the job is in the queue.", "reset": "Reset", "reset_ask": "Reset all parameters of this method?", "results": "Results", "results_count": "{n} of {total}", "resume": "Resume", "retry": "Again", "run_next": "Run next", "running": "Running", "samples": "Samples", "save": "Save", "save_preset": "Save as own preset \u2026", "saved": "Saved", "scene_part_background": "Drawing the background \u2026", "scene_part_object": "Drawing the object \u2026", "search": "Search (name, note, tag)", "select": "Select", "select_album": "Into an album \u2026", "select_album_added": "Put {n} results into \u201c{name}\u201d.", "select_album_added_one": "Put 1 result into \u201c{name}\u201d.", "select_all": "Select all", "select_count": "{n} selected", "select_done": "Done", "select_hint": "Tap results to select them.", "select_none": "Select none", "sending": "Sending \u2026", "sketches": "Sketches", "slideshow": "\u25b6 Slideshow", "slideshow_stop": "\u25a0 Slideshow", "split": "Divider between the two images", "start": "Create sketch", "started": "Started \u2013 watch it in the \u201cSketch\u201d tab.", "status_cancelled": "cancelled", "status_done": "done", "status_failed": "failed", "status_paused": "paused", "status_queued": "waiting", "status_running": "running", "strokes": "{n} strokes", "studio_models": "Chosen in the studio \u00b7 {method}", "style": "Brush style", "tab_app": "App", "tab_gallery": "Gallery", "tab_queue": "Queue", "tab_sketch": "Sketch", "tab_studio": "Studio", "taste": "My taste: {up} \ud83d\udc4d \u00b7 {down} \ud83d\udc4e (learns from {need} ratings on)", "theme_app": "As the app", "theme_browser": "As the browser", "theme_dark": "Dark", "theme_light": "Light", "to_live": "Back to the running job: {name} \u00b7 {pct} %", "undo": "Undo", "update_admin_hint": "This installation is for all users of the PC: when installing, Windows asks for an administrator on the PC. So the phone only downloads the update \u2013 you install it on the PC with one click (the bar at the top of the window).", "update_cancelled": "Cancelled \u2013 what is downloaded stays and continues next time.", "update_check": "Check for updates", "update_checking": "Looking for updates \u2026", "update_current": "You have the latest version ({version}).", "update_done": "Updated to {version}.", "update_download": "Download", "update_downloaded_pc": "Downloaded. You can install it on the PC (the bar at the top of the window).", "update_downloading": "Downloading \u2026 {done} of {total} MB", "update_failed_install": "The update to {version} did not work \u2013 the app keeps running with the previous version.", "update_found": "Version {version} is available.", "update_go": "Install", "update_install": "Download \u0026 install", "update_install_hint": "The app downloads the update, stops a running job, installs and starts again \u2013 then it goes on computing, and this page connects again by itself.", "update_look_pc": "The app does not answer \u2013 please have a look at the PC.", "update_not_here": "This app runs from the source code \u2013 updates are for the installed or the portable version only.", "update_notes": "What's new", "update_pin_hint": "To install, please enter the 6-digit PIN once more (on the PC: Settings \u2192 Phone \u0026 messages).", "update_pin_title": "Enter the PIN", "update_pin_wait": "Too many tries \u2013 please wait {s} s.", "update_pin_wrong": "Wrong PIN.", "update_preparing": "Preparing \u2026", "update_reconnecting": "Connecting again \u2026", "update_restart_title": "Updating", "update_restarting": "The app installs the update and starts again \u2026", "update_stopping": "Stopping the job \u2026", "update_unpacking": "Unpacking \u2026", "uploaded": "The image is in the studio.", "uploaded_n": "{ok} of {n} images in the queue \u2013 with the studio's settings.", "uploading": "Sending the image \u2026", "uploading_n": "Uploading image {i} of {n} \u2026", "use_smaller": "Use smaller settings ({changes})", "view_all": "All", "view_attention": "Attention", "view_background": "Background", "view_compare": "Image/sketch", "view_condition": "Condition", "view_mask": "Mask", "view_matrix": "Matrix", "view_sketch": "Sketch", "viewer_hint": "Swipe: next result \u00b7 two fingers: zoom \u00b7 double tap: back", "style_plain": "Plain lines", "style_ink": "Ink (brush pen)", "style_pencil": "Pencil", "style_charcoal": "Charcoal", "style_chalk": "Chalk", "style_ballpoint": "Ballpoint pen", "style_marker": "Marker", "style_watercolor": "Watercolour", "style_neon": "Neon", "style_calligraphy": "Calligraphy (broad nib)", "paper_none": "No texture", "paper_drawing": "Drawing paper", "paper_watercolor": "Watercolour paper", "paper_kraft": "Kraft paper", "paper_linen": "Linen", "paper_blackboard": "Blackboard", "detail_title": "Detail brush", "detail_hint": "Paint where the sketch should get more detail (orange) and where less (blue). CLIPasso and ControlSketch put more starting strokes there and draw the blue areas more loosely. The map belongs to this image \u2013 in the queue and when continuing, too.", "tool_more": "More detail", "tool_normal": "Normal", "tool_less": "Less", "face": "Find face", "rate_up": "Thumbs up: I like this sketch (click again to take it back). From 10 ratings on, \u201cBest sketch: My taste\u201d learns from them.", "rate_down": "Thumbs down: I don\u2019t like this sketch (click again to take it back).", "estimate_none": "", "x_stroke": "Stroke colour", "x_width": "Stroke width", "x_style": "Style", "x_background": "Background", "x_paper": "Paper", "x_vignette": "Vignette", "x_frame": "Shape", "x_margin": "Margin", "x_size": "Length of the longer side", "x_width_cm": "Width", "x_mode": "Animation", "x_mode_process": "Drawing process", "x_mode_strokes": "Stroke by stroke", "x_length": "Length of the drawing", "x_hold": "Then show the sketch for", "preset_applied": "Preset \u201c{name}\u201d chosen", "matrix_fidelity": "Fidelity (CLIP layer)", "matrix_simplicity": "Simplicity", "method_clipasso": "CLIPasso", "method_swiftsketch": "SwiftSketch", "method_controlsketch": "ControlSketch", "method_scenesketch": "SceneSketch", "lang": "en"}, "lang": "en", "version": "4.2.4"}</script>
+
+<header id="top">
+  <div class="toprow">
+    <div class="brand">CLIPasso Studio</div>
+    <div id="top-tabs" class="top-tabs"></div>
+    <div id="run-buttons" class="topbtns">
+      <button id="pause" class="small" disabled></button>
+      <button id="cancel" class="small" disabled></button>
+    </div>
+  </div>
+  <div id="status" class="muted one-line">…</div>
+  <button id="to-live" class="live" hidden></button>
+  <div id="top-bar" class="bar"><div id="progress"></div></div>
+</header>
+
+<main>
+  <!-- ======================================================== studio -->
+  <section id="tab-studio" class="tab">
+    <div class="card" id="picture-card">
+      <h2 data-t="picture"></h2>
+      <div class="input-wrap"><img id="input" alt=""><div id="no-input" class="muted center" data-t="no_picture"></div></div>
+      <div id="input-name" class="muted one-line"></div>
+      <div class="row wrap">
+        <label class="btn" for="camera"><span data-t="camera"></span>
+          <input id="camera" type="file" accept="image/*" capture="environment" hidden></label>
+        <label class="btn" for="choose"><span data-t="choose"></span>
+          <input id="choose" type="file" accept="image/*" hidden></label>
+        <button id="from-pc" data-t="from_pc"></button>
+      </div>
+      <div class="row wrap">
+        <button id="crop" class="small" data-t="crop"></button>
+        <button id="mask" class="small" data-t="mask_show" hidden></button>
+        <button id="mask-edit" class="small" data-t="mask_edit" hidden></button>
+        <span id="mask-state" class="muted small-text"></span>
+      </div>
+      <div id="hints" class="hints"></div>
+      <div id="history" hidden>
+        <div id="history-title" class="sub"></div>
+        <div id="history-list" class="history"></div>
+      </div>
+      <div id="upload-msg" class="muted"></div>
+      <div id="pc-images" hidden>
+        <div class="sub" data-t="recent"></div><div id="recent" class="grid"></div>
+        <div class="sub" data-t="samples"></div><div id="samples" class="grid"></div>
+      </div>
+    </div>
+
+    <div class="card" id="method-card">
+      <h2 data-t="method"></h2>
+      <div id="methods" class="methods"></div>
+      <div id="missing" class="warn" hidden>
+        <div id="missing-text"></div>
+        <div class="row"><button id="download" class="primary small"></button></div>
+      </div>
+      <div id="downloading" class="warn" hidden>
+        <div id="download-text"></div>
+        <div class="bar"><div id="download-bar"></div></div>
+        <div class="row"><button id="download-cancel" class="small" data-t="cancel"></button></div>
+      </div>
+    </div>
+
+    <div class="card" id="preset-card">
+      <h2 data-t="preset"></h2>
+      <div id="presets" class="seg"></div>
+      <div class="sub" data-t="my_presets"></div>
+      <div id="user-presets" class="mine"></div>
+      <form id="preset-form" class="row" autocomplete="off">
+        <input id="preset-name" type="text" maxlength="40" enterkeyhint="done">
+        <button id="preset-save" class="primary small" type="submit" data-t="preset_save"></button>
+      </form>
+      <div class="muted small-text" data-t="preset_save_hint"></div>
+    </div>
+
+    <div class="card" id="details-card">
+      <h2 data-t="details"></h2>
+      <div id="details-state" class="muted"></div>
+      <div class="row wrap">
+        <button id="paint" data-t="details_paint"></button>
+        <button id="face" data-t="face"></button>
+        <button id="details-clear" data-t="details_clear"></button>
+      </div>
+    </div>
+
+    <details class="card compare" id="compare-card">
+      <summary><h2 data-t="compare"></h2></summary>
+      <div class="muted small-text" data-t="compare_hint"></div>
+      <div id="compare-methods" class="flags-row"></div>
+      <label class="check"><input id="compare-studio" type="checkbox"><span data-t="compare_studio"></span></label>
+      <div class="row"><button id="compare-go" class="primary" data-t="compare_go"></button></div>
+      <div id="compare-results" class="compare-grid"></div>
+      <div id="compare-verdict" class="muted"></div>
+    </details>
+
+    <div class="card" id="params-card">
+      <div class="row between"><h2 data-t="params"></h2><button id="reset" class="small" data-t="reset"></button></div>
+      <label class="check"><input id="advanced" type="checkbox"><span data-t="advanced"></span></label>
+      <div id="params"></div>
+      <button id="to-preset" class="wide" data-t="save_preset"></button>
+    </div>
+
+    <div class="startbar" id="startbar">
+      <div id="estimate" class="muted center"></div>
+      <div class="row">
+        <button id="start" class="primary" data-t="start"></button>
+        <button id="queue-add" data-t="add_queue"></button>
+      </div>
+      <div id="start-msg" class="muted center"></div>
+      <div id="memory" class="warn" hidden>
+        <div id="memory-text"></div>
+        <div class="row wrap"><button id="mem-smaller" class="primary"></button>
+          <button id="mem-anyway" data-t="anyway"></button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== sketch (on the phone a tab of its own – 4.2.1:
+       the studio stays clear; on a wide screen its cards are the studio's middle and right columns) -->
+  <section id="tab-sketch" class="tab" hidden>
+    <div class="card" id="sketch-card">
+      <div class="row between"><div id="view-name" class="muted one-line"></div>
+        <button id="full" class="small desk-only" data-t="full_screen"></button></div>
+      <div id="views" class="seg views" hidden>
+        <button data-v="sketch" class="on" data-t="view_sketch"></button>
+        <button data-v="compare" data-t="view_compare"></button>
+        <button data-v="attention" data-t="view_attention"></button>
+        <button data-v="mask" data-t="view_mask"></button>
+        <button data-v="condition" data-t="view_condition"></button>
+        <button data-v="all" data-t="view_all"></button>
+      </div>
+      <div id="scene-views" class="seg views" hidden>
+        <button data-view="sketch" class="on" data-t="view_sketch"></button>
+        <button data-view="background" data-t="view_background"></button>
+        <button data-view="matrix" data-t="view_matrix"></button>
+      </div>
+      <div id="scene-part" class="phase" hidden></div>
+      <div id="sketch-box" class="preview"><img id="sketch" alt="">
+        <canvas id="edit-canvas" class="edit-canvas" hidden></canvas>
+        <div id="no-sketch" class="muted center" data-t="no_sketch"></div></div>
+      <div id="compare-view" class="preview split" hidden><img id="split-photo" alt=""><img id="split-sketch" alt=""></div>
+      <input id="split" class="split-range" type="range" min="0" max="100" value="50" data-label="split" hidden>
+      <div id="plain-view" class="preview" hidden><img id="plain-img" alt=""></div>
+      <div id="all-view" class="sheet-grid" hidden></div>
+      <div id="background-box" class="preview" hidden><img id="scene-bg" alt="">
+        <div id="no-bg" class="muted center" data-t="no_background_yet"></div></div>
+      <div id="matrix-box" class="matrix-box" hidden>
+        <div class="axis-x"></div>
+        <div class="matrix-wrap"><div class="axis-y"></div><div id="matrix" class="matrix"></div></div>
+        <div class="muted small-text" data-t="matrix_hint"></div>
+      </div>
+      <div id="layer-switch" class="seg layers" hidden>
+        <button data-part="all" class="on" data-t="layer_all"></button>
+        <button data-part="background" data-t="layer_background"></button>
+        <button data-part="object" data-t="layer_object"></button>
+      </div>
+      <div id="edit-tools" class="edit-tools" hidden>
+        <div class="seg">
+          <button id="tool-erase" data-t="edit_eraser"></button>
+          <button id="tool-pen" data-t="edit_pen"></button>
+          <button id="edit-undo" class="small" aria-label="undo">↶</button>
+          <button id="edit-redo" class="small" aria-label="redo">↷</button>
+          <button id="edit-revert" class="small" data-t="edit_revert"></button>
+        </div>
+        <div class="row wrap">
+          <button id="open-simplify" class="small" data-t="edit_simplify"></button>
+          <button id="open-steps" class="small" data-t="edit_steps"></button>
+          <button id="play-lapse" class="small" data-t="edit_lapse"></button>
+          <select id="lapse-speed" class="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            <option value="2">2×</option><option value="4">4×</option></select>
+          <button id="rerun-cell" class="small" data-t="rerun_cell" hidden></button>
+        </div>
+        <div id="edit-hint" class="muted small-text"></div>
+        <div id="edit-panel" class="edit-panel" hidden>
+          <div class="row between"><b id="edit-panel-title"></b><span id="edit-panel-value" class="muted"></span></div>
+          <input id="edit-slider" type="range" min="0" max="0" value="0" aria-labelledby="edit-panel-title">
+          <div id="edit-panel-note" class="muted small-text"></div>
+          <div class="row"><button id="edit-apply" class="primary"></button><button id="edit-close" data-t="close"></button></div>
+        </div>
+        <details id="continue-box" class="group">
+          <summary data-t="edit_continue"></summary>
+          <div class="muted small-text" data-t="edit_continue_hint"></div>
+          <div class="row"><span class="muted grow" data-t="edit_new_strokes"></span>
+            <input id="cont-new" type="number" class="num" min="0" max="128" inputmode="numeric"></div>
+          <div class="row"><span class="muted grow" data-t="edit_iterations"></span>
+            <input id="cont-iter" type="number" class="num" min="1" max="20000" inputmode="numeric"></div>
+          <label class="check"><input id="cont-keep" type="checkbox" checked><span data-t="edit_keep_drawn"></span></label>
+          <div class="row"><button id="cont-go" class="primary" data-t="edit_continue_go"></button></div>
+        </details>
+      </div>
+      <div id="seeds" class="seeds"></div>
+      <div id="stats" class="stats"></div>
+      <button id="continue" class="primary" data-t="continue" hidden></button>
+    </div>
+    <div class="card desk-only-card" id="seeds-card">
+      <h2 data-t="sketches"></h2>
+      <div id="seeds-list"></div>
+    </div>
+    <div class="card" id="rate-card">
+      <h2 data-t="rating"></h2>
+      <div class="row"><button id="up" class="thumb">👍</button><button id="down" class="thumb">👎</button></div>
+      <div id="taste" class="muted"></div>
+    </div>
+    <div class="card" id="look-card">
+      <h2 data-t="look"></h2>
+      <div class="field"><label data-t="style"></label><select id="style"></select></div>
+      <div class="field"><label data-t="paper"></label><select id="paper"></select></div>
+      <div class="row wrap">
+        <label class="check grow"><input id="vignette" type="checkbox"><span data-t="x_vignette"></span></label>
+        <input id="paper-color" type="color" class="color-sm" aria-label="color">
+        <button id="paper-color-reset" class="small" data-t="paper_color_reset"></button>
+      </div>
+      <div class="row wrap">
+        <a id="dl-svg" class="btn" download data-t="download_svg"></a>
+        <a id="dl-png" class="btn" download data-t="download_png"></a>
+      </div>
+    </div>
+    <div class="card" id="export-card" hidden>
+      <h2 data-t="export"></h2>
+      <div id="formats" class="chips"></div>
+      <div id="fmt-desc" class="muted small-text"></div>
+      <div id="export-opts" class="xopts"></div>
+      <div class="row">
+        <button id="export-go" class="primary"></button>
+        <button id="export-cancel" data-t="cancel" hidden></button>
+      </div>
+      <div id="export-state" hidden>
+        <div class="bar"><div id="export-progress"></div></div>
+        <div id="export-msg" class="muted"></div>
+      </div>
+      <a id="export-dl" class="btn primary wide" hidden></a>
+    </div>
+  </section>
+
+  <!-- ======================================================== gallery -->
+  <section id="tab-gallery" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="results"></h2>
+      <input id="search" type="search" enterkeyhint="search" autocomplete="off">
+      <div class="row filters">
+        <select id="filter-method"></select>
+        <select id="filter-album"></select>
+        <button id="filter-fav" class="small fav-filter">☆</button>
+      </div>
+      <div class="row filters">
+        <select id="sort"></select>
+        <select id="filter-tag"></select>
+      </div>
+      <div class="row wrap">
+        <button id="album-new" class="small" data-t="album_new"></button>
+        <button id="album-rename" class="small" data-t="album_rename" hidden></button>
+        <button id="album-delete" class="small" data-t="album_delete" hidden></button>
+      </div>
+      <div class="row between results-head">
+        <div id="results-count" class="muted small-text"></div>
+        <button id="select-mode" class="small" data-t="select"></button>
+      </div>
+      <div id="results" class="results"></div>
+      <button id="more" class="wide" data-t="more" hidden></button>
+      <!-- 4.2.3: several results at once – into an album, or a slideshow of just them -->
+      <div id="select-bar" class="select-bar" hidden>
+        <div class="row between">
+          <b id="select-count" class="small-text" aria-live="polite"></b>
+          <button id="select-all" class="small"></button>
+        </div>
+        <div class="row">
+          <select id="select-album" class="grow" data-label="select_album"></select>
+          <button id="select-show" class="primary" data-t="slideshow"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== queue -->
+  <section id="tab-queue" class="tab" hidden>
+    <div class="card">
+      <div class="row between"><h2 data-t="tab_queue"></h2>
+        <button id="clear-queue" class="small" data-t="clear_done" hidden></button></div>
+      <label class="btn wide" for="many"><span data-t="add_many"></span>
+        <input id="many" type="file" accept="image/*" multiple hidden></label>
+      <div id="many-msg" class="muted small-text"></div>
+      <div class="row wrap">
+        <label class="check grow"><input id="auto-start" type="checkbox"><span data-t="auto_start"></span></label>
+        <select id="done-action" class="done-action" hidden></select>
+      </div>
+      <div id="queue-total" class="muted small-text"></div>
+      <div id="jobs"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================== the studio on a wide screen: three columns -->
+  <div id="desk" class="desk-grid" hidden>
+    <div id="desk-left" class="col"></div><div id="desk-center" class="col"></div><div id="desk-right" class="col"></div>
+    <div id="desk-footer" class="desk-footer"><div id="desk-job" class="desk-job"></div></div>
+  </div>
+
+  <!-- ======================================================== the app: version and updates -->
+  <section id="tab-app" class="tab" hidden>
+    <div class="card">
+      <h2 data-t="layout_title"></h2>
+      <div id="layout" class="seg">
+        <button data-layout="auto" data-t="layout_auto"></button>
+        <button data-layout="phone" data-t="layout_phone"></button>
+        <button data-layout="studio" data-t="layout_studio"></button>
+      </div>
+      <div class="muted small-text" data-t="layout_hint"></div>
+      <div class="sub" data-t="page_theme"></div>
+      <div id="page-theme" class="seg">
+        <button data-theme="auto" data-t="theme_browser"></button>
+        <button data-theme="app" data-t="theme_app"></button>
+        <button data-theme="light" data-t="theme_light"></button>
+        <button data-theme="dark" data-t="theme_dark"></button>
+      </div>
+    </div>
+    <div class="card">
+      <h2 data-t="app_settings"></h2>
+      <div class="muted small-text" data-t="app_settings_hint"></div>
+      <div id="app-settings"></div>
+    </div>
+    <div class="card">
+      <h2 data-t="models_title"></h2>
+      <div id="studio-models-title" class="sub"></div>
+      <div id="studio-models"></div>
+      <div id="models-download" class="warn" hidden></div>
+      <div id="model-list"></div>
+    </div>
+    <div class="card">
+      <h2 data-t="app_title"></h2>
+      <div class="row between"><span class="muted" data-t="app_version"></span><b id="app-version"></b></div>
+      <div id="update-last" class="warn" hidden></div>
+      <div id="update-msg" class="muted update-msg"></div>
+      <div id="update-bar" class="bar" hidden><div id="update-progress"></div></div>
+      <div id="update-hint" class="muted small-text" hidden></div>
+      <details id="update-notes-box" class="group" hidden>
+        <summary data-t="update_notes"></summary>
+        <div id="update-notes" class="notes small-text"></div>
+      </details>
+      <div class="row wrap">
+        <button id="update-check" data-t="update_check"></button>
+        <button id="update-install" class="primary" hidden></button>
+        <button id="update-cancel" class="small" data-t="cancel" hidden></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav id="tabs" role="tablist">
+  <button data-tab="studio" class="on" role="tab" aria-selected="true"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" /><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" /></svg><span data-t="tab_studio"></span></button>
+  <button data-tab="sketch" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z" /><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18" /><path d="m2.3 2.3 7.286 7.286" /><circle cx="11" cy="11" r="2" /></svg><span data-t="tab_sketch"></span></button>
+  <button data-tab="gallery" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M18 22H4a2 2 0 0 1-2-2V6" /><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18" /><circle cx="12" cy="8" r="2" /><rect width="16" height="16" x="6" y="2" rx="2" /></svg><span data-t="tab_gallery"></span></button>
+  <button data-tab="queue" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="5" width="6" height="6" rx="1" /><path d="m3 17 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></svg><span data-t="tab_queue"></span></button>
+  <button data-tab="app" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg><span data-t="tab_app"></span></button>
+</nav>
+
+<!-- ========================================================== detail brush -->
+<div id="painter" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="detail_title"></b>
+    <button id="paint-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="detail_hint"></div>
+  <div class="paint-area"><canvas id="paint-canvas"></canvas></div>
+  <div id="tools" class="seg">
+    <button data-tool="255" class="on" data-t="tool_more"></button>
+    <button data-tool="128" data-t="tool_normal"></button>
+    <button data-tool="0" data-t="tool_less"></button>
+  </div>
+  <div class="row"><span id="brush-label" class="muted" data-t="brush_size"></span><input id="brush" type="range" min="2" max="40" value="8" aria-labelledby="brush-label"></div>
+  <div class="row wrap">
+    <button id="paint-face" data-t="face"></button>
+    <button id="paint-undo" data-t="undo"></button>
+    <button id="paint-clear" data-t="details_clear"></button>
+    <button id="paint-save" class="primary" data-t="save"></button>
+  </div>
+  <div id="paint-msg" class="muted"></div>
+</div>
+
+<!-- ========================================================== a result large -->
+<div id="viewer" class="sheet viewer" hidden>
+  <div class="sheet-head">
+    <b id="viewer-name" class="one-line"></b>
+    <button id="viewer-close" class="small" data-t="close"></button>
+  </div>
+  <div id="viewer-info" class="muted small-text"></div>
+  <div class="viewer-box"><img id="viewer-img" alt=""></div>
+  <div class="muted small-text center" data-t="viewer_hint"></div>
+  <div class="row wrap">
+    <button id="viewer-open" class="primary" data-t="open_studio"></button>
+    <button id="viewer-fav" class="small"></button>
+    <button id="viewer-delete" class="small">🗑</button>
+  </div>
+  <div id="viewer-tags" class="muted small-text"></div>
+  <div class="row wrap">
+    <button id="viewer-info-edit" class="small" data-t="info_edit"></button>
+    <select id="viewer-album" class="done-action"></select>
+    <button id="viewer-continue" class="small" data-t="continue" hidden></button>
+    <button id="viewer-pair" class="small"></button>
+    <button id="viewer-show" class="small" data-t="slideshow"></button>
+  </div>
+  <form id="info-form" class="info-form" hidden autocomplete="off">
+    <input id="info-title" type="text" maxlength="120">
+    <input id="info-tags" type="text" maxlength="400">
+    <textarea id="info-notes" rows="3" maxlength="4000"></textarea>
+    <div class="row"><button class="primary" type="submit" data-t="save"></button>
+      <button id="info-cancel" type="button" data-t="cancel"></button></div>
+  </form>
+</div>
+
+<!-- ========================================================== two results with a divider -->
+<div id="pair" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="pair_title"></b>
+    <button id="pair-close" class="small" data-t="close"></button>
+  </div>
+  <div class="preview split pair"><img id="pair-a" alt=""><img id="pair-b" alt=""></div>
+  <input id="pair-split" class="split-range" type="range" min="0" max="100" value="50" data-label="split">
+  <div class="row between muted small-text"><span id="pair-a-name"></span><span id="pair-b-name"></span></div>
+</div>
+
+<!-- ========================================================== crop / turn the picture -->
+<div id="cropper" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="crop_title"></b>
+    <button id="crop-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="crop_hint"></div>
+  <div class="paint-area"><canvas id="crop-canvas"></canvas></div>
+  <div class="row wrap">
+    <button id="crop-left" class="small">⟲</button>
+    <button id="crop-right" class="small">⟳</button>
+    <button id="crop-flip" class="small">⇋</button>
+    <button id="crop-reset" class="small" data-t="crop_reset"></button>
+    <button id="crop-apply" class="primary" data-t="crop_apply"></button>
+  </div>
+  <div id="crop-msg" class="muted"></div>
+</div>
+
+<!-- ========================================================== the PIN before an update -->
+<div id="pin-sheet" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="update_pin_title"></b>
+    <button id="pin-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="update_pin_hint"></div>
+  <input id="pin-input" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6">
+  <div id="pin-msg" class="muted"></div>
+  <div class="row"><button id="pin-ok" class="primary" data-t="update_go"></button></div>
+</div>
+
+<!-- ========================================================== the app restarts with the update -->
+<div id="restart" class="sheet restart" hidden>
+  <div class="restart-box">
+    <div class="spinner"></div>
+    <b data-t="update_restart_title"></b>
+    <div id="restart-msg" class="muted"></div>
+  </div>
+</div>
+
+<!-- ========================================================== touching up the mask -->
+<div id="masker" class="sheet" hidden>
+  <div class="sheet-head">
+    <b data-t="mask_edit_title"></b>
+    <button id="mask-close" class="small" data-t="close"></button>
+  </div>
+  <div class="muted small-text" data-t="mask_edit_hint"></div>
+  <div class="mask-area"><img id="mask-img" alt=""><canvas id="mask-canvas"></canvas></div>
+  <div id="mask-tools" class="seg">
+    <button data-tool="part" class="on" data-t="mask_tool_part"></button>
+    <button data-tool="add" data-t="mask_tool_add"></button>
+    <button data-tool="erase" data-t="mask_tool_erase"></button>
+  </div>
+  <div class="row"><span id="mask-brush-label" class="muted" data-t="brush_size"></span><input id="mask-brush" type="range" min="1" max="20" value="5" aria-labelledby="mask-brush-label"></div>
+  <div class="row wrap">
+    <button id="mask-undo" class="small" aria-label="undo">↶</button>
+    <button id="mask-redo" class="small" aria-label="redo">↷</button>
+    <button id="mask-reset" class="small" data-t="mask_reset"></button>
+    <button id="mask-save" class="primary" data-t="save"></button>
+  </div>
+  <div id="mask-msg" class="muted"></div>
+</div>
+
+<div id="pull" hidden>↻</div>
+<div id="toast" hidden></div>
+<script src="/phone.js"></script>
+</body>
+</html>

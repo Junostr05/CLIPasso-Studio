@@ -1,0 +1,31 @@
+{
+  "settings_version": 3,
+  "language": "de",
+  "theme": "light",
+  "output_dir": "/Users/J\u00fcrgen/Documents/CLIPasso Studio",
+  "models_dir": "",
+  "telegram_token": "123:made-up",
+  "remote_token": "made-up-token",
+  "remote_pin": "000000",
+  "albums": [
+    "Tiere",
+    "W\u00fcste"
+  ],
+  "user_presets": [
+    {
+      "name": "Mein Stil",
+      "method": "clipasso"
+    }
+  ],
+  "queue": [
+    {
+      "target": "/Users/J\u00fcrgen/Pictures/Kamel.png",
+      "settings": {
+        "method": "clipasso"
+      }
+    }
+  ],
+  "a_key_of_a_newer_version": {
+    "x": 1.5
+  }
+}

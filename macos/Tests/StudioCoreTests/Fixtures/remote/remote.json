@@ -1,0 +1,2543 @@
+{
+ "version": "4.2.4",
+ "token": "Kamel-Zugang_0123456789ab",
+ "pin": "246810",
+ "clients": [
+  {
+   "ip": "192.168.1.20",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.168.1.20",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "10.0.0.5",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "10.0.0.5",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "172.16.3.4",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "172.16.3.4",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "172.32.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "172.32.0.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "127.0.0.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "127.0.0.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "127.8.9.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "127.8.9.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fe80::1%eth0",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fe80::1%eth0",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:192.168.0.2",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:192.168.0.2",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "169.254.10.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "169.254.10.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "8.8.8.8",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "8.8.8.8",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:4860:4860::8888",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:4860:4860::8888",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:8.8.8.8",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:8.8.8.8",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "nonsense",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "nonsense",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "100.64.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "100.64.0.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "100.127.255.254",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "100.127.255.254",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "100.128.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "100.128.0.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "100.63.255.255",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "100.63.255.255",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "fd7a:115c:a1e0::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fd7a:115c:a1e0::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fc00::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fc00::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:100.100.1.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:100.100.1.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "0.0.0.0",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "0.0.0.0",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "255.255.255.255",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "255.255.255.255",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.2.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.2.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "1.2.3",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "1.2.3",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "192.168.1.300",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "192.168.1.300",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fe80::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fe80::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fec0::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "fec0::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "224.0.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "224.0.0.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "100.100.100.100%x",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "100.100.100.100%x",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.9",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.0.9",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.0.10",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.0.10",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.0.11",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.11",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.255",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.255",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.1.0",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.1.0",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "192.0.0.170",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.170",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.171",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.171",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.172",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "192.0.0.172",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "198.18.5.5",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "198.18.5.5",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "198.19.255.255",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "198.19.255.255",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "198.20.0.0",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "198.20.0.0",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "198.51.100.7",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "198.51.100.7",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "203.0.113.9",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "203.0.113.9",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "240.1.2.3",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "240.1.2.3",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "239.255.255.255",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "239.255.255.255",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "11.0.0.0",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "11.0.0.0",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "9.255.255.255",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "9.255.255.255",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "172.31.255.255",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "172.31.255.255",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "169.255.0.0",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "169.255.0.0",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:db8::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "2001:db8::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "2002::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "2002::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "3fff::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "3fff::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "3fff:1000::",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "3fff:1000::",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:1::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:1::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:1::3",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "2001:1::3",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "2001::5",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "2001::5",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "2001:200::",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:200::",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "64:ff9b:1::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "64:ff9b:1::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "64:ff9b::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "64:ff9b::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "100::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "100::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "100::1:0:0:0",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "100::1:0:0:0",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "2001:20::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:20::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:3::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:3::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "2001:4:112::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "2001:4:112::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "fe80::1%en0",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fe80::1%en0",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fe81::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "fe81::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "febf::1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "febf::1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "fec0::",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "fec0::",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "fbff::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "fbff::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "fe00::1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "fe00::1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:10.0.0.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:10.0.0.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:0a00:0001",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:0a00:0001",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:1.1.1.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:1.1.1.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "01.2.3.4",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "01.2.3.4",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "1.2.3.4.5",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "1.2.3.4.5",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": " 10.0.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": " 10.0.0.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "10.0.0.1 ",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "10.0.0.1 ",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "0x7f.0.0.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "0x7f.0.0.1",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::1::",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "::1::",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "1::2::3",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "1::2::3",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:192.168.1.1%eth0",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:192.168.1.1%eth0",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "FE80::ABCD",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "FE80::ABCD",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "1:2:3:4:5:6:7:8",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "1:2:3:4:5:6:7:8",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "::ffff:127.0.0.1",
+   "tailscale": false,
+   "allowed": true
+  },
+  {
+   "ip": "::ffff:127.0.0.1",
+   "tailscale": true,
+   "allowed": true
+  },
+  {
+   "ip": "%eth0",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "%eth0",
+   "tailscale": true,
+   "allowed": false
+  },
+  {
+   "ip": "127.1",
+   "tailscale": false,
+   "allowed": false
+  },
+  {
+   "ip": "127.1",
+   "tailscale": true,
+   "allowed": false
+  }
+ ],
+ "tries": [
+  {
+   "ip": "10.0.0.2",
+   "pin": "000000",
+   "now": 1000.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "000000",
+   "now": 1001.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "000000",
+   "now": 1002.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "000000",
+   "now": 1003.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "000000",
+   "now": 1004.0,
+   "ok": false,
+   "wait": 30
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "246810",
+   "now": 1010.0,
+   "ok": false,
+   "wait": 24
+  },
+  {
+   "ip": "10.0.0.2",
+   "pin": "246810",
+   "now": 1036.0,
+   "ok": true,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1100.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1101.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1102.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1103.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1104.0,
+   "ok": false,
+   "wait": 30
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1105.0,
+   "ok": false,
+   "wait": 29
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1106.0,
+   "ok": false,
+   "wait": 28
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1107.0,
+   "ok": false,
+   "wait": 27
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1108.0,
+   "ok": false,
+   "wait": 26
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "11111",
+   "now": 1109.0,
+   "ok": false,
+   "wait": 25
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "246810",
+   "now": 1140.0,
+   "ok": true,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.3",
+   "pin": "246810",
+   "now": 1200.0,
+   "ok": true,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.0",
+   "pin": "999999",
+   "now": 1300.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.1",
+   "pin": "999999",
+   "now": 1301.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.2",
+   "pin": "999999",
+   "now": 1302.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.3",
+   "pin": "999999",
+   "now": 1303.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.4",
+   "pin": "999999",
+   "now": 1304.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.5",
+   "pin": "999999",
+   "now": 1305.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.6",
+   "pin": "999999",
+   "now": 1306.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.7",
+   "pin": "999999",
+   "now": 1307.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.8",
+   "pin": "999999",
+   "now": 1308.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.1.9",
+   "pin": "999999",
+   "now": 1309.0,
+   "ok": false,
+   "wait": 600
+  },
+  {
+   "ip": "10.0.1.10",
+   "pin": "999999",
+   "now": 1310.0,
+   "ok": false,
+   "wait": 599
+  },
+  {
+   "ip": "10.0.1.11",
+   "pin": "999999",
+   "now": 1311.0,
+   "ok": false,
+   "wait": 598
+  },
+  {
+   "ip": "10.0.1.12",
+   "pin": "999999",
+   "now": 1312.0,
+   "ok": false,
+   "wait": 597
+  },
+  {
+   "ip": "10.0.1.13",
+   "pin": "999999",
+   "now": 1313.0,
+   "ok": false,
+   "wait": 596
+  },
+  {
+   "ip": "10.0.1.14",
+   "pin": "999999",
+   "now": 1314.0,
+   "ok": false,
+   "wait": 595
+  },
+  {
+   "ip": "10.0.1.15",
+   "pin": "999999",
+   "now": 1315.0,
+   "ok": false,
+   "wait": 594
+  },
+  {
+   "ip": "10.0.1.16",
+   "pin": "999999",
+   "now": 1316.0,
+   "ok": false,
+   "wait": 593
+  },
+  {
+   "ip": "10.0.1.17",
+   "pin": "999999",
+   "now": 1317.0,
+   "ok": false,
+   "wait": 592
+  },
+  {
+   "ip": "10.0.1.18",
+   "pin": "999999",
+   "now": 1318.0,
+   "ok": false,
+   "wait": 591
+  },
+  {
+   "ip": "10.0.1.19",
+   "pin": "999999",
+   "now": 1319.0,
+   "ok": false,
+   "wait": 590
+  },
+  {
+   "ip": "10.0.2.1",
+   "pin": "246810",
+   "now": 1330.0,
+   "ok": false,
+   "wait": 579
+  },
+  {
+   "ip": "10.0.2.1",
+   "pin": "246810",
+   "now": 1920.0,
+   "ok": true,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.2.1",
+   "pin": "246810",
+   "now": 1925.0,
+   "ok": true,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3000.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3000.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3001.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3001.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3002.0,
+   "ok": false,
+   "wait": 30
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3002.5,
+   "ok": false,
+   "wait": 30
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3003.0,
+   "ok": false,
+   "wait": 29
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3003.5,
+   "ok": false,
+   "wait": 29
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3004.0,
+   "ok": false,
+   "wait": 28
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3004.5,
+   "ok": false,
+   "wait": 28
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3005.0,
+   "ok": false,
+   "wait": 27
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3005.5,
+   "ok": false,
+   "wait": 27
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3006.0,
+   "ok": false,
+   "wait": 26
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3006.5,
+   "ok": false,
+   "wait": 26
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3007.0,
+   "ok": false,
+   "wait": 25
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3007.5,
+   "ok": false,
+   "wait": 25
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3008.0,
+   "ok": false,
+   "wait": 24
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3008.5,
+   "ok": false,
+   "wait": 24
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3009.0,
+   "ok": false,
+   "wait": 23
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3009.5,
+   "ok": false,
+   "wait": 23
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3010.0,
+   "ok": false,
+   "wait": 22
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3010.5,
+   "ok": false,
+   "wait": 22
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3011.0,
+   "ok": false,
+   "wait": 21
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3011.5,
+   "ok": false,
+   "wait": 21
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3012.0,
+   "ok": false,
+   "wait": 20
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3012.5,
+   "ok": false,
+   "wait": 20
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3013.0,
+   "ok": false,
+   "wait": 19
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3013.5,
+   "ok": false,
+   "wait": 19
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3014.0,
+   "ok": false,
+   "wait": 18
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3014.5,
+   "ok": false,
+   "wait": 18
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3015.0,
+   "ok": false,
+   "wait": 17
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3015.5,
+   "ok": false,
+   "wait": 17
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3016.0,
+   "ok": false,
+   "wait": 16
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3016.5,
+   "ok": false,
+   "wait": 16
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3017.0,
+   "ok": false,
+   "wait": 15
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3017.5,
+   "ok": false,
+   "wait": 15
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3018.0,
+   "ok": false,
+   "wait": 14
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3018.5,
+   "ok": false,
+   "wait": 14
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3019.0,
+   "ok": false,
+   "wait": 13
+  },
+  {
+   "ip": "10.0.0.4",
+   "pin": "123",
+   "now": 3019.5,
+   "ok": false,
+   "wait": 13
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10000.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10001.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10002.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10003.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10004.0,
+   "ok": false,
+   "wait": 30
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10035.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10036.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10037.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10038.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10039.25,
+   "ok": false,
+   "wait": 60
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10100.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10101.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10102.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10103.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10104.5,
+   "ok": false,
+   "wait": 120
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10225.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10226.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10227.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10228.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10229.75,
+   "ok": false,
+   "wait": 600
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10831.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10832.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10833.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10834.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 10835.0,
+   "ok": false,
+   "wait": 480
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 11316.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 11317.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 11318.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 11319.25,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 11320.25,
+   "ok": false,
+   "wait": 960
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 12281.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 12282.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 12283.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 12284.5,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 12285.5,
+   "ok": false,
+   "wait": 1920
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 14206.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 14207.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 14208.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 14209.75,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 14210.75,
+   "ok": false,
+   "wait": 3600
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 17812.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 17813.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 17814.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 17815.0,
+   "ok": false,
+   "wait": 0
+  },
+  {
+   "ip": "10.0.0.9",
+   "pin": "654321",
+   "now": 17816.0,
+   "ok": false,
+   "wait": 3600
+  }
+ ],
+ "texts": {
+  "de": {
+   "add_many": "＋ Mehrere Bilder in die Warteschlange",
+   "add_queue": "Zur Warteschlange",
+   "added": "In die Warteschlange gelegt.",
+   "advanced": "Auch erweiterte Parameter zeigen",
+   "album_add": "Album …",
+   "album_added": "In „{name}“ gelegt.",
+   "album_delete": "Album löschen",
+   "album_delete_ask": "Album „{name}“ löschen? Die Ergebnisse darin bleiben.",
+   "album_name": "Bitte einen Namen für das Album eingeben.",
+   "album_name_ask": "Name des Albums:",
+   "album_new": "+ Neues Album",
+   "album_new_option": "+ Neues Album …",
+   "album_removed": "Aus „{name}“ genommen.",
+   "album_rename": "Album umbenennen",
+   "all_albums": "Alle Alben",
+   "all_defaults": "Alles wie in der Voreinstellung.",
+   "all_methods": "Alle Methoden",
+   "all_tags": "Alle Schlagworte",
+   "anyway": "Trotzdem starten",
+   "app_settings": "Einstellungen der App",
+   "app_settings_hint": "Gelten am PC, wie in seinen Einstellungen. Ordner, Sicherung, Handy und Telegram bleiben dem PC vorbehalten.",
+   "app_title": "App & Updates",
+   "app_version": "Version auf dem PC",
+   "auto_start": "Nächsten Auftrag von selbst starten",
+   "bad_value": "Dieser Wert passt nicht.",
+   "best_choose": "Als beste wählen",
+   "best_is": "Ergebnis",
+   "brush_size": "Pinsel",
+   "bundled": "mitgeliefert",
+   "busy": "Die App ist gerade beschäftigt – gleich noch einmal versuchen.",
+   "camera": "Foto aufnehmen",
+   "cancel": "Abbrechen",
+   "cancel_ask": "Den laufenden Auftrag abbrechen?",
+   "cannot_continue": "Dieser Auftrag kann nicht fortgesetzt werden.",
+   "cell": "Ebene {layer}, Stufe {level}",
+   "changed_settings": "Geänderte Einstellungen",
+   "choose": "Bild wählen",
+   "clear_done": "Erledigte entfernen",
+   "cleared": "{n} entfernt",
+   "close": "Schließen",
+   "compare": "Methoden vergleichen",
+   "compare_best": "Am ähnlichsten: {name}",
+   "compare_go": "Vergleichen",
+   "compare_hint": "Das Bild im Studio mit mehreren Methoden skizzieren – die Ergebnisse erscheinen hier nebeneinander, die beste mit ★.",
+   "compare_none": "Bitte mindestens eine Methode wählen.",
+   "compare_queued": "{n} Aufträge in der Warteschlange",
+   "compare_queued_one": "1 Auftrag in der Warteschlange",
+   "compare_studio": "Einstellungen des Studios nutzen (statt „Standard“)",
+   "continue": "Fortsetzen",
+   "continued": "Der Auftrag rechnet weiter – er steht in der Warteschlange.",
+   "crop": "✂ Zuschneiden / drehen",
+   "crop_apply": "Übernehmen",
+   "crop_hint": "Ecken ziehen zum Zuschneiden, den Rahmen ziehen zum Verschieben. Das Original bleibt; der Zuschnitt wird als neues Bild gespeichert.",
+   "crop_reset": "Zurücksetzen",
+   "crop_small": "Der Ausschnitt ist zu klein.",
+   "crop_title": "Zuschneiden und drehen",
+   "cropped": "Zugeschnittenes Bild übernommen",
+   "default_was": "Standard",
+   "delete": "Löschen",
+   "delete_ask": "„{name}“ mit allen Skizzen in den Papierkorb des PCs verschieben?",
+   "deleted": "In den Papierkorb gelegt",
+   "details": "Details",
+   "details_clear": "Karte löschen",
+   "details_has": "Für dieses Bild ist eine Detail-Karte gespeichert.",
+   "details_none": "Keine Detail-Karte – überall normal.",
+   "details_not_used": "(Die gewählte Methode nutzt sie nicht – nur CLIPasso und ControlSketch.)",
+   "details_paint": "Detail-Pinsel",
+   "done": "Fertig",
+   "done_prefix": "Danach: ",
+   "download_ask": "Für den Vergleich fehlen Modelle. Jetzt am PC herunterladen?",
+   "download_cancelled": "Download abgebrochen.",
+   "download_done": "Modelle geladen.",
+   "download_failed": "Download fehlgeschlagen: {error}",
+   "download_models": "Modelle laden ({size} MB)",
+   "download_nothing": "Es fehlen keine Modelle.",
+   "download_png": "PNG laden",
+   "download_running": "Es läuft schon ein Download.",
+   "download_svg": "SVG laden",
+   "download_these": "Laden",
+   "download_this": "Laden",
+   "downloading": "Lade {name} ({i}/{n}) … {pct} %",
+   "drag": "Ziehen zum Verschieben",
+   "edit_apply": "Übernehmen",
+   "edit_continue": "Mit CLIPasso weiterrechnen",
+   "edit_continue_go": "Weiterrechnen",
+   "edit_continue_hint": "Ein neuer CLIPasso-Auftrag startet von dieser Skizze: Ihre Striche werden weiter verbessert, neue kommen dazu.",
+   "edit_continue_queued": "Der Auftrag steht in der Warteschlange.",
+   "edit_continue_started": "Der Auftrag startet.",
+   "edit_eraser": "Radierer",
+   "edit_hint_erase": "Wische über Striche, um sie zu entfernen – oder tippe einen an.",
+   "edit_hint_pen": "Zeichne eigene Striche. Sie bleiben, wenn CLIPasso die Skizze weiterrechnet.",
+   "edit_iterations": "Iterationen",
+   "edit_keep": "{n} von {total} Strichen",
+   "edit_keep_drawn": "Selbst gezeichnete Striche festhalten",
+   "edit_lapse": "▶ Zeitraffer",
+   "edit_measure_failed": "Das Messen hat nicht geklappt.",
+   "edit_measuring": "CLIP misst einmal, wie viel jeder Strich beiträgt – einen Moment …",
+   "edit_new_strokes": "Neue Striche",
+   "edit_no_steps": "Für diese Skizze sind keine Zwischenstände gespeichert.",
+   "edit_none": "Diese Skizze lässt sich gerade nicht bearbeiten.",
+   "edit_one_line": "Eine Skizze aus einer einzigen Linie lässt sich nicht radieren.",
+   "edit_pen": "Stift",
+   "edit_revert": "Original",
+   "edit_simplify": "Vereinfachen",
+   "edit_simplify_note": "Nach links: Die Striche, die am wenigsten beitragen, fallen zuerst weg.",
+   "edit_step": "Schritt {i} von {n}",
+   "edit_steps": "Zwischenstände",
+   "edit_steps_note": "Die beim Rechnen gespeicherten Schritte – einer davon kann das Ergebnis werden.",
+   "edit_take": "Als Ergebnis nehmen",
+   "edit_taken": "Übernommen – mit ↶ rückgängig.",
+   "edit_too_short": "Der Strich ist zu kurz.",
+   "empty": "Noch nichts da.",
+   "eta": "noch",
+   "experimental": "experimentell",
+   "export": "Exportieren",
+   "export_cancelled": "Export abgebrochen.",
+   "export_download": "Herunterladen",
+   "export_failed": "Export fehlgeschlagen: {error}",
+   "export_go": "{fmt} exportieren",
+   "export_gone": "Diesen Export gibt es nicht mehr – bitte noch einmal exportieren.",
+   "export_ready": "Fertig: {name} · {size}",
+   "export_running": "Wird exportiert … {pct} %",
+   "face_busy": "Suche das Gesicht …",
+   "face_found": "Gesicht gefunden – Augen, Nase und Mund sind markiert.",
+   "failed": "Ging nicht.",
+   "filter_album": "Album",
+   "filter_fav": "Favorit",
+   "filter_method": "Methode",
+   "from_pc": "Vom PC",
+   "full_screen": "Vollbild",
+   "help_about": "Was macht „{name}“?",
+   "hint_dismiss": "Nicht mehr zeigen",
+   "history_title": "Frühere Aufträge mit diesem Bild ({n})",
+   "idle": "Bereit",
+   "in_studio": "im Studio",
+   "info_edit": "Titel & Schlagworte",
+   "info_notes": "Notizen",
+   "info_tags": "Schlagworte, durch Komma getrennt",
+   "info_title": "Titel",
+   "layer_all": "Alles",
+   "layer_background": "Nur Hintergrund",
+   "layer_object": "Nur Objekt",
+   "layout_auto": "Automatisch",
+   "layout_hint": "Automatisch: Auf einem breiten Bildschirm im Querformat (Computer, Tablet) sieht die Seite fast wie das Studio am PC aus – drei Spalten, die Bereiche links. Die Wahl gilt für diesen Browser.",
+   "layout_phone": "Handy",
+   "layout_studio": "Studio",
+   "layout_title": "Ansicht",
+   "list_changed": "Die Liste hat sich inzwischen geändert – bitte noch einmal versuchen.",
+   "load_in_studio": "Ins Studio laden",
+   "login_button": "Anmelden",
+   "login_hint": "Gib die 6-stellige PIN ein – du findest sie am PC unter Einstellungen → Handy & Nachrichten.",
+   "login_six": "Die PIN hat 6 Ziffern.",
+   "login_wait": "Zu viele Versuche – bitte {s} s warten.",
+   "login_wrong": "Falsche PIN.",
+   "look": "Aussehen & Herunterladen",
+   "mask_edit": "Maske bearbeiten",
+   "mask_edit_hint": "Teil: Tippe auf einen Teil des Objekts, um ihn zu entfernen – oder daneben, um einen fehlenden hinzuzufügen. Mit Hinzufügen und Entfernen malst du mit dem Finger. Jede Methode nutzt dann deine Maske.",
+   "mask_edit_title": "Maske bearbeiten",
+   "mask_hide": "Bild ansehen",
+   "mask_not_ready": "Die Maske wird noch berechnet – gleich noch einmal versuchen.",
+   "mask_reset": "Automatisch",
+   "mask_saved": "Die Maske ist gespeichert.",
+   "mask_share": "Objekt: {pct} % des Bildes",
+   "mask_show": "Maske ansehen",
+   "mask_tool_add": "Hinzufügen",
+   "mask_tool_erase": "Entfernen",
+   "mask_tool_part": "Teil",
+   "matrix_hint": "Antippen zeigt eine Zelle groß. Grün umrandet: die beste.",
+   "memory_ask": "Der Speicher wird knapp: {text}",
+   "method": "Methode",
+   "missing_badge": "Modelle fehlen",
+   "model_busy": "Während ein Auftrag rechnet, lässt sich kein Modell löschen.",
+   "models_missing": "Für diese Einstellungen fehlen Modelle (≈ {size} MB) – bitte am PC unter „Modelle“ herunterladen.",
+   "models_title": "Modelle",
+   "more": "Mehr laden",
+   "my_presets": "Meine Voreinstellungen",
+   "no_background": "Kein Hintergrund (transparent)",
+   "no_background_yet": "Das Hintergrundbild entsteht zu Beginn des Auftrags: SceneSketch stellt das Objekt frei und füllt den Hintergrund dahinter auf (LaMa).",
+   "no_live": "Gerade läuft kein Auftrag.",
+   "no_picture": "Noch kein Bild gewählt.",
+   "no_presets": "Noch keine eigenen Voreinstellungen. Stell alles ein und speichere es unter einem Namen – es steht dann auch in der App am PC bereit.",
+   "no_sketch": "Noch keine Skizze – starte eine oder öffne ein Ergebnis in der Galerie.",
+   "no_studio": "Das Studio ist nicht verbunden.",
+   "not_deleted": "„{name}“ ließ sich nicht löschen.",
+   "not_used": "mit diesen Einstellungen nicht genutzt",
+   "of": "{i} von {n}",
+   "offline": "Keine Verbindung zur App",
+   "open_studio": "Im Studio öffnen",
+   "page_theme": "Farben dieser Seite",
+   "pair_remember": "Zum Vergleich merken",
+   "pair_remembered": "Gemerkt – öffne ein anderes Ergebnis und tippe auf „Vergleichen“.",
+   "pair_title": "Zwei Ergebnisse vergleichen",
+   "pair_with": "Mit „{name}“ vergleichen",
+   "paper": "Papier",
+   "paper_color_reset": "Farbe des Papiers",
+   "params": "Parameter",
+   "pause": "Pause",
+   "paused": "Angehalten",
+   "picture": "Bild",
+   "preset": "Voreinstellung",
+   "preset_delete_ask": "Voreinstellung „{name}“ löschen?",
+   "preset_deleted": "Voreinstellung gelöscht",
+   "preset_gone": "Diese Voreinstellung gibt es nicht mehr.",
+   "preset_placeholder": "Name der Voreinstellung, z. B. Porträt fein",
+   "preset_replace_ask": "Voreinstellung „{name}“ mit den aktuellen Einstellungen überschreiben?",
+   "preset_save": "Speichern",
+   "preset_save_hint": "Speichert die Methode und alle Parameter, wie sie gerade eingestellt sind – auch am PC unter „Meine Voreinstellungen“ wählbar. Gleicher Name: Die Voreinstellung wird aktualisiert.",
+   "preset_saved": "Voreinstellung „{name}“ gespeichert",
+   "queue_empty": "Die Warteschlange ist leer.",
+   "queue_total": "Noch etwa {time} für die ganze Warteschlange",
+   "queued": "In der Warteschlange:",
+   "rating": "Gefällt dir diese Skizze?",
+   "recent": "Zuletzt verwendet",
+   "remove": "Entfernen",
+   "remove_model": "Löschen",
+   "remove_model_ask": "„{name}“ vom PC löschen? Es lässt sich jederzeit wieder laden.",
+   "rerun_ask": "Zelle L{layer} · Stufe {level} mit einem neuen Start neu rechnen? Die späteren Stufen dieser Ebene bauen darauf auf und werden mit neu gerechnet.",
+   "rerun_cell": "Zelle neu rechnen",
+   "rerun_queued": "Die Zelle wird neu gerechnet – der Auftrag steht in der Warteschlange.",
+   "reset": "Zurücksetzen",
+   "reset_ask": "Alle Parameter dieser Methode zurücksetzen?",
+   "results": "Ergebnisse",
+   "results_count": "{n} von {total}",
+   "resume": "Weiter",
+   "retry": "Nochmal",
+   "run_next": "Als Nächstes",
+   "running": "Läuft",
+   "samples": "Beispiele",
+   "save": "Speichern",
+   "save_preset": "Als eigene Voreinstellung speichern …",
+   "saved": "Gespeichert",
+   "scene_part_background": "Hintergrund wird gezeichnet …",
+   "scene_part_object": "Objekt wird gezeichnet …",
+   "search": "Suchen (Name, Notiz, Schlagwort)",
+   "select": "Auswählen",
+   "select_album": "In ein Album …",
+   "select_album_added": "{n} Ergebnisse in „{name}“ gelegt.",
+   "select_album_added_one": "1 Ergebnis in „{name}“ gelegt.",
+   "select_all": "Alle auswählen",
+   "select_count": "{n} ausgewählt",
+   "select_done": "Fertig",
+   "select_hint": "Tippe auf Ergebnisse, um sie auszuwählen.",
+   "select_none": "Keine auswählen",
+   "sending": "Wird gesendet …",
+   "sketches": "Skizzen",
+   "slideshow": "▶ Diashow",
+   "slideshow_stop": "■ Diashow",
+   "split": "Trennlinie zwischen den beiden Bildern",
+   "start": "Skizze erstellen",
+   "started": "Gestartet – im Tab „Skizze“ siehst du zu.",
+   "status_cancelled": "abgebrochen",
+   "status_done": "fertig",
+   "status_failed": "fehlgeschlagen",
+   "status_paused": "angehalten",
+   "status_queued": "wartet",
+   "status_running": "läuft",
+   "strokes": "{n} Striche",
+   "studio_models": "Im Studio gewählt · {method}",
+   "style": "Pinselstil",
+   "tab_app": "App",
+   "tab_gallery": "Galerie",
+   "tab_queue": "Warteschlange",
+   "tab_sketch": "Skizze",
+   "tab_studio": "Studio",
+   "taste": "Mein Geschmack: {up} 👍 · {down} 👎 (lernt ab {need} Bewertungen)",
+   "theme_app": "Wie die App",
+   "theme_browser": "Wie der Browser",
+   "theme_dark": "Dunkel",
+   "theme_light": "Hell",
+   "to_live": "Zurück zum laufenden Auftrag: {name} · {pct} %",
+   "undo": "Rückgängig",
+   "update_admin_hint": "Diese Installation gilt für alle Benutzer des PCs: Beim Installieren fragt Windows am PC nach einem Administrator. Vom Handy wird das Update deshalb nur heruntergeladen – installieren kannst du es dann am PC mit einem Klick (Leiste oben im Fenster).",
+   "update_cancelled": "Abgebrochen – was schon geladen ist, bleibt und wird beim nächsten Mal fortgesetzt.",
+   "update_check": "Nach Updates suchen",
+   "update_checking": "Suche nach Updates …",
+   "update_current": "Du hast die neueste Version ({version}).",
+   "update_done": "Aktualisiert auf {version}.",
+   "update_download": "Herunterladen",
+   "update_downloaded_pc": "Heruntergeladen. Installieren kannst du es am PC (Leiste oben im Fenster).",
+   "update_downloading": "Lädt herunter … {done} von {total} MB",
+   "update_failed_install": "Das Update auf {version} hat nicht geklappt – die App läuft weiter mit der bisherigen Version.",
+   "update_found": "Version {version} ist verfügbar.",
+   "update_go": "Installieren",
+   "update_install": "Herunterladen & installieren",
+   "update_install_hint": "Die App lädt das Update, hält einen laufenden Auftrag an, installiert und startet neu – danach rechnet sie weiter, und diese Seite verbindet sich von selbst wieder.",
+   "update_look_pc": "Die App meldet sich nicht – bitte am PC nachsehen.",
+   "update_not_here": "Diese App läuft aus dem Quellcode – Updates gibt es nur für die installierte oder die portable Version.",
+   "update_notes": "Neuigkeiten",
+   "update_pin_hint": "Zum Installieren bitte die 6-stellige PIN noch einmal eingeben (am PC: Einstellungen → Handy & Nachrichten).",
+   "update_pin_title": "PIN eingeben",
+   "update_pin_wait": "Zu viele Versuche – bitte {s} s warten.",
+   "update_pin_wrong": "Falsche PIN.",
+   "update_preparing": "Wird vorbereitet …",
+   "update_reconnecting": "Verbinde neu …",
+   "update_restart_title": "Update läuft",
+   "update_restarting": "Die App installiert das Update und startet neu …",
+   "update_stopping": "Der Auftrag wird angehalten …",
+   "update_unpacking": "Wird entpackt …",
+   "uploaded": "Das Bild ist im Studio.",
+   "uploaded_n": "{ok} von {n} Bildern in der Warteschlange – mit den Einstellungen des Studios.",
+   "uploading": "Bild wird übertragen …",
+   "uploading_n": "Lade Bild {i} von {n} hoch …",
+   "use_smaller": "Kleiner einstellen ({changes})",
+   "view_all": "Alle",
+   "view_attention": "Aufmerksamkeit",
+   "view_background": "Hintergrund",
+   "view_compare": "Bild/Skizze",
+   "view_condition": "Bedingung",
+   "view_mask": "Maske",
+   "view_matrix": "Matrix",
+   "view_sketch": "Skizze",
+   "viewer_hint": "Wischen: nächstes Ergebnis · zwei Finger: zoomen · doppelt tippen: zurück",
+   "style_plain": "Einfache Linien",
+   "style_ink": "Tusche (Pinselstift)",
+   "style_pencil": "Bleistift",
+   "style_charcoal": "Kohle",
+   "style_chalk": "Kreide",
+   "style_ballpoint": "Kugelschreiber",
+   "style_marker": "Marker",
+   "style_watercolor": "Aquarell",
+   "style_neon": "Neon",
+   "style_calligraphy": "Kalligrafie (breite Feder)",
+   "paper_none": "Ohne Struktur",
+   "paper_drawing": "Zeichenpapier",
+   "paper_watercolor": "Aquarellpapier",
+   "paper_kraft": "Packpapier",
+   "paper_linen": "Leinen",
+   "paper_blackboard": "Tafel",
+   "detail_title": "Detail-Pinsel",
+   "detail_hint": "Male, wo die Skizze mehr Details bekommen soll (orange) und wo weniger (blau). CLIPasso und ControlSketch setzen dort mehr Start-Striche und zeichnen die blauen Stellen weicher. Die Karte gehört zu diesem Bild – auch in der Warteschlange und beim Weiterrechnen.",
+   "tool_more": "Mehr Detail",
+   "tool_normal": "Normal",
+   "tool_less": "Weniger",
+   "face": "Gesicht finden",
+   "rate_up": "Daumen hoch: diese Skizze gefällt mir (noch einmal klicken nimmt es zurück). Ab 10 Bewertungen lernt „Beste Skizze: Mein Geschmack“ daraus.",
+   "rate_down": "Daumen runter: diese Skizze gefällt mir nicht (noch einmal klicken nimmt es zurück).",
+   "estimate_none": "",
+   "x_stroke": "Strichfarbe",
+   "x_width": "Strichstärke",
+   "x_style": "Stil",
+   "x_background": "Hintergrund",
+   "x_paper": "Papier",
+   "x_vignette": "Vignette",
+   "x_frame": "Format",
+   "x_margin": "Rand",
+   "x_size": "Länge der längeren Seite",
+   "x_width_cm": "Breite",
+   "x_mode": "Animation",
+   "x_mode_process": "Entstehungsprozess",
+   "x_mode_strokes": "Strich für Strich",
+   "x_length": "Dauer der Zeichnung",
+   "x_hold": "Danach Skizze zeigen für",
+   "preset_applied": "Voreinstellung „{name}“ gewählt",
+   "matrix_fidelity": "Treue (CLIP-Schicht)",
+   "matrix_simplicity": "Einfachheit",
+   "method_clipasso": "CLIPasso",
+   "method_swiftsketch": "SwiftSketch",
+   "method_controlsketch": "ControlSketch",
+   "method_scenesketch": "SceneSketch",
+   "lang": "de"
+  },
+  "en": {
+   "add_many": "＋ Several images into the queue",
+   "add_queue": "Add to queue",
+   "added": "Added to the queue.",
+   "advanced": "Also show advanced parameters",
+   "album_add": "Album …",
+   "album_added": "Put into “{name}”.",
+   "album_delete": "Delete album",
+   "album_delete_ask": "Delete the album “{name}”? The results in it stay.",
+   "album_name": "Please enter a name for the album.",
+   "album_name_ask": "Name of the album:",
+   "album_new": "+ New album",
+   "album_new_option": "+ New album …",
+   "album_removed": "Taken out of “{name}”.",
+   "album_rename": "Rename album",
+   "all_albums": "All albums",
+   "all_defaults": "All as in the preset.",
+   "all_methods": "All methods",
+   "all_tags": "All tags",
+   "anyway": "Start anyway",
+   "app_settings": "The app's settings",
+   "app_settings_hint": "They apply on the PC, as in its settings. Folders, backups, the phone and Telegram stay with the PC.",
+   "app_title": "App & updates",
+   "app_version": "Version on the PC",
+   "auto_start": "Start the next job by itself",
+   "bad_value": "This value does not fit.",
+   "best_choose": "Choose as the best",
+   "best_is": "Result",
+   "brush_size": "Brush",
+   "bundled": "included",
+   "busy": "The app is busy right now – try again in a moment.",
+   "camera": "Take photo",
+   "cancel": "Cancel",
+   "cancel_ask": "Cancel the running job?",
+   "cannot_continue": "This job cannot be continued.",
+   "cell": "Layer {layer}, level {level}",
+   "changed_settings": "Changed settings",
+   "choose": "Choose image",
+   "clear_done": "Remove finished",
+   "cleared": "{n} removed",
+   "close": "Close",
+   "compare": "Compare methods",
+   "compare_best": "Most similar: {name}",
+   "compare_go": "Compare",
+   "compare_hint": "Sketch the studio's image with several methods – the results appear here side by side, the best one with ★.",
+   "compare_none": "Please choose at least one method.",
+   "compare_queued": "{n} jobs in the queue",
+   "compare_queued_one": "1 job in the queue",
+   "compare_studio": "Use the studio's settings (instead of “Standard”)",
+   "continue": "Continue",
+   "continued": "The job goes on – it is in the queue.",
+   "crop": "✂ Crop / turn",
+   "crop_apply": "Apply",
+   "crop_hint": "Drag the corners to crop, the frame to move it. The original stays; the crop is saved as a new image.",
+   "crop_reset": "Reset",
+   "crop_small": "The crop is too small.",
+   "crop_title": "Crop and turn",
+   "cropped": "Cropped image in use",
+   "default_was": "default",
+   "delete": "Delete",
+   "delete_ask": "Move “{name}” with all its sketches to the PC's recycle bin?",
+   "deleted": "Moved to the recycle bin",
+   "details": "Details",
+   "details_clear": "Clear map",
+   "details_has": "A detail map is saved for this image.",
+   "details_none": "No detail map – normal everywhere.",
+   "details_not_used": "(The chosen method does not use it – only CLIPasso and ControlSketch.)",
+   "details_paint": "Detail brush",
+   "done": "Done",
+   "done_prefix": "Then: ",
+   "download_ask": "The comparison needs models that are missing. Download them on the PC now?",
+   "download_cancelled": "Download cancelled.",
+   "download_done": "Models downloaded.",
+   "download_failed": "Download failed: {error}",
+   "download_models": "Download models ({size} MB)",
+   "download_nothing": "No models are missing.",
+   "download_png": "Download PNG",
+   "download_running": "A download is running already.",
+   "download_svg": "Download SVG",
+   "download_these": "Download",
+   "download_this": "Download",
+   "downloading": "Downloading {name} ({i}/{n}) … {pct} %",
+   "drag": "Drag to move",
+   "edit_apply": "Apply",
+   "edit_continue": "Continue with CLIPasso",
+   "edit_continue_go": "Continue",
+   "edit_continue_hint": "A new CLIPasso job starts from this sketch: its strokes are improved further, new ones are added.",
+   "edit_continue_queued": "The job is in the queue.",
+   "edit_continue_started": "The job starts.",
+   "edit_eraser": "Eraser",
+   "edit_hint_erase": "Swipe over strokes to remove them – or tap one.",
+   "edit_hint_pen": "Draw strokes of your own. They stay when CLIPasso continues the sketch.",
+   "edit_iterations": "Iterations",
+   "edit_keep": "{n} of {total} strokes",
+   "edit_keep_drawn": "Keep the strokes drawn by hand",
+   "edit_lapse": "▶ Time lapse",
+   "edit_measure_failed": "Measuring did not work.",
+   "edit_measuring": "CLIP measures once how much each stroke adds – a moment …",
+   "edit_new_strokes": "New strokes",
+   "edit_no_steps": "No steps were saved for this sketch.",
+   "edit_none": "This sketch cannot be edited right now.",
+   "edit_one_line": "A sketch of one single line cannot be erased.",
+   "edit_pen": "Pen",
+   "edit_revert": "Original",
+   "edit_simplify": "Simplify",
+   "edit_simplify_note": "To the left: the strokes that add least go first.",
+   "edit_step": "Step {i} of {n}",
+   "edit_steps": "Saved steps",
+   "edit_steps_note": "The steps saved while computing – one of them can become the result.",
+   "edit_take": "Take as the result",
+   "edit_taken": "Done – ↶ undoes it.",
+   "edit_too_short": "The stroke is too short.",
+   "empty": "Nothing here yet.",
+   "eta": "left:",
+   "experimental": "experimental",
+   "export": "Export",
+   "export_cancelled": "Export cancelled.",
+   "export_download": "Download",
+   "export_failed": "Export failed: {error}",
+   "export_go": "Export {fmt}",
+   "export_gone": "This export is gone – please export again.",
+   "export_ready": "Ready: {name} · {size}",
+   "export_running": "Exporting … {pct} %",
+   "face_busy": "Looking for the face …",
+   "face_found": "Face found – the eyes, nose and mouth are marked.",
+   "failed": "That did not work.",
+   "filter_album": "Album",
+   "filter_fav": "Favourite",
+   "filter_method": "Method",
+   "from_pc": "From the PC",
+   "full_screen": "Full screen",
+   "help_about": "What does “{name}” do?",
+   "hint_dismiss": "Don't show again",
+   "history_title": "Earlier jobs of this image ({n})",
+   "idle": "Ready",
+   "in_studio": "in the studio",
+   "info_edit": "Title & tags",
+   "info_notes": "Notes",
+   "info_tags": "Tags, separated by commas",
+   "info_title": "Title",
+   "layer_all": "All",
+   "layer_background": "Background only",
+   "layer_object": "Object only",
+   "layout_auto": "Automatic",
+   "layout_hint": "Automatic: on a wide screen held across (a computer, a tablet) the page looks almost like the studio on the PC – three columns, the areas on the left. The choice is kept in this browser.",
+   "layout_phone": "Phone",
+   "layout_studio": "Studio",
+   "layout_title": "View",
+   "list_changed": "The list has changed meanwhile – please try again.",
+   "load_in_studio": "Load into the studio",
+   "login_button": "Sign in",
+   "login_hint": "Enter the 6-digit PIN – you find it on the PC under Settings → Phone & messages.",
+   "login_six": "The PIN has 6 digits.",
+   "login_wait": "Too many tries – please wait {s} s.",
+   "login_wrong": "Wrong PIN.",
+   "look": "Look & download",
+   "mask_edit": "Edit mask",
+   "mask_edit_hint": "Part: tap a part of the object to remove it – or next to it to add one that is missing. With Add and Remove you paint with your finger. Every method then uses your mask.",
+   "mask_edit_title": "Edit the mask",
+   "mask_hide": "Show image",
+   "mask_not_ready": "The mask is still being computed – try again in a moment.",
+   "mask_reset": "Automatic",
+   "mask_saved": "The mask is saved.",
+   "mask_share": "Object: {pct} % of the image",
+   "mask_show": "Show mask",
+   "mask_tool_add": "Add",
+   "mask_tool_erase": "Remove",
+   "mask_tool_part": "Part",
+   "matrix_hint": "Tap a cell to see it large. Green frame: the best one.",
+   "memory_ask": "Memory is getting short: {text}",
+   "method": "Method",
+   "missing_badge": "Models missing",
+   "model_busy": "No model can be deleted while a job is computing.",
+   "models_missing": "Models are missing for these settings (≈ {size} MB) – please download them on the PC under “Models”.",
+   "models_title": "Models",
+   "more": "Load more",
+   "my_presets": "My presets",
+   "no_background": "No background (transparent)",
+   "no_background_yet": "The background image is made at the start of the job: SceneSketch cuts out the object and fills in the background behind it (LaMa).",
+   "no_live": "No job is running right now.",
+   "no_picture": "No image chosen yet.",
+   "no_presets": "No own presets yet. Set everything up and save it under a name – it is then in the app on the PC, too.",
+   "no_sketch": "No sketch yet – start one or open a result in the gallery.",
+   "no_studio": "The studio is not connected.",
+   "not_deleted": "“{name}” could not be deleted.",
+   "not_used": "not used with these settings",
+   "of": "{i} of {n}",
+   "offline": "No connection to the app",
+   "open_studio": "Open in the studio",
+   "page_theme": "Colours of this page",
+   "pair_remember": "Remember to compare",
+   "pair_remembered": "Remembered – open another result and tap “Compare”.",
+   "pair_title": "Compare two results",
+   "pair_with": "Compare with “{name}”",
+   "paper": "Paper",
+   "paper_color_reset": "Paper's own colour",
+   "params": "Parameters",
+   "pause": "Pause",
+   "paused": "Paused",
+   "picture": "Image",
+   "preset": "Preset",
+   "preset_delete_ask": "Delete the preset “{name}”?",
+   "preset_deleted": "Preset deleted",
+   "preset_gone": "This preset no longer exists.",
+   "preset_placeholder": "Name of the preset, e.g. Fine portrait",
+   "preset_replace_ask": "Overwrite the preset “{name}” with the current settings?",
+   "preset_save": "Save",
+   "preset_save_hint": "Saves the method and every parameter as they are set now – to be chosen on the PC under “My presets”, too. The same name updates the preset.",
+   "preset_saved": "Preset “{name}” saved",
+   "queue_empty": "The queue is empty.",
+   "queue_total": "About {time} left for the whole queue",
+   "queued": "In the queue:",
+   "rating": "Do you like this sketch?",
+   "recent": "Recently used",
+   "remove": "Remove",
+   "remove_model": "Delete",
+   "remove_model_ask": "Delete “{name}” from the PC? It can be downloaded again any time.",
+   "rerun_ask": "Compute cell L{layer} · level {level} again with a new start? The later levels of this layer build on it and are computed again, too.",
+   "rerun_cell": "Compute cell again",
+   "rerun_queued": "The cell is computed again – the job is in the queue.",
+   "reset": "Reset",
+   "reset_ask": "Reset all parameters of this method?",
+   "results": "Results",
+   "results_count": "{n} of {total}",
+   "resume": "Resume",
+   "retry": "Again",
+   "run_next": "Run next",
+   "running": "Running",
+   "samples": "Samples",
+   "save": "Save",
+   "save_preset": "Save as own preset …",
+   "saved": "Saved",
+   "scene_part_background": "Drawing the background …",
+   "scene_part_object": "Drawing the object …",
+   "search": "Search (name, note, tag)",
+   "select": "Select",
+   "select_album": "Into an album …",
+   "select_album_added": "Put {n} results into “{name}”.",
+   "select_album_added_one": "Put 1 result into “{name}”.",
+   "select_all": "Select all",
+   "select_count": "{n} selected",
+   "select_done": "Done",
+   "select_hint": "Tap results to select them.",
+   "select_none": "Select none",
+   "sending": "Sending …",
+   "sketches": "Sketches",
+   "slideshow": "▶ Slideshow",
+   "slideshow_stop": "■ Slideshow",
+   "split": "Divider between the two images",
+   "start": "Create sketch",
+   "started": "Started – watch it in the “Sketch” tab.",
+   "status_cancelled": "cancelled",
+   "status_done": "done",
+   "status_failed": "failed",
+   "status_paused": "paused",
+   "status_queued": "waiting",
+   "status_running": "running",
+   "strokes": "{n} strokes",
+   "studio_models": "Chosen in the studio · {method}",
+   "style": "Brush style",
+   "tab_app": "App",
+   "tab_gallery": "Gallery",
+   "tab_queue": "Queue",
+   "tab_sketch": "Sketch",
+   "tab_studio": "Studio",
+   "taste": "My taste: {up} 👍 · {down} 👎 (learns from {need} ratings on)",
+   "theme_app": "As the app",
+   "theme_browser": "As the browser",
+   "theme_dark": "Dark",
+   "theme_light": "Light",
+   "to_live": "Back to the running job: {name} · {pct} %",
+   "undo": "Undo",
+   "update_admin_hint": "This installation is for all users of the PC: when installing, Windows asks for an administrator on the PC. So the phone only downloads the update – you install it on the PC with one click (the bar at the top of the window).",
+   "update_cancelled": "Cancelled – what is downloaded stays and continues next time.",
+   "update_check": "Check for updates",
+   "update_checking": "Looking for updates …",
+   "update_current": "You have the latest version ({version}).",
+   "update_done": "Updated to {version}.",
+   "update_download": "Download",
+   "update_downloaded_pc": "Downloaded. You can install it on the PC (the bar at the top of the window).",
+   "update_downloading": "Downloading … {done} of {total} MB",
+   "update_failed_install": "The update to {version} did not work – the app keeps running with the previous version.",
+   "update_found": "Version {version} is available.",
+   "update_go": "Install",
+   "update_install": "Download & install",
+   "update_install_hint": "The app downloads the update, stops a running job, installs and starts again – then it goes on computing, and this page connects again by itself.",
+   "update_look_pc": "The app does not answer – please have a look at the PC.",
+   "update_not_here": "This app runs from the source code – updates are for the installed or the portable version only.",
+   "update_notes": "What's new",
+   "update_pin_hint": "To install, please enter the 6-digit PIN once more (on the PC: Settings → Phone & messages).",
+   "update_pin_title": "Enter the PIN",
+   "update_pin_wait": "Too many tries – please wait {s} s.",
+   "update_pin_wrong": "Wrong PIN.",
+   "update_preparing": "Preparing …",
+   "update_reconnecting": "Connecting again …",
+   "update_restart_title": "Updating",
+   "update_restarting": "The app installs the update and starts again …",
+   "update_stopping": "Stopping the job …",
+   "update_unpacking": "Unpacking …",
+   "uploaded": "The image is in the studio.",
+   "uploaded_n": "{ok} of {n} images in the queue – with the studio's settings.",
+   "uploading": "Sending the image …",
+   "uploading_n": "Uploading image {i} of {n} …",
+   "use_smaller": "Use smaller settings ({changes})",
+   "view_all": "All",
+   "view_attention": "Attention",
+   "view_background": "Background",
+   "view_compare": "Image/sketch",
+   "view_condition": "Condition",
+   "view_mask": "Mask",
+   "view_matrix": "Matrix",
+   "view_sketch": "Sketch",
+   "viewer_hint": "Swipe: next result · two fingers: zoom · double tap: back",
+   "style_plain": "Plain lines",
+   "style_ink": "Ink (brush pen)",
+   "style_pencil": "Pencil",
+   "style_charcoal": "Charcoal",
+   "style_chalk": "Chalk",
+   "style_ballpoint": "Ballpoint pen",
+   "style_marker": "Marker",
+   "style_watercolor": "Watercolour",
+   "style_neon": "Neon",
+   "style_calligraphy": "Calligraphy (broad nib)",
+   "paper_none": "No texture",
+   "paper_drawing": "Drawing paper",
+   "paper_watercolor": "Watercolour paper",
+   "paper_kraft": "Kraft paper",
+   "paper_linen": "Linen",
+   "paper_blackboard": "Blackboard",
+   "detail_title": "Detail brush",
+   "detail_hint": "Paint where the sketch should get more detail (orange) and where less (blue). CLIPasso and ControlSketch put more starting strokes there and draw the blue areas more loosely. The map belongs to this image – in the queue and when continuing, too.",
+   "tool_more": "More detail",
+   "tool_normal": "Normal",
+   "tool_less": "Less",
+   "face": "Find face",
+   "rate_up": "Thumbs up: I like this sketch (click again to take it back). From 10 ratings on, “Best sketch: My taste” learns from them.",
+   "rate_down": "Thumbs down: I don’t like this sketch (click again to take it back).",
+   "estimate_none": "",
+   "x_stroke": "Stroke colour",
+   "x_width": "Stroke width",
+   "x_style": "Style",
+   "x_background": "Background",
+   "x_paper": "Paper",
+   "x_vignette": "Vignette",
+   "x_frame": "Shape",
+   "x_margin": "Margin",
+   "x_size": "Length of the longer side",
+   "x_width_cm": "Width",
+   "x_mode": "Animation",
+   "x_mode_process": "Drawing process",
+   "x_mode_strokes": "Stroke by stroke",
+   "x_length": "Length of the drawing",
+   "x_hold": "Then show the sketch for",
+   "preset_applied": "Preset “{name}” chosen",
+   "matrix_fidelity": "Fidelity (CLIP layer)",
+   "matrix_simplicity": "Simplicity",
+   "method_clipasso": "CLIPasso",
+   "method_swiftsketch": "SwiftSketch",
+   "method_controlsketch": "ControlSketch",
+   "method_scenesketch": "SceneSketch",
+   "lang": "en"
+  }
+ },
+ "icons": {
+  "pen-tool": "<svg class=\"icon\" aria-hidden=\"true\" focusable=\"false\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ><path d=\"M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z\" /><path d=\"m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18\" /><path d=\"m2.3 2.3 7.286 7.286\" /><circle cx=\"11\" cy=\"11\" r=\"2\" /></svg>",
+  "list-todo": "<svg class=\"icon\" aria-hidden=\"true\" focusable=\"false\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ><rect x=\"3\" y=\"5\" width=\"6\" height=\"6\" rx=\"1\" /><path d=\"m3 17 2 2 4-4\" /><path d=\"M13 6h8\" /><path d=\"M13 12h8\" /><path d=\"M13 18h8\" /></svg>",
+  "images": "<svg class=\"icon\" aria-hidden=\"true\" focusable=\"false\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ><path d=\"M18 22H4a2 2 0 0 1-2-2V6\" /><path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\" /><circle cx=\"12\" cy=\"8\" r=\"2\" /><rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\" /></svg>",
+  "ellipsis": "<svg class=\"icon\" aria-hidden=\"true\" focusable=\"false\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ><circle cx=\"12\" cy=\"12\" r=\"1\" /><circle cx=\"19\" cy=\"12\" r=\"1\" /><circle cx=\"5\" cy=\"12\" r=\"1\" /></svg>",
+  "brush": "<svg class=\"icon\" aria-hidden=\"true\" focusable=\"false\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ><path d=\"m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08\" /><path d=\"M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z\" /></svg>"
+ },
+ "constants": {
+  "port": 8765,
+  "max_upload": 26214400,
+  "max_json": 65536,
+  "event_streams": 8,
+  "event_ping": 15.0,
+  "pin_digits": 6,
+  "pin_tries": 5,
+  "pin_wait": 30,
+  "pin_wait_max": 3600,
+  "pin_global": 20,
+  "pin_window": 600,
+  "cookie": "cs_access",
+  "cookie_age": 34560000,
+  "page_csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'",
+  "svg_csp": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+  "fonts": [
+   "Inter-Regular.ttf",
+   "Inter-Medium.ttf",
+   "Inter-SemiBold.ttf",
+   "Inter-Bold.ttf"
+  ],
+  "font_cache": "public, max-age=604800",
+  "methods": [
+   "clipasso",
+   "swiftsketch",
+   "controlsketch",
+   "scenesketch"
+  ],
+  "upload_dir": "_remote",
+  "call_timeout": 20.0
+ }
+}

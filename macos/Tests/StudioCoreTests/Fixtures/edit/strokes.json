@@ -1,0 +1,7261 @@
+[
+ {
+  "svg": "svg/lines.svg",
+  "count": 2,
+  "fixed": 0,
+  "view_box": [
+   0.0,
+   0.0,
+   224.0,
+   224.0
+  ],
+  "samples": [
+   [
+    [
+     [
+      10.0,
+      20.0
+     ],
+     [
+      27.31818181818182,
+      20.931818181818183
+     ],
+     [
+      44.63636363636364,
+      21.863636363636363
+     ],
+     [
+      61.95454545454545,
+      22.795454545454547
+     ],
+     [
+      79.27272727272728,
+      23.727272727272727
+     ],
+     [
+      96.5909090909091,
+      24.65909090909091
+     ],
+     [
+      113.9090909090909,
+      25.59090909090909
+     ],
+     [
+      131.22727272727272,
+      26.522727272727273
+     ],
+     [
+      148.54545454545456,
+      27.454545454545453
+     ],
+     [
+      165.86363636363637,
+      28.386363636363637
+     ],
+     [
+      183.1818181818182,
+      29.31818181818182
+     ],
+     [
+      200.5,
+      30.25
+     ]
+    ]
+   ],
+   [
+    [
+     [
+      5.0,
+      5.0
+     ],
+     [
+      22.396694214876035,
+      35.63636363636363
+     ],
+     [
+      40.04132231404958,
+      60.27272727272727
+     ],
+     [
+      57.93388429752065,
+      78.9090909090909
+     ],
+     [
+      76.07438016528926,
+      91.54545454545455
+     ],
+     [
+      94.46280991735536,
+      98.18181818181819
+     ],
+     [
+      113.099173553719,
+      98.81818181818183
+     ],
+     [
+      131.98347107438016,
+      93.45454545454545
+     ],
+     [
+      151.11570247933884,
+      82.0909090909091
+     ],
+     [
+      170.49586776859505,
+      64.72727272727272
+     ],
+     [
+      190.12396694214874,
+      41.363636363636374
+     ],
+     [
+      210.0,
+      12.0
+     ]
+    ]
+   ]
+  ],
+  "hits": [
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 10.25,
+    "y": 19.5,
+    "tolerance": 1.0,
+    "index": 0
+   },
+   {
+    "x": 5.25,
+    "y": 4.5,
+    "tolerance": 1.0,
+    "index": 1
+   }
+  ],
+  "removes": [
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+   },
+   {
+    "indices": [
+     1
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     0,
+     1
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     7
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+   }
+  ],
+  "appends": [
+   {
+    "points": [
+     [
+      20,
+      100
+     ],
+     [
+      29,
+      115
+     ],
+     [
+      38,
+      100
+     ],
+     [
+      47,
+      115
+     ],
+     [
+      56,
+      100
+     ],
+     [
+      65,
+      115
+     ],
+     [
+      74,
+      100
+     ],
+     [
+      83,
+      115
+     ],
+     [
+      92,
+      100
+     ],
+     [
+      101,
+      115
+     ],
+     [
+      110,
+      100
+     ],
+     [
+      119,
+      115
+     ],
+     [
+      128,
+      100
+     ],
+     [
+      137,
+      115
+     ],
+     [
+      146,
+      100
+     ],
+     [
+      155,
+      115
+     ],
+     [
+      164,
+      100
+     ],
+     [
+      173,
+      115
+     ],
+     [
+      182,
+      100
+     ],
+     [
+      191,
+      115
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 20 100 C 21.5 102.5 26 115 29 115 C 32 115 35 100 38 100 C 41 100 44 115 47 115 C 50 115 53 100 56 100 C 59 100 62 115 65 115 C 68 115 71 100 74 100 C 77 100 80 115 83 115 C 86 115 89 100 92 100 C 95 100 98 115 101 115 C 104 115 107 100 110 100 C 113 100 116 115 119 115 C 122 115 125 100 128 100 C 131 100 134 115 137 115 C 140 115 143 100 146 100 C 149 100 152 115 155 115 C 158 115 161 100 164 100 C 167 100 170 115 173 115 C 176 115 179 100 182 100 C 185 100 189.5 112.5 191 115\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      50.0
+     ],
+     [
+      14,
+      50.25244129544237
+     ],
+     [
+      18,
+      50.272789228047706
+     ],
+     [
+      22,
+      50.04233600241796
+     ],
+     [
+      26,
+      49.77295925140762
+     ],
+     [
+      30,
+      49.71232271760106
+     ],
+     [
+      34,
+      49.91617535054032
+     ],
+     [
+      38,
+      50.19709597961564
+     ],
+     [
+      42,
+      50.296807473987016
+     ],
+     [
+      46,
+      50.123635545572526
+     ],
+     [
+      50,
+      49.836793666733186
+     ],
+     [
+      54,
+      49.700002938034785
+     ],
+     [
+      58,
+      49.83902812459987
+     ],
+     [
+      62,
+      50.126050111047995
+     ],
+     [
+      66,
+      50.29718220670846
+     ],
+     [
+      70,
+      50.195086352047134
+     ],
+     [
+      74,
+      49.91362900500048
+     ],
+     [
+      78,
+      49.711580752436134
+     ],
+     [
+      82,
+      49.774703825968494
+     ],
+     [
+      86,
+      50.04496316289889
+     ],
+     [
+      90,
+      50.273883575218285
+     ],
+     [
+      94,
+      50.250996691560815
+     ],
+     [
+      98,
+      49.99734460721288
+     ],
+     [
+      102,
+      49.74613387874745
+     ],
+     [
+      106,
+      49.728326491398015
+     ],
+     [
+      110,
+      49.96029447497067
+     ],
+     [
+      114,
+      50.22876753514388
+     ],
+     [
+      118,
+      50.28691277852135
+     ],
+     [
+      122,
+      50.08127173649236
+     ],
+     [
+      126,
+      49.80090983473611
+     ],
+     [
+      130,
+      49.703590512772145
+     ],
+     [
+      134,
+      49.87878870640308
+     ],
+     [
+      138,
+      50.16542800437251
+     ],
+     [
+      142,
+      50.29997355803218
+     ],
+     [
+      146,
+      50.15872480583601
+     ],
+     [
+      150,
+      49.87154519915116
+     ],
+     [
+      154,
+      49.70246634396707
+     ],
+     [
+      158,
+      49.8069385599929
+     ],
+     [
+      162,
+      50.088910573612814
+     ],
+     [
+      166,
+      50.28913861588523
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 10 50 C 36 50.048 140 50.241 166 50.289\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      10
+     ],
+     [
+      10,
+      10
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      70.125,
+      10
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 10 10 C 15.083 15.042 30.479 40.25 40.5 40.25 C 50.521 40.25 65.188 15.042 70.125 10\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      15.3333,
+      80.6667
+     ],
+     [
+      150.75,
+      120.125
+     ]
+    ],
+    "width": 2.5,
+    "fixed": false,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 15.333 80.667 C 37.903 87.243 128.181 113.549 150.75 120.125\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></g>\n</svg>"
+   }
+  ],
+  "unfixed": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 10 20 L 200.5 30.25\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 5 5 Q 100 190 210 12\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+ },
+ {
+  "svg": "svg/cubic.svg",
+  "count": 2,
+  "fixed": 1,
+  "view_box": [
+   0.0,
+   0.0,
+   224.0,
+   224.0
+  ],
+  "samples": [
+   [
+    [
+     [
+      12.0,
+      200.0
+     ],
+     [
+      19.91885800150263,
+      179.42148760330574
+     ],
+     [
+      28.342599549211112,
+      161.32231404958674
+     ],
+     [
+      37.18106686701727,
+      145.70247933884295
+     ],
+     [
+      46.34410217881293,
+      132.56198347107437
+     ],
+     [
+      55.741547708489854,
+      121.90082644628097
+     ],
+     [
+      65.28324567993988,
+      113.71900826446281
+     ],
+     [
+      74.87903831705484,
+      108.01652892561982
+     ],
+     [
+      84.43876784372652,
+      104.79338842975207
+     ],
+     [
+      93.87227648384675,
+      104.04958677685951
+     ],
+     [
+      103.08940646130728,
+      105.78512396694214
+     ],
+     [
+      112.0,
+      110.0
+     ],
+     [
+      122.39969947407963,
+      113.31329827197595
+     ],
+     [
+      132.8174305033809,
+      112.70473328324566
+     ],
+     [
+      143.17205108940647,
+      108.71525169045829
+     ],
+     [
+      153.3824192336589,
+      101.88580015026295
+     ],
+     [
+      163.36739293764086,
+      92.75732531930878
+     ],
+     [
+      173.04583020285497,
+      81.87077385424493
+     ],
+     [
+      182.33658903080388,
+      69.76709241172051
+     ],
+     [
+      191.15852742299023,
+      56.987227648384675
+     ],
+     [
+      199.4305033809166,
+      44.072126220886545
+     ],
+     [
+      207.07137490608565,
+      31.562734785875286
+     ],
+     [
+      214.0,
+      20.0
+     ]
+    ]
+   ],
+   [
+    [
+     [
+      30.1235,
+      40.9877
+     ],
+     [
+      38.27498121712997,
+      34.65141495116453
+     ],
+     [
+      46.434283621337336,
+      31.98099151014274
+     ],
+     [
+      54.60310443275732,
+      32.1305045078888
+     ],
+     [
+      62.78314087152516,
+      34.25402877535687
+     ],
+     [
+      70.9760901577761,
+      37.50563914350112
+     ],
+     [
+      79.18364951164537,
+      41.03941044327573
+     ],
+     [
+      87.4075161532682,
+      44.00941750563486
+     ],
+     [
+      95.64938730277987,
+      45.569735161532684
+     ],
+     [
+      103.91096018031556,
+      44.874438241923365
+     ],
+     [
+      112.1939320060105,
+      41.07760157776108
+     ],
+     [
+      120.5,
+      33.3333
+     ]
+    ]
+   ]
+  ],
+  "hits": [
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 12.25,
+    "y": 199.5,
+    "tolerance": 1.0,
+    "index": 0
+   },
+   {
+    "x": 30.3735,
+    "y": 40.4877,
+    "tolerance": 1.0,
+    "index": 1
+   }
+  ],
+  "removes": [
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>"
+   },
+   {
+    "indices": [
+     1
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     0,
+     1
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     7
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>"
+   }
+  ],
+  "appends": [
+   {
+    "points": [
+     [
+      20,
+      100
+     ],
+     [
+      29,
+      115
+     ],
+     [
+      38,
+      100
+     ],
+     [
+      47,
+      115
+     ],
+     [
+      56,
+      100
+     ],
+     [
+      65,
+      115
+     ],
+     [
+      74,
+      100
+     ],
+     [
+      83,
+      115
+     ],
+     [
+      92,
+      100
+     ],
+     [
+      101,
+      115
+     ],
+     [
+      110,
+      100
+     ],
+     [
+      119,
+      115
+     ],
+     [
+      128,
+      100
+     ],
+     [
+      137,
+      115
+     ],
+     [
+      146,
+      100
+     ],
+     [
+      155,
+      115
+     ],
+     [
+      164,
+      100
+     ],
+     [
+      173,
+      115
+     ],
+     [
+      182,
+      100
+     ],
+     [
+      191,
+      115
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  <path d=\"M 20 100 C 21.5 102.5 26 115 29 115 C 32 115 35 100 38 100 C 41 100 44 115 47 115 C 50 115 53 100 56 100 C 59 100 62 115 65 115 C 68 115 71 100 74 100 C 77 100 80 115 83 115 C 86 115 89 100 92 100 C 95 100 98 115 101 115 C 104 115 107 100 110 100 C 113 100 116 115 119 115 C 122 115 125 100 128 100 C 131 100 134 115 137 115 C 140 115 143 100 146 100 C 149 100 152 115 155 115 C 158 115 161 100 164 100 C 167 100 170 115 173 115 C 176 115 179 100 182 100 C 185 100 189.5 112.5 191 115\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      50.0
+     ],
+     [
+      14,
+      50.25244129544237
+     ],
+     [
+      18,
+      50.272789228047706
+     ],
+     [
+      22,
+      50.04233600241796
+     ],
+     [
+      26,
+      49.77295925140762
+     ],
+     [
+      30,
+      49.71232271760106
+     ],
+     [
+      34,
+      49.91617535054032
+     ],
+     [
+      38,
+      50.19709597961564
+     ],
+     [
+      42,
+      50.296807473987016
+     ],
+     [
+      46,
+      50.123635545572526
+     ],
+     [
+      50,
+      49.836793666733186
+     ],
+     [
+      54,
+      49.700002938034785
+     ],
+     [
+      58,
+      49.83902812459987
+     ],
+     [
+      62,
+      50.126050111047995
+     ],
+     [
+      66,
+      50.29718220670846
+     ],
+     [
+      70,
+      50.195086352047134
+     ],
+     [
+      74,
+      49.91362900500048
+     ],
+     [
+      78,
+      49.711580752436134
+     ],
+     [
+      82,
+      49.774703825968494
+     ],
+     [
+      86,
+      50.04496316289889
+     ],
+     [
+      90,
+      50.273883575218285
+     ],
+     [
+      94,
+      50.250996691560815
+     ],
+     [
+      98,
+      49.99734460721288
+     ],
+     [
+      102,
+      49.74613387874745
+     ],
+     [
+      106,
+      49.728326491398015
+     ],
+     [
+      110,
+      49.96029447497067
+     ],
+     [
+      114,
+      50.22876753514388
+     ],
+     [
+      118,
+      50.28691277852135
+     ],
+     [
+      122,
+      50.08127173649236
+     ],
+     [
+      126,
+      49.80090983473611
+     ],
+     [
+      130,
+      49.703590512772145
+     ],
+     [
+      134,
+      49.87878870640308
+     ],
+     [
+      138,
+      50.16542800437251
+     ],
+     [
+      142,
+      50.29997355803218
+     ],
+     [
+      146,
+      50.15872480583601
+     ],
+     [
+      150,
+      49.87154519915116
+     ],
+     [
+      154,
+      49.70246634396707
+     ],
+     [
+      158,
+      49.8069385599929
+     ],
+     [
+      162,
+      50.088910573612814
+     ],
+     [
+      166,
+      50.28913861588523
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  <path d=\"M 10 50 C 36 50.048 140 50.241 166 50.289\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      10
+     ],
+     [
+      10,
+      10
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      70.125,
+      10
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  <path d=\"M 10 10 C 15.083 15.042 30.479 40.25 40.5 40.25 C 50.521 40.25 65.188 15.042 70.125 10\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  </g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      15.3333,
+      80.6667
+     ],
+     [
+      150.75,
+      120.125
+     ]
+    ],
+    "width": 2.5,
+    "fixed": false,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" />\n  <path d=\"M 15.333 80.667 C 37.903 87.243 128.181 113.549 150.75 120.125\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></g>\n</svg>"
+   }
+  ],
+  "unfixed": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <g>\n    <path d=\"M 12 200 C 40 120 80 90 112 110 C 150 130 190 60 214 20\" fill=\"none\" stroke=\"rgb(51, 102, 153)\" stroke-opacity=\"0.6\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <path d=\"M 30.1235 40.9877 C 60 10 90 70 120.5 33.3333\" fill=\"none\" stroke=\"rgb(255, 0, 0)\" stroke-opacity=\"0.35\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+ },
+ {
+  "svg": "svg/closed_bg.svg",
+  "count": 1,
+  "fixed": 0,
+  "view_box": [
+   0.0,
+   0.0,
+   224.0,
+   224.0
+  ],
+  "samples": [
+   [
+    [
+     [
+      50.0,
+      50.0
+     ],
+     [
+      58.880540946656645,
+      42.56198347107438
+     ],
+     [
+      68.97821187077385,
+      36.61157024793388
+     ],
+     [
+      80.02253944402705,
+      32.14876033057851
+     ],
+     [
+      91.74305033809166,
+      29.173553719008265
+     ],
+     [
+      103.8692712246431,
+      27.685950413223136
+     ],
+     [
+      116.13072877535686,
+      27.68595041322314
+     ],
+     [
+      128.25694966190832,
+      29.17355371900826
+     ],
+     [
+      139.97746055597295,
+      32.14876033057851
+     ],
+     [
+      151.02178812922614,
+      36.61157024793389
+     ],
+     [
+      161.11945905334335,
+      42.56198347107438
+     ],
+     [
+      170.0,
+      50.0
+     ],
+     [
+      163.14800901577757,
+      77.27272727272727
+     ],
+     [
+      153.86175807663406,
+      99.09090909090907
+     ],
+     [
+      142.68219383921863,
+      115.45454545454544
+     ],
+     [
+      130.15026296018033,
+      126.36363636363637
+     ],
+     [
+      116.80691209616828,
+      131.81818181818178
+     ],
+     [
+      103.19308790383171,
+      131.8181818181818
+     ],
+     [
+      89.84973703981967,
+      126.36363636363635
+     ],
+     [
+      77.31780616078137,
+      115.45454545454545
+     ],
+     [
+      66.13824192336588,
+      99.09090909090908
+     ],
+     [
+      56.85199098422239,
+      77.27272727272728
+     ],
+     [
+      50.0,
+      50.0
+     ]
+    ]
+   ]
+  ],
+  "hits": [
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 50.25,
+    "y": 49.5,
+    "tolerance": 1.0,
+    "index": 0
+   }
+  ],
+  "removes": [
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    </g>\n</svg>"
+   },
+   {
+    "indices": [
+     6
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+   }
+  ],
+  "appends": [
+   {
+    "points": [
+     [
+      20,
+      100
+     ],
+     [
+      29,
+      115
+     ],
+     [
+      38,
+      100
+     ],
+     [
+      47,
+      115
+     ],
+     [
+      56,
+      100
+     ],
+     [
+      65,
+      115
+     ],
+     [
+      74,
+      100
+     ],
+     [
+      83,
+      115
+     ],
+     [
+      92,
+      100
+     ],
+     [
+      101,
+      115
+     ],
+     [
+      110,
+      100
+     ],
+     [
+      119,
+      115
+     ],
+     [
+      128,
+      100
+     ],
+     [
+      137,
+      115
+     ],
+     [
+      146,
+      100
+     ],
+     [
+      155,
+      115
+     ],
+     [
+      164,
+      100
+     ],
+     [
+      173,
+      115
+     ],
+     [
+      182,
+      100
+     ],
+     [
+      191,
+      115
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 20 100 C 21.5 102.5 26 115 29 115 C 32 115 35 100 38 100 C 41 100 44 115 47 115 C 50 115 53 100 56 100 C 59 100 62 115 65 115 C 68 115 71 100 74 100 C 77 100 80 115 83 115 C 86 115 89 100 92 100 C 95 100 98 115 101 115 C 104 115 107 100 110 100 C 113 100 116 115 119 115 C 122 115 125 100 128 100 C 131 100 134 115 137 115 C 140 115 143 100 146 100 C 149 100 152 115 155 115 C 158 115 161 100 164 100 C 167 100 170 115 173 115 C 176 115 179 100 182 100 C 185 100 189.5 112.5 191 115\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      50.0
+     ],
+     [
+      14,
+      50.25244129544237
+     ],
+     [
+      18,
+      50.272789228047706
+     ],
+     [
+      22,
+      50.04233600241796
+     ],
+     [
+      26,
+      49.77295925140762
+     ],
+     [
+      30,
+      49.71232271760106
+     ],
+     [
+      34,
+      49.91617535054032
+     ],
+     [
+      38,
+      50.19709597961564
+     ],
+     [
+      42,
+      50.296807473987016
+     ],
+     [
+      46,
+      50.123635545572526
+     ],
+     [
+      50,
+      49.836793666733186
+     ],
+     [
+      54,
+      49.700002938034785
+     ],
+     [
+      58,
+      49.83902812459987
+     ],
+     [
+      62,
+      50.126050111047995
+     ],
+     [
+      66,
+      50.29718220670846
+     ],
+     [
+      70,
+      50.195086352047134
+     ],
+     [
+      74,
+      49.91362900500048
+     ],
+     [
+      78,
+      49.711580752436134
+     ],
+     [
+      82,
+      49.774703825968494
+     ],
+     [
+      86,
+      50.04496316289889
+     ],
+     [
+      90,
+      50.273883575218285
+     ],
+     [
+      94,
+      50.250996691560815
+     ],
+     [
+      98,
+      49.99734460721288
+     ],
+     [
+      102,
+      49.74613387874745
+     ],
+     [
+      106,
+      49.728326491398015
+     ],
+     [
+      110,
+      49.96029447497067
+     ],
+     [
+      114,
+      50.22876753514388
+     ],
+     [
+      118,
+      50.28691277852135
+     ],
+     [
+      122,
+      50.08127173649236
+     ],
+     [
+      126,
+      49.80090983473611
+     ],
+     [
+      130,
+      49.703590512772145
+     ],
+     [
+      134,
+      49.87878870640308
+     ],
+     [
+      138,
+      50.16542800437251
+     ],
+     [
+      142,
+      50.29997355803218
+     ],
+     [
+      146,
+      50.15872480583601
+     ],
+     [
+      150,
+      49.87154519915116
+     ],
+     [
+      154,
+      49.70246634396707
+     ],
+     [
+      158,
+      49.8069385599929
+     ],
+     [
+      162,
+      50.088910573612814
+     ],
+     [
+      166,
+      50.28913861588523
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 10 50 C 36 50.048 140 50.241 166 50.289\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      10
+     ],
+     [
+      10,
+      10
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      70.125,
+      10
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 10 10 C 15.083 15.042 30.479 40.25 40.5 40.25 C 50.521 40.25 65.188 15.042 70.125 10\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      15.3333,
+      80.6667
+     ],
+     [
+      150.75,
+      120.125
+     ]
+    ],
+    "width": 2.5,
+    "fixed": false,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  <path d=\"M 15.333 80.667 C 37.903 87.243 128.181 113.549 150.75 120.125\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></g>\n</svg>"
+   }
+  ],
+  "unfixed": "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\">\n  <defs />\n  <rect x=\"0\" y=\"0\" width=\"224\" height=\"224\" fill=\"#fff8e7\" />\n  <g>\n    <path d=\"M 50 50 C 80 20 140 20 170 50 C 150 160 70 160 50 50 Z\" fill=\"none\" stroke=\"rgb(26, 26, 26)\" stroke-opacity=\"1\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n  </g>\n</svg>"
+ },
+ {
+  "svg": "edit/odd.svg",
+  "count": 3,
+  "fixed": 1,
+  "view_box": [
+   -10.0,
+   5.0,
+   300.0,
+   200.0
+  ],
+  "samples": [
+   [
+    [
+     [
+      0.0,
+      10.0
+     ],
+     [
+      9.090909090909092,
+      10.0
+     ],
+     [
+      18.181818181818183,
+      10.0
+     ],
+     [
+      27.27272727272727,
+      10.0
+     ],
+     [
+      36.36363636363637,
+      10.0
+     ],
+     [
+      45.45454545454545,
+      10.0
+     ],
+     [
+      54.54545454545454,
+      10.0
+     ],
+     [
+      63.63636363636363,
+      10.0
+     ],
+     [
+      72.72727272727273,
+      10.0
+     ],
+     [
+      81.81818181818183,
+      10.0
+     ],
+     [
+      90.9090909090909,
+      10.0
+     ],
+     [
+      100.0,
+      10.0
+     ]
+    ],
+    [
+     [
+      120.0,
+      10.0
+     ],
+     [
+      127.27272727272728,
+      14.545454545454547
+     ],
+     [
+      134.54545454545456,
+      19.090909090909093
+     ],
+     [
+      141.8181818181818,
+      23.636363636363633
+     ],
+     [
+      149.0909090909091,
+      28.181818181818183
+     ],
+     [
+      156.36363636363637,
+      32.72727272727273
+     ],
+     [
+      163.63636363636363,
+      37.272727272727266
+     ],
+     [
+      170.9090909090909,
+      41.81818181818181
+     ],
+     [
+      178.1818181818182,
+      46.36363636363637
+     ],
+     [
+      185.45454545454544,
+      50.909090909090914
+     ],
+     [
+      192.72727272727272,
+      55.45454545454545
+     ],
+     [
+      200.0,
+      60.0
+     ]
+    ]
+   ],
+   [
+    [
+     [
+      20.0,
+      150.0
+     ],
+     [
+      30.909090909090907,
+      139.85725018782867
+     ],
+     [
+      41.81818181818181,
+      135.80015026296013
+     ],
+     [
+      52.72727272727272,
+      136.47633358377158
+     ],
+     [
+      63.63636363636364,
+      140.53343350864012
+     ],
+     [
+      74.54545454545453,
+      146.61908339594288
+     ],
+     [
+      85.45454545454545,
+      153.3809166040571
+     ],
+     [
+      96.36363636363635,
+      159.46656649135986
+     ],
+     [
+      107.27272727272728,
+      163.52366641622842
+     ],
+     [
+      118.18181818181819,
+      164.1998497370398
+     ],
+     [
+      129.09090909090907,
+      160.1427498121713
+     ],
+     [
+      140.0,
+      150.0
+     ]
+    ]
+   ],
+   [
+    [
+     [
+      250.0,
+      20.0
+     ],
+     [
+      251.8181818181818,
+      42.892561983471076
+     ],
+     [
+      253.63636363636363,
+      64.29752066115702
+     ],
+     [
+      255.45454545454544,
+      84.21487603305783
+     ],
+     [
+      257.27272727272725,
+      102.64462809917356
+     ],
+     [
+      259.09090909090907,
+      119.58677685950414
+     ],
+     [
+      260.90909090909093,
+      135.04132231404958
+     ],
+     [
+      262.72727272727275,
+      149.00826446280993
+     ],
+     [
+      264.5454545454545,
+      161.48760330578511
+     ],
+     [
+      266.3636363636364,
+      172.4793388429752
+     ],
+     [
+      268.1818181818182,
+      181.98347107438016
+     ],
+     [
+      270.0,
+      190.0
+     ],
+     [
+      268.1818181818182,
+      174.54545454545453
+     ],
+     [
+      266.3636363636364,
+      159.0909090909091
+     ],
+     [
+      264.54545454545456,
+      143.63636363636363
+     ],
+     [
+      262.72727272727275,
+      128.1818181818182
+     ],
+     [
+      260.90909090909093,
+      112.72727272727273
+     ],
+     [
+      259.09090909090907,
+      97.27272727272728
+     ],
+     [
+      257.27272727272725,
+      81.81818181818181
+     ],
+     [
+      255.45454545454544,
+      66.36363636363636
+     ],
+     [
+      253.63636363636363,
+      50.90909090909091
+     ],
+     [
+      251.8181818181818,
+      35.45454545454547
+     ],
+     [
+      250.0,
+      20.0
+     ]
+    ]
+   ]
+  ],
+  "hits": [
+   {
+    "x": -10.0,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": -10.0,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 27.5,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 27.5,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 27.5,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 27.5,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 65.0,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 65.0,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 65.0,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 102.5,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 102.5,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 102.5,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 140.0,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": 1
+   },
+   {
+    "x": 140.0,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": 1
+   },
+   {
+    "x": 140.0,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": 0
+   },
+   {
+    "x": 177.5,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 177.5,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 215.0,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": 2
+   },
+   {
+    "x": 252.5,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 252.5,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 5.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 5.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 30.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 30.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 55.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 55.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 80.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 80.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 105.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 105.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 130.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 130.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 155.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 155.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 180.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 180.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 205.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 290.0,
+    "y": 205.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.25,
+    "y": 9.5,
+    "tolerance": 1.0,
+    "index": 0
+   },
+   {
+    "x": 20.25,
+    "y": 149.5,
+    "tolerance": 1.0,
+    "index": 1
+   },
+   {
+    "x": 250.25,
+    "y": 19.5,
+    "tolerance": 1.0,
+    "index": 2
+   }
+  ],
+  "removes": [
+   {
+    "indices": [
+     0
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>"
+   },
+   {
+    "indices": [
+     2
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  </g>\n</svg>"
+   },
+   {
+    "indices": [
+     0,
+     1,
+     2
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <g><g transform=\"none\">\n    </g>\n  </g>\n</svg>"
+   },
+   {
+    "indices": [
+     8
+    ],
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>"
+   }
+  ],
+  "appends": [
+   {
+    "points": [
+     [
+      20,
+      100
+     ],
+     [
+      29,
+      115
+     ],
+     [
+      38,
+      100
+     ],
+     [
+      47,
+      115
+     ],
+     [
+      56,
+      100
+     ],
+     [
+      65,
+      115
+     ],
+     [
+      74,
+      100
+     ],
+     [
+      83,
+      115
+     ],
+     [
+      92,
+      100
+     ],
+     [
+      101,
+      115
+     ],
+     [
+      110,
+      100
+     ],
+     [
+      119,
+      115
+     ],
+     [
+      128,
+      100
+     ],
+     [
+      137,
+      115
+     ],
+     [
+      146,
+      100
+     ],
+     [
+      155,
+      115
+     ],
+     [
+      164,
+      100
+     ],
+     [
+      173,
+      115
+     ],
+     [
+      182,
+      100
+     ],
+     [
+      191,
+      115
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 20 100 C 21.5 102.5 26 115 29 115 C 32 115 35 100 38 100 C 41 100 44 115 47 115 C 50 115 53 100 56 100 C 59 100 62 115 65 115 C 68 115 71 100 74 100 C 77 100 80 115 83 115 C 86 115 89 100 92 100 C 95 100 98 115 101 115 C 104 115 107 100 110 100 C 113 100 116 115 119 115 C 122 115 125 100 128 100 C 131 100 134 115 137 115 C 140 115 143 100 146 100 C 149 100 152 115 155 115 C 158 115 161 100 164 100 C 167 100 170 115 173 115 C 176 115 179 100 182 100 C 185 100 189.5 112.5 191 115\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      50.0
+     ],
+     [
+      14,
+      50.25244129544237
+     ],
+     [
+      18,
+      50.272789228047706
+     ],
+     [
+      22,
+      50.04233600241796
+     ],
+     [
+      26,
+      49.77295925140762
+     ],
+     [
+      30,
+      49.71232271760106
+     ],
+     [
+      34,
+      49.91617535054032
+     ],
+     [
+      38,
+      50.19709597961564
+     ],
+     [
+      42,
+      50.296807473987016
+     ],
+     [
+      46,
+      50.123635545572526
+     ],
+     [
+      50,
+      49.836793666733186
+     ],
+     [
+      54,
+      49.700002938034785
+     ],
+     [
+      58,
+      49.83902812459987
+     ],
+     [
+      62,
+      50.126050111047995
+     ],
+     [
+      66,
+      50.29718220670846
+     ],
+     [
+      70,
+      50.195086352047134
+     ],
+     [
+      74,
+      49.91362900500048
+     ],
+     [
+      78,
+      49.711580752436134
+     ],
+     [
+      82,
+      49.774703825968494
+     ],
+     [
+      86,
+      50.04496316289889
+     ],
+     [
+      90,
+      50.273883575218285
+     ],
+     [
+      94,
+      50.250996691560815
+     ],
+     [
+      98,
+      49.99734460721288
+     ],
+     [
+      102,
+      49.74613387874745
+     ],
+     [
+      106,
+      49.728326491398015
+     ],
+     [
+      110,
+      49.96029447497067
+     ],
+     [
+      114,
+      50.22876753514388
+     ],
+     [
+      118,
+      50.28691277852135
+     ],
+     [
+      122,
+      50.08127173649236
+     ],
+     [
+      126,
+      49.80090983473611
+     ],
+     [
+      130,
+      49.703590512772145
+     ],
+     [
+      134,
+      49.87878870640308
+     ],
+     [
+      138,
+      50.16542800437251
+     ],
+     [
+      142,
+      50.29997355803218
+     ],
+     [
+      146,
+      50.15872480583601
+     ],
+     [
+      150,
+      49.87154519915116
+     ],
+     [
+      154,
+      49.70246634396707
+     ],
+     [
+      158,
+      49.8069385599929
+     ],
+     [
+      162,
+      50.088910573612814
+     ],
+     [
+      166,
+      50.28913861588523
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 10 50 C 36 50.048 140 50.241 166 50.289\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      10
+     ],
+     [
+      10,
+      10
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      70.125,
+      10
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 10 10 C 15.083 15.042 30.479 40.25 40.5 40.25 C 50.521 40.25 65.188 15.042 70.125 10\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></g>\n</svg>"
+   },
+   {
+    "points": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  <!-- a comment -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>\n"
+   },
+   {
+    "points": [
+     [
+      15.3333,
+      80.6667
+     ],
+     [
+      150.75,
+      120.125
+     ]
+    ],
+    "width": 2.5,
+    "fixed": false,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" data-fixed=\"true\" stroke=\"rgb(0, 0, 0)\" />\n  <path d=\"M 15.333 80.667 C 37.903 87.243 128.181 113.549 150.75 120.125\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></g>\n</svg>"
+   }
+  ],
+  "unfixed": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300px\" height=\"200px\" viewBox=\"-10, 5 300 200\">\n  \n  <rect width=\"100%\" height=\"100%\" fill=\"#fff8e7\" />\n  <path d=\"M 0 10 L 100 10 M 120 10 L 200 60\" stroke=\"rgb(0, 0, 0)\" />\n  <g><g transform=\"none\">\n    <path d=\"M 20 150 C 60 100 100 200 140 150\" stroke-width=\" 4 \" stroke=\"rgb(0, 0, 0)\"><title>t</title></path>\n  </g>\n  <path d=\"M 250 20 Q 260 150 270 190 Z\" stroke-width=\"2.5\" stroke=\"rgb(0, 0, 0)\" />\n  </g>\n</svg>"
+ },
+ {
+  "svg": "edit/empty.svg",
+  "count": 0,
+  "fixed": 0,
+  "view_box": [
+   0.0,
+   0.0,
+   224.0,
+   224.0
+  ],
+  "samples": [],
+  "hits": [
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 0.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 28.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 56.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 84.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 112.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 140.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 168.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 196.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 0.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 28.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 56.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 84.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 112.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 140.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 168.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 196.0,
+    "tolerance": 9.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 2.0,
+    "index": null
+   },
+   {
+    "x": 224.0,
+    "y": 224.0,
+    "tolerance": 9.0,
+    "index": null
+   }
+  ],
+  "removes": [],
+  "appends": [
+   {
+    "points": [
+     [
+      20,
+      100
+     ],
+     [
+      29,
+      115
+     ],
+     [
+      38,
+      100
+     ],
+     [
+      47,
+      115
+     ],
+     [
+      56,
+      100
+     ],
+     [
+      65,
+      115
+     ],
+     [
+      74,
+      100
+     ],
+     [
+      83,
+      115
+     ],
+     [
+      92,
+      100
+     ],
+     [
+      101,
+      115
+     ],
+     [
+      110,
+      100
+     ],
+     [
+      119,
+      115
+     ],
+     [
+      128,
+      100
+     ],
+     [
+      137,
+      115
+     ],
+     [
+      146,
+      100
+     ],
+     [
+      155,
+      115
+     ],
+     [
+      164,
+      100
+     ],
+     [
+      173,
+      115
+     ],
+     [
+      182,
+      100
+     ],
+     [
+      191,
+      115
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /><path d=\"M 20 100 C 21.5 102.5 26 115 29 115 C 32 115 35 100 38 100 C 41 100 44 115 47 115 C 50 115 53 100 56 100 C 59 100 62 115 65 115 C 68 115 71 100 74 100 C 77 100 80 115 83 115 C 86 115 89 100 92 100 C 95 100 98 115 101 115 C 104 115 107 100 110 100 C 113 100 116 115 119 115 C 122 115 125 100 128 100 C 131 100 134 115 137 115 C 140 115 143 100 146 100 C 149 100 152 115 155 115 C 158 115 161 100 164 100 C 167 100 170 115 173 115 C 176 115 179 100 182 100 C 185 100 189.5 112.5 191 115\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      50.0
+     ],
+     [
+      14,
+      50.25244129544237
+     ],
+     [
+      18,
+      50.272789228047706
+     ],
+     [
+      22,
+      50.04233600241796
+     ],
+     [
+      26,
+      49.77295925140762
+     ],
+     [
+      30,
+      49.71232271760106
+     ],
+     [
+      34,
+      49.91617535054032
+     ],
+     [
+      38,
+      50.19709597961564
+     ],
+     [
+      42,
+      50.296807473987016
+     ],
+     [
+      46,
+      50.123635545572526
+     ],
+     [
+      50,
+      49.836793666733186
+     ],
+     [
+      54,
+      49.700002938034785
+     ],
+     [
+      58,
+      49.83902812459987
+     ],
+     [
+      62,
+      50.126050111047995
+     ],
+     [
+      66,
+      50.29718220670846
+     ],
+     [
+      70,
+      50.195086352047134
+     ],
+     [
+      74,
+      49.91362900500048
+     ],
+     [
+      78,
+      49.711580752436134
+     ],
+     [
+      82,
+      49.774703825968494
+     ],
+     [
+      86,
+      50.04496316289889
+     ],
+     [
+      90,
+      50.273883575218285
+     ],
+     [
+      94,
+      50.250996691560815
+     ],
+     [
+      98,
+      49.99734460721288
+     ],
+     [
+      102,
+      49.74613387874745
+     ],
+     [
+      106,
+      49.728326491398015
+     ],
+     [
+      110,
+      49.96029447497067
+     ],
+     [
+      114,
+      50.22876753514388
+     ],
+     [
+      118,
+      50.28691277852135
+     ],
+     [
+      122,
+      50.08127173649236
+     ],
+     [
+      126,
+      49.80090983473611
+     ],
+     [
+      130,
+      49.703590512772145
+     ],
+     [
+      134,
+      49.87878870640308
+     ],
+     [
+      138,
+      50.16542800437251
+     ],
+     [
+      142,
+      50.29997355803218
+     ],
+     [
+      146,
+      50.15872480583601
+     ],
+     [
+      150,
+      49.87154519915116
+     ],
+     [
+      154,
+      49.70246634396707
+     ],
+     [
+      158,
+      49.8069385599929
+     ],
+     [
+      162,
+      50.088910573612814
+     ],
+     [
+      166,
+      50.28913861588523
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /><path d=\"M 10 50 C 36 50.048 140 50.241 166 50.289\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></svg>"
+   },
+   {
+    "points": [
+     [
+      10,
+      10
+     ],
+     [
+      10,
+      10
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      40.5,
+      40.25
+     ],
+     [
+      70.125,
+      10
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /><path d=\"M 10 10 C 15.083 15.042 30.479 40.25 40.5 40.25 C 50.521 40.25 65.188 15.042 70.125 10\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-fixed=\"1\" /></svg>"
+   },
+   {
+    "points": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "width": null,
+    "fixed": true,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /></svg>"
+   },
+   {
+    "points": [
+     [
+      15.3333,
+      80.6667
+     ],
+     [
+      150.75,
+      120.125
+     ]
+    ],
+    "width": 2.5,
+    "fixed": false,
+    "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /><path d=\"M 15.333 80.667 C 37.903 87.243 128.181 113.549 150.75 120.125\" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-opacity=\"1\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></svg>"
+   }
+  ],
+  "unfixed": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"224\" height=\"224\" viewBox=\"0 0 224 224\"><defs /></svg>"
+ }
+]
