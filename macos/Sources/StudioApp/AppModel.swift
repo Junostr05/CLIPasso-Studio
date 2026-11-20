@@ -58,6 +58,12 @@ public final class AppModel {
     public let mask = StudioMask()
     /// the phone remote (on and off as the settings say)
     public let phone: PhoneRemote
+    /// the Telegram messages and their settings' state
+    public let telegram = TelegramLink()
+    /// how the bot's calls go out (the tests answer as Telegram would) and how long "Connect" waits for /start
+    @ObservationIgnored let telegramTransport: any TelegramTransport
+    @ObservationIgnored let telegramAPI = Telegram.api
+    @ObservationIgnored public var telegramConnectSeconds = Double(Telegram.connectSeconds)
     /// portrait mode's answers awaited (by image path), and those that came before they were awaited
     @ObservationIgnored var faceWaiters: [String: CheckedContinuation<EngineEvent, Never>] = [:]
     @ObservationIgnored var facesArrived: [String: EngineEvent] = [:]
@@ -74,8 +80,10 @@ public final class AppModel {
     public init(resources: AppResources, store: SettingsStore = .standard(),
                 transport: any HTTPTransport = URLSessionTransport(), power: any PowerActions = MacPower(),
                 whenDoneTiming: (seconds: Int, tick: Duration) = (60, .seconds(1)),
-                secrets: (any RemoteSecretStore)? = nil, signals: (any AppSignals)? = nil) throws
+                secrets: (any RemoteSecretStore)? = nil, signals: (any AppSignals)? = nil,
+                telegram: any TelegramTransport = URLSessionPoster()) throws
     {
+        telegramTransport = telegram
         self.signals = signals ?? MacSignals()
         self.resources = resources
         phone = PhoneRemote(store: secrets ?? Self.defaultSecrets())
@@ -206,6 +214,7 @@ public final class AppModel {
         let newResult = finished(snapshot) > finished(queueSnapshot)
         let ranOut = snapshot.finished != nil && queueSnapshot?.finished == nil
         signal(snapshot, before: queueSnapshot)
+        telegramAfter(snapshot, before: queueSnapshot)
         watchFinished(snapshot)
         queueSnapshot = snapshot
         queuePage?.apply(snapshot)

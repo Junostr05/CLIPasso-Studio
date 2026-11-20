@@ -63,6 +63,7 @@ struct SettingsView: View {
             WatchSettings()
             BackupSettings()
             PhoneSettings()
+            TelegramSettings()
             SystemSettings()
         }
         .formStyle(.grouped)

@@ -21,7 +21,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 **Noch nicht in der Mac-App, also nicht testen:**
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
-- Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
+- die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
 
@@ -174,6 +174,7 @@ ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erl
 | P11 | Auf dem Handy „Nach Updates suchen“. | Es steht da, ob es eine neuere Version gibt. Statt „Installieren“ erklärt ein Hinweis, wie man am Mac von Hand aktualisiert. |
 | P12 | Auf dem Handy „Methoden vergleichen“ mit zwei Methoden. | Die Aufträge erscheinen in der Warteschlange am Mac; die Ergebnisse stehen danach auf dem Handy nebeneinander, die beste mit ★. |
 | P13 | Ein fertiges Ergebnis im Studio, auf dem Handy die Skizze: radieren, mit dem Stift einen Strich ziehen, rückgängig. Dann „Vereinfachen“ (warten, bis gemessen ist), den Schieber ziehen, „Übernehmen“; danach „Zwischenstände“ und den Zeitraffer. | Jeder Schritt erscheint auch im Fenster am Mac und lässt sich dort mit ⌘Z zurücknehmen. Vereinfachen und Zwischenstände zeigen auf dem Handy dieselben Skizzen wie am Mac. |
+| P14 | Einstellungen → „Telegram-Nachricht, wenn fertig“ an. In Telegram mit @BotFather einen Bot anlegen, den Token einfügen, „Verbinden“, dem Bot /start schicken. Dann „Testnachricht senden“ und einen kurzen Auftrag rechnen lassen; einen zweiten abbrechen lassen (oder einen, der fehlschlägt). | Nach /start steht „Verbunden mit @…“, der Bot schreibt „CLIPasso Studio ist verbunden“. Die Testnachricht kommt an. Nach dem Auftrag kommt die Skizze als Bild mit Name, Methode, Zeit und CLIP-Score; bei einem Fehler eine Textnachricht. Der Token steht nicht in settings.json, nicht in „Problem melden“ und nicht im Backup. |
 
 ## G3. Updates
 
