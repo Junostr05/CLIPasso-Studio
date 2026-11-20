@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 import time
 
@@ -2429,30 +2428,11 @@ class StudioPage(QWidget):
         self.toast.emit(tr("ui.continue.queued" if busy else "ui.continue.started"), "success")
 
     def continue_job(self, seed: int, new: int, iterations: int, keep: bool) -> tuple[str, dict]:
-        """(image, settings) of a CLIPasso job that continues the sketch ``seed``. Its image is the input as
-        the sketch's method used it (masked, framed, padded), so the strokes line up without further steps."""
-        from .. import strokes
+        """(image, settings) of a CLIPasso job that continues the sketch ``seed`` (gui/continuing.py)."""
+        from .. import continuing
 
-        run_dir = self.seed_runs[seed]
-        svg = self.seed_svgs[seed]
-        state = jobs.read_state(os.path.dirname(os.path.normpath(run_dir))) or {}
-        stem = os.path.splitext(os.path.basename(state.get("target") or ""))[0] or "sketch"
-        base = os.path.join(app_settings().get("output_dir"), "_continued", time.strftime("%Y%m%d-%H%M%S"))
-        folder, n = base, 1
-        while os.path.exists(folder):
-            n += 1
-            folder = f"{base}-{n}"
-        os.makedirs(folder)
-        image = os.path.join(folder, f"{stem}.png")
-        shutil.copyfile(os.path.join(run_dir, "input.png"), image)
-        start = os.path.join(folder, f"{stem}-start.svg")
-        with open(start, "w", encoding="utf-8") as f:
-            f.write(svg if keep else strokes.unfix(svg))
-        settings = dict(self.params.all_settings()["clipasso"])
-        settings.update(method="clipasso", path_svg=start, num_paths=strokes.shape_count(svg) + int(new),
-                        num_iter=int(iterations), num_sketches=1, num_stages=1, mask_object=False,
-                        frame_object=False, fix_scale=False, multiprocess=False)
-        return image, settings
+        return continuing.prepare(self.seed_runs[seed], self.seed_svgs[seed], new, iterations, keep,
+                                  self.params.all_settings()["clipasso"], app_settings().get("output_dir"))
 
     def _erase_begin(self):
         seed = self._editable_seed()

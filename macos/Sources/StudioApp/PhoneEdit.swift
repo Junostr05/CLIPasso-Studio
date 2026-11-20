@@ -28,8 +28,8 @@ public extension AppModel {
             "seed": .int(seed), "strokes": .int(n), "fixed": .int(SketchEditing.fixedCount(svg)),
             "can_erase": .bool(n > 1), "undo": .bool(editor.canUndo), "redo": .bool(editor.canRedo),
             "edited": .bool(editor.isEdited),
-            // (continuing a sketch with CLIPasso is not in the Mac app yet: its box stays hidden)
-            "can_continue": false, "continue": ["new": 4, "iterations": 501],
+            "can_continue": .bool(FileManager.default.fileExists(atPath: editor.runDir.appending(path: "input.png").path)),
+            "continue": ["new": .int(ContinueInfo.startNew), "iterations": .int(ContinueInfo.startIterations)],
             "simplify": .string(simplify), "rev": .int(abs(svg.hashValue) % 10_000_000_000),
         ]
         return .object(out)
@@ -81,7 +81,7 @@ public extension AppModel {
     /// The phone's actions on the shown sketch; nil: not one of them.
     internal func phoneEditAnswer(_ action: String, _ data: JSONObject) async -> RemoteAnswer? {
         func no(_ why: String) -> RemoteAnswer { .json(["ok": false, "error": .string(why)]) }
-        let editActions = ["do_edit", "do_simplify_measure", "file_simplified", "do_simplify_apply", "get_steps",
+        let editActions = ["do_edit", "do_continue_clipasso", "do_simplify_measure", "file_simplified", "do_simplify_apply", "get_steps",
                            "file_step", "do_take_step"]
         guard editActions.contains(action) else { return nil }
         guard let editable = phoneEditable() else { return no(texts.tr("ui.phone.page.edit_none")) }
@@ -122,6 +122,20 @@ public extension AppModel {
                 return no("unknown edit")
             }
             return .json(["ok": true])
+        case "do_continue_clipasso":  // (the questions of the Mac's dialog as the phone's fields)
+            guard FileManager.default.fileExists(atPath: editor.runDir.appending(path: "input.png").path) else {
+                return no(texts.tr("ui.continue.no_input"))
+            }
+            guard let new = data["new"].map({ PhoneStudio.int($0) }) ?? ContinueInfo.startNew,
+                  let iterations = data["iterations"].map({ PhoneStudio.int($0) }) ?? ContinueInfo.startIterations
+            else { return no(texts.tr("ui.phone.page.failed")) }
+            do {
+                let queued = try await continueSketch(editor, new: new, iterations: iterations,
+                                                      keep: data["keep"]?.truthy ?? true)
+                return .json(["ok": true, "queued": .bool(queued)])
+            } catch {
+                return no(texts.tr("ui.phone.page.failed"))
+            }
         case "do_simplify_measure":  // (measured once per sketch, by the engine in a process of its own)
             if await phoneOrder(editor) != nil {
                 importanceState = (editor.svg, "ready")

@@ -22,6 +22,9 @@ struct ResultCanvas: View {
     /// the edit bar below the sketch (saved steps or Simplify; nil: closed)
     @State private var bar: EditBarModel?
     @State private var noSteps = false
+    /// "Continue with CLIPasso": what the dialog shows (nil: closed), and the line after it
+    @State private var continuing: ContinueInfo?
+    @State private var continueNote = ""
 
     var body: some View {
         ZStack {
@@ -63,6 +66,12 @@ struct ResultCanvas: View {
                     } simplify: {
                         tool = .none
                         bar = model.openSimplify(editor)
+                    } continueSketch: {
+                        tool = .none
+                        Task {
+                            guard let info = await model.continueInfo(editor) else { return NSSound.beep() }
+                            if info.canContinue { continuing = info } else { continueNote = model.texts.tr("ui.continue.no_input") }
+                        }
                     }
                 }
             }
@@ -84,6 +93,26 @@ struct ResultCanvas: View {
             }
         }
         .alert(model.texts.tr("ui.edit_bar.no_steps"), isPresented: $noSteps) {}
+        .alert(continueNote, isPresented: Binding(get: { !continueNote.isEmpty }, set: { if !$0 { continueNote = "" } })) {}
+        .sheet(item: Binding(get: { continuing.map(ContinueRequest.init) }, set: { if $0 == nil { continuing = nil } })) {
+            request in
+            if let editor = result.editor {
+                ContinueSheet(info: request.info) { new, iterations, keep in
+                    continuing = nil
+                    Task {
+                        do {
+                            let queued = try await model.continueSketch(editor, new: new, iterations: iterations, keep: keep)
+                            continueNote = model.texts.tr(queued ? "ui.continue.queued" : "ui.continue.started")
+                        } catch {
+                            continueNote = String(describing: error)
+                        }
+                    }
+                } cancel: {
+                    continuing = nil
+                }
+                .environment(model)
+            }
+        }
         .onChange(of: view) {
             tool = .none
             bar = nil
@@ -292,12 +321,14 @@ struct EditTools: View {
     /// the edit bar: the saved steps, Simplify
     let steps: () -> Void
     let simplify: () -> Void
+    let continueSketch: () -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: Spacing.spaceS) {
             HStack(spacing: Spacing.spaceS) {
                 toggle(.eraser, "ui.mac.edit.eraser", "eraser", help: "ui.eraser.tip")
                     .disabled(!editor.canErase)
+                action("ui.continue.tip", "arrow.triangle.2.circlepath", enabled: true, continueSketch)
                 toggle(.pen, "ui.mac.edit.pen", "pencil.line", help: "ui.pen.tip")
                 action("ui.mac.edit.undo", "arrow.uturn.backward", enabled: editor.canUndo) { editor.undo() }
                     .keyboardShortcut("z", modifiers: .command)
@@ -591,5 +622,58 @@ struct EditBarView: View {
         .padding(.horizontal, Spacing.spaceXl)
         .padding(.vertical, Spacing.spaceM)
         .background(.bar)
+    }
+}
+
+/// The dialog's values, as an item of the sheet.
+struct ContinueRequest: Identifiable {
+    let info: ContinueInfo
+    var id: Int { info.strokes &* 31 &+ info.fixed }
+}
+
+/// "Continue with CLIPasso" (dialogs.ContinueDialog): how many new strokes, how long, and whether the strokes drawn
+/// by hand stay where they are.
+struct ContinueSheet: View {
+    @Environment(AppModel.self) private var model
+    let info: ContinueInfo
+    let start: (Int, Int, Bool) -> Void
+    let cancel: () -> Void
+    @State private var new = ContinueInfo.startNew
+    @State private var iterations = ContinueInfo.startIterations
+    @State private var keep = false
+
+    var body: some View {
+        let t = model.texts
+        VStack(alignment: .leading, spacing: Spacing.spaceM) {
+            Text(t.tr("ui.continue.title")).font(.title2)
+            Text(t.tr("ui.continue.desc")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Form {
+                Stepper(value: $new, in: ContinueInfo.newRange) {
+                    LabeledContent(t.tr("ui.continue.new"), value: "\(new)")
+                }
+                Stepper(value: $iterations, in: ContinueInfo.iterationRange, step: 100) {
+                    LabeledContent(t.tr("ui.continue.iterations"), value: "\(iterations)")
+                }
+                Toggle(t.tr("ui.continue.keep", ["n": "\(info.fixed)"]), isOn: $keep)
+                    .disabled(info.fixed == 0)
+                    .help(t.tr("ui.continue.keep_tip"))
+            }
+            Text(t.tr("ui.continue.summary", ["old": "\(info.strokes)", "new": "\(new)", "total": "\(info.strokes + new)"]))
+                .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button(t.tr("ui.cancel"), action: cancel).keyboardShortcut(.cancelAction)
+                Button(t.tr("ui.continue.start"), systemImage: "play.fill") { start(new, iterations, keep) }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(Spacing.spaceXl)
+        .frame(width: 440)
+        .onAppear {
+            new = info.new
+            iterations = info.iterations
+            keep = info.fixed > 0
+        }
     }
 }

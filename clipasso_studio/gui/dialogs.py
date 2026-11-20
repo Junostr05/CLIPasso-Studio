@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QDou
                                QWidget)
 
 from ..engine import framing, model_store
-from . import brush, export, paper, theme
+from . import brush, continuing, export, paper, theme
 from .app_settings import app_settings
 from .i18n import i18n, tr
 from .methods_ui import MODEL_NAMES, model_display_name  # noqa: F401 (Qt-free there: the Mac app exports them)
@@ -748,8 +748,8 @@ class ContinueDialog(QDialog):
     """Continue a sketch with CLIPasso: how many new strokes, how long, and whether the strokes drawn by
     hand stay where they are."""
 
-    NEW_STROKES = 4
-    ITERATIONS = 501
+    NEW_STROKES = continuing.NEW_STROKES
+    ITERATIONS = continuing.ITERATIONS
 
     def __init__(self, strokes: int, fixed: int, parent=None):
         super().__init__(parent)

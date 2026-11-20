@@ -750,6 +750,46 @@ def test_importance(tmp_path):
     assert server.handle(_req(6, "importance"))["error"]["code"] == "bad_request"
 
 
+def test_continue_sketch(tmp_path):
+    """"Continue with CLIPasso": what the dialog shows, then the job prepared as the studio prepares it – in
+    output_dir/_continued, the run's input as its picture, the sketch (strokes drawn by hand fixed or free) as its
+    start; without the input it cannot."""
+    from PIL import Image
+
+    from clipasso_studio.engine import jobs
+    from clipasso_studio.gui import strokes
+
+    job = tmp_path / "Auftrag ä"
+    run = job / "run"
+    run.mkdir(parents=True)
+    (job / jobs.STATE_FILE).write_text(json.dumps({"target": "/Bilder/Kamel.png", "settings": {}}), encoding="utf-8")
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 224"><path d="M0 0 L5 5"/></svg>'
+    (run / "best_iter.svg").write_text(svg, encoding="utf-8")
+    drawn = strokes.append_stroke(svg, [(10, 10), (60, 80), (120, 40)])
+    (run / jobs.EDITED_FILE).write_text(drawn, encoding="utf-8")
+    server, _ = _server()
+    dry = server.handle(_req(1, "continue_sketch", run_dir=str(run), dry=True))["result"]
+    assert dry == {"strokes": 2, "fixed": 1, "can_continue": False, "new": 4, "iterations": 501}
+    out = tmp_path / "Ergebnisse"
+    args = {"run_dir": str(run), "new": 3, "iterations": 101, "keep": True, "settings": {"num_iter": 9, "seed": 7},
+            "output_dir": str(out)}
+    assert server.handle(_req(2, "continue_sketch", **args))["error"]["code"] == "no_input"
+    Image.new("RGB", (224, 224), "white").save(run / "input.png")
+    got = server.handle(_req(3, "continue_sketch", **args))["result"]
+    image, settings = got["image"], got["settings"]
+    assert os.path.basename(image) == "Kamel.png" and os.path.isfile(image)
+    assert os.path.dirname(os.path.dirname(image)) == str(out / "_continued")
+    assert settings["method"] == "clipasso" and settings["num_paths"] == 2 + 3 and settings["num_iter"] == 101
+    assert settings["seed"] == 7 and settings["num_sketches"] == 1 and not settings["mask_object"]
+    assert strokes.fixed_count(open(settings["path_svg"], encoding="utf-8").read()) == 1
+    loose = server.handle(_req(4, "continue_sketch", **{**args, "keep": False}))["result"]["settings"]
+    assert strokes.fixed_count(open(loose["path_svg"], encoding="utf-8").read()) == 0
+    assert loose["path_svg"] != settings["path_svg"]  # (a folder of its own)
+    for bad in ({"new": 200}, {"iterations": 0}, {"new": True}, {"settings": []}):
+        assert server.handle(_req(5, "continue_sketch", **{**args, **bad}))["error"]["code"] == "bad_request"
+    assert server.handle(_req(6, "continue_sketch", run_dir=str(tmp_path)))["error"]["code"] == "not_found"
+
+
 def test_importance_worker(tmp_path, monkeypatch):
     """The worker passes what importance.compute wrote on – or why it could not."""
     import queue as queue_mod

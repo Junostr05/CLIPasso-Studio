@@ -4,7 +4,7 @@ studio; this module only translates.
 
 ops: hello · devices · schema · models · required_models · model_roles · rerun_cell · convert_model · encode_webp ·
 stylize · mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait ·
-importance · start ·
+importance · continue_sketch · start ·
 pause · resume · cancel · shutdown
 """
 
@@ -414,6 +414,37 @@ class EngineServer:
         if computing:
             self.importance.request(run_dir, "", "cpu")
         return {"rank": rank, "order": None if rank is None else importance.order(rank), "computing": computing}
+
+    def op_continue_sketch(self, args: dict) -> dict:
+        """"Continue with CLIPasso" (gui/continuing.py): with ``dry`` what the dialog shows of the run's sketch (the
+        edited one, if there is one) – its strokes, those drawn by hand, whether its input is there and the start
+        values; else the job's picture and settings, prepared in output_dir/_continued (``new`` strokes,
+        ``iterations``, ``keep`` the strokes drawn by hand, ``settings``: the studio's CLIPasso settings)."""
+        from ..engine import jobs
+        from ..gui import continuing, strokes
+
+        run_dir = _text(args, "run_dir")
+        try:
+            with open(jobs.sketch_file(run_dir), encoding="utf-8") as f:
+                svg = f.read()
+        except OSError:
+            raise _Fail("not_found", f"no sketch in {run_dir}") from None
+        if args.get("dry"):
+            return {"strokes": strokes.shape_count(svg), "fixed": strokes.fixed_count(svg),
+                    "can_continue": continuing.can_continue(run_dir),
+                    "new": continuing.NEW_STROKES, "iterations": continuing.ITERATIONS}
+        if not continuing.can_continue(run_dir):
+            raise _Fail("no_input", f"no input.png in {run_dir}")
+        new, iterations, settings = args.get("new"), args.get("iterations"), args.get("settings")
+        if not isinstance(new, int) or isinstance(new, bool) or not 0 <= new <= 128:
+            raise _Fail("bad_request", "new is a whole number from 0 to 128")
+        if not isinstance(iterations, int) or isinstance(iterations, bool) or not 1 <= iterations <= 20000:
+            raise _Fail("bad_request", "iterations is a whole number from 1 to 20000")
+        if not isinstance(settings, dict):
+            raise _Fail("bad_request", "settings is a JSON object")
+        image, prepared = continuing.prepare(run_dir, svg, new, iterations, bool(args.get("keep", True)), settings,
+                                             _text(args, "output_dir"))
+        return {"image": image, "settings": prepared}
 
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")
