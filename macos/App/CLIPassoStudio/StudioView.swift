@@ -130,6 +130,9 @@ private struct ImageStep: View {
                         }
                         .padding(Spacing.spaceS)
                         .accessibilityLabel(Text(verbatim: studio.image?.lastPathComponent ?? ""))
+                } else if studio.image != nil {
+                    ProgressView()  // (the picture is being read – not "drop one here")
+                        .accessibilityLabel(Text(verbatim: studio.image?.lastPathComponent ?? ""))
                 } else {
                     Label(model.texts.tr("ui.drop_title"), systemImage: "photo.badge.plus")
                         .foregroundStyle(.secondary)
