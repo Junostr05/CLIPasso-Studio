@@ -59,13 +59,15 @@ import StudioCore
         let report = try await model.restoreBackup(from: file, parts: ["queue"])
         #expect(report.queue.count == 2)
         let jobs = model.queueSnapshot?.jobs ?? []
-        #expect(jobs.map(\.target.lastPathComponent).sorted() == ["a.png", "b.png"])
-        let failed = try #require(jobs.first { $0.target.lastPathComponent == "b.png" })
+        // (the pictures travelled with the backup: in restored_inputs, numbered as backup.py names them)
+        #expect(jobs.map(\.target.lastPathComponent).sorted() == ["000_a.png", "001_b.png"])
+        #expect(jobs.allSatisfy { $0.target.deletingLastPathComponent().lastPathComponent == "restored_inputs" })
+        let failed = try #require(jobs.first { $0.target.lastPathComponent == "001_b.png" })
         #expect(failed.status == .failed && failed.message == "RuntimeError: made up")
-        #expect(jobs.first { $0.target.lastPathComponent == "a.png" }?.status == .queued)
+        #expect(jobs.first { $0.target.lastPathComponent == "000_a.png" }?.status == .queued)
         await model.queuePage?.retry(failed)
         let now = model.queuePage?.jobs ?? []
-        #expect(now.filter { $0.target.lastPathComponent == "b.png" }.map(\.status) == [.queued])
+        #expect(now.filter { $0.target.lastPathComponent == "001_b.png" }.map(\.status) == [.queued])
         await model.stopEngine()
     }
 }

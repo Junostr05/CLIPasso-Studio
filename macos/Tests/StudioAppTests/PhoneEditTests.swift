@@ -39,8 +39,10 @@ import StudioCore
         #expect(erased == ["ok": true, "erased": 1] && SketchEditing.count(editor.svg) == 1)
         #expect(await ask("do_edit", ["op": "erase", "points": [[0.5, 0.5]]])?["error"]
             == .string(t.tr("ui.phone.page.edit_one_line")))
-        _ = await ask("do_edit", ["op": "revert"])
-        #expect(editor.svg == original && model.phoneEditState().objectValue?["redo"] == false)
+        _ = await ask("do_edit", ["op": "revert"])  // (back to the sketch as drawn: the fixture's was touched up)
+        let drawn = try #require(editor.original)
+        #expect(drawn != original && editor.svg == drawn && !editor.isEdited)
+        #expect(model.phoneEditState().objectValue?["redo"] == false)
 
         // Simplify: measured by the engine (the fake one: the later strokes count more), then kept and taken
         #expect(await ask("file_simplified", ["keep": 1])?["error"] == .string(t.tr("ui.edit_bar.measuring")))
@@ -54,7 +56,7 @@ import StudioCore
         else { Issue.record("no simplified sketch"); return }
         #expect(String(decoding: simplified, as: UTF8.self).contains("<svg"))
         #expect(await ask("do_simplify_apply", ["keep": 1]) == ["ok": true])
-        #expect(editor.svg == SketchEditing.removeStrokes(original, [0]) && editor.canUndo)
+        #expect(editor.svg == SketchEditing.removeStrokes(drawn, [0]) && editor.canUndo)
         editor.undo()
 
         // the saved steps

@@ -192,7 +192,9 @@ nonisolated final class FakeTelegram: TelegramTransport, Sendable {
         let fake = FakeTelegram(updates: [["update_id": 1, "message": ["text": "/start", "chat": ["id": 5]]]])
         let model = try Self.model(fake)
         let t = model.texts
-        let job = FileManager.default.temporaryDirectory.appending(path: "telegram-\(UUID().uuidString)")
+        // (the job folder keeps its name: the paths written elsewhere are found again by it, as jobs.py finds them)
+        let job = FileManager.default.temporaryDirectory.appending(path: "telegram-\(UUID().uuidString)/done_clipasso")
+        try FileManager.default.createDirectory(at: job.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: SelfTestTests.fixtures.appending(path: "jobs/done_clipasso"), to: job)
         var done = QueuedJob(target: URL(filePath: "/Bilder/Kamel.png"), settings: ["method": "clipasso"])
         done.status = .done

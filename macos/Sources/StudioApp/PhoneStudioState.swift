@@ -187,7 +187,8 @@ public extension AppModel {
             return .json(.object(phoneStudio(models: await phoneModelRoles())))
         #if canImport(ImageIO) && canImport(CoreGraphics)
             case "file_view":  // (the photo as used, the attention map, the mask, the condition – at most 900 px)
-                guard let data = studioView(PhoneStudio.pyStr(data["kind"] ?? "")),
+                let kind = PhoneStudio.pyStr(data["kind"] ?? "")
+                guard studioViews.contains(kind), let data = studioView(kind),  // (only the views the studio shows)
                       let png = await Self.phoneViewPNG(data)
                 else { return no(texts.tr("ui.phone.page.no_sketch")) }
                 return .bytes(png, type: "image/png", name: nil)

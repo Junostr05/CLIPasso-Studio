@@ -140,9 +140,9 @@ import StudioCore
         #expect(none == ["ok": false, "error": .string(model.texts.tr("ui.phone.page.no_sketch"))])
         #expect(Self.json(await model.phoneAnswer("do_select", ["seed": "x"], payload: nil))
             == ["ok": false, "error": "unknown sketch"])
-        // the pictures to choose from: the samples of the studio
+        // the pictures to choose from: the recent ones (the picture just shown) and the samples of the studio
         let images = try #require(Self.json(await model.phoneAnswer("get_images", [:], payload: nil)))
-        #expect((images["samples"]?.arrayValue?.count ?? 0) >= 5 && images["recent"] == [])
+        #expect((images["samples"]?.arrayValue?.count ?? 0) >= 5 && images["recent"] == [["i": 0, "name": "small.png"]])
         #expect(Self.json(await model.phoneAnswer("do_image", ["src": "sample", "i": 0], payload: nil)) == ["ok": true])
         #expect(model.studio.image?.path.contains("samples") == true)
         #expect(Self.json(await model.phoneAnswer("do_image", ["src": "nope", "i": 0], payload: nil))
