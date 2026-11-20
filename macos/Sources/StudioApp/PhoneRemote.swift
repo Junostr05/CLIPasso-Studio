@@ -483,6 +483,7 @@ public extension AppModel {
             return await phoneStart()  // (start or queue: the queue starts it when the job running ends)
         default:
             if let answer = await phoneStudioAnswer(action, data) { return answer }
+            if let answer = await phoneCompareAnswer(action, data) { return answer }
             if let answer = await phoneQueueAnswer(action, data) { return answer }
             if let answer = await phonePaintAnswer(action, data, payload: payload) { return answer }
             if let answer = await phoneModelsAnswer(action, data) { return answer }

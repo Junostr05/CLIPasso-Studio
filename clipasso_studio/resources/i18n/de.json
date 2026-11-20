@@ -1654,5 +1654,7 @@
  "ui.mac.user_presets": "Meine Voreinstellungen",
  "ui.mac.reset": "Zurücksetzen",
  "ui.mac.backup": "Backup & Umzug",
+ "ui.mac.yes": "Ja",
+ "ui.mac.no": "Nein",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

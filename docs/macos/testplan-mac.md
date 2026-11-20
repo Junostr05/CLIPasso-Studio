@@ -21,7 +21,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 **Noch nicht in der Mac-App, also nicht testen:**
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
-- die Seite „Vergleichen“ und auf dem Handy Radierer, Stift, Zwischenstände und Vereinfachen,
+- auf dem Handy Radierer, Stift, Zwischenstände und Vereinfachen,
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
@@ -79,6 +79,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C15 | Ein SceneSketch-Ergebnis mit mehreren Stufen öffnen, „Matrix“, Rechtsklick auf eine Zelle der Stufe 1 → „Diese Zelle neu rechnen“. Danach auf dem Handy eine andere Zelle. | Die Frage nennt die späteren Stufen, die mitgerechnet werden. Die Zellen verschwinden aus der Matrix, der Auftrag steht in der Warteschlange und rechnet nur sie neu, die anderen bleiben. |
 | C16 | Ein fertiges CLIPasso-Ergebnis im Studio: über der Skizze das Uhr-Symbol („Zwischenstände“), den Schieber nach links ziehen, „Übernehmen“. Dann ⌘Z. | Die Skizze wächst beim Ziehen Schritt für Schritt, die Zeile nennt „Schritt n von m · Iteration i“. Nach „Übernehmen“ ist der gezeigte Schritt das Ergebnis; ⌘Z holt die Skizze zurück. |
 | C17 | Über der Skizze „Vereinfachen“: warten, bis gemessen ist (beim ersten Mal einige Sekunden), den Schieber nach links ziehen, „Übernehmen“. Danach noch einmal „Vereinfachen“. | Erst steht „Es wird gemessen …“, dann fallen beim Ziehen zuerst die Striche in dunklen Flächen weg, die Umrisse bleiben am längsten. Beim zweiten Mal geht es sofort (die Messung bleibt beim Ergebnis). |
+| C18 | Im Studio ein Bild wählen, links „Vergleich“: CLIPasso und SwiftSketch an, „Vergleich starten“. Warten, bis beide fertig sind; dann „Im Studio öffnen“ bei einem. | Zwei Aufträge stehen in der Warteschlange, SwiftSketch zuerst. Die Karten zeigen „Läuft …“ mit Fortschritt, danach Skizze, CLIP-Score, Rechenzeit und Striche; die mit dem höheren Score trägt „★ Beste“, darunter steht das Urteil. „Im Studio öffnen“ zeigt das Ergebnis im Studio. Auf einem Mac mit Apple-Chip fragt die App nicht nach einer NVIDIA-GPU. |
 
 ## D. Warteschlange und Galerie
 
@@ -171,6 +172,7 @@ ersten Mal fragt macOS, ob die App eingehende Verbindungen annehmen darf: „Erl
 | P9 | Mit Tailscale auf Mac und Handy: „Auch über Tailscale“ an, unterwegs (Handy im Mobilfunk) den Tailscale-QR-Code scannen. | Die Seite geht auch unterwegs. Ohne den Schalter geht sie nur im WLAN. |
 | P10 | Auf dem Handy unter „App“ die Modelle öffnen: ein fehlendes Modell laden, abbrechen, wieder laden; ein geladenes löschen. Die Sprache auf Englisch stellen. | Der Download erscheint auch am Mac (Fortschritt im Fenster) und startet keinen Auftrag. Abgebrochen bleibt das Geladene für das nächste Mal. Die Seite und die App wechseln die Sprache. |
 | P11 | Auf dem Handy „Nach Updates suchen“. | Es steht da, ob es eine neuere Version gibt. Statt „Installieren“ erklärt ein Hinweis, wie man am Mac von Hand aktualisiert. |
+| P12 | Auf dem Handy „Methoden vergleichen“ mit zwei Methoden. | Die Aufträge erscheinen in der Warteschlange am Mac; die Ergebnisse stehen danach auf dem Handy nebeneinander, die beste mit ★. |
 
 ## G3. Updates
 
