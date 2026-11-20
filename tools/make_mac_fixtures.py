@@ -334,6 +334,32 @@ def crop_cases(out: Path) -> dict:
     return out_cases
 
 
+def recent_cases() -> list[dict]:
+    """The studio's "recent" pictures (pages/studio.StudioPage._remember_recent): the picture first, an older entry
+    of the same path (normalised) dropped, at most 12, the bundled samples never."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui.pages import studio
+
+    class Store(dict):
+        def set(self, key, value):
+            self[key] = list(value)
+
+    many = [f"/Bilder/{i:02d}.png" for i in range(12)]
+    out = []
+    for before, path in (([], "/Bilder/Kamel.png"), (["/Bilder/a.png", "/Bilder/Kamel.png"], "/Bilder/Kamel.png"),
+                         (["/Bilder/a.png"], "/Bilder/x/../Kamel.png"), (["/Bilder/Kamel.png"], "/Bilder//Kamel.png"),
+                         (many, "/Bilder/neu.png"), (many, "/Bilder/05.png"),
+                         (["/Bilder/a.png"], "/App/samples/camel.png"),
+                         (["/Bilder/a.png"], "/App/samples-extra/x.png")):
+        store = Store(recent_images=list(before))
+        with mock.patch.object(studio, "app_settings", lambda: store), \
+                mock.patch.object(studio.paths, "resource", lambda *parts: Path("/App/samples")):
+            studio.StudioPage._remember_recent(SimpleNamespace(RECENT_MAX=studio.StudioPage.RECENT_MAX), path)
+        out.append({"before": before, "path": path, "after": store["recent_images"]})
+    return out
+
+
 def settings_file() -> str:
     """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
     a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
@@ -1408,6 +1434,7 @@ def build(out: Path) -> None:
     write_json(out / "presets.json", preset_cases(), indent=None)
     write_json(out / "user_presets.json", user_preset_cases(), indent=None)
     write_json(out / "report.json", report_cases())
+    write_json(out / "recent.json", recent_cases())
     write_json(out / "crop" / "crop.json", crop_cases(out), indent=None)
     write_json(out / "versions.json", version_cases())
     write_json(out / "image_files.json", image_file_cases())

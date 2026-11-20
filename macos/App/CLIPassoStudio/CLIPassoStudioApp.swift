@@ -55,6 +55,7 @@ struct CLIPassoStudioApp: App {
                 RootView()
                     .environment(model)
                     .task {
+                        if ScreenshotMode.options == nil { model.restoreLastImage() }  // (the last picture, or the camel)
                         await model.startEngine()
                         if ScreenshotMode.options == nil { await model.checkForUpdate() }
                     }

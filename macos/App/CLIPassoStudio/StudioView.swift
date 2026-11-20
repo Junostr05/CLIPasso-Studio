@@ -60,6 +60,37 @@ private struct Step<Content: View>: View {
     }
 }
 
+/// The recent pictures and the samples (the studio's open menu), each with its picture.
+private struct PictureMenu: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let t = model.texts
+        Menu {
+            Section(t.tr("ui.recent")) {
+                let recent = model.recentPictures
+                if recent.isEmpty {
+                    Text(t.tr("ui.recent_empty"))
+                }
+                ForEach(recent, id: \.self) { url in
+                    Button(url.lastPathComponent) { model.studio.image = url }
+                        .help(url.path)
+                }
+            }
+            Section(t.tr("ui.samples")) {
+                ForEach(model.samplePictures, id: \.self) { url in
+                    Button(url.deletingPathExtension().lastPathComponent) { model.studio.image = url }
+                }
+            }
+        } label: {
+            Label(t.tr("ui.recent"), systemImage: "clock.arrow.circlepath")
+        }
+        .labelStyle(.iconOnly)
+        .fixedSize()
+        .help(t.tr("ui.recent") + " · " + t.tr("ui.samples"))
+    }
+}
+
 private struct ImageStep: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
@@ -122,6 +153,7 @@ private struct ImageStep: View {
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
                     if case .success(let url) = result { studio.image = url }
                 }
+                PictureMenu()
                 Button(model.texts.tr("ui.edit_image.button"), systemImage: "crop") { cropping = true }
                     .labelStyle(.iconOnly)
                     .help(model.texts.tr("ui.edit_image.tip"))

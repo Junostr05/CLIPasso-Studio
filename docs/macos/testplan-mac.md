@@ -23,7 +23,6 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
   wird von Hand),
 - Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
 - die Ansichten Aufmerksamkeit, Maske und Bedingung im Studio, eine Zelle der SceneSketch-Matrix neu rechnen,
-- „Zuletzt verwendet“ und die Beispielbilder im Studio,
 - mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
 - die Pinselstile in den Vorschaubildern der Galerie (im Studio, in Exporten und beim Drucken gibt es sie schon),
 - fehlgeschlagene oder abgebrochene Aufträge aus einer Sicherung in der Warteschlange,
@@ -79,6 +78,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C10 | Einstellungen → „Überwachter Ordner“: einschalten, einen Ordner wählen, als Formate PNG und SVG, „Fertige Bilder … verschieben“ an. Dann ein Foto hineinkopieren (auch ein großes, z. B. per AirDrop). Danach die App neu starten. | Erst wenn das Bild fertig geschrieben ist, kommt es in die Warteschlange. Nach dem Auftrag liegen `…_clipasso.png` und `.svg` im Unterordner „sketches“, das Bild liegt in „done“. Nach dem Neustart wird es nicht noch einmal skizziert. |
 | C11 | Einstellungen → „Backup & Umzug“ → „Backup erstellen …“, einmal ohne, einmal mit Modellen. Die Datei auf einem zweiten Mac (oder in einem neuen Benutzerkonto) mit „Backup wiederherstellen …“ zurückspielen, danach noch einmal. Dieselbe Datei auch in der Windows-App wiederherstellen, und ein Windows-Backup am Mac. | Galerie, Alben, Voreinstellungen und die wartenden Aufträge sind auf dem neuen Mac da, die Ordner des neuen Macs bleiben. Beim zweiten Mal wird nichts doppelt geholt. Telegram-Token und Handy-PIN stehen nicht in der Datei. |
 | C12 | Im Studio ein Bild wählen und daneben auf das Zuschneide-Symbol: „Quer 4:3“, einmal nach rechts drehen, spiegeln, die Ecken ziehen und den Rahmen verschieben, „Dieses Bild verwenden“. Danach auf dem Handy „Zuschneiden / drehen“. | Der Rahmen bleibt im Bild und im Seitenverhältnis (nach dem Drehen 3:4). Das zugeschnittene Bild erscheint im Studio und liegt als `…-edited-….png` im Ordner `_edited` des Ausgabeordners, das Original bleibt. Ein zu kleiner Ausschnitt auf dem Handy wird abgelehnt. |
+| C13 | Neben „Bild ändern“ das Uhr-Symbol: ein Beispiel wählen, dann zwei eigene Bilder nacheinander. App beenden und neu starten. | Das Menü zeigt die zuletzt benutzten Bilder (das neueste oben, keine Beispiele) und die Beispiele. Nach dem Neustart ist das zuletzt gewählte Bild wieder im Studio, beim allerersten Start das Kamel. |
 
 ## D. Warteschlange und Galerie
 

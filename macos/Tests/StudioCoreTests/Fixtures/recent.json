@@ -1,0 +1,119 @@
+[
+ {
+  "before": [],
+  "path": "/Bilder/Kamel.png",
+  "after": [
+   "/Bilder/Kamel.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/a.png",
+   "/Bilder/Kamel.png"
+  ],
+  "path": "/Bilder/Kamel.png",
+  "after": [
+   "/Bilder/Kamel.png",
+   "/Bilder/a.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/a.png"
+  ],
+  "path": "/Bilder/x/../Kamel.png",
+  "after": [
+   "/Bilder/x/../Kamel.png",
+   "/Bilder/a.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/Kamel.png"
+  ],
+  "path": "/Bilder//Kamel.png",
+  "after": [
+   "/Bilder//Kamel.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/00.png",
+   "/Bilder/01.png",
+   "/Bilder/02.png",
+   "/Bilder/03.png",
+   "/Bilder/04.png",
+   "/Bilder/05.png",
+   "/Bilder/06.png",
+   "/Bilder/07.png",
+   "/Bilder/08.png",
+   "/Bilder/09.png",
+   "/Bilder/10.png",
+   "/Bilder/11.png"
+  ],
+  "path": "/Bilder/neu.png",
+  "after": [
+   "/Bilder/neu.png",
+   "/Bilder/00.png",
+   "/Bilder/01.png",
+   "/Bilder/02.png",
+   "/Bilder/03.png",
+   "/Bilder/04.png",
+   "/Bilder/05.png",
+   "/Bilder/06.png",
+   "/Bilder/07.png",
+   "/Bilder/08.png",
+   "/Bilder/09.png",
+   "/Bilder/10.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/00.png",
+   "/Bilder/01.png",
+   "/Bilder/02.png",
+   "/Bilder/03.png",
+   "/Bilder/04.png",
+   "/Bilder/05.png",
+   "/Bilder/06.png",
+   "/Bilder/07.png",
+   "/Bilder/08.png",
+   "/Bilder/09.png",
+   "/Bilder/10.png",
+   "/Bilder/11.png"
+  ],
+  "path": "/Bilder/05.png",
+  "after": [
+   "/Bilder/05.png",
+   "/Bilder/00.png",
+   "/Bilder/01.png",
+   "/Bilder/02.png",
+   "/Bilder/03.png",
+   "/Bilder/04.png",
+   "/Bilder/06.png",
+   "/Bilder/07.png",
+   "/Bilder/08.png",
+   "/Bilder/09.png",
+   "/Bilder/10.png",
+   "/Bilder/11.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/a.png"
+  ],
+  "path": "/App/samples/camel.png",
+  "after": [
+   "/Bilder/a.png"
+  ]
+ },
+ {
+  "before": [
+   "/Bilder/a.png"
+  ],
+  "path": "/App/samples-extra/x.png",
+  "after": [
+   "/Bilder/a.png"
+  ]
+ }
+]

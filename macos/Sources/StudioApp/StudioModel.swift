@@ -8,7 +8,11 @@ import StudioCore
 @Observable
 public final class StudioModel {
     public let schema: ParamSchema
-    public var image: URL?
+    public var image: URL? {
+        didSet { if image != oldValue { imageChanged?(image) } }
+    }
+    /// told of every new picture (the app keeps the recent ones and the last)
+    @ObservationIgnored public var imageChanged: ((URL?) -> Void)?
     public private(set) var method: String
     public private(set) var preset: String?
     public private(set) var settings: JSONObject

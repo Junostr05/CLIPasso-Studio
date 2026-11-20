@@ -84,6 +84,7 @@ public final class AppModel {
         models = ModelFlow(catalog: catalog)
         studio = StudioModel(schema: schema)
         gallery = GalleryModel(root: loaded.outputDir, schema: schema)
+        studio.imageChanged = { [weak self] url in self?.rememberImage(url) }
     }
 
     /// Change the settings and save them at once (AppSettings.set); false when the file could not be written – the
