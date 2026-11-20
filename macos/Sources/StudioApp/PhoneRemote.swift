@@ -484,6 +484,7 @@ public extension AppModel {
         default:
             if let answer = await phoneStudioAnswer(action, data) { return answer }
             if let answer = await phoneCompareAnswer(action, data) { return answer }
+            if let answer = await phoneEditAnswer(action, data) { return answer }
             if let answer = await phoneQueueAnswer(action, data) { return answer }
             if let answer = await phonePaintAnswer(action, data, payload: payload) { return answer }
             if let answer = await phoneModelsAnswer(action, data) { return answer }

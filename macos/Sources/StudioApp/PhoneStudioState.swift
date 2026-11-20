@@ -75,7 +75,7 @@ public extension AppModel {
             "note": phone.note.isEmpty ? .null : ["id": .int(phone.noteID), "text": .string(phone.note)],
             "scene": .null, "download": phoneDownloadState(),
             "mask": phoneMask(),
-            "edit": .null,
+            "edit": phoneEditState(),
             "views": .object(JSONObject(studioViews.compactMap { kind in  // {kind: revision}
                 studioView(kind).map { (kind, .string("\($0.count)-\($0.hashValue)")) }
             })),
