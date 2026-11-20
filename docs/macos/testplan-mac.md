@@ -22,7 +22,6 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
 - Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
-- eine Zelle der SceneSketch-Matrix neu rechnen,
 - mehrere Ergebnisse in der Galerie markieren und zwei davon mit dem Schieber vergleichen,
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
@@ -78,6 +77,7 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C12 | Im Studio ein Bild wählen und daneben auf das Zuschneide-Symbol: „Quer 4:3“, einmal nach rechts drehen, spiegeln, die Ecken ziehen und den Rahmen verschieben, „Dieses Bild verwenden“. Danach auf dem Handy „Zuschneiden / drehen“. | Der Rahmen bleibt im Bild und im Seitenverhältnis (nach dem Drehen 3:4). Das zugeschnittene Bild erscheint im Studio und liegt als `…-edited-….png` im Ordner `_edited` des Ausgabeordners, das Original bleibt. Ein zu kleiner Ausschnitt auf dem Handy wird abgelehnt. |
 | C13 | Neben „Bild ändern“ das Uhr-Symbol: ein Beispiel wählen, dann zwei eigene Bilder nacheinander. App beenden und neu starten. | Das Menü zeigt die zuletzt benutzten Bilder (das neueste oben, keine Beispiele) und die Beispiele. Nach dem Neustart ist das zuletzt gewählte Bild wieder im Studio, beim allerersten Start das Kamel. |
 | C14 | Einen CLIPasso-Auftrag starten und oben über der Zeichenfläche „Bild/Skizze“, „Aufmerksamkeit“ und „Maske“ wählen, schon während er rechnet und wieder, wenn er fertig ist. Bei „Bild/Skizze“ den Trennstrich ziehen. Dann ein ControlSketch- und ein SceneSketch-Ergebnis aus der Galerie öffnen. Auf dem Handy dieselben Ansichten. | Die Ansichten zeigen das Bild, wie die Methode es benutzt, die Aufmerksamkeitskarte der gezeigten Skizze und die Maske; bei ControlSketch „Bedingung“, bei SceneSketch „Hintergrund“. SwiftSketch hat keine Aufmerksamkeit. Der Trennstrich deckt die Skizze über dem Bild auf. |
+| C15 | Ein SceneSketch-Ergebnis mit mehreren Stufen öffnen, „Matrix“, Rechtsklick auf eine Zelle der Stufe 1 → „Diese Zelle neu rechnen“. Danach auf dem Handy eine andere Zelle. | Die Frage nennt die späteren Stufen, die mitgerechnet werden. Die Zellen verschwinden aus der Matrix, der Auftrag steht in der Warteschlange und rechnet nur sie neu, die anderen bleiben. |
 
 ## D. Warteschlange und Galerie
 

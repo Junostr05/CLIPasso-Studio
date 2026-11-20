@@ -360,6 +360,17 @@ struct ResultSketches: View {
         }
         .padding(.horizontal, Spacing.spaceXl)
         .padding(.bottom, Spacing.spaceS)
+        .confirmationDialog(model.texts.tr("ui.matrix.rerun"), isPresented: Binding(
+            get: { rerun != nil }, set: { if !$0 { rerun = nil } })) {
+            Button(model.texts.tr("ui.matrix.rerun")) { if let rerun { doRerun(rerun.cell) } }
+            Button(model.texts.tr("ui.cancel"), role: .cancel) {}
+        } message: {
+            if let rerun {
+                let (layer, level) = SceneMatrix.split(rerun.cell)
+                Text(model.texts.tr("ui.matrix.rerun_q", ["layer": String(layer), "level": String(level),
+                                                          "later": rerun.later.map(String.init).joined(separator: ", ")]))
+            }
+        }
         .task(id: [shown ?? ""] + result.runs.map(\.name)) {
             let runs = result.runs
             let current = (selected, shown)
@@ -394,8 +405,26 @@ struct MatrixGrid: View {
     let matrix: SceneMatrix
     let open: () -> Void
     @State private var parsed: [Int: Sketch] = [:]
+    /// the cell to compute again, with the later levels it takes along (the question before)
+    @State private var rerun: (cell: Int, later: [Int])?
+    @State private var note = ""
 
     static let side: CGFloat = 36  // (room for the levels' numbers)
+
+    /// rerun_scene_cell: asked first when later levels go along.
+    private func askRerun(_ cell: Int) {
+        Task {
+            guard let later = await model.sceneCellLater(cell) else { return NSSound.beep() }
+            if later.isEmpty { doRerun(cell) } else { rerun = (cell, later) }
+        }
+    }
+
+    private func doRerun(_ cell: Int) {
+        Task {
+            guard let n = await model.rerunSceneCell(cell) else { return NSSound.beep() }
+            note = model.texts.tr("ui.matrix.rerun_queued", ["n": String(n)])
+        }
+    }
 
     var body: some View {
         let selected = result.selected
@@ -405,6 +434,7 @@ struct MatrixGrid: View {
             Text(verbatim: "\(model.texts.tr("ui.matrix.fidelity")) →   \(model.texts.tr("ui.matrix.simplicity")) ↓")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if !note.isEmpty { Text(verbatim: note).font(.callout).foregroundStyle(.secondary) }
             GeometryReader { geometry in
                 let gap = Spacing.spaceS
                 let columns = CGFloat(matrix.layers.count), rows = CGFloat(matrix.levels.count)
@@ -466,6 +496,9 @@ struct MatrixGrid: View {
                 result.select(run.name)
                 open()
             })
+            .contextMenu {
+                Button(model.texts.tr("ui.matrix.rerun"), systemImage: "arrow.clockwise") { askRerun(id) }
+            }
             .accessibilityLabel(Text(verbatim: name))
             .accessibilityValue(Text(verbatim: isBest ? model.texts.tr("ui.compare.best") : ""))
             .accessibilityAddTraits(isSelected ? .isSelected : [])

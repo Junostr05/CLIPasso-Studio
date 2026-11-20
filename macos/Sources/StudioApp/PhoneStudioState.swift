@@ -195,6 +195,11 @@ public extension AppModel {
                 if let problem = await phoneCrop(data) { return no(problem) }
                 return .json(["ok": true])
         #endif
+        case "do_rerun_cell":  // (the phone asked already)
+            guard let cell = data["cell"].flatMap({ PhoneStudio.int($0) }), await rerunSceneCell(cell) != nil else {
+                return no(texts.tr("ui.phone.page.failed"))
+            }
+            return .json(["ok": true])
         case "do_user_preset":  // (of any method: the studio switches to it)
             guard applyUserPreset(PhoneStudio.pyStr(data["name"] ?? ""), method: PhoneStudio.pyStr(data["method"] ?? ""))
             else { return no(texts.tr("ui.phone.page.preset_gone")) }

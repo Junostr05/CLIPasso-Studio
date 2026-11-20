@@ -14,7 +14,8 @@ PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked a
 probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` gives it as the user's – and
 ``remove_mask`` removes it; ``detail`` gives the map ``save_detail`` kept – a copy, at 32 × 24 –, ``portrait`` first
 answers missing_model, then finds a "face": the left half more).
-Every mode answers ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
+Every mode answers ``rerun_cell`` (the SceneSketch cell's run removed),
+``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
 
@@ -92,6 +93,13 @@ for raw in sys.stdin.buffer:
     elif op == "required_models":
         missing = [k for k in needed if k not in converted]
         send({"id": rid, "ok": True, "result": {"required": needed, "missing": missing}})
+    elif op == "rerun_cell":  # (the cell's run removed; no later levels)
+        if not args.get("dry"):
+            for name in os.listdir(args["job_dir"]):
+                if name.endswith(f"_L{args['cell'] // 100}_level{args['cell'] % 100}"):
+                    shutil.rmtree(os.path.join(args["job_dir"], name))
+        result = {"later": []} if args.get("dry") else {"later": [], "removed": [args["cell"]]}
+        send({"id": rid, "ok": True, "result": result})
     elif op == "model_roles":  # (the mask's role needs the KEYS of "needs")
         missing = [k for k in needed if k not in converted]
         send({"id": rid, "ok": True, "result": {

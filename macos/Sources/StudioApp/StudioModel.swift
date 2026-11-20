@@ -125,6 +125,11 @@ public final class StudioModel {
         result = StudioResult(jobDir: jobDir)
     }
 
+    /// The shown job read again from its folder (after some of its sketches were removed).
+    public func reload(_ jobDir: URL) {
+        result = StudioResult(jobDir: jobDir)
+    }
+
     /// A result of the gallery in the studio (gallery.py: "Open in the studio"): its image, its method and its
     /// sketches – the best one shown, ready to be touched up.
     public func open(_ item: GalleryItem) {

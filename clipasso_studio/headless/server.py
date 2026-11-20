@@ -2,9 +2,9 @@
 (``protocol.py``). One job at a time runs in :class:`engine.runner.JobRunner`'s worker processes, exactly as in the
 studio; this module only translates.
 
-ops: hello · devices · schema · models · required_models · model_roles · convert_model · encode_webp · stylize ·
-mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait ·
-start · pause · resume · cancel · shutdown
+ops: hello · devices · schema · models · required_models · model_roles · rerun_cell · convert_model · encode_webp ·
+stylize · mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait · start ·
+pause · resume · cancel · shutdown
 """
 
 from __future__ import annotations
@@ -223,6 +223,26 @@ class EngineServer:
                 "missing": missing({**settings, "method": method}),
                 "methods": {m: bool(missing({**(v if isinstance(v, dict) else {}), "method": m}))
                             for m, v in others.items() if m in model_roles.ROLES}}
+
+    def op_rerun_cell(self, args: dict) -> dict:
+        """SceneSketch: a cell of a job's matrix computed again with a new start (jobs.rerun_scene_cell) – the cell
+        and the later levels of its layer, which start from it, are removed for the job to continue; ``dry`` only
+        names the later levels (the question before)."""
+        from ..engine import jobs
+
+        job_dir = _text(args, "job_dir")
+        try:
+            cell = int(args.get("cell"))
+        except (TypeError, ValueError):
+            raise _Fail("bad_request", "cell is a number") from None
+        state = jobs.read_state(job_dir)
+        if not state or schema.method_of(state.get("settings")) != "scenesketch":
+            raise _Fail("not_found", f"no SceneSketch job in {job_dir}")
+        level = cell % 100
+        later = [lv for lv in schema.scene_levels(state.get("settings") or {}) if lv > level]
+        if args.get("dry"):
+            return {"later": later}
+        return {"later": later, "removed": jobs.rerun_scene_cell(job_dir, cell)}
 
     def op_convert_model(self, args: dict) -> dict:
         """A model the Mac app downloaded into ``dest_root``'s partial folder, converted (model_store)."""

@@ -130,6 +130,33 @@ def test_model_roles():
     assert server.handle(_req(2, "model_roles", method="nope", settings={}))["error"]["code"] == "bad_request"
 
 
+def test_rerun_cell(tmp_path):
+    """A SceneSketch cell computed again: it and the later levels of its layer are removed for the job to continue
+    (jobs.rerun_scene_cell); dry only names the later levels; another method's job is refused."""
+    import json as _json
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    server, _ = _server()
+    settings = {**schema.start_settings("scenesketch"), "layers": "8", "simplicity_levels": 3,
+                "simplicity_pick": "1_2_3"}
+    job = tmp_path / "Kamel_scene"
+    job.mkdir()
+    (job / jobs.STATE_FILE).write_text(_json.dumps({"settings": settings, "target": "/Bilder/Kamel.png",
+                                                    "status": "done"}), encoding="utf-8")
+    for level in (0, 1, 2, 3):
+        (job / schema.scene_run_name("/Bilder/Kamel.png", 8, level)).mkdir()
+    dry = server.handle(_req(1, "rerun_cell", job_dir=str(job), cell=801, dry=True))["result"]
+    assert dry == {"later": [2, 3]} and (job / "Kamel_scenesketch_L8_level1").is_dir()
+    done = server.handle(_req(2, "rerun_cell", job_dir=str(job), cell=801))["result"]
+    assert done == {"later": [2, 3], "removed": [801, 802, 803]}
+    assert (job / "Kamel_scenesketch_L8_level0").is_dir() and not (job / "Kamel_scenesketch_L8_level2").exists()
+    assert jobs.read_cell_seeds(str(job)) == {"801": settings["seed"] + 1}
+    (job / jobs.STATE_FILE).write_text(_json.dumps({"settings": {"method": "clipasso"}}), encoding="utf-8")
+    assert server.handle(_req(3, "rerun_cell", job_dir=str(job), cell=801))["error"]["code"] == "not_found"
+
+
 def test_start_streams_events_with_job_id(tmp_path):
     runner = FakeRunner([("job_start", {"seeds": [0]}), ("stage", {"seed": 0, "name": "init"})])
     server, out = _server(runner)
