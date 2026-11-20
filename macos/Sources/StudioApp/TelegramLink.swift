@@ -169,9 +169,10 @@ public extension AppModel {
             telegramMessage(text)
             return true
         }
-        var options = ExportOptions.forClipboard(settings)
-        options.size = Telegram.photoSize
-        options.frame = .square  // (telegram.sketch_png: the sketch as it is)
+        var chosen = ExportOptions.forClipboard(settings)
+        chosen.size = Telegram.photoSize
+        chosen.frame = .square  // (telegram.sketch_png: the sketch as it is)
+        let options = chosen
         let stylist = stylist(options.style)
         Task {
             #if canImport(CoreGraphics)
