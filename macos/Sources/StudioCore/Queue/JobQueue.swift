@@ -185,8 +185,9 @@ public actor JobQueue {
 
     // MARK: - the engine's events
 
-    /// Events of no job the app hears of (the queue's notices): the object mask, portrait mode's faces.
-    static let noticeKinds = ["mask_", "portrait_"]
+    /// Events of no job the app hears of (the queue's notices): the object mask, portrait mode's faces, Simplify's
+    /// measuring.
+    static let noticeKinds = ["mask_", "portrait_", "importance_"]
 
     /// A picture an event sent (bytes travel as base64 in "<field>_b64").
     static func png(_ value: JSONValue?) -> Data? {

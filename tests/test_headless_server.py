@@ -708,6 +708,64 @@ def test_detail_brush(tmp_path, user_data, monkeypatch):
     assert last["event"] == "portrait_failed" and last["data"]["message"] == "RuntimeError: no torch"
 
 
+def test_importance(tmp_path):
+    """Simplify: the strokes' importance of a run's sketch as importance.json keeps it (for the edited sketch, if there
+    is one; another sketch: not measured), measured in a process of its own (here a stand-in) on request – with
+    "importance_ready" / "importance_failed"."""
+    import queue as queue_mod
+
+    from clipasso_studio.engine import importance, jobs
+
+    run = tmp_path / "Lauf ä"
+    run.mkdir()
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0 L5 5"/><path d="M1 1 L9 9"/>' \
+          '<path d="M2 2 L3 3"/></svg>'
+    (run / "best_iter.svg").write_text(svg, encoding="utf-8")
+    started = []
+
+    def work(path, model, device):
+        started.append((path, model, device, queue_mod.Queue()))
+        return started[-1][3], None
+
+    server, out = _server(importance_work=work)
+    assert server.handle(_req(1, "importance", run_dir=str(run)))["result"] == \
+        {"rank": None, "order": None, "computing": False}
+    assert server.handle(_req(2, "importance", run_dir=str(run), compute=True))["result"]["computing"]
+    assert [s[:3] for s in started] == [(str(run), "", "cpu")]
+    (run / importance.FILE).write_text(json.dumps({"version": importance.VERSION, "sha1": importance.digest(svg),
+                                                   "rank": [2, 0, 1]}), encoding="utf-8")
+    started[0][3].put(("done", {"path": str(run / importance.FILE)}))
+    assert server.pump() == 1
+    assert out.lines()[-1] == {"event": "importance_ready", "job": None,
+                               "data": {"image": str(run), "model": "", "path": str(run / importance.FILE)}}
+    got = server.handle(_req(3, "importance", run_dir=str(run), compute=True))["result"]
+    assert got == {"rank": [2.0, 0.0, 1.0], "order": [1, 2, 0], "computing": False} and len(started) == 1
+    (run / jobs.EDITED_FILE).write_text(svg.replace("M2 2", "M2 4"), encoding="utf-8")  # (touched up: anew)
+    assert server.handle(_req(4, "importance", run_dir=str(run), compute=True))["result"]["computing"]
+    started[1][3].put(("error", "RuntimeError: no CLIP"))
+    server.pump()
+    last = out.lines()[-1]
+    assert last["event"] == "importance_failed" and last["data"]["message"] == "RuntimeError: no CLIP"
+    assert server.handle(_req(5, "importance", run_dir=str(tmp_path / "nope")))["error"]["code"] == "not_found"
+    assert server.handle(_req(6, "importance"))["error"]["code"] == "bad_request"
+
+
+def test_importance_worker(tmp_path, monkeypatch):
+    """The worker passes what importance.compute wrote on – or why it could not."""
+    import queue as queue_mod
+
+    from clipasso_studio.engine import importance
+    from clipasso_studio.headless.server import importance_worker
+
+    results = queue_mod.Queue()
+    monkeypatch.setattr(importance, "compute", lambda run_dir, device="cpu": os.path.join(run_dir, device))
+    importance_worker(str(tmp_path), "", "cpu", results)
+    assert results.get_nowait() == ("done", {"path": os.path.join(str(tmp_path), "cpu")})
+    monkeypatch.setattr(importance, "compute", lambda run_dir, device="cpu": 1 / 0)
+    importance_worker(str(tmp_path), "", "cpu", results)
+    assert results.get_nowait() == ("error", "ZeroDivisionError: division by zero")
+
+
 def test_portrait_modes_map(tmp_path, monkeypatch):
     """The faces' map is the studio's: portrait.detail_map of the plausible faces in the studio's photo."""
     from PIL import Image

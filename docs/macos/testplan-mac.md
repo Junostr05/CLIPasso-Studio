@@ -21,7 +21,7 @@ Bildschirm), andere Programme und die Dauer echter Aufträge.
 **Noch nicht in der Mac-App, also nicht testen:**
 - ein Update, das sich selbst installiert (die App ist nicht signiert: sie meldet die neue Version, installiert
   wird von Hand),
-- Vergleichen, Schritte und Vereinfachen (im Fenster und auf dem Handy),
+- die Seite „Vergleichen“ und auf dem Handy Radierer, Stift, Zwischenstände und Vereinfachen,
 - Telegram, die Tour „Erste Schritte“ und Fotos mit der Kamera des Macs.
 
 ---
@@ -77,6 +77,8 @@ Telegram-Token, Fernbedienungs-Token und PIN gehören nicht in einen Bericht. Pr
 | C13 | Neben „Bild ändern“ das Uhr-Symbol: ein Beispiel wählen, dann zwei eigene Bilder nacheinander. App beenden und neu starten. | Das Menü zeigt die zuletzt benutzten Bilder (das neueste oben, keine Beispiele) und die Beispiele. Nach dem Neustart ist das zuletzt gewählte Bild wieder im Studio, beim allerersten Start das Kamel. |
 | C14 | Einen CLIPasso-Auftrag starten und oben über der Zeichenfläche „Bild/Skizze“, „Aufmerksamkeit“ und „Maske“ wählen, schon während er rechnet und wieder, wenn er fertig ist. Bei „Bild/Skizze“ den Trennstrich ziehen. Dann ein ControlSketch- und ein SceneSketch-Ergebnis aus der Galerie öffnen. Auf dem Handy dieselben Ansichten. | Die Ansichten zeigen das Bild, wie die Methode es benutzt, die Aufmerksamkeitskarte der gezeigten Skizze und die Maske; bei ControlSketch „Bedingung“, bei SceneSketch „Hintergrund“. SwiftSketch hat keine Aufmerksamkeit. Der Trennstrich deckt die Skizze über dem Bild auf. |
 | C15 | Ein SceneSketch-Ergebnis mit mehreren Stufen öffnen, „Matrix“, Rechtsklick auf eine Zelle der Stufe 1 → „Diese Zelle neu rechnen“. Danach auf dem Handy eine andere Zelle. | Die Frage nennt die späteren Stufen, die mitgerechnet werden. Die Zellen verschwinden aus der Matrix, der Auftrag steht in der Warteschlange und rechnet nur sie neu, die anderen bleiben. |
+| C16 | Ein fertiges CLIPasso-Ergebnis im Studio: über der Skizze das Uhr-Symbol („Zwischenstände“), den Schieber nach links ziehen, „Übernehmen“. Dann ⌘Z. | Die Skizze wächst beim Ziehen Schritt für Schritt, die Zeile nennt „Schritt n von m · Iteration i“. Nach „Übernehmen“ ist der gezeigte Schritt das Ergebnis; ⌘Z holt die Skizze zurück. |
+| C17 | Über der Skizze „Vereinfachen“: warten, bis gemessen ist (beim ersten Mal einige Sekunden), den Schieber nach links ziehen, „Übernehmen“. Danach noch einmal „Vereinfachen“. | Erst steht „Es wird gemessen …“, dann fallen beim Ziehen zuerst die Striche in dunklen Flächen weg, die Umrisse bleiben am längsten. Beim zweiten Mal geht es sofort (die Messung bleibt beim Ergebnis). |
 
 ## D. Warteschlange und Galerie
 

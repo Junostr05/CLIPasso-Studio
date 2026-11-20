@@ -100,6 +100,11 @@ public final class SketchEditor {
         change(to: original)
     }
 
+    /// The edit bar's sketch as the result (studio._edit_bar_apply): one step back; nothing when it is the same.
+    public func take(_ next: String) {
+        if next != svg { change(to: next) }
+    }
+
     private func change(to next: String) {
         undoStack.append(svg)
         redoStack = []

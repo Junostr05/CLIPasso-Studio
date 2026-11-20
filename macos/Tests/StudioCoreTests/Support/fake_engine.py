@@ -14,7 +14,9 @@ PNG (``mask`` with compute answers "computing", then sends "mask_ready"; asked a
 probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` gives it as the user's – and
 ``remove_mask`` removes it; ``detail`` gives the map ``save_detail`` kept – a copy, at 32 × 24 –, ``portrait`` first
 answers missing_model, then finds a "face": the left half more).
-Every mode answers ``rerun_cell`` (the SceneSketch cell's run removed),
+Every mode answers ``rerun_cell`` (the SceneSketch cell's run removed), ``importance`` (not measured; with
+compute: "computing", then "importance_ready" – after that the later strokes count more, each by its place; a run
+folder whose name has "fails": "importance_failed"),
 ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
@@ -38,6 +40,7 @@ kept = tempfile.mkdtemp(prefix="fake-engine-")
 edited = os.path.join(kept, "edited.png")
 detail = os.path.join(kept, "detail.png")
 portraits = 0
+measured = {}  # run folder: the strokes' rank
 
 
 def grey_png(path, width, height, value):
@@ -167,6 +170,23 @@ for raw in sys.stdin.buffer:
             grey_png(faces, 32, 24, lambda x, y: 200 if x < 16 else 128)
             send({"event": "portrait_ready", "job": None, "data": {"image": args["image"], "model": "blazeface",
                                                                    "map": faces}})
+    elif op == "importance":
+        run = args["run_dir"]
+        rank = measured.get(run)
+        computing = rank is None and bool(args.get("compute"))
+        send({"id": rid, "ok": True, "result": {"rank": rank, "order": None if rank is None else list(range(len(rank))),
+                                                "computing": computing}})
+        if computing and "fails" in os.path.basename(run):
+            send({"event": "importance_failed", "job": None, "data": {"image": run, "model": "",
+                                                                      "message": "RuntimeError: no CLIP"}})
+        elif computing:
+            sketch = os.path.join(run, "edited.svg")
+            if not os.path.isfile(sketch):
+                sketch = os.path.join(run, "best_iter.svg")
+            with open(sketch, encoding="utf-8") as f:
+                measured[run] = [float(i) for i in range(f.read().count("<path"))]
+            send({"event": "importance_ready", "job": None, "data": {"image": run, "model": "",
+                                                                     "path": os.path.join(run, "importance.json")}})
     elif op == "shutdown":
         send({"id": rid, "ok": True, "result": {}})
         sys.exit(0)

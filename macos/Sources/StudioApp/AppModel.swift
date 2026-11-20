@@ -61,6 +61,11 @@ public final class AppModel {
     /// portrait mode's answers awaited (by image path), and those that came before they were awaited
     @ObservationIgnored var faceWaiters: [String: CheckedContinuation<EngineEvent, Never>] = [:]
     @ObservationIgnored var facesArrived: [String: EngineEvent] = [:]
+    /// Simplify's measurings awaited (by run folder), and those that came before they were awaited
+    @ObservationIgnored var importanceWaiters: [String: CheckedContinuation<EngineEvent, Never>] = [:]
+    @ObservationIgnored var importanceArrived: [String: EngineEvent] = [:]
+    /// the last measuring asked for: the sketch, and "measuring", "ready" or "failed" (the phone's simplify state)
+    @ObservationIgnored var importanceState: (svg: String, status: String)?
     @ObservationIgnored private let transport: any HTTPTransport
     @ObservationIgnored private var download: Task<Void, Never>?
     @ObservationIgnored let resources: AppResources
@@ -155,6 +160,8 @@ public final class AppModel {
                 for await notice in queue.notices {
                     if notice.kind.hasPrefix("portrait_") {
                         self?.faceNotice(notice)
+                    } else if notice.kind.hasPrefix("importance_") {
+                        self?.importanceNotice(notice)
                     } else {
                         await self?.maskNotice(notice)
                     }
@@ -179,6 +186,11 @@ public final class AppModel {
                                                  data: ["image": .string(image), "message": "the engine stopped"]))
         }
         faceWaiters = [:]
+        for (run, waiter) in importanceWaiters {
+            waiter.resume(returning: EngineEvent(kind: "importance_failed", job: nil,
+                                                 data: ["image": .string(run), "message": "the engine stopped"]))
+        }
+        importanceWaiters = [:]
         signals.keepAwake(false)
         signals.dockProgress(nil)
         folderWatcher.stop()

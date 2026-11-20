@@ -19,6 +19,9 @@ struct ResultCanvas: View {
     @State private var view = "sketch"
     @State private var exporting: ExportSource?
     @State private var printing: PrintRequest?
+    /// the edit bar below the sketch (saved steps or Simplify; nil: closed)
+    @State private var bar: EditBarModel?
+    @State private var noSteps = false
 
     var body: some View {
         ZStack {
@@ -27,6 +30,10 @@ struct ResultCanvas: View {
                     .padding(Spacing.spaceXl)
             } else if view != "sketch" {
                 ViewPicture(kind: view, sketch: result.editor.flatMap { try? SketchSVG.parse($0.svg) })
+                    .padding(Spacing.spaceXl)
+            } else if let bar {
+                SketchView(sketch: try? SketchSVG.parse(bar.preview),
+                           label: model.studio.canvasLabel(model.texts, sketch: try? SketchSVG.parse(bar.preview)))
                     .padding(Spacing.spaceXl)
             } else if let editor = result.editor {
                 EditableSketch(editor: editor, tool: tool)
@@ -41,7 +48,7 @@ struct ResultCanvas: View {
         .overlay(alignment: .top) {
             HStack(spacing: Spacing.spaceM) {
                 ViewModePicker(mode: $view, matrix: result.matrix != nil)
-                if view == "sketch", let editor = result.editor {
+                if view == "sketch", bar == nil, let editor = result.editor {
                     EditTools(editor: editor, tool: $tool) {
                         exporting = ExportSource(svg: editor.svg, runDir: editor.runDir, name: name, jobDir: result.jobDir,
                                                  method: result.method, runs: result.runs.count)
@@ -49,15 +56,39 @@ struct ResultCanvas: View {
                         printing = request(editor)
                     } copySketch: {
                         copy(editor)
+                    } steps: {
+                        tool = .none
+                        bar = model.openSteps(editor)
+                        noSteps = bar == nil
+                    } simplify: {
+                        tool = .none
+                        bar = model.openSimplify(editor)
                     }
                 }
             }
             .padding(.top, Spacing.spaceS)
         }
         .safeAreaInset(edge: .bottom) {
-            if result.matrix == nil, result.runs.count > 1 { ResultSketches(result: result) }
+            if let bar, let editor = result.editor {
+                EditBarView(bar: bar) {
+                    editor.take(bar.preview)
+                    self.bar = nil
+                    NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                                         userInfo: [.announcement: model.texts.tr("ui.edit_bar.taken"),
+                                                    .priority: NSAccessibilityPriorityLevel.medium.rawValue])
+                } close: {
+                    self.bar = nil
+                }
+            } else if result.matrix == nil, result.runs.count > 1 {
+                ResultSketches(result: result)
+            }
         }
-        .onChange(of: view) { tool = .none }
+        .alert(model.texts.tr("ui.edit_bar.no_steps"), isPresented: $noSteps) {}
+        .onChange(of: view) {
+            tool = .none
+            bar = nil
+        }
+        .onChange(of: result.selected) { bar = nil }
         .sheet(item: $exporting) { ExportSheet(source: $0, settings: model.settings) }
         .sheet(item: $printing) { PrintSheet(request: $0, settings: model.settings) }
         .focusedSceneValue(\.printAction, view == "sketch" ? result.editor.map { editor in
@@ -258,6 +289,9 @@ struct EditTools: View {
     let export: () -> Void
     let printSketch: () -> Void
     let copySketch: () -> Void
+    /// the edit bar: the saved steps, Simplify
+    let steps: () -> Void
+    let simplify: () -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: Spacing.spaceS) {
@@ -270,6 +304,13 @@ struct EditTools: View {
                 action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
                     .keyboardShortcut("z", modifiers: [.command, .shift])
                 action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
+                action("ui.edit_bar.history", "clock.arrow.circlepath", help: "ui.edit_bar.history_tip", enabled: true,
+                       steps)
+                Button(model.texts.tr("ui.edit_bar.simplify"), systemImage: "slider.horizontal.3", action: simplify)
+                    .labelStyle(.titleAndIcon)  // (with its name: easy to find)
+                    .help(model.texts.tr("ui.edit_bar.simplify_tip"))
+                    .buttonStyle(.glass)
+                    .disabled(!editor.canErase)
                 action("ui.export", "square.and.arrow.up", enabled: true, export)
                     .keyboardShortcut("e", modifiers: .command)
                 action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P: the menu's)
@@ -512,5 +553,43 @@ struct MatrixGrid: View {
                 .frame(width: size, height: size)
                 .accessibilityHidden(true)
         }
+    }
+}
+
+/// The edit bar (widgets/edit_bar.py): its title and line, Cancel and Take; the slider; the note below it. Content
+/// below the canvas: a plain bar, no glass.
+struct EditBarView: View {
+    @Environment(AppModel.self) private var model
+    @Bindable var bar: EditBarModel
+    let apply: () -> Void
+    let close: () -> Void
+
+    var body: some View {
+        let t = model.texts
+        VStack(alignment: .leading, spacing: Spacing.spaceXs) {
+            HStack(spacing: Spacing.spaceM) {
+                Text(verbatim: bar.title(t)).font(.headline)
+                Text(verbatim: bar.info(t)).foregroundStyle(.secondary).monospacedDigit()
+                if bar.measuring { ProgressView().controlSize(.small) }
+                Spacer()
+                Button(t.tr("ui.cancel"), action: close)
+                    .keyboardShortcut(.cancelAction)
+                Button(bar.applyLabel(t), systemImage: "checkmark", action: apply)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!bar.canApply)
+            }
+            Slider(value: Binding(get: { Double(bar.value) }, set: { bar.value = Int($0.rounded()) }),
+                   in: Double(bar.range.lowerBound) ... Double(max(bar.range.upperBound, bar.range.lowerBound + 1)),
+                   step: 1)
+                .disabled(!bar.sliderEnabled)
+                .accessibilityLabel(bar.title(t))
+                .accessibilityValue(bar.info(t))
+            Text(verbatim: bar.note(t)).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, Spacing.spaceXl)
+        .padding(.vertical, Spacing.spaceM)
+        .background(.bar)
     }
 }

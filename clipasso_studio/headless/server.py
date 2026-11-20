@@ -3,7 +3,8 @@
 studio; this module only translates.
 
 ops: hello · devices · schema · models · required_models · model_roles · rerun_cell · convert_model · encode_webp ·
-stylize · mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait · start ·
+stylize · mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait ·
+importance · start ·
 pause · resume · cancel · shutdown
 """
 
@@ -98,6 +99,17 @@ def probe_devices() -> dict:
     return json.loads(out.stdout.strip().splitlines()[-1])
 
 
+def importance_worker(run_dir: str, model: str, device: str, results) -> None:
+    """The process of the studio's "Simplify" (headless.masks.Previews; ``--importance`` of the Windows studio): what
+    each stroke of the run's sketch adds – ("done", {"path": importance.json}) or ("error", why)."""
+    try:
+        from ..engine import importance
+
+        results.put(("done", {"path": importance.compute(run_dir, device)}))
+    except Exception as exc:  # reported to the app
+        results.put(("error", f"{type(exc).__name__}: {exc}"))
+
+
 class _Fail(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
@@ -114,7 +126,7 @@ def _text(args: dict, key: str, required: bool = True) -> str:
 class EngineServer:
     def __init__(self, writer: Writer, runner=None, clock: Callable[[], float] = time.monotonic,
                  devices_probe: Callable[[], dict] = probe_devices, mask_work: Callable | None = None,
-                 face_work: Callable | None = None):
+                 face_work: Callable | None = None, importance_work: Callable | None = None):
         if runner is None:
             from ..engine.runner import JobRunner
 
@@ -135,6 +147,9 @@ class EngineServer:
         self.masks = masks.Previews(notice, mask_work)
         # (portrait mode's faces, the same way: BlazeFace in a process of its own)
         self.faces = masks.Previews(notice, face_work, kind="portrait", worker=detail_brush.face_worker, result="map")
+        # (Simplify's measuring of the strokes of a run's sketch, the same way)
+        self.importance = masks.Previews(notice, importance_work, kind="importance", worker=importance_worker,
+                                         result="path")
 
     # ------------------------------------------------------------------ requests
     def handle(self, req: dict) -> dict:
@@ -381,6 +396,25 @@ class EngineServer:
         self.faces.request(image, detail_brush.FACE_MODEL, "cpu")
         return {"computing": True}
 
+    def op_importance(self, args: dict) -> dict:
+        """Simplify (studio.open_simplify): what each stroke of a run's sketch (the edited one, if there is one) adds,
+        as importance.json keeps it – ``rank`` (higher is kept longer) and ``order`` (from the least to the most
+        important), None when it was not measured for this sketch; with ``compute`` it is then measured in a process
+        of its own – "importance_ready" or "importance_failed" follows (its ``image`` is the run's folder)."""
+        from ..engine import importance, jobs
+
+        run_dir = _text(args, "run_dir")
+        try:
+            with open(jobs.sketch_file(run_dir), encoding="utf-8") as f:
+                svg = f.read()
+        except OSError:
+            raise _Fail("not_found", f"no sketch in {run_dir}") from None
+        rank = importance.read(run_dir, svg)
+        computing = rank is None and bool(args.get("compute"))
+        if computing:
+            self.importance.request(run_dir, "", "cpu")
+        return {"rank": rank, "order": None if rank is None else importance.order(rank), "computing": computing}
+
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")
         if not isinstance(settings, dict):
@@ -430,7 +464,7 @@ class EngineServer:
 
     def pump(self) -> int:
         """Pass the job's new events (and a finished mask) on; returns how many came."""
-        sent = self.masks.poll() + self.faces.poll()
+        sent = self.masks.poll() + self.faces.poll() + self.importance.poll()
         if self.job is None:
             self.runner.release_idle(WARM_IDLE)
             return sent
@@ -487,4 +521,5 @@ class EngineServer:
             self.runner.kill()  # the job stops and is marked interrupted, whatever ended the loop
             self.masks.shutdown()
             self.faces.shutdown()
+            self.importance.shutdown()
         return code
