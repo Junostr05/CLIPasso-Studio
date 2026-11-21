@@ -790,6 +790,73 @@ def test_continue_sketch(tmp_path):
     assert server.handle(_req(6, "continue_sketch", run_dir=str(tmp_path)))["error"]["code"] == "not_found"
 
 
+def test_device_bench(tmp_path):
+    """The hardware test from the app: started in a process of its own (here a stand-in), its JSON lines passed on as
+    notices; not twice at once, not while a job runs; a test that ends without its result says so."""
+    import queue as queue_mod
+
+    image = tmp_path / "Kamel ä.png"
+    image.write_bytes(b"\x89PNG")
+    started = []
+
+    def work(methods, iters, path):
+        started.append((methods, iters, path, queue_mod.Queue()))
+        return started[-1][3], None
+
+    server, out = _server(bench_work=work)
+    assert server.handle(_req(1, "device_bench", image=str(image), methods=["clipasso"], iters=20))["result"] \
+        == {"running": True}
+    assert started[0][:3] == (["clipasso"], 20, str(image))
+    assert server.handle(_req(2, "device_bench", image=str(image)))["error"]["code"] == "busy"
+    lines = started[0][3]
+    lines.put("Downloading weights …\n")  # (what it prints besides: kept for a failure, not passed on)
+    lines.put(json.dumps({"event": "row", "method": "clipasso", "device": "cpu", "sec_per_iter": 1.5}) + "\n")
+    lines.put(json.dumps({"event": "done", "rows": [], "checks": [], "recommended": {"clipasso": {"device": "mps"}}}))
+    lines.put(None)
+    assert server.pump() == 2
+    events = [line for line in out.lines() if line.get("event", "").startswith("bench_")]
+    assert events[0] == {"event": "bench_row", "job": None,
+                         "data": {"method": "clipasso", "device": "cpu", "sec_per_iter": 1.5}}
+    assert events[1]["event"] == "bench_done" and events[1]["data"]["recommended"]["clipasso"]["device"] == "mps"
+    # again: it ends without its result
+    assert server.handle(_req(3, "device_bench", image=str(image)))["result"] == {"running": True}
+    assert started[1][:2] == (["clipasso", "swiftsketch"], 40)
+    started[1][3].put("Traceback … RuntimeError: no MPS\n")
+    started[1][3].put(None)
+    server.pump()
+    last = out.lines()[-1]
+    assert last["event"] == "bench_failed" and "no MPS" in last["data"]["message"]
+    for bad in ({"methods": ["nope"]}, {"iters": 1}, {"iters": True}, {"methods": "clipasso"}):
+        assert server.handle(_req(4, "device_bench", image=str(image), **bad))["error"]["code"] == "bad_request"
+    assert server.handle(_req(5, "device_bench", image=str(tmp_path / "no.png")))["error"]["code"] == "not_found"
+
+
+def test_the_recommended_device():
+    """The GPU where it was measured faster (at most 0.8 of the CPU's time) and as good (the CPU judge: at most 3
+    points lower, no NaN); else the CPU – with the reason."""
+    from clipasso_studio.engine import device_bench
+
+    def row(method, device, sec, score, **more):
+        return {"method": method, "device": device, "sec_per_iter": sec, "seconds": sec * 10, "cpu_clip_score": score,
+                "nan_in_svg": False, "error": None, **more}
+
+    got = device_bench.recommend([
+        row("clipasso", "cpu", 1.6, 52), row("clipasso", "mps", 0.4, 51),  # 4× faster, as good
+        row("swiftsketch", "cpu", 0.08, 66), row("swiftsketch", "mps", 0.03, 60),  # faster, but worse
+        row("controlsketch", "cpu", 9.0, 60), row("controlsketch", "mps", 8.0, 60),  # hardly faster
+        row("scenesketch", "cpu", 2.0, 60), row("scenesketch", "mps", 0.5, 60, nan_in_svg=True),
+        row("clipasso", "cpu", 1.4, 54),  # (the median of the CPU's two)
+    ])
+    assert got["clipasso"]["device"] == "mps" and got["clipasso"]["reason"] == "faster"
+    assert got["clipasso"]["cpu_seconds"] == 1.5 and got["clipasso"]["speedup"] == 3.75
+    assert [got[m]["reason"] for m in ("swiftsketch", "controlsketch", "scenesketch")] == ["worse", "slower", "nan"]
+    assert all(got[m]["device"] == "cpu" for m in ("swiftsketch", "controlsketch", "scenesketch"))
+    missing = device_bench.recommend([row("clipasso", "cpu", 1.0, 50),
+                                      {"method": "clipasso", "device": "mps", "error": "unavailable"}])
+    assert missing["clipasso"] == {"device": "cpu", "cpu_seconds": None, "gpu_seconds": None, "speedup": None,
+                                   "cpu_score": None, "gpu_score": None, "reason": "unavailable"}
+
+
 def test_importance_worker(tmp_path, monkeypatch):
     """The worker passes what importance.compute wrote on – or why it could not."""
     import queue as queue_mod

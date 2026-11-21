@@ -4,7 +4,7 @@ studio; this module only translates.
 
 ops: hello · devices · schema · models · required_models · model_roles · rerun_cell · convert_model · encode_webp ·
 stylize · mask · save_mask · remove_mask · detail · save_detail · phone_detail · remove_detail · portrait ·
-importance · continue_sketch · start ·
+importance · continue_sketch · device_bench · start ·
 pause · resume · cancel · shutdown
 """
 
@@ -110,6 +110,88 @@ def importance_worker(run_dir: str, model: str, device: str, results) -> None:
         results.put(("error", f"{type(exc).__name__}: {exc}"))
 
 
+class BenchRun:
+    """The hardware test (engine/device_bench.py) in a process of its own, one at a time: its JSON lines passed on as
+    notices – "bench_row" for each measured row, "bench_done" with the rows and the recommended devices, or
+    "bench_failed". ``start(methods, iters, image)`` (tests) gives a queue of its lines (None: the end) and the
+    process."""
+
+    def __init__(self, send: Callable[[str, dict], None], start: Callable | None = None):
+        self._send = send
+        self._start = start or self._process
+        self._lines: queue.Queue | None = None
+        self._proc = None
+        self._said: list[str] = []  # (what it printed besides its JSON – the end of it says why it failed)
+        self._done = False
+
+    @staticmethod
+    def _process(methods: list[str], iters: int, image: str):
+        lines: queue.Queue = queue.Queue()
+        proc = subprocess.Popen([sys.executable, "-m", "clipasso_studio.engine.device_bench", "--methods",
+                                 ",".join(methods), "--iters", str(iters), "--image", image],
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                                errors="replace")
+
+        def read():
+            for line in proc.stdout:
+                lines.put(line)
+            lines.put(None)
+
+        threading.Thread(target=read, name="device-bench", daemon=True).start()
+        return lines, proc
+
+    @property
+    def busy(self) -> bool:
+        return self._lines is not None
+
+    def request(self, methods: list[str], iters: int, image: str) -> bool:
+        if self._lines is not None:
+            return False
+        self._said = []
+        self._lines, self._proc = self._start(methods, iters, image)
+        return True
+
+    def poll(self) -> int:
+        if self._lines is None:
+            return 0
+        sent = 0
+        while True:
+            try:
+                line = self._lines.get_nowait()
+            except queue.Empty:
+                return sent
+            if line is None:
+                self._lines = None
+                code = self._proc.wait() if self._proc is not None else 0
+                if code != 0 or not self._done:
+                    tail = " ".join(self._said[-3:])[-500:]
+                    self._send("bench_failed", {"message": f"the hardware test ended ({code}) {tail}".strip()})
+                    sent += 1
+                self._done = False
+                return sent
+            text = line.strip()
+            event = None
+            if text.startswith("{"):
+                try:
+                    event = json.loads(text)
+                except ValueError:
+                    event = None
+            if not isinstance(event, dict) or "event" not in event:
+                if text:
+                    self._said.append(text)
+                continue
+            kind = event.pop("event")
+            if kind == "done":
+                self._done = True
+            self._send(f"bench_{kind}", event)
+            sent += 1
+
+    def shutdown(self) -> None:
+        if self._proc is not None and self._proc.poll() is None:
+            self._proc.terminate()
+        self._lines = None
+
+
 class _Fail(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
@@ -126,7 +208,8 @@ def _text(args: dict, key: str, required: bool = True) -> str:
 class EngineServer:
     def __init__(self, writer: Writer, runner=None, clock: Callable[[], float] = time.monotonic,
                  devices_probe: Callable[[], dict] = probe_devices, mask_work: Callable | None = None,
-                 face_work: Callable | None = None, importance_work: Callable | None = None):
+                 face_work: Callable | None = None, importance_work: Callable | None = None,
+                 bench_work: Callable | None = None):
         if runner is None:
             from ..engine.runner import JobRunner
 
@@ -150,6 +233,8 @@ class EngineServer:
         # (Simplify's measuring of the strokes of a run's sketch, the same way)
         self.importance = masks.Previews(notice, importance_work, kind="importance", worker=importance_worker,
                                          result="path")
+        # (the hardware test: the CPU against the Apple GPU per method, in a process of its own)
+        self.bench = BenchRun(notice, bench_work)
 
     # ------------------------------------------------------------------ requests
     def handle(self, req: dict) -> dict:
@@ -446,6 +531,24 @@ class EngineServer:
                                              _text(args, "output_dir"))
         return {"image": image, "settings": prepared}
 
+    def op_device_bench(self, args: dict) -> dict:
+        """The hardware test (engine/device_bench.py): every method of ``methods`` once on the CPU and once on the
+        Apple GPU on ``image`` (``iters`` iterations of the methods that optimise) – "bench_row" for each, then
+        "bench_done" with the recommended device per method, or "bench_failed". Not while a job runs (they would
+        measure each other) and not twice at once."""
+        methods = args.get("methods") or ["clipasso", "swiftsketch"]
+        if not isinstance(methods, list) or not methods or any(m not in schema.METHODS for m in methods):
+            raise _Fail("bad_request", f"methods are some of {', '.join(schema.METHODS)}")
+        iters = args.get("iters", 40)
+        if not isinstance(iters, int) or isinstance(iters, bool) or not 3 <= iters <= 500:
+            raise _Fail("bad_request", "iters is a whole number from 3 to 500")
+        image = self._image(args)
+        if self.job is not None:
+            raise _Fail("busy", "a job runs – the hardware test waits until it is done")
+        if not self.bench.request(list(methods), iters, image):
+            raise _Fail("busy", "the hardware test runs already")
+        return {"running": True}
+
     def op_start(self, args: dict) -> dict:
         settings = args.get("settings")
         if not isinstance(settings, dict):
@@ -495,7 +598,7 @@ class EngineServer:
 
     def pump(self) -> int:
         """Pass the job's new events (and a finished mask) on; returns how many came."""
-        sent = self.masks.poll() + self.faces.poll() + self.importance.poll()
+        sent = self.masks.poll() + self.faces.poll() + self.importance.poll() + self.bench.poll()
         if self.job is None:
             self.runner.release_idle(WARM_IDLE)
             return sent
@@ -553,4 +656,5 @@ class EngineServer:
             self.masks.shutdown()
             self.faces.shutdown()
             self.importance.shutdown()
+            self.bench.shutdown()
         return code
