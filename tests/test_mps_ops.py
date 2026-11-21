@@ -76,3 +76,12 @@ def test_the_linear_layer_changes_only_for_the_apple_gpu(monkeypatch):
     linear = mps_ops._dispatching(lambda *args: calls.append(args) or "other way")
     x, w = torch.randn(2, 4), torch.randn(3, 4)
     assert torch.equal(linear(x, w), mps_ops._native_linear(x, w)) and calls == []  # (a CPU tensor: as before)
+
+
+def test_clip_in_half_precision_only_where_meant(monkeypatch):
+    from clipasso_studio.engine.clip_ import clip
+
+    monkeypatch.delenv("CLIPASSO_MPS_HALF", raising=False)
+    assert clip.half_precision("cuda") and not clip.half_precision("cpu") and not clip.half_precision("mps")
+    monkeypatch.setenv("CLIPASSO_MPS_HALF", "1")
+    assert clip.half_precision("mps") and not clip.half_precision("cpu")

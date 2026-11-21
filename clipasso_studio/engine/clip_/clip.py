@@ -5,6 +5,7 @@ Models are loaded from the local model store instead of being downloaded at runt
 
 from __future__ import annotations
 
+import os
 from typing import List, Union
 
 import torch
@@ -47,6 +48,14 @@ def available_models() -> List[str]:
 _loaded: dict = {}
 
 
+def half_precision(device) -> bool:
+    """CLIP in float16: on an NVIDIA card (as the original CLIPasso), on the Apple GPU only with
+    ``CLIPASSO_MPS_HALF=1`` – 4× the matrix speed there (29.8 against 7.2 TFLOPS on an M5 Pro), to be measured
+    against the CPU before it becomes the default."""
+    kind = torch.device(device).type
+    return kind == "cuda" or (kind == "mps" and os.environ.get("CLIPASSO_MPS_HALF") == "1")
+
+
 def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False):
     """Load a CLIP model -> (model, preprocess). Same behaviour as ``clip.load(..., jit=False)``:
     fp16 weights on CUDA, fp32 on CPU. Weights are frozen (``requires_grad=False``): only the
@@ -61,7 +70,7 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
             model = build_model(state_dict).to(device)
-        if torch.device(device).type != "cuda":  # (half precision only on an NVIDIA card)
+        if not half_precision(device):  # (half precision on an NVIDIA card – on the Apple GPU only when asked)
             model.float()
         model.requires_grad_(False)
         model.eval()

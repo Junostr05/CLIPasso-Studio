@@ -27,6 +27,7 @@ How it is kept fast (3.0; the strokes are drawn as before, see tests/test_render
 from __future__ import annotations
 
 import math
+import os
 from functools import lru_cache
 
 import torch
@@ -129,21 +130,36 @@ class _Item:
         self.seg_meta, self.point, self.half, self.rgb = [], None, 0.0, (0.0, 0.0, 0.0)
 
 
+def _moved(tensors: list[torch.Tensor], device, dtype) -> list[torch.Tensor]:
+    """The tensors on ``device`` in ``dtype`` – where some are elsewhere, in one transfer (each transfer from the
+    Apple GPU waits for it: one per stroke would cost more than drawing). Differentiable, as ``.to``."""
+    if all(t.device == torch.device(device) for t in tensors):
+        return [t.to(dtype=dtype) for t in tensors]
+    flat = torch.cat([t.reshape(-1).to(dtype=dtype) for t in tensors]).to(device)
+    out, pos = [], 0
+    for t in tensors:
+        out.append(flat[pos: pos + t.numel()].reshape(t.shape))
+        pos += t.numel()
+    return out
+
+
 def _prepare(shapes, shape_groups, s: int, device, dtype) -> list[_Item]:
-    items = []
+    drawn = []  # (shape, colour) in drawing order
     for group in shape_groups:
         color = group.stroke_color
         if color is None:
             continue
-        color = color.to(device=device, dtype=dtype)
         for sid in group.shape_ids.tolist():
-            shape = shapes[int(sid)]
-            pts = shape.points.to(device=device, dtype=dtype) * s  # (strokes made on another device, too)
-            segs = _segments_of(pts, shape.num_control_points.tolist(), shape.is_closed)
-            width = shape.stroke_width.to(device=device, dtype=dtype) * s
-            items.append(_Item(segs, pts[:1], width, color))
-    if not items:
-        return items
+            drawn.append((shapes[int(sid)], color))
+    if not drawn:
+        return []
+    moved = _moved([t for shape, color in drawn for t in (shape.points, shape.stroke_width.reshape(-1)[:1], color)],
+                   device, dtype)
+    items = []
+    for i, (shape, _) in enumerate(drawn):
+        pts, width, color = moved[3 * i] * s, moved[3 * i + 1].reshape(()) * s, moved[3 * i + 2]
+        segs = _segments_of(pts, shape.num_control_points.tolist(), shape.is_closed)
+        items.append(_Item(segs, pts[:1], width, color))
     # all metadata in one transfer: per segment order the control polygon lengths and boxes
     by_order: dict[int, list] = {}
     where = []
@@ -295,7 +311,7 @@ def _layers(canvas_width, canvas_height, shapes, shape_groups, samples):
         device = shape.points.device
         dtype = shape.points.dtype if shape.points.is_floating_point() else torch.float32
         break
-    device = device or torch.device("cpu")
+    device = draw_device(device or torch.device("cpu"))
     layers = []
     black = True
     for it in _prepare(shapes, shape_groups, s, device, dtype):
@@ -360,11 +376,33 @@ class _Transmittance(torch.autograd.Function):
         return (None, None, None, *grads)
 
 
+def _strokes_device(shapes) -> torch.device:
+    for shape in shapes:
+        return shape.points.device
+    return torch.device("cpu")
+
+
+def draw_device(device) -> torch.device:
+    """Where strokes on ``device`` are drawn: on the CPU for the Apple GPU. The renderer sends some 100 small
+    operations per stroke; on MPS each costs about as much as on the CPU drawing the whole stroke (measured on an
+    M5 Pro: 114 ms a render on MPS, 3.3 ms on the CPU; the GPU busy a third of the time). The image is copied to the
+    GPU once, the gradient back once. ``CLIPASSO_MPS_RENDER=gpu`` draws on the GPU (to compare)."""
+    device = torch.device(device)
+    if device.type == "mps" and os.environ.get("CLIPASSO_MPS_RENDER", "cpu") != "gpu":
+        return torch.device("cpu")
+    return device
+
+
 def render(canvas_width: int, canvas_height: int, shapes, shape_groups, samples: int = 1) -> torch.Tensor:
-    """Render to an [H, W, 4] RGBA tensor (straight alpha), like ``pydiffvg.RenderFunction``.
+    """Render to an [H, W, 4] RGBA tensor (straight alpha), like ``pydiffvg.RenderFunction``, on the device of the
+    strokes (drawn where ``draw_device`` says).
 
     ``samples`` > 1 renders at a higher resolution and box-downsamples (supersampling).
     """
+    return _render(canvas_width, canvas_height, shapes, shape_groups, samples).to(_strokes_device(shapes))
+
+
+def _render(canvas_width, canvas_height, shapes, shape_groups, samples) -> torch.Tensor:
     layers, width_px, height_px, device, dtype, _, s = _layers(canvas_width, canvas_height, shapes, shape_groups,
                                                                samples)
     img = _composite(layers, width_px, height_px, device, dtype)
@@ -374,7 +412,11 @@ def render(canvas_width: int, canvas_height: int, shapes, shape_groups, samples:
 
 
 def render_on_white(canvas_width, canvas_height, shapes, shape_groups, samples: int = 1) -> torch.Tensor:
-    """[H, W, 3] image composited on white, as done throughout CLIPasso."""
+    """[H, W, 3] image composited on white, as done throughout CLIPasso – on the device of the strokes."""
+    return _on_white(canvas_width, canvas_height, shapes, shape_groups, samples).to(_strokes_device(shapes))
+
+
+def _on_white(canvas_width, canvas_height, shapes, shape_groups, samples) -> torch.Tensor:
     layers, width_px, height_px, device, dtype, black, s = _layers(canvas_width, canvas_height, shapes,
                                                                    shape_groups, samples)
     if black:  # black strokes: the image is the product of (1 - alpha), no full-canvas layers

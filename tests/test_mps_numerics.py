@@ -204,3 +204,52 @@ def test_clip_reads_text_on_the_gpu_as_on_the_cpu():
         b = gpu_model.encode_text(tokens.to("mps")).float().cpu()
     cos = torch.nn.functional.cosine_similarity(a, b, dim=-1)
     assert float(cos.min()) > 0.999, f"cosine CPU/MPS per text {cos.tolist()}"
+
+
+@pytest.mark.parametrize("where", ["cpu", "gpu"])
+def test_strokes_on_the_gpu_are_drawn_as_on_the_cpu(monkeypatch, where):
+    """Strokes on MPS are drawn on the CPU (renderer.draw_device; CLIPASSO_MPS_RENDER=gpu: on the GPU): the same
+    image and the same gradients as strokes on the CPU, the image back on MPS."""
+    from clipasso_studio.engine import renderer
+
+    monkeypatch.setenv("CLIPASSO_MPS_RENDER", where)
+    g = torch.Generator().manual_seed(5)
+    points = [torch.rand(4, 2, generator=g) * 200 + 12 for _ in range(16)]
+
+    def draw(device):
+        pts = [p.to(device).requires_grad_(True) for p in points]
+        shapes = [renderer.Path(torch.tensor([2]), p, torch.tensor(1.5, device=device)) for p in pts]
+        groups = [renderer.ShapeGroup(torch.tensor([i]), None, torch.tensor([0.0, 0.0, 0.0, 1.0], device=device))
+                  for i in range(len(shapes))]
+        img = renderer.render_on_white(224, 224, shapes, groups)
+        (img * torch.linspace(0, 1, 224, device=device)[:, None, None]).sum().backward()
+        return img, [p.grad for p in pts]
+
+    a, ga = draw("cpu")
+    b, gb = draw("mps")
+    assert b.device.type == "mps" and all(t.device.type == "mps" for t in gb)
+    assert torch.allclose(a, b.cpu(), atol=1e-5)
+    assert all(torch.allclose(x, y.cpu(), atol=1e-3, rtol=1e-4) for x, y in zip(ga, gb))
+
+
+def test_clip_in_half_precision_on_the_gpu_sees_nearly_what_the_cpu_sees(monkeypatch):
+    """CLIPASSO_MPS_HALF=1 (float16 on the Apple GPU, as on an NVIDIA card): the image features stay close to the
+    CPU's float32 ones."""
+    from clipasso_studio.engine import model_store
+    from clipasso_studio.engine.clip_ import clip
+
+    if not model_store.is_available(model_store.clip_key("ViT-B/32")):
+        pytest.skip("CLIP ViT-B/32 is not downloaded")
+    monkeypatch.setenv("CLIPASSO_MPS_HALF", "1")
+    monkeypatch.setattr(clip, "_loaded", {})  # (loaded anew, in half precision)
+    cpu_model, _ = clip.load("ViT-B/32", "cpu")
+    gpu_model, _ = clip.load("ViT-B/32", "mps")
+    assert next(gpu_model.parameters()).dtype == torch.float16
+    g = torch.Generator().manual_seed(0)
+    images = (torch.rand(3, 3, 224, 224, generator=g) - 0.45) / 0.27
+    with torch.no_grad():
+        a = cpu_model.encode_image(images).float()
+        b = gpu_model.encode_image(images.to("mps")).float().cpu()
+    cos = torch.nn.functional.cosine_similarity(a, b, dim=-1)
+    print("CLIP float16 on MPS against float32 on the CPU, cosine:", cos.tolist())
+    assert float(cos.min()) > 0.995
