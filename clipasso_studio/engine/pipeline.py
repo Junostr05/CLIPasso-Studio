@@ -140,7 +140,8 @@ def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
     if wanted == "cuda":
         return torch.device("cpu"), ("cuda_unavailable:CUDA is not available – running on the CPU instead "
                                      "(much slower).")
-    if schema.method_of(settings) in schema.MPS_AUTO and mps_available() and mps_ops.ensure_right("mps") != "wrong":
+    if (sys.platform == "darwin" and schema.method_of(settings) in schema.MPS_AUTO and mps_available()
+            and mps_ops.ensure_right("mps") != "wrong"):  # (the Apple GPU only on a Mac)
         return torch.device("mps"), None
     return torch.device("cpu"), None
 
