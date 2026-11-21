@@ -20,6 +20,7 @@ from torchvision.transforms import InterpolationMode
 from torchvision.transforms import functional as TF
 
 from . import nets, semantic
+from .mps_ops import grid_sample_bilinear
 from .clip_ import clip
 
 _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
@@ -34,11 +35,41 @@ def antialias_on(device) -> bool:
     return torch.device(device).type != "mps"
 
 
+def perspective(img: torch.Tensor, startpoints, endpoints) -> torch.Tensor:
+    """``TF.perspective`` of a [N, C, H, W] tensor, bilinear, black outside – on the Apple GPU with
+    grid_sample_bilinear (the same grid and the same mask for the fill as torchvision), elsewhere torchvision's own."""
+    if img.device.type != "mps" or img.dim() != 4:
+        return TF.perspective(img, startpoints, endpoints, InterpolationMode.BILINEAR, fill=[0.0] * img.shape[-3])
+    return _own_perspective(img, startpoints, endpoints)
+
+
+def _own_perspective(img: torch.Tensor, startpoints, endpoints) -> torch.Tensor:
+    from torchvision.transforms import _functional_tensor as FT
+    coeffs = TF._get_perspective_coeffs(startpoints, endpoints)
+    grid = FT._perspective_grid(coeffs, ow=img.shape[-1], oh=img.shape[-2], dtype=img.dtype, device=img.device)
+    ones = torch.ones_like(img[:, :1])
+    out = grid_sample_bilinear(torch.cat([img, ones], dim=1), grid.expand(img.shape[0], -1, -1, -1))
+    return out[:, :-1] * out[:, -1:]  # (the fill is 0: img · mask + (1 − mask) · 0)
+
+
+class RandomPerspective(transforms.RandomPerspective):
+    """transforms.RandomPerspective (the same random numbers) – on the Apple GPU through ``perspective``."""
+
+    def forward(self, img):
+        if not (torch.is_tensor(img) and img.device.type == "mps" and img.dim() == 4):
+            return super().forward(img)
+        height, width = img.shape[-2:]
+        if torch.rand(1) < self.p:
+            startpoints, endpoints = self.get_params(width, height, self.distortion_scale)
+            return perspective(img, startpoints, endpoints)
+        return img
+
+
 def _affine_augmentations(args, normalize=True):
     augs = []
     if "affine" in args.augemntations:
         scale = float(getattr(args, "aug_scale_min", 0.8))
-        augs.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
+        augs.append(RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
         augs.append(transforms.RandomResizedCrop(224, scale=(scale, scale), ratio=(1.0, 1.0),
                                                  antialias=antialias_on(getattr(args, "device", "cpu"))))
     if normalize:
@@ -75,7 +106,7 @@ class AugmentBank:
     def apply(self, x: torch.Tensor, i: int) -> torch.Tensor:
         """Augmentation ``i`` of a [N, 3, H, W] image (normalised for CLIP)."""
         start, end, (top, left, h, w) = self.params[i]
-        x = TF.perspective(x, start, end, InterpolationMode.BILINEAR, fill=[0.0] * x.shape[1])
+        x = perspective(x, start, end)
         x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR,
                             antialias=antialias_on(x.device))
         return TF.normalize(x, _CLIP_MEAN, _CLIP_STD)

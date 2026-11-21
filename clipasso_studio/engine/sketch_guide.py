@@ -30,6 +30,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from .mps_ops import grid_sample_bilinear
+
 HATCH_DIR = (1 / math.sqrt(2), -1 / math.sqrt(2))  # 45°: from lower left to upper right (y points down)
 DARK = 0.42  # brightness (0..1) below which an area is hatched
 EDGE = 0.12  # Sobel magnitude from which a pixel is on an edge (a black-white step: 1)
@@ -220,7 +222,10 @@ class Guide:
         gx = pos[..., 0] / max(self.width - 1, 1) * 2 - 1
         gy = pos[..., 1] / max(self.height - 1, 1) * 2 - 1
         grid = torch.stack([gx, gy], dim=-1).reshape(1, n * s, 1, 2)
-        out = F.grid_sample(maps, grid, mode="bilinear", padding_mode="border", align_corners=True)
+        if maps.device.type == "mps":  # (grid_sample has no backward pass there)
+            out = grid_sample_bilinear(maps, grid, padding_mode="border", align_corners=True)
+        else:
+            out = F.grid_sample(maps, grid, mode="bilinear", padding_mode="border", align_corners=True)
         return out.reshape(maps.shape[1], n, s)
 
     def loss(self, points: torch.Tensor, roles, order: int) -> torch.Tensor:
