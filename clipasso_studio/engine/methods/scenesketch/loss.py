@@ -33,7 +33,7 @@ def vit_layer_features(visual, x: torch.Tensor, upto: int) -> list[torch.Tensor]
     cls = visual.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype,
                                                            device=x.device)
     x = torch.cat([cls, x], dim=1) + visual.positional_embedding.to(x.dtype)
-    x = visual.ln_pre(x).permute(1, 0, 2)  # NLD -> LND
+    x = visual.ln_pre(x).permute(1, 0, 2).contiguous()  # NLD -> LND (contiguous: as clip_.model, for MPS)
     feats = []
     for block in list(visual.transformer.resblocks)[: upto + 1]:
         x = block(x)

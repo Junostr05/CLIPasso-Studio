@@ -93,8 +93,57 @@ def _first_difference(cpu_model, gpu_model, images: torch.Tensor) -> str:
         rel = float((a - b).abs().max() / (a.abs().max() + 1e-9))
         lines.append(f"{name}: relative difference {rel:.2e}")
         if rel > 1e-3:
-            return "first layer that differs – " + lines[-1] + "\n" + "\n".join(lines)
+            out = "first layer that differs – " + lines[-1] + "\n" + "\n".join(lines)
+            if name.startswith("block"):
+                i = int(name[5:])
+                out += "\n" + _inside_block(cpu_model, gpu_model, images, i)
+            return out
     return "no layer differs by more than 1e-3:\n" + "\n".join(lines)
+
+
+def _rel(a: torch.Tensor, b: torch.Tensor) -> float:
+    return float((a - b).abs().max() / (a.abs().max() + 1e-9))
+
+
+def _inside_block(cpu_model, gpu_model, images: torch.Tensor, i: int) -> str:
+    """Block ``i`` step by step: each step on both devices from the same input (the CPU's), the input contiguous
+    and as a permuted view – which operation of MPS computes wrongly, and whether only on a view."""
+    import torch.nn.functional as F
+
+    seen = {}
+    cpu_block, gpu_block = cpu_model.visual.transformer.resblocks[i], gpu_model.visual.transformer.resblocks[i]
+    handle = cpu_block.register_forward_pre_hook(lambda _m, args: seen.setdefault("x", args[0].detach().clone()))
+    with torch.no_grad():
+        cpu_model.encode_image(images)
+    handle.remove()
+    x = seen["x"].float()
+    lines = [f"inside {f'block{i}'} (input {tuple(x.shape)}, contiguous on the CPU: {x.is_contiguous()}):"]
+
+    def views(t):
+        yield "contiguous", t.contiguous().to("mps")
+        yield "permuted view", t.permute(1, 0, 2).contiguous().to("mps").permute(1, 0, 2)
+
+    def step(name, run_cpu, run_gpu, t):
+        with torch.no_grad():
+            a = run_cpu(t)
+            for layout, v in views(t):
+                lines.append(f"  {name} ({layout}): relative difference {_rel(a, run_gpu(v).cpu()):.2e}")
+        return a
+
+    c, g = cpu_block, gpu_block
+    h1 = step("ln_1", c.ln_1, g.ln_1, x)
+    step("in_proj (F.linear)", lambda t: F.linear(t, c.attn.in_proj_weight, c.attn.in_proj_bias),
+         lambda t: F.linear(t, g.attn.in_proj_weight, g.attn.in_proj_bias), h1)
+    att = step("attention (fused)", lambda t: c.attn(t, t, t)[0], lambda t: g.attn(t, t, t)[0], h1)
+    step("attention (explicit)", lambda t: c.attn(t, t, t, need_weights=True)[0],
+         lambda t: g.attn(t, t, t, need_weights=True)[0], h1)
+    x2 = x + att
+    h2 = step("ln_2", c.ln_2, g.ln_2, x2)
+    f = step("mlp.c_fc", c.mlp.c_fc, g.mlp.c_fc, h2)
+    gl = step("mlp.gelu", c.mlp.gelu, g.mlp.gelu, f)
+    step("mlp.c_proj", c.mlp.c_proj, g.mlp.c_proj, gl)
+    step("the whole block", c, g, x)
+    return "\n".join(lines)
 
 
 def test_clip_sees_on_the_gpu_what_it_sees_on_the_cpu():
