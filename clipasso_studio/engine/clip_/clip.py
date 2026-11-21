@@ -10,7 +10,7 @@ from typing import List, Union
 import torch
 from torchvision.transforms import CenterCrop, Compose, InterpolationMode, Normalize, Resize, ToTensor
 
-from .. import model_store
+from .. import model_store, mps_ops
 from .model import build_model
 from .simple_tokenizer import SimpleTokenizer as _Tokenizer
 
@@ -56,6 +56,7 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
     sketch); callers must not change it. Building it does not touch the random number generator,
     so a sketch is the same whether the model was cached or not."""
     key = (name, str(torch.device(device)))
+    mps_ops.ensure_right(device)  # (on the Apple GPU: F.linear the way that is right there)
     if key not in _loaded:
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights

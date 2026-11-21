@@ -52,3 +52,27 @@ def test_the_random_perspective_draws_the_same_numbers():
     torch.manual_seed(5)
     b = losses.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5)(img)
     assert torch.equal(a, b) and torch.equal(torch.rand(1), after_a)
+
+
+@pytest.mark.parametrize("way", ["matmul", "view"])
+def test_the_other_ways_of_the_linear_layer_compute_as_it_does(way):
+    from clipasso_studio.engine import mps_ops
+
+    g = torch.Generator().manual_seed(2)
+    x, w, b = torch.randn(7, 3, 32, generator=g), torch.randn(48, 32, generator=g), torch.randn(48, generator=g)
+    for args in ((x, w, b), (x[0], w, b), (x, w, None)):
+        assert torch.allclose(mps_ops.LINEAR_WAYS[way](*args), torch.nn.functional.linear(*args), atol=1e-5)
+    # (and on the CPU every way is right: the check takes the first, the built-in one)
+    assert mps_ops.check_linear("cpu") == "native"
+    assert mps_ops.check_linear("cpu", {"broken": lambda x, w, b=None: x.sum()}) is None
+
+
+def test_the_linear_layer_changes_only_for_the_apple_gpu(monkeypatch):
+    from clipasso_studio.engine import mps_ops
+
+    monkeypatch.setattr(torch.nn.functional, "linear", torch.nn.functional.linear)  # (restored afterwards)
+    assert mps_ops.ensure_right("cpu") == "native"
+    calls = []
+    linear = mps_ops._dispatching(lambda *args: calls.append(args) or "other way")
+    x, w = torch.randn(2, 4), torch.randn(3, 4)
+    assert torch.equal(linear(x, w), mps_ops._native_linear(x, w)) and calls == []  # (a CPU tensor: as before)

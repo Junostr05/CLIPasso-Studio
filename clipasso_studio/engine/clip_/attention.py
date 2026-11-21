@@ -41,12 +41,8 @@ class MultiheadAttention(nn.Module):
         src_len = k.shape[1]
 
         hooks = attention_probs_forward_hook is not None or attention_probs_backwards_hook is not None
-        # the fused kernel (no attention matrix kept for the backward pass) – not on the Apple GPU: there it gave
-        # other features than on the CPU from the first block on (cosine 0.3–0.6, tests/test_mps_numerics.py), so CLIP
-        # scored and steered the strokes wrongly; the explicit product below is right there
-        fused = query.device.type != "mps"
-        if fused and not (need_weights or hooks) and key_padding_mask is None:
-            # q is already scaled
+        if not (need_weights or hooks) and key_padding_mask is None:
+            # the fused kernel (no attention matrix kept for the backward pass); q is already scaled
             mask = attn_mask
             if mask is not None and mask.dtype == torch.bool:
                 mask = ~mask  # True = masked out here, True = attends in scaled_dot_product_attention

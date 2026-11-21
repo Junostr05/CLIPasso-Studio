@@ -240,10 +240,9 @@ class VisualTransformer(nn.Module):
         x = x + self.positional_embedding.to(x.dtype)
         x = self.ln_pre(x)
 
-        # (contiguous: on the Apple GPU the blocks computed wrongly on the permuted view – tests/test_mps_numerics.py)
-        x = x.permute(1, 0, 2).contiguous()  # NLD -> LND
+        x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
-        x = x.permute(1, 0, 2).contiguous()  # LND -> NLD
+        x = x.permute(1, 0, 2)  # LND -> NLD
 
         x = self.ln_post(x[:, 0, :])
 
@@ -357,9 +356,9 @@ class CLIP(nn.Module):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
 
         x = x + self.positional_embedding.type(self.dtype)
-        x = x.permute(1, 0, 2).contiguous()  # NLD -> LND (contiguous: see VisualTransformer.forward)
+        x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
-        x = x.permute(1, 0, 2).contiguous()  # LND -> NLD
+        x = x.permute(1, 0, 2)  # LND -> NLD
         x = self.ln_final(x).type(self.dtype)
 
         # x.shape = [batch_size, n_ctx, transformer.width]

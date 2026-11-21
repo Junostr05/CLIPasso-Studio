@@ -46,6 +46,24 @@ def test_the_augmentations_go_backwards_on_the_gpu():
     assert done.returncode == 0 and "ok" in done.stdout, done.stderr[-3000:]
 
 
+def test_the_linear_layer_computes_right_on_the_gpu():
+    from clipasso_studio.engine import mps_ops
+
+    way = mps_ops.ensure_right("mps")
+    print("F.linear on MPS:", way)  # (in the log: which way this Mac's GPU needs)
+    assert way != "wrong", "no way of computing F.linear is right on this GPU"
+    g = torch.Generator().manual_seed(4)
+    x, w = torch.randn(50, 4, 768, generator=g), torch.randn(3072, 768, generator=g) / 28
+    b = torch.randn(3072, generator=g)
+    layer = torch.nn.Linear(768, 3072)
+    with torch.no_grad():
+        layer.weight.copy_(w)
+        layer.bias.copy_(b)
+        want = layer(x)
+        got = layer.to("mps")(x.to("mps")).cpu()
+    assert _rel(want, got) < 1e-4
+
+
 def test_the_own_sampler_on_the_gpu_is_grid_sample():
     from clipasso_studio.engine.mps_ops import grid_sample_bilinear
 

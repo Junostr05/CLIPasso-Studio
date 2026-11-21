@@ -33,3 +33,76 @@ def grid_sample_bilinear(img: torch.Tensor, grid: torch.Tensor, padding_mode: st
         tap = flat.gather(2, index).reshape(n, c, *x.shape[1:]) * (weight * inside.to(img.dtype)).unsqueeze(1)
         out = tap if out is None else out + tap
     return out
+
+
+# --- the linear layer --------------------------------------------------------------------------------------------
+# On the Apple GPU of the macOS CI machines F.linear (matrix product and bias in one, addmm) computed wrongly for a
+# contiguous input – 45 % off in CLIP's first block, so CLIP's scores and the losses that steer the strokes were
+# wrong –, while the same product of a permuted view was right (tests/test_mps_numerics.py). Whether a Mac's own GPU
+# does the same is not known; so the first use of MPS in a process checks it and, where the built-in way is wrong,
+# makes F.linear (and so every nn.Linear: CLIP, the diffusion models) take a way that is right there.
+
+_native_linear = torch.nn.functional.linear
+_chosen: str | None = None  # how F.linear computes on MPS in this process (None: not checked yet)
+
+
+def _matmul_linear(x, weight, bias=None):
+    out = torch.matmul(x, weight.t())
+    return out if bias is None else out + bias
+
+
+def _view_linear(x, weight, bias=None):
+    if x.dim() < 2:
+        return _native_linear(x, weight, bias)
+    view = x.transpose(-2, -1).contiguous().transpose(-2, -1)  # (the same values, laid out column by column)
+    return _native_linear(view, weight, bias)
+
+
+LINEAR_WAYS = {"native": _native_linear, "matmul": _matmul_linear, "view": _view_linear}
+
+
+def _relative(a: torch.Tensor, b: torch.Tensor) -> float:
+    return float((a - b).abs().max() / (a.abs().max() + 1e-9))
+
+
+def check_linear(device, ways=None) -> str | None:
+    """The first way of computing F.linear (``LINEAR_WAYS``) that gives on ``device`` what the CPU gives – for a 3-d
+    and a 2-d input, with and without a bias, of CLIP's sizes; None when none does."""
+    g = torch.Generator().manual_seed(0)
+    x = torch.randn(50, 4, 768, generator=g)
+    w = torch.randn(2304, 768, generator=g) / 28
+    b = torch.randn(2304, generator=g)
+    cases = [(x, w, b), (x.reshape(200, 768), w, b), (x, w, None), (x[:, :1], w[:768], b[:768])]
+    for name, way in (ways or LINEAR_WAYS).items():
+        try:
+            with torch.no_grad():
+                right = all(_relative(_native_linear(*case), way(*(None if t is None else t.to(device)
+                                                                    for t in case)).cpu()) < 1e-4
+                            for case in cases)
+        except Exception:  # noqa: BLE001 - a way the device cannot compute is not the way
+            right = False
+        if right:
+            return name
+    return None
+
+
+def _dispatching(way):
+    def linear(input, weight, bias=None):  # noqa: A002 - the name of F.linear's argument
+        if input.device.type == "mps":
+            return way(input, weight, bias)
+        return _native_linear(input, weight, bias)
+    linear.__doc__ = _native_linear.__doc__
+    return linear
+
+
+def ensure_right(device) -> str:
+    """Before a model computes on ``device``: on MPS, the way F.linear computes right there ("native", "matmul",
+    "view"; "wrong" when none) – F.linear takes it from now on in this process. Anything else: "native"."""
+    global _chosen
+    if torch.device(device).type != "mps":
+        return "native"
+    if _chosen is None:
+        _chosen = check_linear(device) or "wrong"
+        if _chosen in LINEAR_WAYS and _chosen != "native":
+            torch.nn.functional.linear = _dispatching(LINEAR_WAYS[_chosen])
+    return _chosen
