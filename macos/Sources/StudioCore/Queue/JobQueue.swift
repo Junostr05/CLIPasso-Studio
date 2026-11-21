@@ -17,6 +17,8 @@ public actor JobQueue {
     private var jobs: [QueuedJob] = []
     private var finished: WhenDone?
     private var stoppedByUser = false
+    /// per method the device a job on "auto" computes on (this machine's hardware test; none: the engine's own "auto")
+    private var autoDevices: [String: String] = [:]
     private var listener: Task<Void, Never>?
 
     public init(engine: any EngineControlling, outputRoot: URL) {
@@ -29,6 +31,21 @@ public actor JobQueue {
     /// Read the engine's events from now on (else from the first job): the notices come before any job.
     public func begin() {
         listen()
+    }
+
+    /// The hardware test's choice: a job whose device is "auto" computes on the device measured better here.
+    public func setAutoDevices(_ devices: [String: String]) {
+        autoDevices = devices
+    }
+
+    /// The settings a job starts with: "auto" turned into the measured device of its method, where there is one.
+    func startSettings(_ settings: JSONObject) -> JSONObject {
+        let device = settings["device"]?.stringValue ?? "auto"
+        let method = settings["method"]?.stringValue ?? ""
+        guard device == "auto", let chosen = autoDevices[method] else { return settings }
+        var out = settings
+        out["device"] = .string(chosen)
+        return out
     }
 
     deinit {
@@ -133,7 +150,7 @@ public actor JobQueue {
         listen()
         guard current == nil, let i = jobs.firstIndex(where: { $0.status == .queued }) else { return }
         var job = jobs[i]
-        var args: JSONObject = ["target": .string(job.target.path), "settings": .object(job.settings),
+        var args: JSONObject = ["target": .string(job.target.path), "settings": .object(startSettings(job.settings)),
                                 "output_root": .string(outputRoot.path)]
         if let resume = job.resumeDir { args["resume_dir"] = .string(resume.path) }
         job.status = .running
@@ -186,8 +203,8 @@ public actor JobQueue {
     // MARK: - the engine's events
 
     /// Events of no job the app hears of (the queue's notices): the object mask, portrait mode's faces, Simplify's
-    /// measuring.
-    static let noticeKinds = ["mask_", "portrait_", "importance_"]
+    /// measuring, the hardware test.
+    static let noticeKinds = ["mask_", "portrait_", "importance_", "bench_"]
 
     /// A picture an event sent (bytes travel as base64 in "<field>_b64").
     static func png(_ value: JSONValue?) -> Data? {

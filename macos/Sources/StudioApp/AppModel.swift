@@ -60,6 +60,8 @@ public final class AppModel {
     public let phone: PhoneRemote
     /// how much wider than high each run's canvas is shown (CanvasShape), by run folder
     @ObservationIgnored var stretches: [String: Double] = [:]
+    /// the hardware test (CPU against the Apple GPU on this Mac)
+    public let hardware = HardwareTest()
     /// the first-start guide
     public let tour = TourModel()
     /// the Telegram messages and their settings' state
@@ -161,6 +163,7 @@ public final class AppModel {
             let queue = JobQueue(engine: client, outputRoot: settings.outputDir)
             self.queue = queue
             queuePage = QueueModel(queue: queue)
+            await queue.setAutoDevices(autoDevices)  // ("auto" as this Mac's hardware test measured)
             queueListener = Task { [weak self] in
                 for await snapshot in queue.updates {
                     self?.apply(snapshot)
@@ -174,6 +177,8 @@ public final class AppModel {
                         self?.faceNotice(notice)
                     } else if notice.kind.hasPrefix("importance_") {
                         self?.importanceNotice(notice)
+                    } else if notice.kind.hasPrefix("bench_") {
+                        self?.hardwareNotice(notice)
                     } else {
                         await self?.maskNotice(notice)
                     }
@@ -203,6 +208,9 @@ public final class AppModel {
                                                  data: ["image": .string(run), "message": "the engine stopped"]))
         }
         importanceWaiters = [:]
+        hardware.waiter?.resume(returning: EngineEvent(kind: "bench_failed", job: nil,
+                                                       data: ["message": "the engine stopped"]))
+        hardware.waiter = nil
         signals.keepAwake(false)
         signals.dockProgress(nil)
         folderWatcher.stop()

@@ -16,7 +16,8 @@ probability; ``save_mask`` keeps a copy of the mask given – then ``mask`` give
 answers missing_model, then finds a "face": the left half more).
 Every mode answers ``rerun_cell`` (the SceneSketch cell's run removed), ``importance`` (not measured; with
 compute: "computing", then "importance_ready" – after that the later strokes count more, each by its place; a run
-folder whose name has "fails": "importance_failed"),
+folder whose name has "fails": "importance_failed"), ``device_bench`` (a row per method and device, then
+"bench_done" – the GPU faster for CLIPasso, slower for the others; iters 3: "bench_failed"),
 ``hello``, ``events`` (sends N events, then answers), ``huge`` (an 8 MB answer) and
 ``shutdown``.
 """
@@ -187,6 +188,22 @@ for raw in sys.stdin.buffer:
                 measured[run] = [float(i) for i in range(f.read().count("<path"))]
             send({"event": "importance_ready", "job": None, "data": {"image": run, "model": "",
                                                                      "path": os.path.join(run, "importance.json")}})
+    elif op == "device_bench":
+        send({"id": rid, "ok": True, "result": {"running": True}})
+        if args.get("iters") == 3:
+            send({"event": "bench_failed", "job": None, "data": {"message": "the hardware test ended (1) no MPS"}})
+        else:
+            rows, recommended = [], {}
+            for m in args.get("methods") or ["clipasso", "swiftsketch"]:
+                for device, sec in (("cpu", 1.6), ("mps", 0.4 if m == "clipasso" else 2.0)):
+                    row = {"method": m, "device": device, "sec_per_iter": sec, "cpu_clip_score": 55.0, "error": None}
+                    rows.append(row)
+                    send({"event": "bench_row", "job": None, "data": row})
+                fast = m == "clipasso"
+                recommended[m] = {"device": "mps" if fast else "cpu", "speedup": 4.0 if fast else 0.8,
+                                  "reason": "faster" if fast else "slower"}
+            send({"event": "bench_done", "job": None,
+                  "data": {"rows": rows, "checks": [], "recommended": recommended}})
     elif op == "shutdown":
         send({"id": rid, "ok": True, "result": {}})
         sys.exit(0)
