@@ -446,6 +446,8 @@ private struct ToolButtonBody: View {
     var body: some View {
         configuration.label
             .font(.body)
+            .lineLimit(1)
+            .fixedSize()  // (a name whole, in one line: where the row is too wide, the canvas puts it in two rows)
             .padding(.horizontal, Spacing.spaceS)
             .frame(minWidth: 30, minHeight: 28)
             .foregroundStyle(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
