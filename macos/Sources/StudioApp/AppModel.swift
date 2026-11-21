@@ -241,8 +241,9 @@ public final class AppModel {
         queuePage?.apply(snapshot)
         phone.changed()  // (the phone pages ask again)
         if ranOut, let action = snapshot.finished, action != .nothing {
-            // once: the choice goes back to "nothing" (as in the studio), then the countdown
-            Task { await queuePage?.setWhenDone(.nothing) }
+            // once: the choice went back to "nothing" in the queue (as in the studio) – so on its page at once –, then
+            // the countdown
+            queuePage?.forgetWhenDone()
             let countdown = WhenDoneCountdown(action: action, seconds: whenDoneTiming.seconds,
                                               tick: whenDoneTiming.tick, power: power)
             self.countdown = countdown

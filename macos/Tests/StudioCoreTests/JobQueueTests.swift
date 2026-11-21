@@ -196,6 +196,7 @@ actor FakeEngine: EngineControlling {
         await engine.emit("job_done", [:])
         let snap = try await Self.until(queue, "finished") { $0.finished != nil }
         #expect(snap.finished == .sleep)
+        #expect(await queue.whenDone == .nothing)  // (once: forgotten as the queue reports it ran out)
     }
 
     @Test func removeAndMove() async throws {

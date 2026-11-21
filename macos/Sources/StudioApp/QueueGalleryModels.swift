@@ -67,6 +67,11 @@ public final class QueueModel {
         await reload()
     }
 
+    /// The queue ran out with an action chosen: it forgot the choice (once), the page does too.
+    func forgetWhenDone() {
+        whenDone = .nothing
+    }
+
     public func setWhenDone(_ action: WhenDone) async {
         await queue.setWhenDone(action)
         await reload()

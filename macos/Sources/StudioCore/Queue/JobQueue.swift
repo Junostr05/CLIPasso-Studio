@@ -289,6 +289,7 @@ public actor JobQueue {
             if autoStart { try? await startNext() }
         } else if !byUser {
             finished = whenDone
+            whenDone = .nothing  // (once: the choice goes back to "nothing" as the queue reports it ran out)
             publish()
         }
     }
