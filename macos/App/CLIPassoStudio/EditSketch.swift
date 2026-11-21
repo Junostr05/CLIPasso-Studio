@@ -342,37 +342,55 @@ struct EditTools: View {
         // grouped as the toolbars of macOS do: drawing, the history, refining, out of the app – each group one glass
         // capsule (no glass on glass: the buttons inside are plain)
         GlassEffectContainer(spacing: Spacing.spaceM) {
-            HStack(spacing: Spacing.spaceM) {
-                ToolGroup {
-                    toggle(.eraser, "ui.mac.edit.eraser", "eraser", help: "ui.eraser.tip")
-                        .disabled(!editor.canErase)
-                    toggle(.pen, "ui.mac.edit.pen", "pencil.line", help: "ui.pen.tip")
-                }
-                ToolGroup {
-                    action("ui.mac.edit.undo", "arrow.uturn.backward", enabled: editor.canUndo) { editor.undo() }
-                        .keyboardShortcut("z", modifiers: .command)
-                    action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
-                        .keyboardShortcut("z", modifiers: [.command, .shift])
-                    action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
-                    action("ui.edit_bar.history", "clock.arrow.circlepath", help: "ui.edit_bar.history_tip",
-                           enabled: true, steps)
-                }
-                ToolGroup {
-                    Button(model.texts.tr("ui.edit_bar.simplify"), systemImage: "slider.horizontal.3", action: simplify)
-                        .labelStyle(.titleAndIcon)  // (with its name: easy to find)
-                        .help(model.texts.tr("ui.edit_bar.simplify_tip"))
-                        .buttonStyle(ToolButtonStyle())
-                        .disabled(!editor.canErase)
-                    action("ui.continue.tip", "arrow.triangle.2.circlepath", enabled: true, continueSketch)
-                }
-                ToolGroup {
-                    action("ui.export", "square.and.arrow.up", enabled: true, export)
-                        .keyboardShortcut("e", modifiers: .command)
-                    action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P)
-                    action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C)
-                    styleMenu
+            // one row where it fits, else two (a small window): the groups stay whole
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.spaceM) { drawing; history; refining; output }
+                VStack(spacing: Spacing.spaceS) {
+                    HStack(spacing: Spacing.spaceM) { drawing; history }
+                    HStack(spacing: Spacing.spaceM) { refining; output }
                 }
             }
+        }
+    }
+
+    private var drawing: some View {
+        ToolGroup {
+            toggle(.eraser, "ui.mac.edit.eraser", "eraser", help: "ui.eraser.tip")
+                .disabled(!editor.canErase)
+            toggle(.pen, "ui.mac.edit.pen", "pencil.line", help: "ui.pen.tip")
+        }
+    }
+
+    private var history: some View {
+        ToolGroup {
+            action("ui.mac.edit.undo", "arrow.uturn.backward", enabled: editor.canUndo) { editor.undo() }
+                .keyboardShortcut("z", modifiers: .command)
+            action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+            action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
+            action("ui.edit_bar.history", "clock.arrow.circlepath", help: "ui.edit_bar.history_tip", enabled: true,
+                   steps)
+        }
+    }
+
+    private var refining: some View {
+        ToolGroup {
+            Button(model.texts.tr("ui.edit_bar.simplify"), systemImage: "slider.horizontal.3", action: simplify)
+                .labelStyle(.titleAndIcon)  // (with its name: easy to find)
+                .help(model.texts.tr("ui.edit_bar.simplify_tip"))
+                .buttonStyle(ToolButtonStyle())
+                .disabled(!editor.canErase)
+            action("ui.continue.tip", "arrow.triangle.2.circlepath", enabled: true, continueSketch)
+        }
+    }
+
+    private var output: some View {
+        ToolGroup {
+            action("ui.export", "square.and.arrow.up", enabled: true, export)
+                .keyboardShortcut("e", modifiers: .command)
+            action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P)
+            action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C)
+            styleMenu
         }
     }
 
