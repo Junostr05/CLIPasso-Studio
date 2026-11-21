@@ -38,9 +38,10 @@ public extension AppModel {
         await applyMCPSettings()
     }
 
-    /// The line that sets the server up in Claude Code.
+    /// The line that sets the server up in Claude Code – for every folder (--scope user), not only the one the
+    /// terminal is in.
     var mcpCommand: String {
-        "claude mcp add --transport http clipasso-studio http://127.0.0.1:\(mcp.port == 0 ? mcpPort : mcp.port)/mcp "
+        "claude mcp add --scope user --transport http clipasso-studio http://127.0.0.1:\(mcp.port == 0 ? mcpPort : mcp.port)/mcp "
             + "--header \"Authorization: Bearer \(mcpToken)\""
     }
 
