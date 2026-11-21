@@ -201,7 +201,7 @@ jobs:
           python -m pytest -q --durations=15
           tests/test_schema_conditions.py tests/test_headless_export.py tests/test_headless_protocol.py
           tests/test_headless_server.py tests/test_headless_e2e.py tests/test_runner_orphans.py
-          tests/test_device_mps.py tests/test_bench_device.py tests/test_settings.py
+          tests/test_device_mps.py tests/test_mps_numerics.py tests/test_bench_device.py tests/test_settings.py
       - name: Measure the CPU against the Apple GPU
         # on request only (Run workflow, or "[bench]" in the commit message): it takes an hour or more and every
         # macOS run of the branch waits behind it

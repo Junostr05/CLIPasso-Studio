@@ -18,7 +18,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from ...clip_ import clip
-from ...losses import AugmentBank
+from ...losses import AugmentBank, antialias_on
 
 _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
@@ -96,7 +96,8 @@ class CLIPLayersLoss(nn.Module):
         ])
         self.augment_trans = transforms.Compose([
             transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5),
-            transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)),
+            transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0),
+                                         antialias=antialias_on(device)),
             transforms.Normalize(_CLIP_MEAN, _CLIP_STD),
         ])
 

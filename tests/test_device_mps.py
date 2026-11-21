@@ -141,3 +141,11 @@ def test_clip_score_is_computed_on_the_cpu_for_mps(monkeypatch):
     assert made == ["cpu"] and a is b is c  # one CPU scorer for all three
     scoring.get_scorer("cuda")
     assert made == ["cpu", "cuda"]
+
+
+def test_no_smoothing_in_the_crop_on_the_apple_gpu():
+    """MPS has no backward pass for the smoothed resize: the augmentations crop without it there (losses.py)."""
+    from clipasso_studio.engine import losses
+
+    assert losses.antialias_on("cpu") and losses.antialias_on(torch.device("cuda"))
+    assert not losses.antialias_on("mps") and not losses.antialias_on(torch.device("mps"))

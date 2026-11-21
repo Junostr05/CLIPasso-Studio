@@ -26,12 +26,21 @@ _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
 
 
+def antialias_on(device) -> bool:
+    """Whether the crop of the augmentations smooths when it shrinks: not on the Apple GPU – MPS has no backward pass
+    for the smoothed resize, so every step would compute it on the CPU and copy the tensors back and forth (2.6–6.7×
+    slower, docs/macos/plan.md §7). A crop of the 224 px canvas is enlarged, where smoothing changes nothing; only
+    larger canvases shrink."""
+    return torch.device(device).type != "mps"
+
+
 def _affine_augmentations(args, normalize=True):
     augs = []
     if "affine" in args.augemntations:
         scale = float(getattr(args, "aug_scale_min", 0.8))
         augs.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
-        augs.append(transforms.RandomResizedCrop(224, scale=(scale, scale), ratio=(1.0, 1.0)))
+        augs.append(transforms.RandomResizedCrop(224, scale=(scale, scale), ratio=(1.0, 1.0),
+                                                 antialias=antialias_on(getattr(args, "device", "cpu"))))
     if normalize:
         augs.append(transforms.Normalize(_CLIP_MEAN, _CLIP_STD))
     return transforms.Compose(augs)
@@ -67,7 +76,8 @@ class AugmentBank:
         """Augmentation ``i`` of a [N, 3, H, W] image (normalised for CLIP)."""
         start, end, (top, left, h, w) = self.params[i]
         x = TF.perspective(x, start, end, InterpolationMode.BILINEAR, fill=[0.0] * x.shape[1])
-        x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR, antialias=True)
+        x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR,
+                            antialias=antialias_on(x.device))
         return TF.normalize(x, _CLIP_MEAN, _CLIP_STD)
 
     def build(self, base: torch.Tensor, target: torch.Tensor, encode, chunk: int = 16) -> None:
