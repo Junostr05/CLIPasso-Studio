@@ -258,6 +258,17 @@ private struct ImageStep: View {
     /// back to the model's mask after the user's.
     @ViewBuilder private var maskRow: some View {
         let mask = model.mask
+        let studio = model.studio
+        // "Remove the background" (mask_object) right at the picture: with CLIPasso it is off at first – turned on,
+        // the mask and its tools appear (the methods that free the object have it on)
+        if studio.image != nil, let param = studio.methodSchema?.param("mask_object"), studio.isEnabled("mask_object") {
+            Toggle(model.texts.tr(param.text.label), isOn: Binding(
+                get: { studio.settings["mask_object"]?.truthy ?? false },
+                set: { studio.set("mask_object", to: .bool($0)) }))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help(model.texts.tr(param.text.help ?? param.text.label))
+        }
         if mask.state != .off {
             HStack(spacing: Spacing.spaceS) {
                 if mask.state == .busy { ProgressView().controlSize(.small) }
