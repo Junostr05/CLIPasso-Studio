@@ -65,6 +65,7 @@ struct SettingsView: View {
             PhoneSettings()
             TelegramSettings()
             HardwareSettings()
+            MCPSettings()
             SystemSettings()
         }
         .formStyle(.grouped)

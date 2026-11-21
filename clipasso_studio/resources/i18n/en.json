@@ -1681,5 +1681,18 @@
  "ui.mac.hw.reason.nan": "GPU computing error",
  "ui.mac.hw.reason.unavailable": "no Apple GPU",
  "ui.mac.hw.reason.other": "not measured ({why})",
+ "ui.mac.mcp.title": "AI access (MCP)",
+ "ui.mac.mcp.desc": "Lets an AI such as Claude use the app: choose a picture, set the method and settings, start a job, look at and export results – and run the hardware test. Everything happens visibly in the window.",
+ "ui.mac.mcp.on": "Turn on AI access",
+ "ui.mac.mcp.port": "Port",
+ "ui.mac.mcp.state": "State",
+ "ui.mac.mcp.running": "Running on port {port}",
+ "ui.mac.mcp.off": "Off",
+ "ui.mac.mcp.command": "Set up in Claude Code (in Terminal):",
+ "ui.mac.mcp.copy": "Copy command",
+ "ui.mac.mcp.copied": "Copied",
+ "ui.mac.mcp.new_token": "New key",
+ "ui.mac.mcp.new_token_tip": "The old key stops working – an AI set up with it has to be set up again.",
+ "ui.mac.mcp.local": "Only programs on this Mac reach it, and only with the key. The key is kept in the keychain and is in no backup and no diagnosis.",
  "ui.mac.dmg_update": "To update: drag the new version onto Applications and replace the old one – your settings, models and results stay. macOS asks again as in steps 2–4."
 }

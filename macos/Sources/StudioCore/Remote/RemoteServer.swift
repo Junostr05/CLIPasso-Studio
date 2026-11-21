@@ -7,7 +7,7 @@
     /// the router and closed – an event stream stays open, "changed" when a page should ask again, "ping" on a quiet
     /// stream, until the phone goes away or the server stops.
     public final class RemoteServer: @unchecked Sendable {  // (the listener's state lives on its queue)
-        public let router: RemoteRouter
+        public let router: any HTTPResponder
         /// seconds until a quiet stream gets a sign of life (EVENT_PING)
         let ping: Double
         private let listener: NWListener
@@ -24,7 +24,7 @@
         }
 
         /// A server on `port` (0: any free one), on every address – or only on `host` ("127.0.0.1" in tests).
-        public init(router: RemoteRouter, port: Int, host: String? = nil, ping: Double = RemoteAccess.eventPing)
+        public init(router: any HTTPResponder, port: Int, host: String? = nil, ping: Double = RemoteAccess.eventPing)
             throws
         {
             self.router = router

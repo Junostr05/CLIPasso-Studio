@@ -1681,5 +1681,18 @@
  "ui.mac.hw.reason.nan": "GPU-Rechenfehler",
  "ui.mac.hw.reason.unavailable": "keine Apple-GPU",
  "ui.mac.hw.reason.other": "nicht gemessen ({why})",
+ "ui.mac.mcp.title": "KI-Zugang (MCP)",
+ "ui.mac.mcp.desc": "Damit kann eine KI wie Claude die App bedienen: ein Bild wählen, Methode und Einstellungen setzen, einen Auftrag starten, Ergebnisse ansehen und exportieren – und den Hardwaretest laufen lassen. Alles geschieht sichtbar im Fenster.",
+ "ui.mac.mcp.on": "KI-Zugang einschalten",
+ "ui.mac.mcp.port": "Port",
+ "ui.mac.mcp.state": "Zustand",
+ "ui.mac.mcp.running": "Läuft auf Port {port}",
+ "ui.mac.mcp.off": "Aus",
+ "ui.mac.mcp.command": "Einrichten in Claude Code (im Terminal):",
+ "ui.mac.mcp.copy": "Befehl kopieren",
+ "ui.mac.mcp.copied": "Kopiert",
+ "ui.mac.mcp.new_token": "Neuer Schlüssel",
+ "ui.mac.mcp.new_token_tip": "Der alte Schlüssel gilt dann nicht mehr – eine KI, die damit eingerichtet war, muss neu eingerichtet werden.",
+ "ui.mac.mcp.local": "Nur Programme auf diesem Mac erreichen den Zugang, und nur mit dem Schlüssel. Der Schlüssel liegt im Schlüsselbund und steht in keiner Sicherung und keiner Diagnose.",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

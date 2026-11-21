@@ -66,6 +66,8 @@ public final class AppModel {
     public let tour = TourModel()
     /// the Telegram messages and their settings' state
     public let telegram = TelegramLink()
+    /// the server an AI uses the app through (MCP, on this Mac only)
+    public let mcp = MCPLink()
     /// how the bot's calls go out (the tests answer as Telegram would) and how long "Connect" waits for /start
     @ObservationIgnored let telegramTransport: any TelegramTransport
     @ObservationIgnored let telegramAPI = Telegram.api
@@ -185,6 +187,7 @@ public final class AppModel {
                 }
             }
             await applyPhoneSettings()  // (the phone page, when the settings have it on)
+            await applyMCPSettings()  // (the server for an AI, when the settings have it on)
             reconfigureWatch()  // (the watched folder, when it is on)
         } catch {
             let log = await client.stderrTail().suffix(5).joined(separator: "\n")
@@ -217,6 +220,12 @@ public final class AppModel {
         if let server = phone.server {
             await server.stop()
             phone.stopped()
+        }
+        if let server = mcp.server {
+            await server.stop()
+            mcp.server = nil
+            mcp.running = false
+            mcp.port = 0
         }
         await engine?.stop()
     }

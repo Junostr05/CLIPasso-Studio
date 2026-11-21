@@ -25,7 +25,7 @@ struct LineReader {
 
 /// The last lines the engine wrote to stderr, for the diagnosis – a line that may hold a secret is left out.
 struct LogTail {
-    static let secrets = ["telegram_token", "remote_token", "remote_pin"]
+    static let secrets = ["telegram_token", "remote_token", "remote_pin", "mcp_token"]
     let capacity: Int
     private(set) var lines: [String] = []
     private var partial = ""

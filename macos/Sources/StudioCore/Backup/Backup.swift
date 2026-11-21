@@ -25,7 +25,7 @@ public enum Backup {
     ]
     /// never in a backup file
     public static let secretKeys: Set<String> = ["telegram_token", "telegram_chat", "telegram_bot", "remote_token",
-                                                 "remote_pin"]
+                                                 "remote_pin", "mcp_token"]
     /// already compressed: stored as they are (faster)
     static let stored: Set<String> = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".pt", ".pth", ".safetensors",
                                       ".bin", ".onnx", ".zip", ".heic", ".avif"]

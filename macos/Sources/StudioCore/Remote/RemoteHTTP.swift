@@ -41,6 +41,17 @@ public enum RemoteReply: Sendable {
     case events
 }
 
+/// What answers the requests of a RemoteServer: the phone page's router, or the MCP server's.
+public protocol HTTPResponder: Sendable {
+    /// the server-sent events of a stream (the phone page's "changed")
+    var events: RemoteEvents { get }
+    /// the largest body read for a request (0: none)
+    func bodyLimit(method: String, path: String) -> Int
+    func respond(_ request: RemoteRequest) async -> RemoteReply
+}
+
+extension RemoteRouter: HTTPResponder {}
+
 public enum RemoteHTTP {
     /// The reason phrase of a status (http.server's).
     public static func reason(_ status: Int) -> String {

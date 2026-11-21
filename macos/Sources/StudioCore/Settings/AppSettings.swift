@@ -9,7 +9,7 @@ public struct AppSettings: Sendable, Equatable, CustomStringConvertible, CustomD
     /// The version gui/app_settings.py writes (SETTINGS_VERSION) – this file has its changes.
     public static let version = 3
     /// Keys whose values stay on this computer: never in a log, a backup to share or a diagnosis.
-    public static let secretKeys: Set<String> = ["telegram_token", "remote_token", "remote_pin"]
+    public static let secretKeys: Set<String> = ["telegram_token", "remote_token", "remote_pin", "mcp_token"]
 
     public private(set) var data: JSONObject
     /// The folder the sketches go to when the settings name none (paths.default_output_dir).
