@@ -54,7 +54,7 @@ struct RootView: View {
                 case .settings: SettingsView()
                 }
             }
-            .safeAreaInset(edge: .top) {
+            .safeAreaBar(edge: .top) {  // (the pages scroll under it, softened by the scroll edge effect)
                 if let update = model.update { UpdateBanner(update: update) }
             }
         }
@@ -91,7 +91,7 @@ struct RootView: View {
 }
 
 /// A newer release with a Mac disk image: its page opens in the browser (the app is not signed, so it does not
-/// update itself). Content: a plain banner.
+/// update itself). A bar of glass over the page.
 private struct UpdateBanner: View {
     @Environment(AppModel.self) private var model
     let update: UpdateCheck.Release
@@ -108,8 +108,9 @@ private struct UpdateBanner: View {
         }
         .padding(.horizontal, Spacing.spaceL)
         .padding(.vertical, Spacing.spaceS)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(alignment: .bottom) { Divider() }
+        .glassEffect(.regular, in: .rect(cornerRadius: Radius.float))  // (a control over the page: glass)
+        .padding(.horizontal, Spacing.spaceL)
+        .padding(.top, Spacing.spaceS)
         .accessibilityElement(children: .contain)
     }
 }

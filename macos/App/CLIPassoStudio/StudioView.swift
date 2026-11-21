@@ -686,15 +686,17 @@ private struct JobBar: View {
                     .padding(.vertical, Spacing.spaceS)
                     .glassEffect(.regular, in: .capsule)
                     .accessibilityElement(children: .combine)
-                    Button(model.texts.tr(live.status == .paused ? "ui.resume" : "ui.pause"),
-                           systemImage: live.status == .paused ? "play.fill" : "pause.fill") {
-                        Task { await model.pauseOrResume() }
+                    ToolGroup {
+                        Button(model.texts.tr(live.status == .paused ? "ui.resume" : "ui.pause"),
+                               systemImage: live.status == .paused ? "play.fill" : "pause.fill") {
+                            Task { await model.pauseOrResume() }
+                        }
+                        Button(model.texts.tr("ui.cancel"), systemImage: "stop.fill") {
+                            Task { await model.cancelJob() }
+                        }
                     }
-                    .buttonStyle(.glass)
-                    Button(model.texts.tr("ui.cancel"), systemImage: "stop.fill") {
-                        Task { await model.cancelJob() }
-                    }
-                    .buttonStyle(.glass)
+                    .buttonStyle(ToolButtonStyle())
+                    .labelStyle(.titleAndIcon)
                 }
                 Button(model.texts.tr("ui.start"), systemImage: "scribble") {
                     Task { await model.startSketch() }

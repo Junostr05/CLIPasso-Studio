@@ -339,45 +339,50 @@ struct EditTools: View {
     let continueSketch: () -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: Spacing.spaceS) {
-            HStack(spacing: Spacing.spaceS) {
-                toggle(.eraser, "ui.mac.edit.eraser", "eraser", help: "ui.eraser.tip")
-                    .disabled(!editor.canErase)
-                action("ui.continue.tip", "arrow.triangle.2.circlepath", enabled: true, continueSketch)
-                toggle(.pen, "ui.mac.edit.pen", "pencil.line", help: "ui.pen.tip")
-                action("ui.mac.edit.undo", "arrow.uturn.backward", enabled: editor.canUndo) { editor.undo() }
-                    .keyboardShortcut("z", modifiers: .command)
-                action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
-                    .keyboardShortcut("z", modifiers: [.command, .shift])
-                action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
-                action("ui.edit_bar.history", "clock.arrow.circlepath", help: "ui.edit_bar.history_tip", enabled: true,
-                       steps)
-                Button(model.texts.tr("ui.edit_bar.simplify"), systemImage: "slider.horizontal.3", action: simplify)
-                    .labelStyle(.titleAndIcon)  // (with its name: easy to find)
-                    .help(model.texts.tr("ui.edit_bar.simplify_tip"))
-                    .buttonStyle(.glass)
-                    .disabled(!editor.canErase)
-                action("ui.export", "square.and.arrow.up", enabled: true, export)
-                    .keyboardShortcut("e", modifiers: .command)
-                action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P: the menu's)
-                action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C: the menu's)
-                styleMenu
+        // grouped as the toolbars of macOS do: drawing, the history, refining, out of the app – each group one glass
+        // capsule (no glass on glass: the buttons inside are plain)
+        GlassEffectContainer(spacing: Spacing.spaceM) {
+            HStack(spacing: Spacing.spaceM) {
+                ToolGroup {
+                    toggle(.eraser, "ui.mac.edit.eraser", "eraser", help: "ui.eraser.tip")
+                        .disabled(!editor.canErase)
+                    toggle(.pen, "ui.mac.edit.pen", "pencil.line", help: "ui.pen.tip")
+                }
+                ToolGroup {
+                    action("ui.mac.edit.undo", "arrow.uturn.backward", enabled: editor.canUndo) { editor.undo() }
+                        .keyboardShortcut("z", modifiers: .command)
+                    action("ui.mac.edit.redo", "arrow.uturn.forward", enabled: editor.canRedo) { editor.redo() }
+                        .keyboardShortcut("z", modifiers: [.command, .shift])
+                    action("ui.eraser.revert", "arrow.counterclockwise", enabled: editor.isEdited) { editor.revert() }
+                    action("ui.edit_bar.history", "clock.arrow.circlepath", help: "ui.edit_bar.history_tip",
+                           enabled: true, steps)
+                }
+                ToolGroup {
+                    Button(model.texts.tr("ui.edit_bar.simplify"), systemImage: "slider.horizontal.3", action: simplify)
+                        .labelStyle(.titleAndIcon)  // (with its name: easy to find)
+                        .help(model.texts.tr("ui.edit_bar.simplify_tip"))
+                        .buttonStyle(ToolButtonStyle())
+                        .disabled(!editor.canErase)
+                    action("ui.continue.tip", "arrow.triangle.2.circlepath", enabled: true, continueSketch)
+                }
+                ToolGroup {
+                    action("ui.export", "square.and.arrow.up", enabled: true, export)
+                        .keyboardShortcut("e", modifiers: .command)
+                    action("ui.print.button", "printer", help: "ui.print.tip", enabled: true, printSketch)  // (⌘P)
+                    action("ui.copy", "doc.on.doc", help: "ui.copy_tip", enabled: true, copySketch)  // (⇧⌘C)
+                    styleMenu
+                }
             }
         }
     }
 
-    @ViewBuilder
     private func toggle(_ which: EditTool, _ name: String, _ symbol: String, help: String) -> some View {
         let on = tool == which
-        let button = Button(model.texts.tr(name), systemImage: symbol) { tool = on ? .none : which }
+        return Button(model.texts.tr(name), systemImage: symbol) { tool = on ? .none : which }
             .labelStyle(.iconOnly)
             .help(model.texts.tr(help))
+            .buttonStyle(ToolButtonStyle(selected: on))  // (the tool in use: in the accent colour)
             .accessibilityAddTraits(on ? .isSelected : [])
-        if on {
-            button.buttonStyle(.glassProminent)  // (the tool in use)
-        } else {
-            button.buttonStyle(.glass)
-        }
     }
 
     /// The brush style the studio shows its sketches in (studio.set_canvas_style): only the view – the sketch is
@@ -395,7 +400,7 @@ struct EditTools: View {
         .labelStyle(.iconOnly)
         .menuStyle(.button)
         .menuIndicator(.hidden)
-        .buttonStyle(.glass)
+        .buttonStyle(ToolButtonStyle())
         .help(model.texts.tr("ui.brush.tip"))
     }
 
@@ -405,8 +410,52 @@ struct EditTools: View {
         Button(model.texts.tr(name), systemImage: symbol, action: run)
             .labelStyle(.iconOnly)
             .help(model.texts.tr(help ?? name))
-            .buttonStyle(.glass)
+            .buttonStyle(ToolButtonStyle())
             .disabled(!enabled)
+    }
+}
+
+/// A group of tools: one capsule of glass around plain buttons (as a toolbar's group).
+struct ToolGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 2) { content }
+            .padding(.horizontal, Spacing.spaceXs)
+            .padding(.vertical, 3)
+            .glassEffect(.regular.interactive(), in: .capsule)
+    }
+}
+
+/// A button within a ToolGroup: the symbol on nothing, a soft capsule under the pointer or when pressed, the accent
+/// colour (and a tinted capsule) for the tool in use, dimmed when it cannot be used.
+struct ToolButtonStyle: ButtonStyle {
+    var selected = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        ToolButtonBody(configuration: configuration, selected: selected)
+    }
+}
+
+private struct ToolButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let selected: Bool
+    @Environment(\.isEnabled) private var enabled
+    @State private var hovering = false
+
+    var body: some View {
+        configuration.label
+            .font(.body)
+            .padding(.horizontal, Spacing.spaceS)
+            .frame(minWidth: 30, minHeight: 28)
+            .foregroundStyle(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+            .background {
+                Capsule().fill(selected ? AnyShapeStyle(.tint.opacity(0.2))
+                    : AnyShapeStyle(.primary.opacity(configuration.isPressed ? 0.16 : hovering && enabled ? 0.08 : 0)))
+            }
+            .opacity(enabled ? 1 : 0.35)
+            .contentShape(Capsule())
+            .onHover { hovering = $0 }
     }
 }
 
@@ -586,7 +635,7 @@ struct MatrixGrid: View {
                 open()
             })
             .contextMenu {
-                Button(model.texts.tr("ui.matrix.rerun"), systemImage: "arrow.clockwise") { askRerun(id) }
+                Button(model.texts.tr("ui.matrix.rerun")) { askRerun(id) }  // (menu items without symbols: HIG)
             }
             .accessibilityLabel(Text(verbatim: name))
             .accessibilityValue(Text(verbatim: isBest ? model.texts.tr("ui.compare.best") : ""))
