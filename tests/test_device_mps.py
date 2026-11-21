@@ -71,10 +71,16 @@ def test_mps_is_one_worker(monkeypatch):
     assert runner.plan_workers(settings, 4, auto=True, cuda=False, hw=(16, 64e9)) == 1
     assert not runner.spreads_over_gpus(settings, 4, cuda=False, gpus=2)
     auto = dict(settings, device="auto")
+    monkeypatch.setattr(schema, "MPS_AUTO", ())
     assert runner.plan_workers(auto, 4, auto=True, hw=(16, 64e9), mps=True) == 4  # not measured: the CPU, in parallel
     monkeypatch.setattr(schema, "MPS_AUTO", ("clipasso",))
     assert runner.plan_workers(auto, 4, auto=True, hw=(16, 64e9), mps=True) == 1
     assert runner.plan_workers(auto, 4, auto=True, hw=(16, 64e9), mps=False) == 4
+
+
+def test_auto_takes_the_apple_gpu_where_it_was_measured_faster():
+    assert set(schema.MPS_AUTO) == {"clipasso", "controlsketch"}  # (M5 Pro: 2.6× and 2.9×; SwiftSketch even)
+    assert set(schema.MPS_AUTO) <= set(schema.METHODS)
 
 
 def test_coerce_accepts_mps_everywhere():

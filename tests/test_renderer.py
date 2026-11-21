@@ -106,3 +106,13 @@ def test_the_strokes_travel_in_one_piece():
     assert [t.dtype for t in moved] == [torch.float64] * 2 and torch.equal(moved[0], a.double())
     (moved[0].sum() * 2 + moved[1].sum() * 3).backward()
     assert torch.equal(a.grad, torch.full((3, 2), 2.0)) and torch.equal(b.grad, torch.tensor([3.0]))
+
+
+
+def test_strokes_already_on_the_device_are_not_copied():
+    from clipasso_studio.engine import renderer
+
+    a, b = torch.ones(2, 2), torch.full((3,), 2.0)
+    moved = renderer._moved([a, b], torch.device("cpu"), torch.float32)
+    assert moved[0] is a and moved[1] is b  # (no transfer, no new tensor)
+    assert renderer._on(a, torch.device("cpu")) and not renderer._on(a, torch.device("mps"))

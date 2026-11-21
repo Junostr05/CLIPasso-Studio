@@ -5,7 +5,6 @@ Models are loaded from the local model store instead of being downloaded at runt
 
 from __future__ import annotations
 
-import os
 from typing import List, Union
 
 import torch
@@ -49,11 +48,10 @@ _loaded: dict = {}
 
 
 def half_precision(device) -> bool:
-    """CLIP in float16: on an NVIDIA card (as the original CLIPasso), on the Apple GPU only with
-    ``CLIPASSO_MPS_HALF=1`` – 4× the matrix speed there (29.8 against 7.2 TFLOPS on an M5 Pro), to be measured
-    against the CPU before it becomes the default."""
-    kind = torch.device(device).type
-    return kind == "cuda" or (kind == "mps" and os.environ.get("CLIPASSO_MPS_HALF") == "1")
+    """CLIP in float16: on an NVIDIA card (as the original CLIPasso). Not on the Apple GPU – measured on an M5 Pro it
+    gained nothing with ViT-B/32, and with the ResNet models (RN101, the default) MPS aborts the process (a batch
+    norm with float16 input and float32 statistics)."""
+    return torch.device(device).type == "cuda"
 
 
 def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False):
@@ -70,7 +68,7 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
             model = build_model(state_dict).to(device)
-        if not half_precision(device):  # (half precision on an NVIDIA card – on the Apple GPU only when asked)
+        if not half_precision(device):  # (half precision only on an NVIDIA card)
             model.float()
         model.requires_grad_(False)
         model.eval()

@@ -232,24 +232,20 @@ def test_strokes_on_the_gpu_are_drawn_as_on_the_cpu(monkeypatch, where):
     assert all(torch.allclose(x, y.cpu(), atol=1e-3, rtol=1e-4) for x, y in zip(ga, gb))
 
 
-def test_clip_in_half_precision_on_the_gpu_sees_nearly_what_the_cpu_sees(monkeypatch):
-    """CLIPASSO_MPS_HALF=1 (float16 on the Apple GPU, as on an NVIDIA card): the image features stay close to the
-    CPU's float32 ones."""
-    from clipasso_studio.engine import model_store
-    from clipasso_studio.engine.clip_ import clip
 
-    if not model_store.is_available(model_store.clip_key("ViT-B/32")):
-        pytest.skip("CLIP ViT-B/32 is not downloaded")
-    monkeypatch.setenv("CLIPASSO_MPS_HALF", "1")
-    monkeypatch.setattr(clip, "_loaded", {})  # (loaded anew, in half precision)
-    cpu_model, _ = clip.load("ViT-B/32", "cpu")
-    gpu_model, _ = clip.load("ViT-B/32", "mps")
-    assert gpu_model.visual.conv1.weight.dtype == torch.float16  # (as on CUDA: the embeddings stay float32)
-    g = torch.Generator().manual_seed(0)
-    images = (torch.rand(3, 3, 224, 224, generator=g) - 0.45) / 0.27
-    with torch.no_grad():
-        a = cpu_model.encode_image(images).float()
-        b = gpu_model.encode_image(images.to("mps")).float().cpu()
-    cos = torch.nn.functional.cosine_similarity(a, b, dim=-1)
-    print("CLIP float16 on MPS against float32 on the CPU, cosine:", cos.tolist())
-    assert float(cos.min()) > 0.995
+def test_strokes_on_the_gpu_with_colours_on_the_cpu_are_drawn():
+    """SceneSketch's scoring: points on MPS, widths and colours on the CPU – drawn (it crashed the process when the
+    tensors of both devices were put into one), the same image as all on the CPU."""
+    from clipasso_studio.engine import renderer
+
+    g = torch.Generator().manual_seed(6)
+    points = [torch.rand(4, 2, generator=g) * 200 + 12 for _ in range(32)]
+
+    def draw(device):
+        shapes = [renderer.Path(torch.tensor([2]), p.to(device), torch.tensor(1.5)) for p in points]
+        groups = [renderer.ShapeGroup(torch.tensor([i]), None, torch.tensor([0.0, 0.0, 0.0, 1.0]))
+                  for i in range(len(shapes))]
+        with torch.no_grad():
+            return renderer.render_on_white(224, 224, shapes, groups)
+
+    assert torch.allclose(draw("cpu"), draw("mps").cpu(), atol=1e-5)

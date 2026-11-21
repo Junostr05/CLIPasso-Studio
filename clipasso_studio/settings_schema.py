@@ -106,8 +106,10 @@ SKETCH_GUIDE = Param("sketch_guide", False, "bool", "strokes", hidden=True)
 # Mac only – offered there only, but known everywhere, so a job from a Mac opens on Windows too)
 DEVICES = ("auto", "cpu", "cuda", "mps")
 # the methods for which "auto" computes on the Apple GPU: only where it was measured faster with results as good
-# (tools/bench_device.py) – empty until there are measurements
-MPS_AUTO: tuple[str, ...] = ()
+# (tools/bench_device.py; a Mac's own hardware test overrides this per method). Measured on an M5 Pro with the strokes
+# drawn on the CPU: CLIPasso 2.6× (0.123 against 0.322 s a step), ControlSketch 2.9× (1.30 against 3.74 s);
+# SwiftSketch even (0.0093 against 0.0098 s), SceneSketch not yet measured since it was fixed.
+MPS_AUTO: tuple[str, ...] = ("clipasso", "controlsketch")
 
 
 def _best_by() -> Param:

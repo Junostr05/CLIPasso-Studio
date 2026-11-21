@@ -130,16 +130,30 @@ class _Item:
         self.seg_meta, self.point, self.half, self.rgb = [], None, 0.0, (0.0, 0.0, 0.0)
 
 
+def _on(t: torch.Tensor, device: torch.device) -> bool:
+    return t.device.type == device.type and (t.device.index or 0) == (device.index or 0)
+
+
 def _moved(tensors: list[torch.Tensor], device, dtype) -> list[torch.Tensor]:
-    """The tensors on ``device`` in ``dtype`` – where some are elsewhere, in one transfer (each transfer from the
-    Apple GPU waits for it: one per stroke would cost more than drawing). Differentiable, as ``.to``."""
-    if all(t.device == torch.device(device) for t in tensors):
-        return [t.to(dtype=dtype) for t in tensors]
-    flat = torch.cat([t.reshape(-1).to(dtype=dtype) for t in tensors]).to(device)
-    out, pos = [], 0
-    for t in tensors:
-        out.append(flat[pos: pos + t.numel()].reshape(t.shape))
-        pos += t.numel()
+    """The tensors on ``device`` in ``dtype`` – those elsewhere in one transfer per device they are on (each transfer
+    from the Apple GPU waits for it: one per stroke would cost more than drawing). Tensors of different devices are
+    never put into one tensor: on MPS that crashes the process (SceneSketch: points on the GPU, colours on the CPU).
+    Differentiable, as ``.to``."""
+    device = torch.device(device)
+    out: list = [None] * len(tensors)
+    elsewhere: dict[torch.device, list[int]] = {}
+    for i, t in enumerate(tensors):
+        if _on(t, device):
+            out[i] = t.to(dtype=dtype)
+        else:
+            elsewhere.setdefault(t.device, []).append(i)
+    for indices in elsewhere.values():
+        flat = torch.cat([tensors[i].reshape(-1).to(dtype=dtype) for i in indices]).to(device)
+        pos = 0
+        for i in indices:
+            n = tensors[i].numel()
+            out[i] = flat[pos: pos + n].reshape(tensors[i].shape)
+            pos += n
     return out
 
 
