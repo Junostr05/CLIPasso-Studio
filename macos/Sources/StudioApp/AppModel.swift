@@ -542,12 +542,16 @@ public final class AppModel {
         if case .failed = models.stage { models.stage = .idle }
     }
 
-    private func problem(_ error: any Error, key: String) -> String {
+    func problem(_ error: any Error, key: String) -> String {
         let code = (error as? ModelDownloadError)?.code ?? (error as? EngineFailure)?.code ?? ""
         let details = (error as? ModelDownloadError)?.details ?? String(describing: error)
         let textKey = "ui.err.\(code)"
         guard !code.isEmpty, texts.has(textKey) else { return String(describing: error) }
-        return texts.tr(textKey, ["model": models.name(key), "name": models.name(key), "details": details])
+        var values = ["model": models.name(key), "name": models.name(key), "details": details]
+        for (name, value) in (error as? ModelDownloadError)?.values ?? [:] {  // (no_space: the folder and the GB)
+            values[name] = name == "folder" ? value : Double(value).map { texts.number($0, decimals: 1) } ?? value
+        }
+        return texts.tr(textKey, values)
     }
 
     /// *Pause* / *Resume* of the running job.

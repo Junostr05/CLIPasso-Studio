@@ -6,6 +6,15 @@ public struct ModelDownloadError: Error, Sendable, Hashable, CustomStringConvert
     public let code: String
     public let message: String
     public let details: String
+    /// the numbers its text names (no_space: folder, need, free – in GB)
+    public var values: [String: String] = [:]
+
+    public init(code: String, message: String, details: String, values: [String: String] = [:]) {
+        self.code = code
+        self.message = message
+        self.details = details
+        self.values = values
+    }
 
     public var description: String { "\(code): \(message)" + (details.isEmpty ? "" : "\n\(details)") }
 }
@@ -45,9 +54,10 @@ public actor ModelDownloader {
         }
         let needed = Int64(Double(catalog.spaceNeeded(key, root: root)) * Self.spaceMargin)
         if let free = freeSpace(root), free < needed {
-            throw ModelDownloadError(code: "no_space", message: String(format: "not enough free space in %@: %.1f GB needed, %.1f GB free",
-                                                                       root.path, Double(needed) / 1e9, Double(free) / 1e9),
-                                     details: "")
+            let (need, have) = (String(format: "%.1f", Double(needed) / 1e9), String(format: "%.1f", Double(free) / 1e9))
+            throw ModelDownloadError(code: "no_space",
+                                     message: "not enough free space in \(root.path): \(need) GB needed, \(have) GB free",
+                                     details: "", values: ["folder": root.path, "need": need, "free": have])
         }
         let partial = catalog.partial(root)
         try FileManager.default.createDirectory(at: partial, withIntermediateDirectories: true)
@@ -285,10 +295,14 @@ public enum Disk {
             dir = dir.deletingLastPathComponent()
         }
         #if os(macOS)
-            if let free = try? dir.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                .volumeAvailableCapacityForImportantUsage
+            // what may be used for something important (counting what macOS can free up) – some volumes answer 0
+            // there (seen on the CI's virtual machines), so at least what is free now
+            if let values = try? dir.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey,
+                                                              .volumeAvailableCapacityKey])
             {
-                return free
+                let important = values.volumeAvailableCapacityForImportantUsage ?? 0
+                let now = Int64(values.volumeAvailableCapacity ?? 0)
+                if max(important, now) > 0 { return max(important, now) }
             }
         #endif
         guard let attrs = try? FileManager.default.attributesOfFileSystem(forPath: dir.path),

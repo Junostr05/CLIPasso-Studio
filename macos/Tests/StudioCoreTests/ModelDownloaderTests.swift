@@ -228,7 +228,10 @@ final class FakeTransport: HTTPTransport {
             Issue.record("no space, but it downloaded")
         } catch let error as ModelDownloadError {
             #expect(error.code == "no_space")  // 100 kB + 1 MB stored, with 5 % margin
+            // the numbers for the text (ui.err.no_space names the folder, the GB needed and free)
+            #expect(error.values == ["folder": root.path, "need": "0.0", "free": "0.0"])
         }
+        #expect((Disk.freeSpace(at: root) ?? 0) > 0)  // (a drive that answers 0: at least what is free now)
         #expect(transport.requests.withLock { $0.isEmpty })
     }
 

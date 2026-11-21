@@ -167,4 +167,14 @@ import StudioCore
         #expect(env["PYTHONHOME"] == nil && env["PYTHONSTARTUP"] == nil)
         #expect(!env.keys.contains { $0.lowercased().contains("token") || $0.lowercased().contains("pin") })
     }
+
+    /// A download without space says where and how much (ui.err.no_space with its numbers, not "{need} GB").
+    @Test func noSpaceNamesTheNumbers() throws {
+        let model = try AppModel(resources: Self.resources(engine: nil), store: Self.store(language: "de"))
+        let error = ModelDownloadError(code: "no_space", message: "", details: "",
+                                       values: ["folder": "/Volumes/Platte/Modelle", "need": "1.2", "free": "0.4"])
+        let text = model.problem(error, key: "tiny")
+        #expect(!text.contains("{") && text.contains("/Volumes/Platte/Modelle"))
+        #expect(text.contains("1,2") && text.contains("0,4"))
+    }
 }
