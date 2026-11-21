@@ -217,7 +217,7 @@ def test_strokes_on_the_gpu_are_drawn_as_on_the_cpu(monkeypatch, where):
     points = [torch.rand(4, 2, generator=g) * 200 + 12 for _ in range(16)]
 
     def draw(device):
-        pts = [p.to(device).requires_grad_(True) for p in points]
+        pts = [p.detach().clone().to(device).requires_grad_(True) for p in points]  # (leaves of their own)
         shapes = [renderer.Path(torch.tensor([2]), p, torch.tensor(1.5, device=device)) for p in pts]
         groups = [renderer.ShapeGroup(torch.tensor([i]), None, torch.tensor([0.0, 0.0, 0.0, 1.0], device=device))
                   for i in range(len(shapes))]
@@ -244,7 +244,7 @@ def test_clip_in_half_precision_on_the_gpu_sees_nearly_what_the_cpu_sees(monkeyp
     monkeypatch.setattr(clip, "_loaded", {})  # (loaded anew, in half precision)
     cpu_model, _ = clip.load("ViT-B/32", "cpu")
     gpu_model, _ = clip.load("ViT-B/32", "mps")
-    assert next(gpu_model.parameters()).dtype == torch.float16
+    assert gpu_model.visual.conv1.weight.dtype == torch.float16  # (as on CUDA: the embeddings stay float32)
     g = torch.Generator().manual_seed(0)
     images = (torch.rand(3, 3, 224, 224, generator=g) - 0.45) / 0.27
     with torch.no_grad():
