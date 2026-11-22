@@ -336,3 +336,34 @@ def test_bfloat16_only_where_it_runs(monkeypatch):
     check("import sys; sys.exit(1)")  # (not finite, or the check could not start)
     assert not sds.cpu_bf16_fast()
     sds.bf16_runs.cache_clear()
+
+
+def test_the_larger_resnets_see_their_own_resolution(monkeypatch):
+    """RN50x4 (288 px) and RN50x16 (384 px): the augmented crops at the model's resolution – before, they were cut at
+    224 px and could not go into one batch with the target scaled to 288/384 (the job failed at its first step).
+    A stand-in network of RN50x4's shape (small widths, random weights, no download)."""
+    import torch
+
+    from clipasso_studio.engine import losses, pipeline
+    from clipasso_studio.engine.clip_ import clip
+    from clipasso_studio.engine.clip_.model import CLIP
+
+    def load(name, device="cpu", jit=False):
+        torch.manual_seed(0)
+        model = CLIP(embed_dim=32, image_resolution=288, vision_layers=(1, 1, 1, 1), vision_width=16,
+                     vision_patch_size=None, context_length=77, vocab_size=49408, transformer_width=32,
+                     transformer_heads=2, transformer_layers=1).eval()
+        model.requires_grad_(False)
+        return model, clip._transform(288)
+
+    monkeypatch.setattr(clip, "load", load)
+    for turbo in (False, True):
+        s = {**schema.default_settings("clipasso"), "clip_model_name": "RN50x4", "turbo": turbo}
+        args = pipeline.build_args(s, "x.png", 0, "/tmp/x", torch.device("cpu"))
+        loss = losses.CLIPConvLoss(args)
+        assert loss._side() == 288
+        sketch = torch.rand(1, 3, 224, 224, requires_grad=True)
+        out = loss(sketch, torch.rand(1, 3, 224, 224))
+        total = sum(v for v in out.values())
+        total.backward()
+        assert torch.isfinite(total) and sketch.grad is not None

@@ -65,12 +65,15 @@ class RandomPerspective(transforms.RandomPerspective):
         return img
 
 
-def _affine_augmentations(args, normalize=True):
+def _affine_augmentations(args, normalize=True, size: int = 224):
+    """The perspective and crop augmentations of the CLIP losses; ``size``: the side of the crop – the CLIP model's
+    input resolution (224, RN50x4 288, RN50x16 384: the augmented images go into one batch with the target scaled to
+    that resolution)."""
     augs = []
     if "affine" in args.augemntations:
         scale = float(getattr(args, "aug_scale_min", 0.8))
         augs.append(RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
-        augs.append(transforms.RandomResizedCrop(224, scale=(scale, scale), ratio=(1.0, 1.0),
+        augs.append(transforms.RandomResizedCrop(int(size), scale=(scale, scale), ratio=(1.0, 1.0),
                                                  antialias=antialias_on(getattr(args, "device", "cpu"))))
     if normalize:
         augs.append(transforms.Normalize(_CLIP_MEAN, _CLIP_STD))
@@ -464,7 +467,9 @@ class CLIPConvLoss(torch.nn.Module):
         self.device = args.device
         self.num_augs = self.args.num_aug_clip
         self.augment_both = args.augment_both
-        self.augment_trans = _affine_augmentations(args)
+        # (at the model's resolution: RN50x4 and RN50x16 see 288 and 384 px, not 224 – before, their batch of the
+        # scaled image and the 224 px crops could not be put together, and the job failed at its first step)
+        self.augment_trans = _affine_augmentations(args, size=self._side())
 
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.counter = 0
@@ -477,6 +482,11 @@ class CLIPConvLoss(torch.nn.Module):
         name = getattr(args, "semantic_model", semantic.DEFAULT)
         self.semantic = semantic.load(name, args.device) if self.clip_fc_loss_weight and name != semantic.DEFAULT \
             else None
+
+    def _side(self) -> int:
+        """The model's input side (the preprocessing's crop: 224, 288, 384)."""
+        size = getattr(self, "img_size", 224)
+        return int(size[0] if isinstance(size, (tuple, list)) else size)
 
     def _encode(self, batch: torch.Tensor):
         if self.clip_model_name.startswith("RN"):
@@ -495,7 +505,8 @@ class CLIPConvLoss(torch.nn.Module):
 
     def _forward_turbo(self, x: torch.Tensor, y: torch.Tensor, mode: str) -> dict:
         if self.bank is None:
-            self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)))
+            self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)),
+                                    crop=self._side())
             self.bank.build(self.normalize_transform(y), y, self._kept)
         augment = mode == "train" and "affine" in self.args.augemntations
         picked = self.bank.pick(self.num_augs) if augment and self.augment_both else []
