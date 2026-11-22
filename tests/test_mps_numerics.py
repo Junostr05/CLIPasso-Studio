@@ -265,7 +265,7 @@ def test_clip_vit_gradients_on_the_gpu_are_the_cpus():
     image = (torch.rand(2, 3, 224, 224, generator=g) - 0.45) / 0.27
     grads = []
     for model, device in ((cpu_model, "cpu"), (gpu_model, "mps")):
-        x = image.to(device).requires_grad_(True)
+        x = image.detach().clone().to(device).requires_grad_(True)  # (a leaf of its own on each device)
         model.encode_image(x).float().square().sum().backward()
         grads.append(x.grad.cpu().flatten())
     cos = torch.nn.functional.cosine_similarity(grads[0], grads[1], dim=0)
