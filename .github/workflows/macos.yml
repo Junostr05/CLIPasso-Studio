@@ -121,6 +121,18 @@ jobs:
           "build/app/CLIPasso Studio.app/Contents/MacOS/CLIPassoStudio" --screenshots "$RUNNER_TEMP/shots" \
             --results "$RUNNER_TEMP/selftest"
           ls "$RUNNER_TEMP/shots"
+      - name: The app's icon as macOS draws it (Liquid Glass; light, dark)
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          RES="build/app/CLIPasso Studio.app/Contents/Resources"
+          ls -l "$RES" | grep -E "Assets.car|AppIcon" || true
+          grep -E "app icon:" app.txt || true
+          if [ -f "$RES/Assets.car" ]; then xcrun assetutil --info "$RES/Assets.car" | head -80; fi
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+            -f "build/app/CLIPasso Studio.app" || true
+          mkdir -p "$RUNNER_TEMP/shots"
+          swift macos/scripts/icon_snapshot.swift "$PWD/build/app/CLIPasso Studio.app" "$RUNNER_TEMP/shots"
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
