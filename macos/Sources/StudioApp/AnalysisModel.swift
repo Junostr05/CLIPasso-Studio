@@ -109,3 +109,122 @@ public extension AppModel {
         ])
     }
 }
+
+// MARK: - the page as text (its Copy button)
+
+public extension AppModel {
+    /// "CPU", "Apple GPU", "NVIDIA GPU" (in the app's language).
+    func deviceName(_ device: String) -> String {
+        let kind = device.split(separator: ":").first.map(String.init) ?? device
+        let key = "ui.mac.analysis.\(kind)"
+        return texts.has(key) ? texts.tr(key) : device
+    }
+
+    /// Why "Automatic" computes a method where it does.
+    func placementReason(_ reason: MethodPlacement.Reason) -> String {
+        switch reason {
+        case .hardwareTest(let date): texts.tr("ui.mac.analysis.reason.test", ["date": Self.shortDate(date)])
+        case .engineDefault: texts.tr("ui.mac.analysis.reason.default")
+        case .noGPU: texts.tr("ui.mac.analysis.reason.no_gpu")
+        case .cpuDefault: texts.tr("ui.mac.analysis.reason.cpu")
+        }
+    }
+
+    /// An ISO date as "22.11.2026, 13:05" (as the system writes it); the text itself when it is none.
+    nonisolated static func shortDate(_ iso: String) -> String {
+        let parser = ISO8601DateFormatter()
+        guard let date = parser.date(from: iso) else { return iso }
+        let out = DateFormatter()
+        out.dateStyle = .medium
+        out.timeStyle = .short
+        return out.string(from: date)
+    }
+
+    /// Seconds as "3,21 s" or "1:05" (a minute and more).
+    func analysisSeconds(_ value: Double) -> String {
+        value >= 60 ? PhoneRemote.eta(value) : "\(texts.number(value, decimals: value < 10 ? 2 : 1)) s"
+    }
+
+    /// Bytes as "7,2 GB" (or MB below a gigabyte).
+    func analysisBytes(_ count: Int64) -> String {
+        let value = Double(count)
+        return value >= 1e9 ? "\(texts.number(value / 1e9, decimals: 1)) GB" : "\(texts.number(value / 1e6, decimals: 0)) MB"
+    }
+
+    /// The Analysis page as text – everything it shows, for the clipboard (a bug report, a message).
+    func analysisText() -> String {
+        let t = texts
+        var lines = ["CLIPasso Studio – \(t.tr("ui.mac.analysis.title")) – \(Self.shortDate(ISO8601DateFormatter().string(from: Date())))", ""]
+        func row(_ key: String, _ value: String) { lines.append("\(t.tr(key)): \(value)") }
+
+        let mac = macFacts
+        lines.append("[\(t.tr("ui.mac.analysis.mac"))]")
+        row("ui.mac.analysis.chip", mac["cpu"]?.stringValue ?? "–")
+        row("ui.mac.analysis.cores", "\(mac["cores"]?.intValue ?? 0)")
+        row("ui.mac.analysis.memory", analysisBytes(Int64(mac["memory_bytes"]?.intValue ?? 0)))
+        row("ui.mac.analysis.macos", mac["macos"]?.stringValue ?? "–")
+        lines.append("")
+
+        lines.append("[\(t.tr("ui.mac.analysis.engine"))]")
+        if let facts = analysis.facts {
+            row("ui.mac.analysis.version", "\(facts["engine"]?.stringValue ?? version) · \(facts["build"]?.stringValue ?? "–")")
+            row("ui.mac.analysis.torch", facts["torch"]?.stringValue ?? "–")
+            let gpu = facts["mps"]?.truthy ?? false
+            row("ui.mac.analysis.gpu", t.tr(gpu ? "ui.mac.analysis.gpu_yes" : "ui.mac.analysis.gpu_no"))
+            if gpu, let linear = facts["linear"]?.stringValue {
+                row("ui.mac.analysis.linear",
+                    t.has("ui.mac.analysis.linear.\(linear)") ? t.tr("ui.mac.analysis.linear.\(linear)") : linear)
+            }
+            if gpu, let drawn = facts["draw_on_mps"]?.stringValue { row("ui.mac.analysis.draw_on", deviceName(drawn)) }
+            row("ui.mac.analysis.threads", "\(facts["threads"]?.intValue ?? 0)")
+        } else {
+            lines.append(t.tr("ui.mac.analysis.engine_waiting"))
+        }
+        lines.append("")
+
+        lines.append("[\(t.tr("ui.mac.analysis.auto"))]")
+        for placement in methodPlacements() {
+            let name = schema.method(placement.method)?.name ?? placement.method
+            lines.append("\(name): \(deviceName(placement.device)) – \(placementReason(placement.reason))")
+        }
+        if hardwareReportStale { lines.append(t.tr("ui.mac.hw.stale")) }
+        lines.append("")
+
+        guard let job = analysis.job, let dir = analysis.jobDir else {
+            lines.append("[\(t.tr("ui.mac.analysis.job"))]")
+            lines.append(t.tr("ui.mac.analysis.job_none"))
+            return lines.joined(separator: "\n") + "\n"
+        }
+        let state = t.tr(job.finished ? "ui.mac.analysis.finished" : "ui.mac.analysis.running",
+                         ["time": Self.shortDate(job.updated)])
+        lines.append("[\(t.tr("ui.mac.analysis.job")) · \(schema.method(job.method)?.name ?? job.method) · "
+            + "\(dir.lastPathComponent)] \(state)")
+        row("ui.mac.analysis.device", deviceName(job.device))
+        row("ui.mac.analysis.iterations", "\(job.iterations)")
+        if let per = job.perIteration {
+            row("ui.mac.analysis.per_iteration",
+                t.tr("ui.mac.hw.per_step", ["seconds": t.number(per, decimals: per < 0.1 ? 3 : 2)]))
+        }
+        if job.workers > 1 { row("ui.mac.analysis.workers", "\(job.workers)") }
+        lines.append("")
+
+        lines.append("[\(t.tr("ui.mac.analysis.parts"))]")
+        let total = max(job.seconds, 0.001)
+        func part(_ name: String, _ devices: [String], _ seconds: Double) {
+            let on = devices.isEmpty ? "" : devices.map(deviceName).joined(separator: " + ") + " · "
+            lines.append("\(name): \(on)\(t.number(seconds / total * 100, decimals: 0)) % · \(analysisSeconds(seconds))")
+        }
+        for p in job.parts where p.calls > 0 {
+            part(t.tr("ui.mac.analysis.part.\(p.key)"), p.devices, p.seconds)
+        }
+        part(t.tr("ui.mac.analysis.part.rest"), [], job.restInSteps)
+        part(t.tr("ui.mac.analysis.part.outside"), [], job.outsideSteps)
+        row("ui.mac.analysis.total", analysisSeconds(job.seconds))
+        lines.append("")
+        row("ui.mac.analysis.fallbacks",
+            job.fallbacks.isEmpty ? t.tr("ui.mac.analysis.fallbacks_none") : job.fallbacks.joined(separator: ", "))
+        if job.peakMemory > 0 { row("ui.mac.analysis.peak_memory", analysisBytes(job.peakMemory)) }
+        if job.gpuMemory > 0 { row("ui.mac.analysis.gpu_memory", analysisBytes(job.gpuMemory)) }
+        return lines.joined(separator: "\n") + "\n"
+    }
+}

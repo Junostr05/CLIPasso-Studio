@@ -1,0 +1,51 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.42353,0.36078,0.90588,1.00000"
+  },
+  "groups" : [
+    {
+      "name" : "Sketch",
+      "layers" : [
+        {
+          "image-name" : "eye.svg",
+          "name" : "eye",
+          "glass" : true
+        },
+        {
+          "image-name" : "strokes.svg",
+          "name" : "strokes",
+          "glass" : true
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "name" : "Paper",
+      "layers" : [
+        {
+          "image-name" : "paper.svg",
+          "name" : "paper",
+          "glass" : true
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.4
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.35
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

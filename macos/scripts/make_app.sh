@@ -55,6 +55,31 @@ fi
 mkdir -p "$APP/Contents/Resources/models/$(dirname "$BLAZEFACE")"
 cp "$MODELS/$BLAZEFACE" "$APP/Contents/Resources/models/$BLAZEFACE"
 
+# the app's icon: Liquid Glass – Icon Composer's AppIcon.icon (its layers: the paper, the sketch, the eye), compiled
+# by actool into Assets.car (the system draws the glass, light, dark and tinted) and AppIcon.icns; where actool cannot,
+# the studio's flat icon as AppIcon.icns
+ICON_TMP=$(mktemp -d)
+if xcrun --find actool >/dev/null 2>&1 && xcrun actool "$ROOT/macos/App/AppIcon.icon" \
+        --compile "$APP/Contents/Resources" --output-format human-readable-text --notices --warnings --errors \
+        --output-partial-info-plist "$ICON_TMP/icon.plist" --app-icon AppIcon --include-all-app-icons \
+        --enable-on-demand-resources NO --development-region en --target-device mac \
+        --minimum-deployment-target 26.0 --platform macosx \
+    && [ -f "$APP/Contents/Resources/Assets.car" ]; then
+    echo "app icon: Liquid Glass (AppIcon.icon by actool)"
+else
+    echo "app icon: actool could not compile AppIcon.icon – the flat icon instead" >&2
+    mkdir -p "$ICON_TMP/AppIcon.iconset"
+    for size in 16 32 128 256 512; do
+        sips -z "$size" "$size" "$ROOT/clipasso_studio/resources/app_icon.png" \
+            --out "$ICON_TMP/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
+        sips -z $((size * 2)) $((size * 2)) "$ROOT/clipasso_studio/resources/app_icon.png" \
+            --out "$ICON_TMP/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+    done
+    iconutil -c icns "$ICON_TMP/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
+fi
+rm -rf "$ICON_TMP"
+ls -l "$APP/Contents/Resources" | grep -E "Assets.car|AppIcon" || true
+
 VERSION=$(cd "$ROOT" && "$PYTHON" -c "import clipasso_studio; print(clipasso_studio.__version__)")
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -66,6 +91,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key><string>de.junostr05.clipasso-studio</string>
     <key>CFBundleExecutable</key><string>CLIPassoStudio</string>
     <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleIconName</key><string>AppIcon</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$VERSION</string>
     <key>CFBundleDevelopmentRegion</key><string>en</string>

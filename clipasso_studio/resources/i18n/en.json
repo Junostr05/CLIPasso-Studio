@@ -1751,5 +1751,8 @@
  "ui.mac.analysis.gpu_memory": "GPU memory",
  "ui.mac.analysis.show_folder": "Show the job's folder",
  "ui.mac.hw.stale": "Measured with another version of the engine – no longer applies. Please measure again; until then “Automatic” follows the default.",
+ "ui.mac.analysis.copy": "Copy",
+ "ui.mac.analysis.copied": "Copied",
+ "ui.mac.analysis.copy_tip": "Everything on this page as text on the clipboard – for a bug report or a message.",
  "ui.mac.dmg_update": "To update: drag the new version onto Applications and replace the old one – your settings, models and results stay. macOS asks again as in steps 2–4."
 }

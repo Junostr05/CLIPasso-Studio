@@ -9,6 +9,7 @@ import SwiftUI
 /// two seconds while it is shown. Content: a grouped form.
 struct AnalysisView: View {
     @Environment(AppModel.self) private var model
+    @State private var copied = false
 
     var body: some View {
         let t = model.texts
@@ -21,12 +22,31 @@ struct AnalysisView: View {
         .formStyle(.grouped)
         .navigationTitle(t.tr("ui.mac.analysis.title"))
         .navigationSubtitle(t.tr("ui.mac.analysis.subtitle"))
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(t.tr(copied ? "ui.mac.analysis.copied" : "ui.mac.analysis.copy"),
+                       systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
+                    .help(t.tr("ui.mac.analysis.copy_tip"))
+            }
+        }
         .task {
             await model.gallery.refresh()
             while !Task.isCancelled {
                 await model.refreshAnalysis()
                 try? await Task.sleep(for: .seconds(2))
             }
+        }
+    }
+
+    /// Copy: the page as text (AppModel.analysisText), freshly measured.
+    private func copy() {
+        Task {
+            await model.refreshAnalysis()
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(model.analysisText(), forType: .string)
+            copied = true
+            try? await Task.sleep(for: .seconds(2))
+            copied = false
         }
     }
 
@@ -38,7 +58,7 @@ struct AnalysisView: View {
         return Section(t.tr("ui.mac.analysis.mac")) {
             row(t.tr("ui.mac.analysis.chip"), mac["cpu"]?.stringValue ?? "–")
             row(t.tr("ui.mac.analysis.cores"), "\(mac["cores"]?.intValue ?? 0)")
-            row(t.tr("ui.mac.analysis.memory"), Self.bytes(Int64(mac["memory_bytes"]?.intValue ?? 0)))
+            row(t.tr("ui.mac.analysis.memory"), model.analysisBytes(Int64(mac["memory_bytes"]?.intValue ?? 0)))
             row(t.tr("ui.mac.analysis.macos"), mac["macos"]?.stringValue ?? "–")
         }
     }
@@ -80,7 +100,7 @@ struct AnalysisView: View {
             ForEach(model.methodPlacements()) { placement in
                 LabeledContent {
                     HStack(spacing: Spacing.spaceS) {
-                        Text(reason(placement.reason)).foregroundStyle(.secondary).font(.callout)
+                        Text(model.placementReason(placement.reason)).foregroundStyle(.secondary).font(.callout)
                         DeviceBadge(device: placement.device)
                     }
                 } label: {
@@ -97,16 +117,6 @@ struct AnalysisView: View {
                 }
                 Text(t.tr("ui.mac.analysis.auto_note")).font(.caption).foregroundStyle(.secondary)
             }
-        }
-    }
-
-    private func reason(_ reason: MethodPlacement.Reason) -> String {
-        let t = model.texts
-        switch reason {
-        case .hardwareTest(let date): return t.tr("ui.mac.analysis.reason.test", ["date": HardwareSettings.date(date)])
-        case .engineDefault: return t.tr("ui.mac.analysis.reason.default")
-        case .noGPU: return t.tr("ui.mac.analysis.reason.no_gpu")
-        case .cpuDefault: return t.tr("ui.mac.analysis.reason.cpu")
         }
     }
 
@@ -128,7 +138,7 @@ struct AnalysisView: View {
                     Text(t.tr("ui.mac.analysis.job") + " · " + (model.schema.method(job.method)?.name ?? job.method)
                         + " · " + dir.lastPathComponent)
                     Text(t.tr(job.finished ? "ui.mac.analysis.finished" : "ui.mac.analysis.running",
-                              ["time": HardwareSettings.date(job.updated)]))
+                              ["time": AppModel.shortDate(job.updated)]))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -137,13 +147,15 @@ struct AnalysisView: View {
                 ForEach(job.parts.filter { $0.calls > 0 }) { part in
                     PartRow(name: t.tr("ui.mac.analysis.part.\(part.key)"),
                             tip: t.has("ui.mac.analysis.part_tip.\(part.key)") ? t.tr("ui.mac.analysis.part_tip.\(part.key)") : nil,
-                            devices: part.devices, seconds: part.seconds, share: part.seconds / total, texts: t)
+                            devices: part.devices, seconds: model.analysisSeconds(part.seconds),
+                            share: part.seconds / total, texts: t)
                 }
                 PartRow(name: t.tr("ui.mac.analysis.part.rest"), tip: t.tr("ui.mac.analysis.part_tip.rest"),
-                        devices: [], seconds: job.restInSteps, share: job.restInSteps / total, texts: t)
+                        devices: [], seconds: model.analysisSeconds(job.restInSteps), share: job.restInSteps / total,
+                        texts: t)
                 PartRow(name: t.tr("ui.mac.analysis.part.outside"), tip: nil, devices: [],
-                        seconds: job.outsideSteps, share: job.outsideSteps / total, texts: t)
-                row(t.tr("ui.mac.analysis.total"), Self.seconds(job.seconds, t))
+                        seconds: model.analysisSeconds(job.outsideSteps), share: job.outsideSteps / total, texts: t)
+                row(t.tr("ui.mac.analysis.total"), model.analysisSeconds(job.seconds))
             }
             Section {
                 LabeledContent(t.tr("ui.mac.analysis.fallbacks")) {
@@ -152,8 +164,8 @@ struct AnalysisView: View {
                         .foregroundStyle(job.fallbacks.isEmpty ? Color.secondary : Color.orange)
                         .textSelection(.enabled)
                 }
-                if job.peakMemory > 0 { row(t.tr("ui.mac.analysis.peak_memory"), Self.bytes(job.peakMemory)) }
-                if job.gpuMemory > 0 { row(t.tr("ui.mac.analysis.gpu_memory"), Self.bytes(job.gpuMemory)) }
+                if job.peakMemory > 0 { row(t.tr("ui.mac.analysis.peak_memory"), model.analysisBytes(job.peakMemory)) }
+                if job.gpuMemory > 0 { row(t.tr("ui.mac.analysis.gpu_memory"), model.analysisBytes(job.gpuMemory)) }
                 Button(t.tr("ui.mac.analysis.show_folder"), systemImage: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([dir])
                 }
@@ -170,13 +182,6 @@ struct AnalysisView: View {
         LabeledContent(label) { Text(verbatim: value).monospacedDigit().textSelection(.enabled) }
     }
 
-    static func bytes(_ count: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: count, countStyle: .memory)
-    }
-
-    static func seconds(_ value: Double, _ t: Texts) -> String {
-        value >= 60 ? PhoneRemote.eta(value) : "\(t.number(value, decimals: value < 10 ? 2 : 1)) s"
-    }
 }
 
 /// One part of a step: its name, the device(s) it ran on, its time and share of the job's time.
@@ -184,7 +189,8 @@ private struct PartRow: View {
     let name: String
     let tip: String?
     let devices: [String]
-    let seconds: Double
+    /// its time, as text
+    let seconds: String
     let share: Double
     let texts: Texts
 
@@ -196,7 +202,7 @@ private struct PartRow: View {
                     .accessibilityHidden(true)
                 Text(verbatim: "\(texts.number(share * 100, decimals: 0)) %").monospacedDigit()
                     .frame(width: 44, alignment: .trailing)
-                Text(verbatim: AnalysisView.seconds(seconds, texts)).monospacedDigit().foregroundStyle(.secondary)
+                Text(verbatim: seconds).monospacedDigit().foregroundStyle(.secondary)
                     .frame(width: 70, alignment: .trailing)
             }
         } label: {
@@ -214,8 +220,7 @@ struct DeviceBadge: View {
     var body: some View {
         let kind = device.split(separator: ":").first.map(String.init) ?? device
         let gpu = kind == "mps" || kind == "cuda"
-        let key = "ui.mac.analysis.\(kind)"
-        Label(model.texts.has(key) ? model.texts.tr(key) : device, systemImage: gpu ? "bolt.fill" : "cpu")
+        Label(model.deviceName(device), systemImage: gpu ? "bolt.fill" : "cpu")
             .font(.caption.weight(.semibold))
             .padding(.horizontal, Spacing.spaceS)
             .padding(.vertical, 2)

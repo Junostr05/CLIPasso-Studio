@@ -1751,5 +1751,8 @@
  "ui.mac.analysis.gpu_memory": "Speicher der GPU",
  "ui.mac.analysis.show_folder": "Ordner des Auftrags zeigen",
  "ui.mac.hw.stale": "Gemessen mit einer anderen Version der Engine – gilt nicht mehr. Bitte neu messen; bis dahin rechnet „Automatisch“ nach dem Standard.",
+ "ui.mac.analysis.copy": "Kopieren",
+ "ui.mac.analysis.copied": "Kopiert",
+ "ui.mac.analysis.copy_tip": "Alle Angaben dieser Seite als Text in die Zwischenablage – für einen Fehlerbericht oder eine Nachricht.",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }
