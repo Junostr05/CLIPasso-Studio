@@ -108,8 +108,16 @@ import Testing
         #expect(analysis["engine"]?.objectValue?["build"] == "abc1234 2026-11-22T01:00Z")
         #expect(analysis["mac"]?.objectValue?["cores"]?.intValue ?? 0 > 0)
         let automatic = analysis["automatic"]?.arrayValue?.compactMap(\.objectValue) ?? []
-        #expect(automatic.first { $0["method"] == "clipasso" }?["device"] == "mps")  // (the engine's default)
-        #expect(automatic.first { $0["method"] == "swiftsketch" }?["device"] == "cpu")
+        #expect(automatic.count == model.schema.methods.count)
+        #expect(automatic.allSatisfy { $0["device"] == "cpu" && $0["reason"] == "no usable Apple GPU" })  // (none here)
+        // with an Apple GPU: the engine's default, then the hardware test's choice
+        model.analysis.facts = ["mps": true, "linear": "native", "mps_auto": ["clipasso", "controlsketch"]]
+        var placed = Dictionary(uniqueKeysWithValues: model.methodPlacements().map { ($0.method, $0) })
+        #expect(placed["clipasso"]?.device == "mps" && placed["clipasso"]?.reason == .engineDefault)
+        #expect(placed["swiftsketch"]?.device == "cpu" && placed["swiftsketch"]?.reason == .cpuDefault)
+        model.analysis.facts?["linear"] = "wrong"  // (a GPU that computes wrongly is not used)
+        placed = Dictionary(uniqueKeysWithValues: model.methodPlacements().map { ($0.method, $0) })
+        #expect(placed["clipasso"]?.device == "cpu" && placed["clipasso"]?.reason == .noGPU)
         let measuredJob = try #require(analysis["job"]?.objectValue)
         #expect(measuredJob["device"] == "mps" && measuredJob["iterations"] == 40)
         #expect(measuredJob["parts"]?.arrayValue?.first?.objectValue?["devices"] == ["cpu"])

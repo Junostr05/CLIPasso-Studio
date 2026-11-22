@@ -17,7 +17,7 @@ import Testing
                    {"key": "clip", "seconds": \(clip), "calls": 20, "devices": ["mps"]},
                    {"key": "backward", "seconds": 1.0, "calls": 10, "devices": ["cpu", "mps"]},
                    {"key": "model", "seconds": 0.0, "calls": 0, "devices": []}],
-         "fallbacks": \(fallbacks.map { "\"\($0)\"" }), "memory": {"rss_peak": \(1_000_000 * (n + 1)), "mps_driver": 5000}}
+         "fallbacks": [\(fallbacks.map { "\"\($0)\"" }.joined(separator: ", "))], "memory": {"rss_peak": \(1_000_000 * (n + 1)), "mps_driver": 5000}}
         """
     }
 
@@ -35,9 +35,9 @@ import Testing
         let a = try #require(DeviceAnalysis.read(jobDir: job))
         #expect(a.workers == 2 && a.method == "clipasso" && a.device == "mps" && a.drawDevice == "cpu")
         #expect(a.seconds == 22 && a.optimizing == 17 && a.iterations == 90 && !a.finished)
-        #expect(a.parts.map(\.key) == ["draw", "clip", "backward", "model"])
+        #expect(a.parts.map(\.key) == ["draw", "clip", "model", "backward"])  // (in the engine's order)
         #expect(a.parts[0].seconds == 1.2 && a.parts[0].calls == 20 && a.parts[0].devices == ["cpu"])
-        #expect(a.parts[2].devices == ["cpu", "mps"])
+        #expect(a.parts[3].devices == ["cpu", "mps"] && a.parts[2].calls == 0)
         #expect(abs(a.measured - (1.2 + 9 + 2)) < 1e-9 && abs(a.restInSteps - (17 - 12.2)) < 1e-9)
         #expect(abs(a.outsideSteps - (22 - 17)) < 1e-9 && abs((a.perIteration ?? 0) - 17.0 / 90) < 1e-9)
         #expect(a.fallbacks == ["aten::x"] && a.peakMemory == 2_000_000 && a.gpuMemory == 5000)

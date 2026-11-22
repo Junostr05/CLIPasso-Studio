@@ -91,10 +91,10 @@ for raw in sys.stdin.buffer:
             send({"event": "iteration", "job": "j1", "data": {"seed": 0, "it": i, "total": 100}})
         send({"id": rid, "ok": True, "result": {"sent": args.get("n", 3)}})
     elif op == "devices":  # (with what the probe adds for the Analysis page)
-        send({"id": rid, "ok": True, "result": {"torch": "2.11.0", "cuda": False, "mps": True, "engine": "4.2.4",
+        # (no Apple GPU: the compare's questions about the CPU depend on it)
+        send({"id": rid, "ok": True, "result": {"torch": "2.11.0", "cuda": False, "mps": False, "engine": "4.2.4",
                                                  "build": "abc1234 2026-11-22T01:00Z", "cpu_count": 18, "threads": 6,
-                                                 "mps_auto": ["clipasso", "controlsketch"], "draw_on_mps": "cpu",
-                                                 "linear": "native"}})
+                                                 "mps_auto": ["clipasso", "controlsketch"], "draw_on_mps": "cpu"}})
     elif op == "huge":
         send({"id": rid, "ok": True, "result": {"blob": "x" * (8 * 1024 * 1024)}})
     elif op == "fail":
