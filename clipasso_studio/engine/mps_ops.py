@@ -106,3 +106,25 @@ def ensure_right(device) -> str:
         if _chosen in LINEAR_WAYS and _chosen != "native":
             torch.nn.functional.linear = _dispatching(LINEAR_WAYS[_chosen])
     return _chosen
+
+
+# --- a convolution whose kernel is its stride (ViT's patches) ------------------------------------------------------
+def patch_conv(conv: torch.nn.Conv2d, x: torch.Tensor, force: bool = False) -> torch.Tensor:
+    """``conv(x)`` for a convolution that cuts the image into patches (kernel = stride, no padding, no dilation, one
+    group) – on the Apple GPU as one matrix product over the patches: measured on an M5 Pro its backward took 4.3 s
+    there for ViT-B/32's input layer (2.4 ms on the CPU), the matrix product 2.5 ms; the same values. Anywhere else
+    (or for another convolution) the convolution itself. ``force``: the matrix product anywhere (tests)."""
+    kernel, stride = tuple(conv.kernel_size), tuple(conv.stride)
+    simple = (kernel == stride and tuple(conv.dilation) == (1, 1) and conv.groups == 1
+              and conv.padding in ((0, 0), "valid") and x.dim() == 4)
+    if not simple or not (force or x.device.type == "mps"):
+        return conv(x)
+    n, c, h, w = x.shape
+    kh, kw = kernel
+    gh, gw = h // kh, w // kw
+    x = x[:, :, :gh * kh, :gw * kw]  # (as the convolution: what does not fill a patch is left out)
+    patches = x.reshape(n, c, gh, kh, gw, kw).permute(0, 2, 4, 1, 3, 5).reshape(n, gh * gw, c * kh * kw)
+    out = patches @ conv.weight.reshape(conv.out_channels, -1).t()
+    if conv.bias is not None:
+        out = out + conv.bias
+    return out.reshape(n, gh, gw, conv.out_channels).permute(0, 3, 1, 2)

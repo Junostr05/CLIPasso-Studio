@@ -84,3 +84,25 @@ def test_clip_in_half_precision_only_on_an_nvidia_card(monkeypatch):
 
     monkeypatch.setenv("CLIPASSO_MPS_HALF", "1")  # (the measuring switch of before: gone)
     assert clip.half_precision("cuda") and not clip.half_precision("cpu") and not clip.half_precision("mps")
+
+
+def test_a_patch_convolution_is_a_matrix_product():
+    """ViT's input layer (kernel = stride): as one matrix product the same values and gradients as the convolution
+    (on the Apple GPU its backward took 4.3 s, the product 2.5 ms); other convolutions stay convolutions."""
+    from clipasso_studio.engine.mps_ops import patch_conv
+
+    g = torch.Generator().manual_seed(3)
+    for bias, size in ((False, 224), (True, 70)):  # (70: what does not fill a patch is left out, as by the conv)
+        conv = torch.nn.Conv2d(3, 16, kernel_size=32, stride=32, bias=bias).double()
+        x = torch.rand(2, 3, size, size, generator=g, dtype=torch.float64, requires_grad=True)
+        a, b = conv(x), patch_conv(conv, x, force=True)
+        assert a.shape == b.shape and torch.allclose(a, b, atol=1e-10)
+        w = torch.rand(a.shape, generator=g, dtype=torch.float64)
+        ga = torch.autograd.grad((a * w).sum(), (x, conv.weight))
+        gb = torch.autograd.grad((b * w).sum(), (x, conv.weight))
+        assert torch.allclose(ga[0], gb[0], atol=1e-10) and torch.allclose(ga[1], gb[1], atol=1e-9)
+    other = torch.nn.Conv2d(3, 4, kernel_size=3, padding=1)
+    x = torch.rand(1, 3, 8, 8)
+    assert torch.equal(patch_conv(other, x, force=True), other(x))  # (not a patch convolution: itself)
+    conv = torch.nn.Conv2d(3, 4, kernel_size=4, stride=4)
+    assert torch.equal(patch_conv(conv, x), conv(x))  # (on the CPU: the convolution itself)

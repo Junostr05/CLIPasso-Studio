@@ -17,6 +17,7 @@ import torch.nn as nn
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
+from ... import mps_ops
 from ...clip_ import clip
 from ...losses import AugmentBank, RandomPerspective, antialias_on
 
@@ -28,7 +29,7 @@ def vit_layer_features(visual, x: torch.Tensor, upto: int) -> list[torch.Tensor]
     """Outputs of the residual blocks 0..``upto`` of a CLIP ViT, as [N, tokens, width] each
     (what the forward hooks of ``CLIPVisualEncoder`` record)."""
     x = x.type(visual.conv1.weight.dtype)
-    x = visual.conv1(x)
+    x = mps_ops.patch_conv(visual.conv1, x)  # (as clip_.model: a matrix product on the Apple GPU)
     x = x.reshape(x.shape[0], x.shape[1], -1).permute(0, 2, 1)
     cls = visual.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype,
                                                            device=x.device)

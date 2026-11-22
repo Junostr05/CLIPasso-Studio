@@ -249,3 +249,24 @@ def test_strokes_on_the_gpu_with_colours_on_the_cpu_are_drawn():
             return renderer.render_on_white(224, 224, shapes, groups)
 
     assert torch.allclose(draw("cpu"), draw("mps").cpu(), atol=1e-5)
+
+
+def test_clip_vit_gradients_on_the_gpu_are_the_cpus():
+    """ViT-B/32's backward on MPS (its input layer as a matrix product, mps_ops.patch_conv): the gradient to the image
+    as on the CPU – what steers the strokes."""
+    from clipasso_studio.engine import model_store
+    from clipasso_studio.engine.clip_ import clip
+
+    if not model_store.is_available(model_store.clip_key("ViT-B/32")):
+        pytest.skip("CLIP ViT-B/32 is not downloaded")
+    cpu_model, _ = clip.load("ViT-B/32", "cpu")
+    gpu_model, _ = clip.load("ViT-B/32", "mps")
+    g = torch.Generator().manual_seed(7)
+    image = (torch.rand(2, 3, 224, 224, generator=g) - 0.45) / 0.27
+    grads = []
+    for model, device in ((cpu_model, "cpu"), (gpu_model, "mps")):
+        x = image.to(device).requires_grad_(True)
+        model.encode_image(x).float().square().sum().backward()
+        grads.append(x.grad.cpu().flatten())
+    cos = torch.nn.functional.cosine_similarity(grads[0], grads[1], dim=0)
+    assert float(cos) > 0.999, f"cosine of the gradients CPU/MPS: {float(cos)}"
