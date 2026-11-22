@@ -48,6 +48,10 @@ struct HardwareSettings: View {
         if let report = model.hardwareReport, let recommended = report["recommended"]?.objectValue {
             Text(t.tr("ui.mac.hw.when", ["date": Self.date(report["date"]?.stringValue ?? "")]))
                 .font(.caption).foregroundStyle(.secondary)
+            if model.hardwareReportStale {
+                Label(t.tr("ui.mac.hw.stale"), systemImage: "exclamationmark.triangle")
+                    .font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
             Grid(alignment: .leading, horizontalSpacing: Spacing.spaceL, verticalSpacing: Spacing.spaceXs) {
                 GridRow {
                     ForEach(["method", "cpu", "gpu", "speedup", "auto"], id: \.self) {

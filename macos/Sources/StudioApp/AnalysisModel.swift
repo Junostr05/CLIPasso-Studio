@@ -102,6 +102,7 @@ public extension AppModel {
         return .json([
             "mac": .object(macFacts), "engine": .object(analysis.facts ?? [:]),
             "automatic": .array(placements),
+            "hardware_test_stale": .bool(hardwareReportStale),  // (measured with another engine: not followed)
             "job": job.map { .object($0.json.merging(["folder": .string(dir?.path ?? "")])) } ?? .null,
             "note": .string("parts: draw = strokes rasterised, clip = CLIP encoders, model = diffusion/network, "
                 + "backward = gradients, optimizer = optimiser step; devices: cpu, mps (Apple GPU), cuda"),

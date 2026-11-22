@@ -35,8 +35,22 @@ public extension AppModel {
     /// The last hardware test: {date, iterations, rows, recommended {method: {device, speedup, reason …}}}.
     var hardwareReport: JSONObject? { settings[Self.hardwareKey]?.objectValue }
 
-    /// Per method the device "auto" computes on, from the last hardware test.
+    /// The running engine's build (its commit), as its device probe said – nil while not known.
+    var engineBuild: String? {
+        analysis.facts?["build"]?.stringValue.flatMap { $0.split(separator: " ").first.map(String.init) }
+    }
+
+    /// The last hardware test was measured with another engine (an older build, or one from before builds were
+    /// kept): its choices no longer hold – the engine's own default applies until it is measured again.
+    var hardwareReportStale: Bool {
+        guard let report = hardwareReport else { return false }
+        guard let build = engineBuild else { return true }  // (not known yet: not trusted)
+        return report["build"]?.stringValue?.split(separator: " ").first.map(String.init) != build
+    }
+
+    /// Per method the device "auto" computes on, from the last hardware test (none when it is stale).
     var autoDevices: [String: String] {
+        guard !hardwareReportStale else { return [:] }
         var out: [String: String] = [:]
         for (method, entry) in hardwareReport?["recommended"]?.objectValue ?? [:] {
             if let device = entry.objectValue?["device"]?.stringValue { out[method] = device }
@@ -81,6 +95,10 @@ public extension AppModel {
             return .failure(HardwareFailure(description: why))
         }
         var report = end.data
+        if analysis.facts == nil, let found = try? await engine.request("devices", timeout: .seconds(60)).objectValue {
+            analysis.facts = found
+        }
+        report["build"] = analysis.facts?["build"] ?? .null  // (the engine it holds for)
         report["date"] = .string(ISO8601DateFormatter().string(from: Date()))
         report["iterations"] = .int(iterations)
         report["image"] = .string(image.lastPathComponent)

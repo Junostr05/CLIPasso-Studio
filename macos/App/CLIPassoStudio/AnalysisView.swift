@@ -90,7 +90,13 @@ struct AnalysisView: View {
         } header: {
             Text(t.tr("ui.mac.analysis.auto"))
         } footer: {
-            Text(t.tr("ui.mac.analysis.auto_note")).font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Spacing.spaceXs) {
+                if model.hardwareReportStale {
+                    Label(t.tr("ui.mac.hw.stale"), systemImage: "exclamationmark.triangle")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                Text(t.tr("ui.mac.analysis.auto_note")).font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 

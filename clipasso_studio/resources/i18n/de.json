@@ -1750,5 +1750,6 @@
  "ui.mac.analysis.peak_memory": "Größter Speicherbedarf",
  "ui.mac.analysis.gpu_memory": "Speicher der GPU",
  "ui.mac.analysis.show_folder": "Ordner des Auftrags zeigen",
+ "ui.mac.hw.stale": "Gemessen mit einer anderen Version der Engine – gilt nicht mehr. Bitte neu messen; bis dahin rechnet „Automatisch“ nach dem Standard.",
  "ui.mac.dmg_update": "Zum Aktualisieren: Zieh die neue Version auf „Programme“ und ersetze die alte – Einstellungen, Modelle und Ergebnisse bleiben. macOS fragt dann noch einmal wie in Schritt 2–4."
 }

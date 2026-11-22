@@ -79,7 +79,7 @@ def test_mps_is_one_worker(monkeypatch):
 
 
 def test_auto_takes_the_apple_gpu_where_it_was_measured_faster():
-    assert set(schema.MPS_AUTO) == {"clipasso", "controlsketch"}  # (M5 Pro: 2.6× and 2.9×; SwiftSketch even)
+    assert set(schema.MPS_AUTO) == {"clipasso", "controlsketch", "scenesketch"}  # (M5 Pro; SwiftSketch even)
     assert set(schema.MPS_AUTO) <= set(schema.METHODS)
 
 

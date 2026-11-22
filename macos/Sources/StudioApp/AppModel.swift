@@ -167,7 +167,12 @@ public final class AppModel {
             let queue = JobQueue(engine: client, outputRoot: settings.outputDir)
             self.queue = queue
             queuePage = QueueModel(queue: queue)
-            await queue.setAutoDevices(autoDevices)  // ("auto" as this Mac's hardware test measured)
+            // the engine's facts (its build: a hardware test of another engine no longer holds), then "auto" as
+            // this Mac's hardware test measured
+            if let found = try? await client.request("devices", timeout: .seconds(120)).objectValue {
+                analysis.facts = found
+            }
+            await queue.setAutoDevices(autoDevices)
             queueListener = Task { [weak self] in
                 for await snapshot in queue.updates {
                     self?.apply(snapshot)

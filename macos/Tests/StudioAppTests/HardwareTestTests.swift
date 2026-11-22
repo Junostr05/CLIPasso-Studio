@@ -34,6 +34,21 @@ import Testing
             Issue.record("the test did not fail")
         }
         #expect(model.autoDevices == ["clipasso": "mps", "swiftsketch": "cpu"])  // (the last good one stays)
+        // measured with another engine (an older build, or one from before builds were kept): no longer followed
+        #expect(model.hardwareReport?["build"] == "abc1234 2026-11-22T01:00Z" && !model.hardwareReportStale)
+        for old in [JSONValue.string("0ld0ld0 2026-11-20T10:00Z"), .null] {
+            _ = model.updateSettings {
+                var report = $0[AppModel.hardwareKey]?.objectValue ?? [:]
+                report["build"] = old
+                $0[AppModel.hardwareKey] = .object(report)
+            }
+            #expect(model.hardwareReportStale && model.autoDevices.isEmpty)
+        }
+        _ = model.updateSettings {  // (measured with this engine again)
+            var report = $0[AppModel.hardwareKey]?.objectValue ?? [:]
+            report["build"] = "abc1234 2026-11-22T01:00Z"
+            $0[AppModel.hardwareKey] = .object(report)
+        }
         await model.stopEngine()
         // the next start of the engine takes the test over again
         await model.startEngine()

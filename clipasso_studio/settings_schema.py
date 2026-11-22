@@ -108,8 +108,9 @@ DEVICES = ("auto", "cpu", "cuda", "mps")
 # the methods for which "auto" computes on the Apple GPU: only where it was measured faster with results as good
 # (tools/bench_device.py; a Mac's own hardware test overrides this per method). Measured on an M5 Pro with the strokes
 # drawn on the CPU: CLIPasso 2.6× (0.123 against 0.322 s a step), ControlSketch 2.9× (1.30 against 3.74 s);
-# SwiftSketch even (0.0093 against 0.0098 s), SceneSketch not yet measured since it was fixed.
-MPS_AUTO: tuple[str, ...] = ("clipasso", "controlsketch")
+# SwiftSketch even (0.0093 against 0.0098 s). SceneSketch: its 8.8 s a step on MPS were ViT-B/32's input layer
+# (4.3 s backward, twice a step) – a matrix product there now (mps_ops.patch_conv, 2.5 ms), as CLIPasso otherwise.
+MPS_AUTO: tuple[str, ...] = ("clipasso", "controlsketch", "scenesketch")
 
 
 def _best_by() -> Param:
