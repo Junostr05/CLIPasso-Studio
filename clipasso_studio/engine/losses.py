@@ -20,18 +20,61 @@ from torchvision.transforms import InterpolationMode
 from torchvision.transforms import functional as TF
 
 from . import nets, semantic
+from .mps_ops import grid_sample_bilinear
 from .clip_ import clip
 
 _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
 
 
-def _affine_augmentations(args, normalize=True):
+def antialias_on(device) -> bool:
+    """Whether the crop of the augmentations smooths when it shrinks: not on the Apple GPU – MPS has no backward pass
+    for the smoothed resize, so every step would compute it on the CPU and copy the tensors back and forth (2.6–6.7×
+    slower, docs/macos/plan.md §7). A crop of the 224 px canvas is enlarged, where smoothing changes nothing; only
+    larger canvases shrink."""
+    return torch.device(device).type != "mps"
+
+
+def perspective(img: torch.Tensor, startpoints, endpoints) -> torch.Tensor:
+    """``TF.perspective`` of a [N, C, H, W] tensor, bilinear, black outside – on the Apple GPU with
+    grid_sample_bilinear (the same grid and the same mask for the fill as torchvision), elsewhere torchvision's own."""
+    if img.device.type != "mps" or img.dim() != 4:
+        return TF.perspective(img, startpoints, endpoints, InterpolationMode.BILINEAR, fill=[0.0] * img.shape[-3])
+    return _own_perspective(img, startpoints, endpoints)
+
+
+def _own_perspective(img: torch.Tensor, startpoints, endpoints) -> torch.Tensor:
+    from torchvision.transforms import _functional_tensor as FT
+    coeffs = TF._get_perspective_coeffs(startpoints, endpoints)
+    grid = FT._perspective_grid(coeffs, ow=img.shape[-1], oh=img.shape[-2], dtype=img.dtype, device=img.device)
+    ones = torch.ones_like(img[:, :1])
+    out = grid_sample_bilinear(torch.cat([img, ones], dim=1), grid.expand(img.shape[0], -1, -1, -1))
+    return out[:, :-1] * out[:, -1:]  # (the fill is 0: img · mask + (1 − mask) · 0)
+
+
+class RandomPerspective(transforms.RandomPerspective):
+    """transforms.RandomPerspective (the same random numbers) – on the Apple GPU through ``perspective``."""
+
+    def forward(self, img):
+        if not (torch.is_tensor(img) and img.device.type == "mps" and img.dim() == 4):
+            return super().forward(img)
+        height, width = img.shape[-2:]
+        if torch.rand(1) < self.p:
+            startpoints, endpoints = self.get_params(width, height, self.distortion_scale)
+            return perspective(img, startpoints, endpoints)
+        return img
+
+
+def _affine_augmentations(args, normalize=True, size: int = 224):
+    """The perspective and crop augmentations of the CLIP losses; ``size``: the side of the crop – the CLIP model's
+    input resolution (224, RN50x4 288, RN50x16 384: the augmented images go into one batch with the target scaled to
+    that resolution)."""
     augs = []
     if "affine" in args.augemntations:
         scale = float(getattr(args, "aug_scale_min", 0.8))
-        augs.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
-        augs.append(transforms.RandomResizedCrop(224, scale=(scale, scale), ratio=(1.0, 1.0)))
+        augs.append(RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
+        augs.append(transforms.RandomResizedCrop(int(size), scale=(scale, scale), ratio=(1.0, 1.0),
+                                                 antialias=antialias_on(getattr(args, "device", "cpu"))))
     if normalize:
         augs.append(transforms.Normalize(_CLIP_MEAN, _CLIP_STD))
     return transforms.Compose(augs)
@@ -66,8 +109,9 @@ class AugmentBank:
     def apply(self, x: torch.Tensor, i: int) -> torch.Tensor:
         """Augmentation ``i`` of a [N, 3, H, W] image (normalised for CLIP)."""
         start, end, (top, left, h, w) = self.params[i]
-        x = TF.perspective(x, start, end, InterpolationMode.BILINEAR, fill=[0.0] * x.shape[1])
-        x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR, antialias=True)
+        x = perspective(x, start, end)
+        x = TF.resized_crop(x, top, left, h, w, [self.crop, self.crop], InterpolationMode.BILINEAR,
+                            antialias=antialias_on(x.device))
         return TF.normalize(x, _CLIP_MEAN, _CLIP_STD)
 
     def build(self, base: torch.Tensor, target: torch.Tensor, encode, chunk: int = 16) -> None:
@@ -423,7 +467,9 @@ class CLIPConvLoss(torch.nn.Module):
         self.device = args.device
         self.num_augs = self.args.num_aug_clip
         self.augment_both = args.augment_both
-        self.augment_trans = _affine_augmentations(args)
+        # (at the model's resolution: RN50x4 and RN50x16 see 288 and 384 px, not 224 – before, their batch of the
+        # scaled image and the 224 px crops could not be put together, and the job failed at its first step)
+        self.augment_trans = _affine_augmentations(args, size=self._side())
 
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.counter = 0
@@ -436,6 +482,11 @@ class CLIPConvLoss(torch.nn.Module):
         name = getattr(args, "semantic_model", semantic.DEFAULT)
         self.semantic = semantic.load(name, args.device) if self.clip_fc_loss_weight and name != semantic.DEFAULT \
             else None
+
+    def _side(self) -> int:
+        """The model's input side (the preprocessing's crop: 224, 288, 384)."""
+        size = getattr(self, "img_size", 224)
+        return int(size[0] if isinstance(size, (tuple, list)) else size)
 
     def _encode(self, batch: torch.Tensor):
         if self.clip_model_name.startswith("RN"):
@@ -454,7 +505,8 @@ class CLIPConvLoss(torch.nn.Module):
 
     def _forward_turbo(self, x: torch.Tensor, y: torch.Tensor, mode: str) -> dict:
         if self.bank is None:
-            self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)))
+            self.bank = AugmentBank(self.args.seed, y.shape[-1], float(getattr(self.args, "aug_scale_min", 0.8)),
+                                    crop=self._side())
             self.bank.build(self.normalize_transform(y), y, self._kept)
         augment = mode == "train" and "affine" in self.args.augemntations
         picked = self.bank.pick(self.num_augs) if augment and self.augment_both else []

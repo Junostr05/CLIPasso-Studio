@@ -187,3 +187,65 @@ def small_card_for_sdxl(settings: dict) -> dict | None:
 
     card = job_gpu(settings)
     return card if card and sdxl_on_cpu(float(card.get("memory_gb") or 0)) else None
+
+
+# The names of the models as the studio shows them (dialogs, the Models page, the phone page, the Mac app)
+MODEL_NAMES = {
+    "u2net": "U²-Net", "dino": "DINO ViT-S/8", "vgg16": "VGG16 (LPIPS)",
+    "swiftsketch:diffusion": "SwiftSketch · Diffusion", "swiftsketch:refine": "SwiftSketch · Refinement",
+    "sd15": "Stable Diffusion 1.5", "dpt-hybrid": "MiDaS DPT-Hybrid", "hed": "HED", "upernet": "UperNet ConvNeXt",
+    "blip": "BLIP", "sdxl": "Stable Diffusion XL", "lama": "LaMa (big-lama)",
+    "birefnet": "BiRefNet", "birefnet-lite": "BiRefNet lite", "taesd": "TAESD", "blazeface": "BlazeFace",
+    "semantic:openclip-b16": "OpenCLIP ViT-B/16 (LAION-2B)", "semantic:siglip-b16": "SigLIP B/16",
+}
+
+
+def model_display_name(key: str) -> str:
+    if key.startswith("clip:"):
+        return f"CLIP {key.split(':', 1)[1]}"
+    if key.startswith("controlnet:"):
+        return f"ControlNet · {key.split(':', 1)[1]}"
+    return MODEL_NAMES.get(key, key)
+
+
+# The groups and purposes of the models on the Models page
+MODEL_PURPOSE = {
+    "clip:RN101": "ui.models.purpose.rn101", "clip:ViT-B/32": "ui.models.purpose.vitb32",
+    "u2net": "ui.models.purpose.u2net", "dino": "ui.models.purpose.dino", "vgg16": "ui.models.purpose.vgg16",
+    "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
+    "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
+    "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
+    "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
+    "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
+    "blazeface": "ui.models.purpose.blazeface",
+    "semantic:openclip-b16": "ui.models.purpose.openclip_b16", "semantic:siglip-b16": "ui.models.purpose.siglip_b16",
+}
+
+
+MODEL_GROUP_ORDER = ("bundled", "masking", "clipasso", "experimental", "swiftsketch", "controlsketch", "scenesketch")
+
+
+def model_group(key: str) -> str:
+    spec = model_store.SPECS[key]
+    if spec.extra.get("purpose") == "benchmark":
+        return "benchmark"  # (not on the models page)
+    if spec.bundled:
+        return "bundled"
+    if spec.extra.get("experimental"):
+        return "experimental"
+    if key.startswith("birefnet"):
+        return "masking"
+    if key.startswith("clip:"):
+        return "clipasso"
+    if key.startswith("swiftsketch:"):
+        return "swiftsketch"
+    if key == "lama":
+        return "scenesketch"
+    return "controlsketch"
+
+
+def model_purpose(key: str) -> tuple[str, dict[str, str]]:
+    """The text key of what a model is for, with the text keys of its placeholders."""
+    if key.startswith("controlnet:"):
+        return "ui.models.purpose.controlnet", {"condition": f"param.condition.choice.{key.split(':', 1)[1]}"}
+    return MODEL_PURPOSE.get(key, "ui.models.purpose.clip_extra"), {}

@@ -1,0 +1,14 @@
+{
+  "seed": 2000,
+  "run_name": "Kamel_16strokes_seed2000",
+  "run_dir": "/Users/studio/Documents/CLIPasso Studio/done_clipasso/Kamel_16strokes_seed2000",
+  "best_loss": 0.35,
+  "best_iter": 400,
+  "iterations_done": 501,
+  "best_svg": "/Users/studio/Documents/CLIPasso Studio/done_clipasso/Kamel_16strokes_seed2000/best_iter.svg",
+  "status": "done",
+  "method": "clipasso",
+  "clip_score": null,
+  "seconds": 12.5,
+  "pruned": false
+}

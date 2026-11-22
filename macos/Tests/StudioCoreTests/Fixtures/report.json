@@ -1,0 +1,67 @@
+{
+ "home": "/Users/anna",
+ "anonymize": [
+  {
+   "text": "/Users/anna/Bilder/Kamel.jpg",
+   "out": "~/Bilder/Kamel.jpg"
+  },
+  {
+   "text": "C:\\Users\\anna\\Desktop",
+   "out": "C:~\\Desktop"
+  },
+  {
+   "text": "/Users/annabel/x",
+   "out": "~bel/x"
+  },
+  {
+   "text": "frei",
+   "out": "frei"
+  }
+ ],
+ "bodies": [
+  {
+   "message": "",
+   "traceback": "",
+   "diagnostics": "CLIPasso Studio diagnostics\nOutput: /Users/anna/Documents/CLIPasso Studio\nData: C:\\Users\\anna\\x",
+   "title": "[9.9.9] ",
+   "body": "**What happened?**\n…\n\n**What did you do before?**\n…\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n"
+  },
+  {
+   "message": "Absturz beim Export\nzweite Zeile",
+   "traceback": "Traceback …\n  File x",
+   "diagnostics": "CLIPasso Studio diagnostics\nOutput: /Users/anna/Documents/CLIPasso Studio\nData: C:\\Users\\anna\\x",
+   "title": "[9.9.9] Absturz beim Export",
+   "body": "**What happened?**\nAbsturz beim Export\nzweite Zeile\n\n**What did you do before?**\n…\n\n<details><summary>Traceback</summary>\n\n```\nTraceback …\n  File x\n```\n</details>\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n"
+  },
+  {
+   "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "traceback": "",
+   "diagnostics": "CLIPasso Studio diagnostics\nOutput: /Users/anna/Documents/CLIPasso Studio\nData: C:\\Users\\anna\\x",
+   "title": "[9.9.9] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "body": "**What happened?**\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n**What did you do before?**\n…\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n"
+  }
+ ],
+ "urls": [
+  {
+   "title": "[9.9.9] Ä & B",
+   "body": "**What happened?**\nFehler: ä & ß / ? = + #\n\n**What did you do before?**\n…\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n",
+   "limit": 7000,
+   "url": "https://github.com/Junostr05/CLIPasso-Studio/issues/new?title=%5B9.9.9%5D+%C3%84+%26+B&body=%2A%2AWhat+happened%3F%2A%2A%0AFehler%3A+%C3%A4+%26+%C3%9F+%2F+%3F+%3D+%2B+%23%0A%0A%2A%2AWhat+did+you+do+before%3F%2A%2A%0A%E2%80%A6%0A%0A%3Cdetails%3E%3Csummary%3EDiagnostics%3C%2Fsummary%3E%0A%0A%60%60%60%0ACLIPasso+Studio+diagnostics%0AOutput%3A+~%2FDocuments%2FCLIPasso+Studio%0AData%3A+C%3A~%5Cx%0A%60%60%60%0A%3C%2Fdetails%3E%0A",
+   "cut": false
+  },
+  {
+   "title": "[9.9.9] Ä & B",
+   "body": "**What happened?**\nFehler: ä & ß / ? = + #\n\n**What did you do before?**\n…\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n",
+   "limit": 400,
+   "url": "https://github.com/Junostr05/CLIPasso-Studio/issues/new?title=%5B9.9.9%5D+%C3%84+%26+B&body=%2A%2AWhat+happened%3F%2A%2A%0AFehler%3A+%C3%A4+%26+%C3%9F+%2F+%3F+%3D+%2B+%23%0A%0A%2A%2AWhat+did+you+do+before%3F%2A%2A%0A%E2%80%A6%0A%0A%3Cdetails%3E%3Csummary%3EDiagnostics%3C%2Fsummary%3E%0A%0A%60%60%60%0ACLIPasso+Studio+diagnostics%0A%E2%80%A6%0A%28cut+%E2%80%93+the+full+text+is+in+the+clipboard%29%0A",
+   "cut": true
+  },
+  {
+   "title": "[9.9.9] Ä & B",
+   "body": "**What happened?**\nFehler: ä & ß / ? = + #\n\n**What did you do before?**\n…\n\n<details><summary>Diagnostics</summary>\n\n```\nCLIPasso Studio diagnostics\nOutput: ~/Documents/CLIPasso Studio\nData: C:~\\x\n```\n</details>\n",
+   "limit": 260,
+   "url": "https://github.com/Junostr05/CLIPasso-Studio/issues/new?title=%5B9.9.9%5D+%C3%84+%26+B&body=%2A%2AWhat+happened%3F%2A%2A%0AFehler%3A+%C3%A4+%26+%C3%9F+%2F+%3F+%3D+%2B+%23%0A%0A%2A%2AWhat+di%0A%E2%80%A6%0A%28cut+%E2%80%93+the+full+text+is+in+the+clipboard%29%0A",
+   "cut": true
+  }
+ ]
+}

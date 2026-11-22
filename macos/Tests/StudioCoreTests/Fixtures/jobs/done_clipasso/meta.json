@@ -1,0 +1,16 @@
+{
+  "favourite": true,
+  "title": "Kamel am Abend – Skizze ✏️",
+  "notes": "Für das Album „Tiere“",
+  "tags": [
+    "Tier",
+    "Wüste"
+  ],
+  "albums": [
+    "Tiere"
+  ],
+  "ratings": {
+    "Kamel_16strokes_seed1000": 1,
+    "Kamel_16strokes_seed0": -1
+  }
+}

@@ -1,0 +1,354 @@
+{
+ "pictures": [
+  {
+   "name": "drawing_160x120",
+   "paper": {
+    "kind": "drawing",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/drawing_160x120.png"
+  },
+  {
+   "name": "watercolor_160x120",
+   "paper": {
+    "kind": "watercolor",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/watercolor_160x120.png"
+  },
+  {
+   "name": "kraft_160x120",
+   "paper": {
+    "kind": "kraft",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/kraft_160x120.png"
+  },
+  {
+   "name": "linen_160x120",
+   "paper": {
+    "kind": "linen",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/linen_160x120.png"
+  },
+  {
+   "name": "blackboard_160x120",
+   "paper": {
+    "kind": "blackboard",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/blackboard_160x120.png"
+  },
+  {
+   "name": "drawing_640x480",
+   "paper": {
+    "kind": "drawing",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    640,
+    480
+   ],
+   "crop": [
+    256,
+    176,
+    128,
+    128
+   ],
+   "file": "paper/drawing_640x480.png"
+  },
+  {
+   "name": "watercolor_640x480",
+   "paper": {
+    "kind": "watercolor",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    640,
+    480
+   ],
+   "crop": [
+    256,
+    176,
+    128,
+    128
+   ],
+   "file": "paper/watercolor_640x480.png"
+  },
+  {
+   "name": "kraft_640x480",
+   "paper": {
+    "kind": "kraft",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    640,
+    480
+   ],
+   "crop": [
+    256,
+    176,
+    128,
+    128
+   ],
+   "file": "paper/kraft_640x480.png"
+  },
+  {
+   "name": "linen_640x480",
+   "paper": {
+    "kind": "linen",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    640,
+    480
+   ],
+   "crop": [
+    256,
+    176,
+    128,
+    128
+   ],
+   "file": "paper/linen_640x480.png"
+  },
+  {
+   "name": "blackboard_640x480",
+   "paper": {
+    "kind": "blackboard",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    640,
+    480
+   ],
+   "crop": [
+    256,
+    176,
+    128,
+    128
+   ],
+   "file": "paper/blackboard_640x480.png"
+  },
+  {
+   "name": "kraft_1500x1000",
+   "paper": {
+    "kind": "kraft",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    1500,
+    1000
+   ],
+   "crop": [
+    700,
+    450,
+    128,
+    128
+   ],
+   "file": "paper/kraft_1500x1000.png"
+  },
+  {
+   "name": "drawing_1800x1200",
+   "paper": {
+    "kind": "drawing",
+    "vignette": 0
+   },
+   "background": null,
+   "size": [
+    1800,
+    1200
+   ],
+   "crop": [
+    900,
+    600,
+    128,
+    128
+   ],
+   "file": "paper/drawing_1800x1200.png"
+  },
+  {
+   "name": "linen_vignette_blue",
+   "paper": {
+    "kind": "linen",
+    "vignette": 0.6
+   },
+   "background": "#336699",
+   "size": [
+    160,
+    120
+   ],
+   "crop": null,
+   "file": "paper/linen_vignette_blue.png"
+  },
+  {
+   "name": "none_vignette",
+   "paper": {
+    "kind": "none",
+    "vignette": 1.0
+   },
+   "background": "#FBFAF6",
+   "size": [
+    100,
+    80
+   ],
+   "crop": null,
+   "file": "paper/none_vignette.png"
+  }
+ ],
+ "inputs": [
+  {
+   "paper": null,
+   "normalized": null,
+   "colour": "#FFFFFF",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {},
+   "normalized": null,
+   "colour": "#FFFFFF",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "none"
+   },
+   "normalized": null,
+   "colour": "#FFFFFF",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "none",
+    "vignette": 0.3
+   },
+   "normalized": {
+    "kind": "none",
+    "vignette": 0.3
+   },
+   "colour": "#FFFFFF",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "kraft"
+   },
+   "normalized": {
+    "kind": "kraft",
+    "vignette": 0.0
+   },
+   "colour": "#C9A97C",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "linen",
+    "vignette": "0.5"
+   },
+   "normalized": {
+    "kind": "linen",
+    "vignette": 0.5
+   },
+   "colour": "#EFE9DD",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "felt",
+    "vignette": 2
+   },
+   "normalized": {
+    "kind": "none",
+    "vignette": 1.0
+   },
+   "colour": "#FFFFFF",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "drawing",
+    "vignette": -1
+   },
+   "normalized": {
+    "kind": "drawing",
+    "vignette": 0.0
+   },
+   "colour": "#FBFAF6",
+   "colour_on_blue": "#336699"
+  },
+  {
+   "paper": {
+    "kind": "blackboard",
+    "vignette": null
+   },
+   "normalized": {
+    "kind": "blackboard",
+    "vignette": 0.0
+   },
+   "colour": "#2C3A33",
+   "colour_on_blue": "#336699"
+  }
+ ],
+ "dark": [
+  {
+   "colour": "#2C3A33",
+   "dark": true
+  },
+  {
+   "colour": "#C9A97C",
+   "dark": false
+  },
+  {
+   "colour": "#6b6b6b",
+   "dark": true
+  },
+  {
+   "colour": "#6c6c6c",
+   "dark": false
+  },
+  {
+   "colour": "abc",
+   "dark": false
+  },
+  {
+   "colour": "#zzz",
+   "dark": false
+  }
+ ]
+}

@@ -306,7 +306,8 @@ class PhoneApi:
                     "help": tr(help_key) if i18n.has(help_key) else "", "advanced": p.advanced,
                     "min": p.minimum, "max": p.maximum, "step": p.step, "decimals": p.decimals}
             if p.kind in ("choice", "flags"):
-                item["choices"] = [{"value": v, "label": _choice_label(method, p, v)} for v in p.choices]
+                item["choices"] = [{"value": v, "label": _choice_label(method, p, v)}
+                                   for v in schema.offered_choices(p)]
             groups.setdefault(p.group, []).append(item)
         return {"method": method,
                 "groups": [{"key": g, "label": tr(f"group.{g}") if i18n.has(f"group.{g}") else g, "params": ps}

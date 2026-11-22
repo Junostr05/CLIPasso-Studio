@@ -10,7 +10,7 @@ from typing import List, Union
 import torch
 from torchvision.transforms import CenterCrop, Compose, InterpolationMode, Normalize, Resize, ToTensor
 
-from .. import model_store
+from .. import model_store, mps_ops
 from .model import build_model
 from .simple_tokenizer import SimpleTokenizer as _Tokenizer
 
@@ -47,6 +47,13 @@ def available_models() -> List[str]:
 _loaded: dict = {}
 
 
+def half_precision(device) -> bool:
+    """CLIP in float16: on an NVIDIA card (as the original CLIPasso). Not on the Apple GPU – measured on an M5 Pro it
+    gained nothing with ViT-B/32, and with the ResNet models (RN101, the default) MPS aborts the process (a batch
+    norm with float16 input and float32 statistics)."""
+    return torch.device(device).type == "cuda"
+
+
 def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False):
     """Load a CLIP model -> (model, preprocess). Same behaviour as ``clip.load(..., jit=False)``:
     fp16 weights on CUDA, fp32 on CPU. Weights are frozen (``requires_grad=False``): only the
@@ -56,18 +63,26 @@ def load(name: str, device: Union[str, torch.device] = "cpu", jit: bool = False)
     sketch); callers must not change it. Building it does not touch the random number generator,
     so a sketch is the same whether the model was cached or not."""
     key = (name, str(torch.device(device)))
+    mps_ops.ensure_right(device)  # (on the Apple GPU: F.linear the way that is right there)
     if key not in _loaded:
         state_dict = model_store.load_state(model_store.clip_key(name))
         with torch.random.fork_rng(devices=[]):  # the random init is replaced by the weights
             model = build_model(state_dict).to(device)
-        if torch.device(device).type == "cpu":
+        if not half_precision(device):  # (half precision only on an NVIDIA card)
             model.float()
         model.requires_grad_(False)
         model.eval()
-        if name.startswith("RN"):  # the convolutions in channels-last layout: measured 1.4x on a CPU
+        if name.startswith("RN") and channels_last_ok(torch.device(device)):
             model.visual.to(memory_format=torch.channels_last)
         _loaded[key] = (model, _transform(model.visual.input_resolution))
     return _loaded[key]
+
+
+def channels_last_ok(device: torch.device) -> bool:
+    """The convolutions of the ResNet models in channels-last layout: measured 1.4x on a CPU (and used on NVIDIA
+    cards). Not on the Apple GPU – its backward pass fails there ("view size is not compatible with input tensor's
+    size and stride", macOS runner, PyTorch 2.11)."""
+    return device.type in ("cpu", "cuda")
 
 
 def release_models() -> None:

@@ -17,8 +17,9 @@ import torch.nn as nn
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
+from ... import mps_ops
 from ...clip_ import clip
-from ...losses import AugmentBank
+from ...losses import AugmentBank, RandomPerspective, antialias_on
 
 _CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
@@ -28,7 +29,7 @@ def vit_layer_features(visual, x: torch.Tensor, upto: int) -> list[torch.Tensor]
     """Outputs of the residual blocks 0..``upto`` of a CLIP ViT, as [N, tokens, width] each
     (what the forward hooks of ``CLIPVisualEncoder`` record)."""
     x = x.type(visual.conv1.weight.dtype)
-    x = visual.conv1(x)
+    x = mps_ops.patch_conv(visual.conv1, x)  # (as clip_.model: a matrix product on the Apple GPU)
     x = x.reshape(x.shape[0], x.shape[1], -1).permute(0, 2, 1)
     cls = visual.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype,
                                                            device=x.device)
@@ -95,8 +96,9 @@ class CLIPLayersLoss(nn.Module):
             transforms.Normalize(_CLIP_MEAN, _CLIP_STD),
         ])
         self.augment_trans = transforms.Compose([
-            transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5),
-            transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)),
+            RandomPerspective(fill=0, p=1.0, distortion_scale=0.5),
+            transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0),
+                                         antialias=antialias_on(device)),
             transforms.Normalize(_CLIP_MEAN, _CLIP_STD),
         ])
 

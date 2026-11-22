@@ -805,8 +805,10 @@ class GalleryPage(QWidget):
     def _update_count(self):
         """Below the title: how many results there are – and how many of them are shown."""
         n, total = self.model.rowCount(), len(self._all)
-        self.subtitle.setText(tr("ui.gallery.count", n=total) if n == total else
-                              tr("ui.gallery.count_shown", n=n, total=total))
+        if n != total:
+            self.subtitle.setText(tr("ui.gallery.count_shown", n=n, total=total))
+        else:
+            self.subtitle.setText(tr("ui.gallery.count_one") if total == 1 else tr("ui.gallery.count", n=total))
 
     def _update_empty(self):
         if self._all:

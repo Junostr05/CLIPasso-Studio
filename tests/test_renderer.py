@@ -84,3 +84,35 @@ def test_supersampling_keeps_shape():
     a1 = render(8, 8, [path], [group])[..., 3].sum()
     a2 = render(8, 8, [path], [group], samples=2)[..., 3].sum()
     assert abs(a1.item() - a2.item()) < 1.0
+
+
+def test_strokes_on_the_apple_gpu_are_drawn_on_the_cpu(monkeypatch):
+    from clipasso_studio.engine import renderer
+
+    monkeypatch.delenv("CLIPASSO_MPS_RENDER", raising=False)
+    assert renderer.draw_device("cpu") == torch.device("cpu")
+    assert renderer.draw_device(torch.device("mps")) == torch.device("cpu")  # (no Apple GPU needed to decide)
+    assert renderer.draw_device("cuda:0") == torch.device("cuda:0")
+    monkeypatch.setenv("CLIPASSO_MPS_RENDER", "gpu")  # (to compare: drawn on the GPU)
+    assert renderer.draw_device("mps") == torch.device("mps")
+
+
+def test_the_strokes_travel_in_one_piece():
+    from clipasso_studio.engine import renderer
+
+    a = torch.arange(6.0).reshape(3, 2).requires_grad_(True)
+    b = torch.tensor([2.5], requires_grad=True)
+    moved = renderer._moved([a, b], "cpu", torch.float64)
+    assert [t.dtype for t in moved] == [torch.float64] * 2 and torch.equal(moved[0], a.double())
+    (moved[0].sum() * 2 + moved[1].sum() * 3).backward()
+    assert torch.equal(a.grad, torch.full((3, 2), 2.0)) and torch.equal(b.grad, torch.tensor([3.0]))
+
+
+
+def test_strokes_already_on_the_device_are_not_copied():
+    from clipasso_studio.engine import renderer
+
+    a, b = torch.ones(2, 2), torch.full((3,), 2.0)
+    moved = renderer._moved([a, b], torch.device("cpu"), torch.float32)
+    assert moved[0] is a and moved[1] is b  # (no transfer, no new tensor)
+    assert renderer._on(a, torch.device("cpu")) and not renderer._on(a, torch.device("mps"))

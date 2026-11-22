@@ -103,3 +103,24 @@ def test_arc_is_converted_to_cubics():
     mid = [(1 - 0.5) ** 3 * s[0][k] + 3 * 0.25 * 0.5 * s[1][k] + 3 * 0.5 * 0.25 * s[2][k] + 0.125 * s[3][k]
            for k in range(2)]
     assert math.isclose(math.dist(mid, (10.0, 0.0)), 10.0, rel_tol=0.01)
+
+
+def test_a_background_covers_the_whole_sketch_in_qt(qapp, tmp_path):
+    """Qt's SVG renderer reads width="100%" on a rect as 100 user units – a background drawn like that covered only
+    a 100 × 100 corner of a 224 × 224 sketch in the PNG export (found by the Mac app's pixel comparison). The
+    engine's and the export's background rect are as big as the viewBox."""
+    from PIL import Image
+
+    from clipasso_studio.engine import svg_io
+    from clipasso_studio.gui import export
+
+    svg = svg_io.scene_to_svg(224, 224, [], [], background="#fff8e7")
+    path = tmp_path / "bg.svg"
+    path.write_text(svg, encoding="utf-8")
+    export.export_png(str(path), str(tmp_path / "bg.png"), size=256)
+    with Image.open(tmp_path / "bg.png") as image:
+        rgb = image.convert("RGB")
+        assert rgb.getpixel((250, 250)) == rgb.getpixel((5, 5)) == (255, 248, 231)
+    restyled = export.restyle_svg(svg_io.scene_to_svg(300, 200, [], []), background="#101010")
+    image = export.svg_to_qimage(restyled, 300, None)
+    assert image.pixelColor(295, 195).name() == "#101010" and image.pixelColor(2, 2).name() == "#101010"

@@ -1,0 +1,60 @@
+{
+ "tree": [
+  "b.PNG",
+  "a.jpg",
+  "Notiz.txt",
+  "c.HEIC",
+  "Z.webp",
+  "ä-Bild.png",
+  ".versteckt.png",
+  "Urlaub/2.jpg",
+  "Urlaub/10.jpg",
+  "Urlaub/Strand/1.tif",
+  "urlaub2/x.gif",
+  "_edited/e.png",
+  "_pasted_2/p.png",
+  ".git/g.png",
+  "CLIPasso Studio/Kamel_job/job.json",
+  "CLIPasso Studio/Kamel_job/input/Kamel.png",
+  "CLIPasso Studio/laufend/job_state.json",
+  "CLIPasso Studio/laufend/x.png",
+  "CLIPasso Studio/Notizen/n.png",
+  "Leer/"
+ ],
+ "flat": [
+  ".versteckt.png",
+  "a.jpg",
+  "b.PNG",
+  "c.HEIC",
+  "Z.webp",
+  "ä-Bild.png"
+ ],
+ "recursive": [
+  ".versteckt.png",
+  "a.jpg",
+  "b.PNG",
+  "c.HEIC",
+  "Z.webp",
+  "ä-Bild.png",
+  "CLIPasso Studio/Notizen/n.png",
+  "Urlaub/10.jpg",
+  "Urlaub/2.jpg",
+  "Urlaub/Strand/1.tif",
+  "urlaub2/x.gif"
+ ],
+ "drop": [
+  "a.jpg",
+  "Notiz.txt",
+  "Urlaub",
+  "a.jpg",
+  "Urlaub/2.jpg",
+  "fehlt.png",
+  "Leer"
+ ],
+ "dropped": [
+  "a.jpg",
+  "Urlaub/10.jpg",
+  "Urlaub/2.jpg",
+  "Urlaub/Strand/1.tif"
+ ]
+}

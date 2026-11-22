@@ -1,0 +1,1479 @@
+"""Make the test data of the Mac app's Swift package from the Python side – never by hand.
+
+    python tools/make_mac_fixtures.py [--out macos/Tests/StudioCoreTests/Fixtures]
+
+Writes, reproducibly (a fixed time, fixed seeds, LF line ends):
+
+- ``schema.json``, ``models.json`` – the exports of ``clipasso_studio.headless`` (the app version as "fixture")
+- ``conditions.json`` – settings (a method's defaults with ``changes``) and what Python decides for them: the
+  parameters' rules (``enabled``, one "1" / "0" per parameter in ``ruled``) and ``num_strokes``
+- ``presets.json`` – settings and the preset the studio shows for them (param_panel._detect_preset: the first one
+  whose values all match, else none – "custom")
+- ``versions.json`` – version pairs and what gui/updates.is_newer decides for them
+- ``export/framing.json`` – the frames of an export (engine/framing.py) on the ``svg/`` sketches and odd.svg
+- ``edit/`` – ``strokes.json``: what gui/strokes.py (the eraser and the pen) makes of the ``svg/`` sketches and of
+  ``odd.svg`` and ``empty.svg``
+- ``image_files.json`` – a folder of pictures and the images gui/drop.py takes from it (the folder, with its
+  subfolders, and as dropped)
+- ``settings.json`` – the app settings as the Python app writes them
+- ``pyjson.json`` – values with ``json.dumps(…)`` and ``json.dumps(…, indent=2)`` (``ensure_ascii=False``), and
+  ``json.dumps(…, indent=2)`` as written by default (umlauts as ``\u00fc``: job.json, job_state.json, result.json)
+- ``jobs/`` – job folders built with engine/jobs.py, their paths as they would be on a Mac
+  (``/Users/studio/…``) or on Windows (``C:\\Users\\Jürgen\\…``), and ``jobs_expected.json``: what
+  ``jobs.job_summary`` reads from each (paths inside the fixtures as ``{jobs}/…``)
+- ``svg/`` – sketches written by engine/svg_io.py and ``svg_expected.json``: what Python reads from them;
+  ``paths_expected.json``: path data and what engine/svg_path.py reads from it
+- ``export/`` – ``restyle.json``: SVGs as gui/export.restyle_svg changes them (colour, width, background), and
+  ``styled.json``: exports in a brush style with every call of brush.stylize_svg (the engine's answers);
+  ``qcolor.json``: Qt's colour names and what QColor makes of other texts (the web page's and Lottie's colours);
+  ``render/*.png``: the ``svg/`` sketches as the studio exports them (gui/export.export_png, 256 px, Qt);
+  ``styles/<style>.svg`` and ``.png``: a sketch in every brush style as the engine gives it to the Mac app
+  (gui/brush.stylize_svg) and as the studio exports it. Qt's pixels can differ by a step between platforms, so the
+  test compares these by pixel, not by byte
+- ``mask/`` – masks and the overlay the studio draws of them over the photo (gui/mask_view.overlay) as classes
+
+``tests/test_mac_fixtures.py`` checks that the committed files are current.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import random
+import shutil
+import sys
+import tempfile
+import time
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+DEFAULT_OUT = ROOT / "macos" / "Tests" / "StudioCoreTests" / "Fixtures"
+FIXED_TIME = time.struct_time((2026, 3, 14, 15, 9, 26, 5, 73, 0))
+MAC_OUTPUT, MAC_PICTURES = "/Users/studio/Documents/CLIPasso Studio", "/Users/studio/Pictures"
+WIN_OUTPUT, WIN_PICTURES = "C:\\Users\\Jürgen\\Documents\\CLIPasso Studio", "C:\\Users\\Jürgen\\Pictures"
+CONDITION_CASES = 200  # per method
+
+PYJSON_VALUES = [
+    None, True, False, 0, -7, 2 ** 53, -(2 ** 63), 2 ** 63 - 1,
+    0.1, -2.5, 100.0, 1e-05, 0.0001, 1e15, 1234567890123456.0, 1e16, 12345678901234567890.0, 5e-324,
+    1.7976931348623157e308, 3.141592653589793, 123456789.123, 1.5e-07,
+    "", "Bild Ä ö ü ß", "Emoji ✏️🦒", "„Tiere“ and \"quotes\" \\ / \n\t\r\b\f \u0001 \u001f \u007f \u2028",
+    [], {}, [1, [2, [3, {}]]], {"b": 1, "a": [True, None], "ü": {"x": ""}},
+    {"favourite": True, "title": "Kamel am Abend – Skizze ✏️", "notes": "Zeile 1\nZeile 2", "tags": ["Tier", "Wüste"],
+     "albums": ["Tiere"], "ratings": {"Kamel_16strokes_seed0": 1, "Kamel_16strokes_seed1000": -1}},
+]
+
+
+def write_json(path: Path, data, indent: int | None = 1, ensure_ascii: bool = False) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes((json.dumps(data, indent=indent, ensure_ascii=ensure_ascii) + "\n").encode("utf-8"))
+
+
+# ---------------------------------------------------------------------------------------------- schema, rules, JSON
+def _rule_keys(rule: dict) -> set[str]:
+    keys = {rule["key"]} if "key" in rule else set()
+    for part in rule.get("of", ()):
+        keys |= _rule_keys(part)
+    return keys
+
+
+def _random_changes(method: str, rng: random.Random) -> dict:
+    """Random values for the keys the rules of ``method`` read (the others keep their defaults)."""
+    from clipasso_studio import settings_schema as schema
+
+    keys = set()
+    for p in schema.params_for(method):
+        if p.enabled_if is not None:
+            keys |= _rule_keys(p.enabled_if.to_json())
+    keys |= {"num_paths", "num_strokes", "one_line"}  # (num_strokes)
+    changes = {}
+    for p in schema.params_for(method):
+        if p.key not in keys:
+            continue
+        if p.kind == "bool":
+            changes[p.key] = rng.random() < 0.5
+        elif p.kind == "choice":
+            changes[p.key] = rng.choice(p.choices)
+        elif p.kind == "flags":
+            changes[p.key] = rng.choice(("none",) + tuple(p.choices))
+        elif p.kind in ("int", "float") and p.minimum is not None:
+            value = rng.choice((p.minimum, p.default, p.maximum, 0, 1, 2))
+            changes[p.key] = int(value) if p.kind == "int" else float(value)
+    return changes
+
+
+def conditions() -> dict:
+    """Per method its parameters with a rule (``ruled``), and settings (the method's defaults with ``changes``) with
+    what Python decides for them: ``enabled`` ("1" / "0" per ruled parameter, in that order) and ``num_strokes``."""
+    from clipasso_studio import settings_schema as schema
+
+    rng = random.Random(0)
+    ruled = {m: [p.key for p in schema.params_for(m) if p.enabled_if is not None] for m in schema.METHODS}
+    cases = []
+    for method in schema.METHODS:
+        for i in range(CONDITION_CASES):
+            changes = {} if i == 0 else _random_changes(method, rng)
+            s = {**schema.default_settings(method), **changes}
+            enabled = "".join("1" if schema.param(method, key).enabled_if(s) else "0" for key in ruled[method])
+            cases.append({"method": method, "changes": changes, "num_strokes": schema.num_strokes(s),
+                          "enabled": enabled})
+    return {"ruled": ruled, "cases": cases}
+
+
+VERSION_PAIRS = (
+    ("4.3.0", "4.2.9"), ("v4.3.0", "4.3.0"), ("4.3.0b2", "4.3.0b1"), ("4.3.0", "4.3.0b9"), ("4.3.0-beta.1", "4.2.9"),
+    ("4.3.0rc1", "4.3.0b4"), ("4.10.0", "4.9.0"), ("4.3", "4.3.0"), ("5", "4.99.99"), ("v4.3.0a1", "4.3.0"),
+    ("nonsense", "4.3.0"), ("4.2.9", "4.3.0"), ("v4.3.1", "v4.3.1"),
+)
+
+
+def version_cases() -> list[dict]:
+    """gui/updates.parse_version and is_newer on version pairs (the Mac app announces updates the same way)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from clipasso_studio.gui import updates
+
+    return [{"latest": a, "current": b, "newer": updates.is_newer(a, b), "parsed": list(updates.parse_version(a))}
+            for a, b in VERSION_PAIRS]
+
+
+def detected_preset(settings: dict) -> str | None:
+    """gui/widgets/param_panel._detect_preset (without the user's own presets)."""
+    from clipasso_studio import settings_schema as schema
+
+    for name, values in schema.METHOD_PRESETS[schema.method_of(settings)].items():
+        if all(settings.get(k) == v for k, v in values.items()):
+            return name
+    return None
+
+
+def preset_cases() -> list[dict]:
+    """Each method's start, every preset on it, and a preset with one of its values changed."""
+    from clipasso_studio import settings_schema as schema
+
+    cases = []
+    for method in schema.METHODS:
+        start = schema.start_settings(method)
+        candidates = [start]
+        for name, values in schema.METHOD_PRESETS[method].items():
+            applied = schema.apply_preset(start, name)
+            candidates.append(applied)
+            key = next(iter(values))
+            changed = dict(applied)
+            p = schema.param(method, key)
+            if p.kind == "bool":
+                changed[key] = not applied[key]
+            elif p.kind in ("int", "float"):
+                changed[key] = applied[key] + (1 if p.kind == "int" else 0.125)
+            elif p.choices:
+                changed[key] = next(c for c in p.choices if c != applied[key])
+            candidates.append(changed)
+        cases += [{"method": method, "settings": c, "preset": detected_preset(c)} for c in candidates]
+    return cases
+
+
+def user_preset_cases() -> dict:
+    """gui/user_presets.py on presets as settings.json may hold them (damaged ones, one of a newer method, a value
+    coerce refuses …): which remain, what saving and deleting keep, which preset the settings match."""
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui import user_presets
+
+    class Store(dict):
+        def set(self, key, value):
+            self[key] = json.loads(json.dumps(value))
+
+    rng = random.Random(11)
+    clip = schema.start_settings("clipasso")
+    swift = schema.apply_preset(schema.start_settings("swiftsketch"), "quality")
+    scene = {**schema.start_settings("scenesketch"), **_random_changes("scenesketch", rng)}
+    stored = [
+        {"name": "  Mein   Kamel ", "method": "clipasso",
+         "settings": {**clip, "num_iter": "800", "path_svg": "/Bilder/start.svg", "sketch_guide": True, "x": 1}},
+        {"name": 42, "method": "swiftsketch", "settings": swift},
+        {"name": "", "method": "clipasso", "settings": clip},
+        {"name": "Zukunft", "method": "newmethod", "settings": {}},
+        {"name": "kaputt", "method": "clipasso", "settings": "nope"},
+        "not a preset",
+        {"name": "Zahl", "method": "clipasso", "settings": {"num_iter": "abc"}},
+        {"name": "Ä" * 30 + " " + "ö" * 30, "method": "scenesketch", "settings": scene},
+        {"name": "Leer", "settings": clip},
+    ]
+    store = Store({user_presets.KEY: stored})
+    out = {"stored": stored, "ops": [], "matching": []}
+    with mock.patch.object(user_presets, "app_settings", lambda: store):
+        out["all"] = user_presets.all_presets()
+        quality = schema.apply_preset(schema.start_settings("clipasso"), "quality")
+        ops = [("save", "Neu ", {**quality, "method": "clipasso"}),
+               ("save", "Mein Kamel", {**clip, "num_iter": 1200, "method": "clipasso"}),
+               ("save", " \t ", clip),
+               ("save", "Bild", {**swift, "method": "swiftsketch", "num_sketches": "7"}),
+               ("delete", "Neu", "swiftsketch"),
+               ("delete", "Neu", "clipasso")]
+        for op in ops:
+            try:
+                result = user_presets.save(op[1], op[2]) if op[0] == "save" else user_presets.delete(op[1], op[2])
+            except ValueError:
+                result = "error"
+            out["ops"].append({"op": op[0], "name": op[1], "arg": op[2], "result": result,
+                               "stored": store[user_presets.KEY]})
+        for settings in ({**clip, "num_iter": 1200}, {**clip, "num_iter": 1200, "path_svg": "/a.svg"},
+                         {**clip, "num_iter": 1201}, {**swift, "num_sketches": 7}, clip):
+            out["matching"].append({"settings": settings, "name": user_presets.matching(settings)})
+        many = Store({user_presets.KEY: [{"name": f"P{i}", "method": "clipasso", "settings": clip}
+                                         for i in range(100)]})
+        with mock.patch.object(user_presets, "app_settings", lambda: many):
+            user_presets.save("Hundertundeins", clip)
+            out["trimmed"] = [p["name"] for p in many[user_presets.KEY]]
+    return out
+
+
+def report_cases() -> dict:
+    """gui/report.py: the home folder made "~" (both slashes), the issue's title and Markdown text, and its address –
+    whole, or cut to the limit with the note (the version fixed, so the cases stay)."""
+    from clipasso_studio.gui import report
+
+    home = "/Users/anna"
+    diag = f"CLIPasso Studio diagnostics\nOutput: {home}/Documents/CLIPasso Studio\nData: C:\\Users\\anna\\x"
+    out = {"home": home, "anonymize": [], "bodies": [], "urls": []}
+    with mock.patch.object(report, "__version__", "9.9.9"), \
+            mock.patch.object(report.Path, "home", lambda: report.Path(home)), \
+            mock.patch.object(report.os.path, "expanduser", lambda p: home if p == "~" else p):
+        for text in (f"{home}/Bilder/Kamel.jpg", "C:\\Users\\anna\\Desktop", "/Users/annabel/x", "frei"):
+            out["anonymize"].append({"text": text, "out": report.anonymize(text)})
+        for message, tb in (("", ""), ("Absturz beim Export\nzweite Zeile", "Traceback …\n  File x"),
+                            ("x" * 150, "")):
+            out["bodies"].append({"message": message, "traceback": tb, "diagnostics": diag,
+                                  "title": report.issue_title(message),
+                                  "body": report.issue_body(message, tb, diag)})
+        body = report.issue_body("Fehler: ä & ß / ? = + #", "", diag)
+        for limit in (7000, 400, 260):
+            url, cut = report.issue_url("[9.9.9] Ä & B", body, limit)
+            out["urls"].append({"title": "[9.9.9] Ä & B", "body": body, "limit": limit, "url": url, "cut": cut})
+    return out
+
+
+def crop_cases(out: Path) -> dict:
+    """gui/image_edit.py's crop frame, by its own methods on a stand-in view: the aspect fitted, the frame moved and
+    its handles dragged (with and without an aspect, past the picture's edges, below the smallest side), turned and
+    mirrored with the picture; and the pixels of a picture turned, mirrored and cropped (QImage.transformed,
+    mirrored, copy), saved as PNG."""
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QPointF, QRectF
+    from PySide6.QtGui import QColor, QImage
+
+    from clipasso_studio.gui import image_edit
+
+    def rect(r: QRectF) -> list:
+        return [round(r.x(), 6), round(r.y(), 6), round(r.width(), 6), round(r.height(), 6)]
+
+    def view(w: int, h: int, crop=None, aspect=None):
+        v = SimpleNamespace(image=QImage(w, h, QImage.Format_RGB32), crop=QRectF(*crop) if crop else QRectF(),
+                            aspect=aspect, update=lambda: None, changed=SimpleNamespace(emit=lambda: None))
+        v._bounds = lambda: image_edit.CropView._bounds(v)
+        v._fit_aspect = lambda: image_edit.CropView._fit_aspect(v)
+
+        def set_image(image, keep_crop=False):
+            v.image = image
+            if not keep_crop or v.crop.isNull():
+                v.crop = QRectF(0, 0, image.width(), image.height())
+            v._fit_aspect()
+        v.set_image = set_image
+        return v
+
+    out_cases = {"fit": [], "drag": [], "turn": []}
+    for size, crop, aspect in (((400, 300), None, 1.0), ((400, 300), (50, 20, 300, 200), 4 / 3),
+                               ((300, 400), (10, 10, 100, 300), 3 / 4), ((400, 300), (350, 250, 100, 100), None)):
+        v = view(*size, crop, aspect)
+        image_edit.CropView._fit_aspect(v)
+        out_cases["fit"].append({"size": size, "crop": crop, "aspect": aspect, "out": rect(v.crop)})
+    for aspect in (None, 4 / 3):
+        for handle, point in (("move", (500, -50)), ("move", (180, 140)), ("se", (390, 299)), ("nw", (-20, -40)),
+                              ("e", (60, 0)), ("n", (0, 280)), ("sw", (5, 500)), ("ne", (395, 10))):
+            v = view(400, 300, (100, 80, 160, 120), aspect)
+            start = QRectF(100, 80, 160, 120)
+            image_edit.CropView.drag_to(v, handle, QPointF(*point), start, QPointF(150, 100))
+            out_cases["drag"].append({"aspect": aspect, "handle": handle, "point": point, "out": rect(v.crop)})
+    for steps in ((90,), (-90,), ("flip",), (90, "flip", 90), (-90, -90, "flip")):
+        for aspect in (None, 4 / 3):
+            d = SimpleNamespace(view=view(400, 300, (30, 40, 200, 150), aspect),
+                                aspect=SimpleNamespace(blockSignals=lambda b: None, setCurrentIndex=lambda i: None,
+                                                       findData=lambda x: 0))
+            for step in steps:
+                if step == "flip":
+                    image_edit.ImageEditDialog.flip(d)
+                else:
+                    image_edit.ImageEditDialog.rotate(d, step)
+            out_cases["turn"].append({"steps": list(steps), "aspect": aspect, "crop": rect(d.view.crop),
+                                      "size": [d.view.image.width(), d.view.image.height()],
+                                      "after": d.view.aspect})
+    # the pixels: a picture of its own colours, turned, mirrored, cropped
+    folder = out / "crop"
+    folder.mkdir(parents=True, exist_ok=True)
+    img = QImage(7, 5, QImage.Format_RGB32)
+    for y in range(5):
+        for x in range(7):
+            img.setPixelColor(x, y, QColor(x * 36, y * 60, (x * 7 + y * 13) % 256))
+    img.save(str(folder / "input.png"))
+    from PySide6.QtGui import QTransform
+    pictures = []
+    for steps, crop in (((90,), (1, 1, 3, 4)), ((-90, "flip"), (0, 2, 5, 5)), (("flip", 90, 90), (2, 0, 4, 3))):
+        pic = QImage(str(folder / "input.png"))
+        for step in steps:
+            pic = pic.mirrored(True, False) if step == "flip" else pic.transformed(QTransform().rotate(step))
+        part = pic.copy(QRectF(*crop).toRect())
+        name = f"out_{len(pictures)}.png"
+        part.save(str(folder / name))
+        pictures.append({"steps": list(steps), "crop": list(crop), "file": name})
+    out_cases["pictures"] = pictures
+    return out_cases
+
+
+def recent_cases() -> list[dict]:
+    """The studio's "recent" pictures (pages/studio.StudioPage._remember_recent): the picture first, an older entry
+    of the same path (normalised) dropped, at most 12, the bundled samples never."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui.pages import studio
+
+    class Store(dict):
+        def set(self, key, value):
+            self[key] = list(value)
+
+    many = [f"/Bilder/{i:02d}.png" for i in range(12)]
+    out = []
+    for before, path in (([], "/Bilder/Kamel.png"), (["/Bilder/a.png", "/Bilder/Kamel.png"], "/Bilder/Kamel.png"),
+                         (["/Bilder/a.png"], "/Bilder/x/../Kamel.png"), (["/Bilder/Kamel.png"], "/Bilder//Kamel.png"),
+                         (many, "/Bilder/neu.png"), (many, "/Bilder/05.png"),
+                         (["/Bilder/a.png"], "/App/samples/camel.png"),
+                         (["/Bilder/a.png"], "/App/samples-extra/x.png")):
+        store = Store(recent_images=list(before))
+        with mock.patch.object(studio, "app_settings", lambda: store), \
+                mock.patch.object(studio.paths, "resource", lambda *parts: Path("/App/samples")):
+            studio.StudioPage._remember_recent(SimpleNamespace(RECENT_MAX=studio.StudioPage.RECENT_MAX), path)
+        out.append({"before": before, "path": path, "after": store["recent_images"]})
+    return out
+
+
+def settings_file() -> str:
+    """settings.json as the Python app writes it (gui/app_settings.py: json.dumps(data, indent=2)) – with an umlaut in
+    a path, a key the Mac app does not know, the queue, albums and secrets (made-up values; the Mac app must never show
+    them)."""
+    data = {"settings_version": 3, "language": "de", "theme": "light",
+            "output_dir": "/Users/Jürgen/Documents/CLIPasso Studio", "models_dir": "",
+            "telegram_token": "123:made-up", "remote_token": "made-up-token", "remote_pin": "000000",
+            "albums": ["Tiere", "Wüste"], "user_presets": [{"name": "Mein Stil", "method": "clipasso"}],
+            "queue": [{"target": "/Users/Jürgen/Pictures/Kamel.png", "settings": {"method": "clipasso"}}],
+            "a_key_of_a_newer_version": {"x": 1.5}}
+    return json.dumps(data, indent=2)
+
+
+def pyjson() -> list[dict]:
+    return [{"value": v, "compact": json.dumps(v, ensure_ascii=False),
+             "pretty": json.dumps(v, indent=2, ensure_ascii=False),
+             "pretty_ascii": json.dumps(v, indent=2)} for v in PYJSON_VALUES]
+
+
+# ---------------------------------------------------------------------------------------------------- sketches
+def _scene(kind: str):
+    import torch
+
+    from clipasso_studio.engine.renderer import Path as Stroke
+    from clipasso_studio.engine.renderer import ShapeGroup
+
+    def stroke(ncp, pts, width, closed=False, fixed=False):
+        return Stroke(ncp, torch.tensor(pts, dtype=torch.float32), width, is_closed=closed, fixed=fixed)
+
+    if kind == "lines":
+        shapes = [stroke([0], [[10.0, 20.0], [200.5, 30.25]], 1.5), stroke([1], [[5, 5], [100, 190], [210, 12]], 1.5)]
+        colours = [[0, 0, 0, 1], [0, 0, 0, 1]]
+    elif kind == "cubic":
+        shapes = [stroke([2, 2], [[12, 200], [40, 120], [80, 90], [112, 110], [150, 130], [190, 60], [214, 20]], 2.25),
+                  stroke([2], [[30.123456, 40.98765], [60, 10], [90, 70], [120.5, 33.3333]], 3.0, fixed=True)]
+        colours = [[0.2, 0.4, 0.6, 0.6], [1, 0, 0, 0.35]]
+    else:  # a closed stroke (the last segment comes back to the start) on a background
+        shapes = [stroke([2, 2], [[50, 50], [80, 20], [140, 20], [170, 50], [150, 160], [70, 160]], 1.0, closed=True)]
+        colours = [[0.1, 0.1, 0.1, 1]]
+    groups = [ShapeGroup([i], stroke_color=torch.tensor(c, dtype=torch.float32)) for i, c in enumerate(colours)]
+    return shapes, groups
+
+
+def sketch_svg(kind: str, background: str | None = None) -> str:
+    from clipasso_studio.engine import svg_io
+
+    shapes, groups = _scene(kind)
+    return svg_io.scene_to_svg(224, 224, shapes, groups, background=background)
+
+
+def read_svg(text: str) -> dict:
+    """What Python reads from a sketch: the canvas, the background and every stroke with its segments."""
+    from clipasso_studio.engine.svg_path import parse_path_d
+
+    root = ET.fromstring(text)
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+    background = next((el.get("fill") for el in root.iter(f"{ns}rect")), None)
+    strokes = []
+    for el in root.iter(f"{ns}path"):
+        rgb = [int(c) for c in el.get("stroke")[4:-1].split(",")]
+        for segs, closed in parse_path_d(el.get("d")):
+            kinds = {2: "line", 3: "quad", 4: "cubic"}
+            strokes.append({"start": list(segs[0][0]), "closed": bool(closed),
+                            "segments": [{"kind": kinds[len(seg)], "points": [list(p) for p in seg[1:]]}
+                                         for seg in segs],
+                            "color": rgb, "opacity": float(el.get("stroke-opacity")),
+                            "width": float(el.get("stroke-width")), "fixed": el.get("data-fixed") == "1"})
+    return {"width": int(root.get("width")), "height": int(root.get("height")), "background": background,
+            "strokes": strokes}
+
+
+PATH_CASES = (
+    "M 10 20 L 30 40", "M10,20l5,5h10v-3H0V1z", "M 0 0 C 1 2 3 4 5 6 S 7 8 9 10", "M 0 0 Q 1 1 2 0 T 4 0 t 2 0",
+    "M 0 0 A 5 5 0 0 1 10 0", "M 0 0 A 5 10 30 1 0 10 10", "M 1 1 L 2 2 Z M 5 5 L 6 6", "M 0 0 L 1 0 L 1 1 Z",
+    "M 3 3 4 4 5 5", "m 1 1 2 2 c 1 1 2 2 3 3 z", "M.5-.5L1e1 2E-1", "M 0 0 S 1 1 2 0 T 3 3",
+)
+
+
+def path_cases() -> list[dict]:
+    """Path data with what engine/svg_path.parse_path_d makes of it (subpaths of segments of points)."""
+    from clipasso_studio.engine.svg_path import parse_path_d
+
+    return [{"d": d, "subpaths": [{"segments": [[list(p) for p in seg] for seg in segs], "closed": bool(closed)}
+                                  for segs, closed in parse_path_d(d)]} for d in PATH_CASES]
+
+
+def sketches(out: Path) -> None:
+    expected = {}
+    for name, kind, background in (("lines.svg", "lines", None), ("cubic.svg", "cubic", None),
+                                   ("closed_bg.svg", "closed", "#fff8e7")):
+        text = sketch_svg(kind, background)
+        (out / "svg").mkdir(parents=True, exist_ok=True)
+        (out / "svg" / name).write_bytes(text.encode("utf-8"))
+        expected[name] = read_svg(text)
+    write_json(out / "svg_expected.json", expected)
+    write_json(out / "paths_expected.json", path_cases())
+
+
+RESTYLE_CASES = (  # (sketch, stroke colour, width factor, background)
+    ("lines.svg", None, 1.0, None), ("lines.svg", "#1a2b3c", 1.0, None), ("cubic.svg", None, 2.5, "#ffffff"),
+    ("closed_bg.svg", "#ff0000", 0.5, None), ("closed_bg.svg", None, 1.0, "#000000"), ("cubic.svg", None, 0.3333, None),
+)
+RENDER_SIZE = 256
+
+
+STYLE_SKETCH = "lines.svg"  # (black strokes: the styles that colour black ones do it)
+QCOLOR_INPUTS = ("red", " Red ", "DarkGrey", "transparent", "nope", "", "none", "rgb(1,2,3)", "#abc", "#ABCDEF",
+                 "#80ff0000", "#123456789", "#111122223333", "#12345", "#ggg", "  #abcdef  ", "#2C3A33")
+
+
+def exports(out: Path) -> None:
+    """What the studio's export makes of the ``svg/`` sketches (needs PySide6: Qt draws the PNGs)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PIL import Image
+
+    from clipasso_studio.gui import brush, export
+
+    folder = out / "export"
+    (folder / "render").mkdir(parents=True)
+    cases = []
+    for name, colour, scale, background in RESTYLE_CASES:
+        svg = (out / "svg" / name).read_text(encoding="utf-8")
+        cases.append({"svg": name, "stroke_color": colour, "width_scale": scale, "background": background,
+                      "output": export.restyle_svg(svg, colour, scale, background)})
+    write_json(folder / "restyle.json", cases)
+    # QColor(name), as the web page and Lottie read a colour: Qt's names, and what it makes of other texts
+    from PySide6.QtGui import QColor
+
+    write_json(folder / "qcolor.json", {
+        "names": {n: QColor(n).name() for n in QColor.colorNames()},
+        "cases": [[text, QColor(text).isValid(), QColor(text).name() if QColor(text).isValid() else None]
+                  for text in QCOLOR_INPUTS]})
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in ("lines.svg", "cubic.svg", "closed_bg.svg"):
+            qt = Path(tmp) / "qt.png"
+            export.export_png(str(out / "svg" / name), str(qt), size=RENDER_SIZE)  # (white behind it)
+            with Image.open(qt) as image:
+                image.convert("RGB").save(folder / "render" / name.replace(".svg", ".png"), optimize=False)
+        # the brush styles: the SVG the engine gives the Mac app (export_png's, restyled and stylized) and Qt's PNG
+        (folder / "styles").mkdir()
+        raw = (out / "svg" / STYLE_SKETCH).read_text(encoding="utf-8")
+        for style in brush.STYLES[1:]:
+            styled = brush.stylize_svg(export.restyle_svg(raw, None, 1.0), style)
+            (folder / "styles" / f"{style}.svg").write_bytes(styled.encode("utf-8"))
+            qt = Path(tmp) / "qt.png"
+            export.export_png(str(out / "svg" / STYLE_SKETCH), str(qt), size=RENDER_SIZE, style=style)
+            with Image.open(qt) as image:
+                image.convert("RGB").save(folder / "styles" / f"{style}.png", optimize=False)
+
+
+# ----------------------------------------------------------------------------------------------- dropped images
+IMAGE_TREE = (  # a folder of pictures as a user's might be ("/" at the end: an empty folder)
+    "b.PNG", "a.jpg", "Notiz.txt", "c.HEIC", "Z.webp", "ä-Bild.png", ".versteckt.png", "Urlaub/2.jpg", "Urlaub/10.jpg",
+    "Urlaub/Strand/1.tif", "urlaub2/x.gif", "_edited/e.png", "_pasted_2/p.png", ".git/g.png",
+    "CLIPasso Studio/Kamel_job/job.json", "CLIPasso Studio/Kamel_job/input/Kamel.png",
+    "CLIPasso Studio/laufend/job_state.json", "CLIPasso Studio/laufend/x.png", "CLIPasso Studio/Notizen/n.png", "Leer/",
+)
+IMAGE_DROP = ("a.jpg", "Notiz.txt", "Urlaub", "a.jpg", "Urlaub/2.jpg", "fehlt.png", "Leer")
+
+
+def image_file_cases() -> dict:
+    """gui/drop.image_files (a folder's own images, and with its subfolders) and dropped_images (files and folders
+    as they are dropped) on a folder made of IMAGE_TREE – the paths relative to it."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QMimeData, QUrl
+
+    from clipasso_studio.gui import drop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "Bilder"
+        for entry in IMAGE_TREE:
+            path = root / entry
+            if entry.endswith("/"):
+                path.mkdir(parents=True, exist_ok=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"")
+
+        def relative(paths: list[str]) -> list[str]:
+            return [Path(p).relative_to(root).as_posix() for p in paths]
+
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(str(root / p)) for p in IMAGE_DROP])
+        return {"tree": list(IMAGE_TREE), "flat": relative(drop.image_files(str(root))),
+                "recursive": relative(drop.image_files(str(root), recursive=True)), "drop": list(IMAGE_DROP),
+                "dropped": relative(drop.dropped_images(mime))}
+
+
+# --------------------------------------------------------------------------------------------- editing sketches
+EDIT_ODD = (  # a sketch as hand-written SVG may be: shifted viewBox, sizes in px, nested groups, a path in the root
+    '<svg xmlns="http://www.w3.org/2000/svg" width="300px" height="200px" viewBox="-10, 5 300 200">\n'
+    '  <!-- a comment -->\n'
+    '  <rect width="100%" height="100%" fill="#fff8e7" />\n'
+    '  <path d="M 0 10 L 100 10 M 120 10 L 200 60" stroke="rgb(0, 0, 0)" />\n'
+    '  <g><g transform="none">\n'
+    '    <path d="M 20 150 C 60 100 100 200 140 150" stroke-width=" 4 " stroke="rgb(0, 0, 0)"><title>t</title></path>\n'
+    '  </g>\n'
+    '  <path d="M 250 20 Q 260 150 270 190 Z" stroke-width="2.5" data-fixed="true" stroke="rgb(0, 0, 0)" />\n'
+    '  </g>\n'
+    '</svg>\n')
+EDIT_EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224"><defs /></svg>'
+EDIT_STROKES = (  # (points, width, fixed)
+    ([(20 + 9 * i, 100 + 15 * (i % 2)) for i in range(20)], None, True),
+    ([(10 + 4 * i, 50 + 0.3 * math.sin(i)) for i in range(40)], None, True),
+    ([(10, 10), (10, 10), (40.5, 40.25), (40.5, 40.25), (70.125, 10)], None, True),
+    ([(5, 5), (5, 5)], None, True),
+    ([(15.3333, 80.6667), (150.75, 120.125)], 2.5, False),
+)
+
+
+def edit_cases(out: Path) -> list[dict]:
+    """gui/strokes.py on the ``svg/`` sketches and two odd ones (``edit/``): their count, fixed strokes and viewBox,
+    the stroke hit at points of a grid and at each stroke's start, strokes removed, strokes drawn with the pen, and
+    every stroke freed again."""
+    from clipasso_studio.gui import brush, strokes
+
+    (out / "edit").mkdir(parents=True, exist_ok=True)
+    # (bytes: write_text would end the lines with \r\n on Windows)
+    (out / "edit" / "odd.svg").write_bytes(EDIT_ODD.encode("utf-8"))
+    (out / "edit" / "empty.svg").write_bytes(EDIT_EMPTY.encode("utf-8"))
+    cases = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "edit/empty.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        x0, y0, w, h = strokes.view_box(svg)
+        index = strokes.StrokeIndex(svg)
+        points = [(x0 + w * i / 8, y0 + h * j / 8, tol) for i in range(9) for j in range(9) for tol in (2.0, 9.0)]
+        for line in index.lines:
+            if line and line[0]:
+                points.append((line[0][0][0] + 0.25, line[0][0][1] - 0.5, 1.0))
+        n = len(index)
+        cases.append({
+            "svg": name, "count": strokes.count(svg), "fixed": strokes.fixed_count(svg), "view_box": [x0, y0, w, h],
+            "samples": [brush.sample(el, per_segment=12) for el in _path_ds(svg)],
+            "hits": [{"x": x, "y": y, "tolerance": t, "index": index.hit(x, y, t)} for x, y, t in points],
+            "removes": [{"indices": list(drop), "output": strokes.remove_strokes(svg, drop)}
+                        for drop in ([0], [n - 1], list(range(n)), [n + 5]) if n],
+            "appends": [{"points": [list(p) for p in pts], "width": width, "fixed": fixed,
+                         "output": strokes.append_stroke(svg, pts, width, fixed)}
+                        for pts, width, fixed in EDIT_STROKES],
+            "unfixed": strokes.unfix(svg),
+        })
+    return cases
+
+
+def _path_ds(svg: str) -> list[str]:
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(svg)
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+    return [el.get("d") or "" for el in root.iter(f"{ns}path")]
+
+
+# ---------------------------------------------------------------------------------------------- export frames
+FRAME_PHOTOS = (  # where the photo lies on the canvas (photo_frame): a padded portrait, a stretched landscape, a crop
+    {"aspect": 0.75, "rect": [0.125, 0.0, 0.875, 1.0]},
+    {"aspect": 1.5, "rect": [0.0, 0.0, 1.0, 1.0]},
+    {"aspect": 1.0, "rect": [-0.25, -0.25, 1.25, 1.25]},
+)
+FRAME_GUESSES = (  # (method, settings, photo size) of runs from before 3.0
+    ("clipasso", {}, (300, 200)), ("clipasso", {"fix_scale": True}, (300, 200)),
+    ("clipasso", {"mask_object": True, "frame_object": True}, (300, 200)),
+    ("swiftsketch", {"fix_scale": True}, (201, 400)),
+    ("scenesketch", {}, (300, 300)), ("scenesketch", {"fix_scale": True}, (301, 200)), ("scenesketch", {}, (200, 351)),
+)
+
+
+def framing_cases(out: Path) -> dict:
+    """engine/framing.py: the strokes' box, the frames "content" (three margins) and "photo" (FRAME_PHOTOS) of the
+    ``svg/`` sketches and ``edit/odd.svg`` with the sketches they make, and the photo frames worked out for old runs."""
+    from clipasso_studio.engine import framing
+
+    sketches = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        frames = []
+        for mode, frame, margin in ([("content", None, m) for m in (0.0, 0.05, 0.2)]
+                                    + [("photo", f, 0.05) for f in FRAME_PHOTOS]):
+            fr = framing.make_framing(svg, mode, frame, margin)
+            frames.append({"mode": mode, "frame": frame, "margin": margin,
+                           "box": list(fr.box) if fr else None, "y_scale": fr.y_scale if fr else None,
+                           "output": fr.apply(svg) if fr else None})
+        sketches.append({"svg": name, "content_box": framing.content_box(svg), "frames": frames})
+    guesses = [{"method": m, "settings": s, "size": list(size), "frame": framing.guess_frame(m, s, size)}
+               for m, s, size in FRAME_GUESSES]
+    return {"sketches": sketches, "guesses": guesses}
+
+
+PRINT_LAYOUTS = (  # (layout, captions, aspects of the sketches – None: not readable –, pages) of a page
+    ({"page": "a4"}, [""], [1.0], 1),
+    ({"page": "a4", "landscape": True, "title": "Kamele", "signature": "J. 2026"}, ["x"], [0.75], 1),
+    ({"page": "a5", "per_page": 2, "title": "Mein Titel", "signature": "J.", "captions": True}, ["Kamel", "Hund"],
+     [1.0, 1.5], 3),
+    ({"page": "a3", "per_page": 9, "margin_mm": 0, "captions": True}, ["a", "", "c", "d", "e", "f", "g", "h", "i", "j"],
+     [1.0, 0.5, None, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 2),
+    ({"page": "letter", "landscape": True, "per_page": 6, "captions": True, "margin_mm": 22.5},
+     ["Ein langer Name", "b", "c"], [1.0, 0.75, 1.333], 4),
+    ({"page": "poster", "per_page": 20, "title": "Poster", "signature": "Studio", "captions": True},
+     [f"Skizze {i}" for i in range(20)], [1.0 + (i % 3) * 0.25 for i in range(20)], 1),
+    ({"page": "a4", "landscape": True, "per_page": 12, "margin_mm": 60, "title": "Rand"}, ["a"] * 12, [1.0] * 12, 1),
+    ({"page": "a5", "per_page": 16, "signature": "x"}, [""] * 5, [0.5] * 5, 7),
+    ({"page": "letter", "per_page": 4}, [], [], 1),
+)
+PRINT_BACKGROUNDS = (None, "transparent", "#FFFFFF", "#2C3A33", "#6B6B6B", "#6C6C6C", "#zzz", "6b6b6b")
+
+
+def print_cases() -> dict:
+    """gui/print_layout.py: the pages' sizes in mm, the grids, the page counts, the text's colour on a background
+    and where the heading, footer, captions and sketches of PRINT_LAYOUTS go – on a page in points, at 600 dpi
+    and as the dialog's preview."""
+    from clipasso_studio.gui import print_layout as pl
+
+    sizes = [{"page": page, "landscape": land, "mm": list(pl.page_mm(pl.Layout(page=page, landscape=land)))}
+             for page in pl.PAGES for land in (False, True)]
+    grids = [{"per_page": n, "landscape": land, "grid": list(pl.grid(n, land))}
+             for n in (*pl.PER_PAGE, 3, 5, 7, 25) for land in (False, True)]
+    counts = [{"n": n, "per_page": k, "pages": pl.page_count(n, pl.Layout(per_page=k))}
+              for n in (0, 1, 5, 20, 21) for k in (1, 6, 20)]
+    colours = [{"background": bg, "colour": pl.text_colour(pl.Layout(background=bg))} for bg in PRINT_BACKGROUNDS]
+    pages = []
+    for layout, captions, aspects, count in PRINT_LAYOUTS:
+        lay = pl.Layout(**layout)
+        w_mm, h_mm = pl.page_mm(lay)
+        for width, height in ((w_mm / 25.4 * 72, h_mm / 25.4 * 72), (int(w_mm / 25.4 * 600), int(h_mm / 25.4 * 600)),
+                              (300, max(1, round(300 * h_mm / w_mm)))):
+            b = pl.page_boxes(width, height, lay, captions, aspects, count)
+            pages.append({"layout": layout, "captions": captions, "aspects": aspects, "pages": count,
+                          "width": width, "height": height, "title": b.title, "title_px": b.title_px,
+                          "footer": b.footer, "small_px": b.small_px, "caption_boxes": b.captions,
+                          "sketch_boxes": b.sketches})
+    return {"sizes": sizes, "grids": grids, "counts": counts, "colours": colours, "pages": pages}
+
+
+RANDOM_SEEDS = ([7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [0], [12345], [1, 2, 3, 4, 5, 6])
+RANDOM_NORMALS = 30000  # (enough to reach the ziggurat's tail and its slow layers often)
+RANDOM_FIBRES = 300
+
+
+def _bits_hash(values) -> str:
+    """FNV-1a (64 bit) over the IEEE bits of the numbers, 8 bytes each, little-endian: equal only when every bit is."""
+    import struct
+
+    h = 0xCBF29CE484222325
+    for v in values:
+        for b in struct.pack("<d", float(v)):
+            h = ((h ^ b) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}"
+
+
+def random_cases() -> list[dict]:
+    """numpy.random.default_rng as gui/paper.py draws from it: the raw 64-bit numbers, standard normals, and the
+    draws of a fibre (uniform, choice of (-1, 1) – 32 bits, half kept for the next –, normal) one after another."""
+    import numpy as np
+
+    cases = []
+    for seed in RANDOM_SEEDS:
+        raw = np.random.default_rng(seed).bit_generator.random_raw(8).tolist()
+        normals = np.random.default_rng(seed).standard_normal(RANDOM_NORMALS)
+        rng = np.random.default_rng(seed)
+        fibres = [[rng.uniform(0, 300), rng.uniform(0, 200), rng.uniform(0, math.pi), rng.uniform(6, 26),
+                   rng.uniform(-0.4, 0.4), float(rng.choice((-1, 1))), rng.uniform(64, 127), rng.normal(0, 1)]
+                  for _ in range(RANDOM_FIBRES)]
+        cases.append({"seed": seed, "raw": [f"{v:016x}" for v in raw], "normals_first": normals[:12].tolist(),
+                      "normals_hash": _bits_hash(normals), "fibres_first": fibres[:2],
+                      "fibres_hash": _bits_hash(v for row in fibres for v in row)})
+    return cases
+
+
+PAPER_KINDS = ("drawing", "watercolor", "kraft", "linen", "blackboard")
+PAPER_CASES = (  # (name, paper, background, size, crop (x, y, w, h) – None: the whole picture)
+    *((f"{k}_160x120", {"kind": k, "vignette": 0}, None, (160, 120), None) for k in PAPER_KINDS),
+    *((f"{k}_640x480", {"kind": k, "vignette": 0}, None, (640, 480), (256, 176, 128, 128)) for k in PAPER_KINDS),
+    ("kraft_1500x1000", {"kind": "kraft", "vignette": 0}, None, (1500, 1000), (700, 450, 128, 128)),  # 2 px fibres
+    ("drawing_1800x1200", {"kind": "drawing", "vignette": 0}, None, (1800, 1200), (900, 600, 128, 128)),  # scaled up
+    ("linen_vignette_blue", {"kind": "linen", "vignette": 0.6}, "#336699", (160, 120), None),
+    ("none_vignette", {"kind": "none", "vignette": 1.0}, "#FBFAF6", (100, 80), None),
+)
+PAPER_INPUTS = (None, {}, {"kind": "none"}, {"kind": "none", "vignette": 0.3}, {"kind": "kraft"},
+                {"kind": "linen", "vignette": "0.5"}, {"kind": "felt", "vignette": 2},
+                {"kind": "drawing", "vignette": -1}, {"kind": "blackboard", "vignette": None})
+
+
+def paper_cases(out: Path) -> dict:
+    """gui/paper.py: the papers as pictures (paper/*.png – the whole picture or a part of a large one) of every kind,
+    with a vignette and a background colour, and what normalize, color_of and is_dark make of settings."""
+    from clipasso_studio.gui import paper
+
+    (out / "paper").mkdir(parents=True, exist_ok=True)
+    pictures = []
+    for name, p, background, (w, h), crop in PAPER_CASES:
+        img = paper.image(p, w, h, background)
+        if crop:
+            x, y, cw, ch = crop
+            img = img.crop((x, y, x + cw, y + ch))
+        img.save(out / "paper" / f"{name}.png", "PNG")
+        pictures.append({"name": name, "paper": p, "background": background, "size": [w, h],
+                         "crop": list(crop) if crop else None, "file": f"paper/{name}.png"})
+    inputs = [{"paper": p, "normalized": paper.normalize(p),
+               "colour": paper.color_of(paper.normalize(p)), "colour_on_blue": paper.color_of(p, "#336699")}
+              for p in PAPER_INPUTS]
+    dark = [{"colour": c, "dark": paper.is_dark(c)}
+            for c in ("#2C3A33", "#C9A97C", "#6b6b6b", "#6c6c6c", "abc", "#zzz")]
+    return {"pictures": pictures, "inputs": inputs, "dark": dark}
+
+
+ANIMATION_PLANS = (  # (drawn frames, length or None, fps, hold, format, size)
+    (1, None, 20, 1.0, "gif", 512), (2, None, 20, 1.0, "gif", 512), (40, None, 20, 1.0, "gif", 512),
+    (40, 3.3, 20, 0.5, "gif", 512), (40, 3.3, 20, 0.5, "webp", 512), (40, 3.3, 20, 0.5, "mp4", 512),
+    (500, 2.0, 20, 1.0, "gif", 512), (500, 2.0, 20, 1.0, "webp", 1024), (500, 0.05, 20, 0.0, "gif", 512),
+    (7, 10.0, 20, 2.5, "gif", 512), (7, 10.0, 20, 2.5, "mp4", 512), (100, None, 0, 1.0, "webp", 512),
+    (250, 12.35, 50, 1.25, "gif", 2048), (250, 12.35, 50, 1.25, "mp4", 2048), (3, 0.5, 20, -1, "webp", 512),
+    (6000, 300.0, 20, 1.0, "webp", 64), (100, 5.0, 20, 1.0, "gif", 8192),
+)
+DRAWING_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+<rect x="0" y="0" width="224" height="224" fill="#FFFFFF" data-bg="1" />
+<g>
+<path d="M 20 30 L 60 35 L 90 80" fill="none" stroke="#000000" stroke-width="1.5" stroke-opacity="0.8" />
+<path d="M 200 200 Q 150 180 120 210" fill="none" stroke="#000000" stroke-width="2.25" />
+<path d="M 100 100 C 120 60 160 60 180 100 Z" fill="none" stroke="#000000" stroke-width="1" />
+<path d="M 30 190 L 40 150 M 45 150 L 70 120" fill="none" stroke="#333333" stroke-width="1.5" />
+<path d="M 92 82 L 92 82" fill="none" stroke="#000000" stroke-width="1.5" />
+<path d="M 210 20 L 150 25 Q 120 30 110 60" fill="none" stroke="#000000" stroke-width="3" />
+</g>
+</svg>
+"""
+DRAWING_TIMES = (0.0, 0.04, 0.13, 0.5, 0.77, 0.999, 1.0)
+
+
+def animation_cases(out: Path) -> dict:
+    """gui/export.py's animations: which drawn frames an animation shows and how long (animation_plan), the
+    lengths it starts from, and the stroke-by-stroke drawing (Drawing) of the sketches – its order along the route
+    (or as written), its timeline and the SVG at points of it."""
+    from clipasso_studio.gui import dialogs, export
+
+    (out / "animation").mkdir(parents=True, exist_ok=True)
+    (out / "animation" / "drawing.svg").write_bytes(DRAWING_SVG.encode("utf-8"))
+    plans = []
+    for n, length, fps, hold, fmt, size in ANIMATION_PLANS:
+        idx, durations = export.animation_plan(n, length, fps, hold, fmt, size)
+        plans.append({"n": n, "length": length, "fps": fps, "hold": hold, "format": fmt, "size": size,
+                      "count": len(idx), "frames": idx[:60] + idx[-60:] if len(idx) > 120 else idx,
+                      "durations": durations[:60] + durations[-60:] if len(durations) > 120 else durations,
+                      "sum_frames": sum(idx), "sum_durations": sum(durations)})
+    lengths = {"every_step": [[n, fmt, export.every_step_length(n, fmt)] for n in (0, 1, 7, 40, 101, 999, 5000)
+                              for fmt in ("gif", "mp4")],
+               "drawing": [[n, line, export.default_drawing_length(n, line)]
+                           for n, line in ((0, 0.0), (1, 0.0), (1, 2.5), (1, 30.0), (5, 0.0), (9, 0.0), (17, 0.0),
+                                           (60, 0.0), (1, 4.2))],
+               "process": [[n, dialogs.default_animation_length(n)] for n in (0, 1, 30, 41, 99, 150, 199, 250, 900)]}
+    drawings = []
+    for name in ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "animation/drawing.svg"):
+        svg = (out / name).read_text(encoding="utf-8")
+        for keep in (False, True):
+            d = export.Drawing(svg, keep_order=keep)
+            drawings.append({"svg": name, "keep_order": keep, "head": d.head, "total": d.total, "line": d.line,
+                             "spans": [list(s) for s in d.spans],
+                             "starts": [list(st["subs"][0][0]) for st in d.strokes],
+                             "centrelines": [d.centreline(i) for i in range(len(d.strokes))],
+                             "frames": [[t, d.frame(t)] for t in DRAWING_TIMES]})
+    return {"plans": plans, "lengths": lengths, "drawings": drawings}
+
+
+FORMAT_SKETCHES = ("svg/lines.svg", "svg/cubic.svg", "svg/closed_bg.svg", "edit/odd.svg", "animation/drawing.svg")
+FORMAT_LOOKS = ((None, 1.0), ("#336699", 2.5))  # (stroke colour, width factor)
+ANIMATED_CASES = (  # (length, hold, stroke colour, width factor, background, keep the order)
+    (None, 1.0, None, 1.0, None, False), (2.0, 0.5, "#aa0000", 2.0, "#fafafa", True),
+    (7.25, 0.0, None, 0.5, "#2C3A33", False),
+)
+LOTTIE_CASES = (  # (length, hold, stroke colour, width factor, background, keep the order, size)
+    (None, 1.0, None, 1.0, None, False, 512), (3.5, 0.25, "#336699", 1.5, "#fff8e7", True, 300),
+)
+PAGE_CASES = (("Kamel", None), ("Kamel <1> & \"Zwei\"", "#2C3A33"), ("x", "#fff8e7"), ("y", "nope"))
+LAYER_OBJECT = ("M 20 30 L 60 35 L 90 80", "M 100 100 C 120 60 160 60 180 100 Z")  # two strokes of drawing.svg
+
+
+MASK_OVERLAYS = (("small", (60, 40), 900), ("large", (1500, 1000), 700))  # (name, size, max_side: large shrinks)
+
+
+def mask_cases(out: Path) -> list[dict]:
+    """gui/mask_view.overlay: masks (mask/<name>.png, white the object – an ellipse with a hole and a speck) and the
+    overlay Qt makes of them as classes (mask/<name>_overlay.png: 0 the object, 127 the veil, 254 the outline)."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    import numpy as np
+    from PIL import Image
+    from PySide6.QtGui import QColor, QGuiApplication
+
+    from clipasso_studio.engine import masking
+    from clipasso_studio.gui import mask_view
+
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "mask"
+    folder.mkdir()
+    cases = []
+    for name, (w, h), side in MASK_OVERLAYS:
+        yy, xx = np.mgrid[0:h, 0:w]
+        m = ((xx - w * 0.45) / (w * 0.3)) ** 2 + ((yy - h * 0.5) / (h * 0.35)) ** 2 <= 1
+        m &= ((xx - w * 0.45) / (w * 0.08)) ** 2 + ((yy - h * 0.5) / (h * 0.1)) ** 2 > 1
+        m[int(h * 0.1):int(h * 0.1) + 2, int(w * 0.85):int(w * 0.85) + 2] = True
+        Image.fromarray(m.astype(np.uint8) * 255).save(folder / f"{name}.png")
+        img = mask_view.overlay(m.astype(np.float32), QColor(240, 240, 236, 215), QColor(60, 110, 240), max_side=side)
+        rows = np.frombuffer(img.constBits(), np.uint8).reshape(img.height(), img.bytesPerLine())
+        rgba = rows[:, :img.width() * 4].reshape(img.height(), img.width(), 4)
+        classes = np.where(rgba[..., 3] == 255, 254, np.where(rgba[..., 3] == 215, 127, 0)).astype(np.uint8)
+        Image.fromarray(classes).save(folder / f"{name}_overlay.png")
+        cases.append({"name": name, "size": [w, h], "max_side": side, "overlay": [img.width(), img.height()]})
+    # a probability as the mask cache keeps it (masking._write_cached: 16 bits) and what masking reads from it
+    yy, xx = np.mgrid[0:24, 0:32]
+    q = np.round(np.clip(xx / 31 * 0.6 + yy / 23 * 0.4, 0, 1) * 65535.0).astype(np.uint16)
+    masking._write_cached(folder / "probability.png", q)
+    prob = masking._read_cached(folder / "probability.png")
+    cases.append({"name": "probability", "size": [32, 24], "samples": [[x, y, float(prob[y, x])] for x, y in
+                                                                       ((0, 0), (31, 0), (0, 23), (31, 23), (16, 12))],
+                  "object": int((prob >= masking.OBJECT_THRESHOLD).sum())})
+    return cases
+
+
+MASK_EDIT_PHOTOS = (("photo_small", (300, 200)), ("photo_large", (700, 560)))  # (the large one is picked on a copy)
+
+
+def mask_edit_cases(out: Path) -> dict:
+    """gui/mask_edit.py: a click on a part (it goes; outside the mask a candidate part comes in, else the magic wand's
+    area of similar colours) and the brush (dabs, lines) – photos, masks and candidates (mask/edit_*.png) and the
+    masks each step makes (mask/edit_<photo>_<n>.png; "none": nothing changes)."""
+    import numpy as np
+    from PIL import Image
+
+    from clipasso_studio.gui import mask_edit
+
+    folder = out / "mask"
+    rng = np.random.default_rng(11)
+    cases = {"constants": {"candidate": mask_edit.CANDIDATE, "pick_side": mask_edit.PICK_SIDE,
+                           "wand_tolerance": mask_edit.WAND_TOLERANCE, "undo_steps": mask_edit.UNDO_STEPS},
+             "photos": []}
+    for name, (w, h) in MASK_EDIT_PHOTOS:
+        yy, xx = np.mgrid[0:h, 0:w]
+        rgb = np.zeros((h, w, 3), np.int64)
+        rgb[...] = (230, 225, 210)
+        blob = ((xx - w * 0.4) / (w * 0.2)) ** 2 + ((yy - h * 0.5) / (h * 0.3)) ** 2 <= 1
+        rgb[blob] = (60, 90, 140)
+        rgb[(xx > w * 0.7) & (yy < h * 0.4)] = (200, 60, 50)
+        grain = rng.integers(-12, 13, (h // 4 + 1, w // 4 + 1, 3)).repeat(4, 0).repeat(4, 1)[:h, :w]
+        photo = Image.fromarray(np.clip(rgb + grain, 0, 255).astype(np.uint8))
+        mask = blob & ~((xx > w * 0.35) & (xx < w * 0.45) & (yy > h * 0.45) & (yy < h * 0.55))  # (a hole)
+        mask |= (xx > w * 0.8) & (yy > h * 0.8)
+        candidate = mask | ((xx > w * 0.7) & (yy < h * 0.4))  # (the red part: the model was less sure)
+        photo.save(folder / f"edit_{name}.png")
+        for what, plane in (("mask", mask), ("candidate", candidate)):
+            Image.fromarray(plane.astype(np.uint8) * 255).save(folder / f"edit_{name}_{what}.png")
+        steps = []
+        for i, (x, y) in enumerate(((w * 0.4, h * 0.3), (w * 0.85, h * 0.9), (w * 0.8, h * 0.2), (w * 0.1, h * 0.1),
+                                    (w * 0.4, h * 0.5), (w + 5, h * 0.5))):
+            made = mask_edit.part_click(mask, candidate, photo, x, y)
+            if made is not None:
+                Image.fromarray(made.astype(np.uint8) * 255).save(folder / f"edit_{name}_{i}.png")
+            steps.append({"click": [x, y], "out": None if made is None else f"mask/edit_{name}_{i}.png"})
+        brushed = mask.copy()
+        strokes = [("dab", (w * 0.1, h * 0.2), None, 9.5, True),
+                   ("line", (w * 0.05, h * 0.9), (w * 0.6, h * 0.95), 6.0, True),
+                   ("line", (w * 0.4, h * 0.2), (w * 0.4, h * 0.8), 12.25, False),
+                   ("dab", (-3.0, 4.0), None, 5.0, True)]
+        for kind, a, b, r, value in strokes:
+            if kind == "dab":
+                mask_edit.dab(brushed, a[0], a[1], r, value)
+            else:
+                mask_edit.line(brushed, a, b, r, value)
+        Image.fromarray(brushed.astype(np.uint8) * 255).save(folder / f"edit_{name}_brushed.png")
+        cases["photos"].append({"name": name, "size": [w, h], "steps": steps,
+                                "strokes": [[k, list(a), list(b) if b else None, r, v] for k, a, b, r, v in strokes]})
+    return cases
+
+
+DETAIL_SIZE = (90, 60)
+DETAIL_STROKES = (  # (tool, brush, kind, from, to): dabs and lines over a map that is not all normal
+    ("more", 20, "dab", (30.0, 20.0), None),
+    ("less", 13, "line", (5.5, 50.25), (80.0, 41.0)),
+    ("normal", 9, "dab", (31.0, 22.5), None),
+    ("more", 7, "line", (60.0, 5.0), (61.5, 6.0)),
+    ("less", 30, "dab", (88.0, -2.0), None),
+    ("more", 6, "line", (-4.0, 30.0), (40.0, 58.0)),
+)
+DETAIL_PHOTOS = ((1024, 768), (300, 200), (100, 80), (60, 1024))  # (the default brush and the slider's end)
+
+
+def detail_cases(out: Path) -> dict:
+    """gui/detail_edit.py: the soft brush of the detail map – dabs and lines of each tool, one after the other, over
+    a map with a gradient (detail/edit_start.png, the map after each stroke detail/edit_<n>.png), the canvas's
+    overlay of the start and the end (detail/edit_overlay_*_alpha.png its opacity, *_kind.png its colour: 1 more,
+    2 less), the dialog's share line, the brush it
+    starts with for a photo and the slider's range (needs PySide6)."""
+    from types import SimpleNamespace
+
+    import numpy as np
+    from PIL import Image
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio.engine import details
+    from clipasso_studio.gui import detail_edit
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "detail"
+    folder.mkdir()
+    w, h = DETAIL_SIZE
+    yy, xx = np.mgrid[0:h, 0:w]
+    start = np.full((h, w), details.NORMAL, np.uint8)
+    start[:, 45:] = np.clip(np.round((xx[:, 45:] - 45) / 44 * 255), 0, 255).astype(np.uint8)  # (less … more)
+    start[5:15, 5:25] = 250
+    Image.fromarray(start, mode="L").save(folder / "edit_start.png")
+    canvas = SimpleNamespace(map=start.copy(), brush=0, tool="more", update=lambda: None)
+    canvas.dab = lambda x, y: detail_edit.DetailCanvas.dab(canvas, x, y)
+
+    def overlay(name: str) -> None:  # (as two grey pictures: ImageIO may premultiply an RGBA one)
+        detail_edit.DetailCanvas._rebuild(canvas)
+        img = canvas._overlay
+        rows = np.frombuffer(img.constBits(), np.uint8).reshape(img.height(), img.bytesPerLine())
+        rgba = rows[:, :img.width() * 4].reshape(img.height(), img.width(), 4)
+        more = np.all(rgba[..., :3] == detail_edit.MORE_RGB, axis=-1)
+        less = np.all(rgba[..., :3] == detail_edit.LESS_RGB, axis=-1)
+        assert ((rgba[..., 3] > 0) == (more | less)).all() and not rgba[~(more | less)].any()
+        Image.fromarray(rgba[..., 3].copy(), mode="L").save(folder / f"edit_overlay_{name}_alpha.png")
+        Image.fromarray((more * 1 + less * 2).astype(np.uint8), mode="L").save(folder / f"edit_overlay_{name}_kind.png")
+
+    def share() -> list[str]:
+        v = canvas.map.astype(np.int16) - details.NORMAL
+        return [f"{float((v > 8).mean()) * 100:.0f}", f"{float((v < -8).mean()) * 100:.0f}"]
+
+    overlay("start")
+    shares = [share()]
+    strokes = []
+    for i, (tool, brush, kind, a, b) in enumerate(DETAIL_STROKES):
+        canvas.tool, canvas.brush = tool, brush
+        if kind == "dab":
+            canvas.dab(*a)
+        else:
+            detail_edit.DetailCanvas._line(canvas, a, b)
+        Image.fromarray(canvas.map, mode="L").save(folder / f"edit_{i}.png")
+        shares.append(share())
+        strokes.append({"tool": tool, "brush": brush, "kind": kind, "from": list(a), "to": list(b) if b else None,
+                        "out": f"detail/edit_{i}.png"})
+    overlay("end")
+    photos = []
+    for pw, ph in DETAIL_PHOTOS:
+        brush = max(8, int(max(pw, ph) * 0.06))  # (DetailCanvas.__init__ and the dialog's slider)
+        photos.append({"size": [pw, ph], "brush": brush, "slider": [6, max(200, brush * 3)]})
+    return {"constants": {"edit_side": detail_edit.EDIT_SIDE, "undo_steps": detail_edit.UNDO_STEPS,
+                          "tools": detail_edit.TOOLS, "more_rgb": list(detail_edit.MORE_RGB),
+                          "less_rgb": list(detail_edit.LESS_RGB), "normal": details.NORMAL},
+            "start": "detail/edit_start.png", "strokes": strokes, "shares": shares, "photos": photos}
+
+
+REMOTE_CLIENTS = ("192.168.1.20", "10.0.0.5", "172.16.3.4", "172.32.0.1", "127.0.0.1", "127.8.9.1", "::1",
+                  "fe80::1%eth0", "::ffff:192.168.0.2", "169.254.10.1", "8.8.8.8", "2001:4860:4860::8888",
+                  "::ffff:8.8.8.8", "nonsense", "", "100.64.0.1", "100.127.255.254", "100.128.0.1", "100.63.255.255",
+                  "fd7a:115c:a1e0::1", "fc00::1", "::ffff:100.100.1.1", "0.0.0.0", "255.255.255.255", "192.0.2.1",
+                  "1.2.3", "192.168.1.300", "::", "fe80::1", "fec0::1", "224.0.0.1", "100.100.100.100%x",
+                  # (every network Python's ipaddress calls private, its edges and its exceptions)
+                  "192.0.0.9", "192.0.0.10", "192.0.0.11", "192.0.0.255", "192.0.1.0", "192.0.0.170", "192.0.0.171",
+                  "192.0.0.172", "198.18.5.5", "198.19.255.255", "198.20.0.0", "198.51.100.7", "203.0.113.9",
+                  "240.1.2.3", "239.255.255.255", "11.0.0.0", "9.255.255.255", "172.31.255.255", "169.255.0.0",
+                  "2001:db8::1", "2002::1", "3fff::1", "3fff:1000::", "2001:1::1", "2001:1::3", "2001::5",
+                  "2001:200::", "64:ff9b:1::1", "64:ff9b::1", "100::1", "100::1:0:0:0", "2001:20::1", "2001:3::1",
+                  "2001:4:112::1", "fe80::1%en0", "fe81::1", "febf::1", "fec0::", "fbff::1", "fe00::1",
+                  "::ffff:10.0.0.1", "::ffff:0a00:0001", "::ffff:1.1.1.1", "01.2.3.4", "1.2.3.4.5", " 10.0.0.1",
+                  "10.0.0.1 ", "0x7f.0.0.1", "::1::", "1::2::3", "::ffff:192.168.1.1%eth0", "FE80::ABCD",
+                  "1:2:3:4:5:6:7:8", "::ffff:127.0.0.1", "%eth0", "127.1")
+REMOTE_PIN = "246810"
+REMOTE_TRIES = (  # (address, PIN given, time): the brakes on guessing, per address and for everybody
+    *[("10.0.0.2", "000000", 1000.0 + i) for i in range(5)],  # five wrong: 30 s to wait
+    ("10.0.0.2", REMOTE_PIN, 1010.0), ("10.0.0.2", REMOTE_PIN, 1036.0),  # (still waiting; then right)
+    *[("10.0.0.3", "11111", 1100.0 + i) for i in range(10)],  # ten wrong (not even six digits): 30 s, then 60 s
+    ("10.0.0.3", REMOTE_PIN, 1140.0), ("10.0.0.3", REMOTE_PIN, 1200.0),
+    *[(f"10.0.1.{i}", "999999", 1300.0 + i) for i in range(20)],  # twenty wrong from many: nobody for 600 s
+    ("10.0.2.1", REMOTE_PIN, 1330.0), ("10.0.2.1", REMOTE_PIN, 1920.0), ("10.0.2.1", REMOTE_PIN, 1925.0),
+    *[("10.0.0.4", "123", 3000.0 + i * 0.5) for i in range(40)],  # the wait doubles, at most an hour
+)
+REMOTE_TOKEN = "Kamel-Zugang_0123456789ab"
+
+
+def remote_cases(out: Path) -> dict:
+    """gui/remote.py: who may connect (the home network; the tailnet when switched on), the brakes on guessing the
+    PIN (an address's own and everybody's, against a clock of its own), the phone page and the PIN page as the app
+    serves them (remote/page_<lang>.html, remote/login_<lang>.html: the texts of PhoneLink.retranslate, the access
+    code, the icons inline), tokens.css and the manifest (needs PySide6)."""
+    from types import SimpleNamespace
+
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio import __version__
+    from clipasso_studio.gui import phone, remote, theme
+    from clipasso_studio.gui.i18n import i18n
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    QGuiApplication.instance() or QGuiApplication([])
+    folder = out / "remote"
+    folder.mkdir()
+    clients = [{"ip": ip, "tailscale": t, "allowed": remote.allowed_client(ip, t)}
+               for ip in REMOTE_CLIENTS for t in (False, True)]
+    real_pin, remote.pin = remote.pin, lambda: REMOTE_PIN
+    try:
+        guard = remote._PinGuard()
+        tries = [{"ip": ip, "pin": given, "now": now, "ok": ok, "wait": wait}
+                 for ip, given, now in REMOTE_TRIES for ok, wait in [guard.check(ip, given, now)]]
+        now = 10000.0  # rounds of five wrong PINs, each after the wait: it doubles up to an hour
+        for _ in range(9):
+            for _ in range(5):
+                ok, wait = guard.check("10.0.0.9", "654321", now)
+                tries.append({"ip": "10.0.0.9", "pin": "654321", "now": now, "ok": ok, "wait": wait})
+                now += 1.0
+            now += wait + 0.25
+    finally:
+        remote.pin = real_pin
+    texts = {}
+    before = i18n.lang
+    try:
+        for lang in ("de", "en"):
+            i18n.set_language(lang)
+            link = SimpleNamespace(bridge=SimpleNamespace())
+            phone.PhoneLink.retranslate(link)
+            texts[lang] = link.bridge.texts
+            (folder / f"page_{lang}.html").write_bytes(remote.page(link.bridge.texts, REMOTE_TOKEN).encode("utf-8"))
+            (folder / f"login_{lang}.html").write_bytes(remote.login_page(link.bridge.texts).encode("utf-8"))
+    finally:
+        i18n.set_language(before)
+    (folder / "tokens.css").write_bytes(theme.tokens_css().encode("utf-8"))
+    (folder / "manifest.webmanifest").write_bytes(remote.manifest())
+    icons = {name: remote.icon_svg(name) for name in ("pen-tool", "list-todo", "images", "ellipsis", "brush")}
+    return {"version": __version__, "token": REMOTE_TOKEN, "pin": REMOTE_PIN, "clients": clients, "tries": tries,
+            "texts": texts, "icons": icons, "constants": {
+                "port": remote.DEFAULT_PORT, "max_upload": remote.MAX_UPLOAD, "max_json": remote.MAX_JSON,
+                "event_streams": remote.EVENT_STREAMS, "event_ping": remote.EVENT_PING, "pin_digits": remote.PIN_DIGITS,
+                "pin_tries": remote.PIN_TRIES, "pin_wait": remote.PIN_WAIT, "pin_wait_max": remote.PIN_WAIT_MAX,
+                "pin_global": remote.PIN_GLOBAL, "pin_window": remote.PIN_WINDOW, "cookie": remote.COOKIE,
+                "cookie_age": remote.COOKIE_AGE, "page_csp": remote.PAGE_CSP, "svg_csp": remote.SVG_CSP,
+                "fonts": list(remote.FONTS), "font_cache": remote.FONT_CACHE, "methods": list(remote.METHODS),
+                "upload_dir": remote.UPLOAD_DIR, "call_timeout": remote.CALL_TIMEOUT}}
+
+
+PHONE_RAW_VALUES = (None, True, False, 0, 1, -3, 2.7, 1e9, "", " 4 ", "7.9", "abc", "true", "off", "plain",
+                    "2,5", [1], {"a": 1})
+
+
+def phone_cases(out: Path) -> dict:
+    """gui/phone_api.py, the studio from the phone: the parameters of each method as the phone shows them (get_schema,
+    as on a Mac: the Apple GPU offered), in German and English, and what the phone's raw values become
+    (settings_schema.coerce – "error": the phone hears ui.phone.page.bad_value)."""
+    import sys
+    from types import SimpleNamespace
+
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.gui import phone_api
+    from clipasso_studio.gui.i18n import i18n
+
+    folder = out / "phone"
+    folder.mkdir()
+    before, platform = i18n.lang, sys.platform
+    schemas = {}
+    try:
+        sys.platform = "darwin"  # (offered_choices: the Mac's)
+        for lang in ("de", "en"):
+            i18n.set_language(lang)
+            for method in schema.METHODS:
+                schemas[f"{method}_{lang}"] = phone_api.PhoneApi.get_schema(SimpleNamespace(studio=None),
+                                                                            {"method": method})
+    finally:
+        sys.platform = platform
+        i18n.set_language(before)
+    coerced = []
+    for method in schema.METHODS:
+        for p in schema.params_for(method):
+            if p.kind in ("path", "layers") or p.hidden:
+                continue
+            for raw in PHONE_RAW_VALUES:
+                try:
+                    value = schema.coerce(p, raw)
+                except (TypeError, ValueError):
+                    value, ok = None, False
+                else:
+                    ok = True
+                coerced.append({"method": method, "key": p.key, "raw": raw, "ok": ok, "value": value})
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(phone_api.PhoneApi.get_studio).strip().replace("\n    ", "\n"))
+    returned = next(n.value for n in ast.walk(tree) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict))
+    studio_keys = [k.value for k in returned.keys]  # (the keys of what get_studio gives the page)
+    return {"schemas": schemas, "coerce": coerced, "input_side": phone_api.INPUT_SIDE, "studio_keys": studio_keys}
+
+
+EXPORT_SETTINGS = (  # what the last exports may have left in settings.json
+    {},
+    {"export_stroke": "#336699", "export_width": "2.5", "export_style": "ink", "export_background": "transparent",
+     "export_paper": "kraft", "export_vignette": 30, "export_frame": "photo", "export_margin": 12,
+     "export_pdf_width": 20, "export_anim_mode": "strokes"},
+    {"export_background": "", "export_stroke": "", "export_frame": "nope", "export_width": "x",
+     "export_margin": "7.9", "export_vignette": None, "export_anim_mode": "process", "export_style": "chalk"},
+)
+EXPORT_SKETCHES = (
+    {"process_frames": 0, "strokes": 12, "draw_length": 3.2, "process_length": 2.0, "photo_frame": False},
+    {"process_frames": 40, "strokes": 30, "draw_length": 5.5, "process_length": 2.0, "photo_frame": True},
+)
+EXPORT_RAW = (None, {}, "nope",
+              {"stroke": "#abcdef", "width": 30, "style": "neon", "background": "transparent", "paper": "linen",
+               "vignette": 150, "frame": "photo", "margin": -3, "size": 99999, "width_cm": 1, "mode": "process",
+               "length": 0.1, "hold": 20},
+              {"stroke": "red", "width": "abc", "style": "nope", "background": "#12345", "frame": "content",
+               "size": "300", "mode": "strokes", "length": "7", "hold": True, "paper": 3, "vignette": "12.7"},
+              {"stroke": " #A1B2C3 ", "background": "#ffffff", "mode": "nope", "margin": 50.9, "width_cm": "33.3"})
+
+
+def export_cases() -> dict:
+    """gui/export_jobs.py, the export from the phone: which options a format has, what it starts with after the
+    last exports (the settings) for a sketch with and without saved steps, what the phone's options become – made
+    safe – and what is remembered for the next export."""
+    from types import SimpleNamespace
+
+    from clipasso_studio.gui import export_jobs
+
+    real = export_jobs.app_settings
+    cases = []
+    try:
+        for n, stored in enumerate(EXPORT_SETTINGS):
+            for k, sketch in enumerate(EXPORT_SKETCHES):
+                for fmt in export_jobs.FORMATS:
+                    data = dict(stored)
+                    store = SimpleNamespace(data=data, get=lambda key, d=None, data=data: data.get(key, d),
+                                            save=lambda: None)
+                    export_jobs.app_settings = lambda store=store: store
+                    first = export_jobs.defaults(fmt, sketch)  # (before anything is remembered)
+                    checked = [export_jobs.check(fmt, raw, sketch) for raw in EXPORT_RAW]
+                    export_jobs.remember(fmt, checked[3])
+                    cases.append({"settings": n, "sketch": k, "fmt": fmt, "defaults": first, "checked": checked,
+                                  "remembered": data, "applies": export_jobs.applies(fmt, sketch["process_frames"])})
+    finally:
+        export_jobs.app_settings = real
+    return {"settings": list(EXPORT_SETTINGS), "sketches": list(EXPORT_SKETCHES), "raw": list(EXPORT_RAW),
+            "formats": list(export_jobs.FORMATS), "max_size": export_jobs.MAX_SIZE,
+            "content_types": export_jobs.CONTENT_TYPES, "cases": cases}
+
+
+STYLED_LOOKS = ("ink", "charcoal", "neon")  # (filled outlines; dashed grain; a style that colours black strokes)
+
+
+def styled_cases(out: Path) -> dict:
+    """gui/export.py's exports in a brush style, every call of brush.stylize_svg recorded – what the Mac app asks the
+    engine and its answer – so that the Swift tests answer as the engine does: the SVG (framed to the strokes), the
+    SVG that draws itself (each stroke styled on its own) and the SVG ⌘C puts on the clipboard (needs PySide6)."""
+    import tempfile
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    from clipasso_studio.gui import export
+
+    QGuiApplication.instance() or QGuiApplication([])
+
+    real, calls = export.stylize_svg, []
+
+    def recording(svg: str, style: str = "plain", seed: int = 0) -> str:
+        styled = real(svg, style, seed)
+        if style != "plain":
+            calls.append([svg, styled])
+        return styled
+
+    cases = []
+    drawing = (out / "animation" / "drawing.svg").read_text(encoding="utf-8")
+    export.stylize_svg = recording
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "styled.svg"
+            for style in STYLED_LOOKS:
+                calls.clear()
+                export.export_svg(str(out / "svg" / "cubic.svg"), str(dest), None, 1.5, "#FFFFFF", style, "content",
+                                  0.1)
+                cases.append({"kind": "svg", "style": style, "svg": "svg/cubic.svg", "calls": list(calls),
+                              "out": dest.read_text(encoding="utf-8")})
+                calls.clear()
+                animated = export.animated_svg(drawing, 2.0, 0.5, None, 1.5, "#fafafa", style, False)
+                cases.append({"kind": "animated", "style": style, "svg": "animation/drawing.svg", "calls": list(calls),
+                              "out": animated})
+                calls.clear()  # ⌘C: the SVG the clipboard gets (dialogs.copy_sketch, export.sketch_mime)
+                mime = export.sketch_mime(str(out / "svg" / "cubic.svg"), 64, "#336699", 1.5, "#fff8e7", style,
+                                          "content", 0.1)
+                cases.append({"kind": "clipboard", "style": style, "svg": "svg/cubic.svg", "calls": list(calls),
+                              "out": bytes(mime.data("image/svg+xml").data()).decode("utf-8")})
+    finally:
+        export.stylize_svg = real
+    return {"cases": cases}
+
+
+def format_cases(out: Path) -> dict:
+    """gui/export.py's other formats of a sketch: one path in one layer for plotters (single_layer_svg), the SVG
+    that draws itself (animated_svg) and its web page (web_page), Lottie (lottie), a SceneSketch cell in two layers
+    (scene_layers.layered) and the overview sheet of a matrix (matrix_sheet_svg)."""
+    import tempfile
+
+    from clipasso_studio.gui import export, scene_layers
+
+    sketches = {name: (out / name).read_text(encoding="utf-8") for name in FORMAT_SKETCHES}
+    single = [{"svg": name, "stroke": stroke, "width": width, "out": export.single_layer_svg(svg, stroke, width)}
+              for name, svg in sketches.items() for stroke, width in FORMAT_LOOKS]
+    animated = [{"svg": name, "length": c[0], "hold": c[1], "stroke": c[2], "width": c[3], "background": c[4],
+                 "keep_order": c[5], "out": export.animated_svg(svg, c[0], c[1], c[2], c[3], c[4], "plain", c[5])}
+                for name, svg in sketches.items() for c in ANIMATED_CASES]
+    pages = [{"title": title, "background": bg, "out": export.web_page(animated[0]["out"], title, bg)}
+             for title, bg in PAGE_CASES]
+    lotties = [{"svg": name, "length": c[0], "hold": c[1], "stroke": c[2], "width": c[3], "background": c[4],
+                "keep_order": c[5], "size": c[6],
+                "out": export.lottie(svg, c[0], c[1], c[2], c[3], c[4], c[5], None, "Kamel", c[6])}
+               for name, svg in sketches.items() for c in LOTTIE_CASES]
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "object.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg">' + "".join(f'<path d="{d}"/>' for d in LAYER_OBJECT) + "</svg>",
+            encoding="utf-8")
+        layered = [{"svg": name, "object": with_object,
+                    "out": scene_layers.layered(svg, tmp if with_object else None, ("Hintergrund", "Objekt"))}
+                   for name, svg in sketches.items() for with_object in (True, False)]
+    cells = {801: sketches["svg/lines.svg"], 804: sketches["svg/cubic.svg"], 1601: sketches["animation/drawing.svg"],
+             1604: sketches["edit/odd.svg"]}
+    sheets = [{"cells": {str(k): v for k, v in cells.items()}, "background": bg, "out": export.matrix_sheet_svg(
+        cells, background=bg)} for bg in ("#FFFFFF", None)]
+    return {"single": single, "animated": animated, "pages": pages, "lottie": lotties, "layered": layered,
+            "sheets": sheets, "object": list(LAYER_OBJECT)}
+
+
+# --------------------------------------------------------------------------------------------------------- jobs
+def _png(path: Path, colour) -> Path:
+    """An 8×8 PNG of one colour – written byte by byte with stored (uncompressed) deflate blocks, so the file is the
+    same on every platform whatever zlib it has."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    raw = b"".join(b"\0" + bytes(colour) * 8 for _ in range(8))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 8, 8, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw, 0)) + chunk(b"IEND", b""))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(png)
+    return path
+
+
+def _run(job_dir: Path, target: Path, settings: dict, seed: int, loss: float, score: float | None,
+         kind: str = "lines"):
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    name = jobs.run_name_for(str(target), settings, seed)
+    run_dir = job_dir / name
+    run_dir.mkdir(parents=True)
+    (run_dir / "best_iter.svg").write_bytes(sketch_svg(kind).encode("utf-8"))
+    _png(run_dir / "best_iter.png", (255, 255, 255))
+    result = jobs.SeedResult(seed=seed, run_name=name, run_dir=str(run_dir), best_loss=loss, best_iter=400,
+                             iterations_done=501, best_svg=str(run_dir / "best_iter.svg"), status="done",
+                             method=schema.method_of(settings), clip_score=score, seconds=12.5)
+    jobs.save_result(result)
+    return result
+
+
+def _job(output: Path, folder: str, target: Path, settings: dict) -> Path:
+    from clipasso_studio.engine import jobs
+
+    job_dir = output / folder
+    job_dir.mkdir(parents=True)
+    jobs.save_input(str(job_dir), str(target))
+    jobs.write_state(str(job_dir), str(target), settings, "running")
+    return job_dir
+
+
+def build_jobs(output: Path, pictures: Path) -> None:
+    from clipasso_studio import settings_schema as schema
+    from clipasso_studio.engine import jobs
+
+    camel, giraffe = _png(pictures / "Kamel.png", (200, 160, 90)), _png(pictures / "Giraffe.png", (220, 180, 60))
+
+    s = schema.normalize({"method": "clipasso", "num_sketches": 3, "num_iter": 501})
+    d = _job(output, "done_clipasso", camel, s)
+    runs = [_run(d, camel, s, seed, loss, None, kind) for seed, loss, kind in
+            ((0, 0.31, "lines"), (1000, 0.27, "cubic"), (2000, 0.35, "lines"))]
+    jobs.finish_job(str(d), str(camel), s, runs)
+    (d / runs[1].run_name / jobs.EDITED_FILE).write_bytes(sketch_svg("lines").encode("utf-8"))  # touched up
+    jobs.write_meta(str(d), favourite=True, title="Kamel am Abend – Skizze ✏️", notes="Für das Album „Tiere“",
+                    tags=["Tier", "Wüste"], albums=["Tiere"], ratings={runs[1].run_name: 1, runs[0].run_name: -1})
+
+    s = schema.normalize({"method": "swiftsketch", "num_sketches": 4, "seed": 20})
+    d = _job(output, "interrupted_swiftsketch", giraffe, s)
+    _run(d, giraffe, s, 20, 0.0, 28.75, "cubic")
+    jobs.set_status(str(d), "interrupted")
+
+    s = schema.normalize({"method": "scenesketch", "layers": "8", "simplicity_levels": 4, "num_sketches": 1})
+    d = _job(output, "scenesketch_matrix", camel, s)
+    _run(d, camel, s, schema.scene_cell_id(8, 0), 0.5, 30.5, "cubic")
+    _run(d, camel, s, schema.scene_cell_id(8, 4), 0.6, 27.25, "lines")
+    jobs.set_status(str(d), "interrupted")
+
+    s = schema.normalize({"method": "clipasso", "num_sketches": 2})
+    d = _job(output, "windows_paths", giraffe, s)
+    runs = [_run(d, giraffe, s, seed, loss, None) for seed, loss in ((0, 0.4), (1000, 0.3))]
+    jobs.finish_job(str(d), str(giraffe), s, runs)
+    jobs.write_meta(str(d), title="Giraffe – von Jürgens PC", tags=["Windows"])
+
+    s = schema.normalize({"method": "clipasso", "num_sketches": 1})  # a job of CLIPasso Studio 2.x
+    d = _job(output, "old_2x", camel, s)
+    jobs.finish_job(str(d), str(camel), s, [_run(d, camel, s, 0, 0.29, None)])
+    shutil.move(str(d / jobs.INPUT_DIR / "Kamel.png"), str(d / "source.png"))
+    shutil.rmtree(d / jobs.INPUT_DIR)
+    (d / jobs.STATE_FILE).unlink()
+    summary = json.loads((d / "job.json").read_text(encoding="utf-8"))
+    summary["favourite"] = True  # (2.x kept the favourite in job.json)
+    (d / "job.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+
+def _swap(value, swaps):
+    if isinstance(value, dict):
+        return {k: _swap(v, swaps) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_swap(v, swaps) for v in value]
+    if isinstance(value, str):
+        for old, new, windows in swaps:
+            if value.startswith(old):
+                rest = value[len(old):].replace("\\", "/")  # (made on Windows: its separators)
+                return new + (rest.replace("/", "\\") if windows else rest)
+    return value
+
+
+def copy_jobs(output: Path, pictures: Path, dest: Path) -> None:
+    """The job folders into the fixtures, their absolute paths as on a Mac (or on Windows for windows_paths); JSON
+    files written again the way Python writes them, with LF line ends."""
+    for job_dir in sorted(output.iterdir()):
+        windows = job_dir.name == "windows_paths"
+        out_root, pic_root = (WIN_OUTPUT, WIN_PICTURES) if windows else (MAC_OUTPUT, MAC_PICTURES)
+        swaps = [(str(output), out_root, windows), (str(pictures), pic_root, windows)]
+        for src in sorted(p for p in job_dir.rglob("*") if p.is_file()):
+            target = dest / src.relative_to(output)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if src.suffix == ".json":
+                data = _swap(json.loads(src.read_text(encoding="utf-8")), swaps)
+                meta = src.name == "meta.json"  # (write_meta keeps umlauts; the others escape them)
+                target.write_bytes(json.dumps(data, indent=2, ensure_ascii=not meta).encode("utf-8"))
+            else:
+                target.write_bytes(src.read_bytes())
+
+
+def _placeholder(value, root: str):
+    if isinstance(value, dict):
+        return {k: _placeholder(v, root) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_placeholder(v, root) for v in value]
+    if isinstance(value, str) and value.startswith(root):
+        return "{jobs}" + value[len(root):].replace("\\", "/")
+    return value
+
+
+def expected_jobs(jobs_dir: Path) -> dict:
+    from clipasso_studio.engine import jobs
+
+    return {d.name: _placeholder(jobs.job_summary(str(d)), str(jobs_dir)) for d in sorted(jobs_dir.iterdir())}
+
+
+# ----------------------------------------------------------------------------------------------------------- all
+def build(out: Path) -> None:
+    from clipasso_studio.headless import export
+
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    schema_data = export.export_schema()
+    schema_data["app_version"] = "fixture"  # (not made again for every version)
+    write_json(out / "schema.json", schema_data)
+    write_json(out / "models.json", export.export_models())
+    write_json(out / "conditions.json", conditions(), indent=None)
+    write_json(out / "pyjson.json", pyjson())
+    write_json(out / "presets.json", preset_cases(), indent=None)
+    write_json(out / "user_presets.json", user_preset_cases(), indent=None)
+    write_json(out / "report.json", report_cases())
+    write_json(out / "recent.json", recent_cases())
+    write_json(out / "crop" / "crop.json", crop_cases(out), indent=None)
+    write_json(out / "versions.json", version_cases())
+    write_json(out / "image_files.json", image_file_cases())
+    (out / "settings.json").write_bytes(settings_file().encode("utf-8"))
+    sketches(out)
+    exports(out)
+    write_json(out / "edit" / "strokes.json", edit_cases(out))
+    write_json(out / "export" / "framing.json", framing_cases(out))
+    write_json(out / "export" / "print.json", print_cases())
+    write_json(out / "paper" / "random.json", random_cases())
+    write_json(out / "paper" / "papers.json", paper_cases(out))
+    write_json(out / "animation" / "animation.json", animation_cases(out))
+    write_json(out / "export" / "formats.json", format_cases(out))
+    write_json(out / "export" / "styled.json", styled_cases(out))
+    write_json(out / "mask" / "overlay.json", mask_cases(out))
+    write_json(out / "mask" / "edit.json", mask_edit_cases(out))
+    write_json(out / "detail" / "edit.json", detail_cases(out))
+    write_json(out / "remote" / "remote.json", remote_cases(out))
+    write_json(out / "phone" / "studio.json", phone_cases(out))
+    write_json(out / "phone" / "export.json", export_cases(), indent=None)
+    real_strftime = time.strftime
+    with tempfile.TemporaryDirectory() as tmp, \
+            mock.patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(tmp, "data"),
+                                         "LOCALAPPDATA": os.path.join(tmp, "data")}), \
+            mock.patch("time.strftime", lambda fmt, t=None: real_strftime(fmt, FIXED_TIME)):
+        output, pictures = Path(tmp) / "CLIPasso Studio", Path(tmp) / "Bilder"
+        build_jobs(output, pictures)
+        copy_jobs(output, pictures, out / "jobs")
+    write_json(out / "jobs_expected.json", expected_jobs(out / "jobs"))
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    args = parser.parse_args(argv)
+    build(Path(args.out))
+    print(f"fixtures written to {args.out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,30 @@
+{
+  "created": "2026-03-14 15:09:26",
+  "target": "/Users/studio/Pictures/Giraffe.png",
+  "settings": {
+    "num_sketches": 4,
+    "seed": 20,
+    "best_by": "faithful",
+    "mask_object": true,
+    "mask_model": "birefnet",
+    "frame_object": true,
+    "fix_scale": false,
+    "guidance_param": 2.5,
+    "use_refine": true,
+    "save_diffusion_sketch": false,
+    "width": 2.0,
+    "device": "auto",
+    "gpunum": 0,
+    "multiprocess": false,
+    "num_threads": 0,
+    "method": "swiftsketch"
+  },
+  "method": "swiftsketch",
+  "seeds": [
+    20,
+    1020,
+    2020,
+    3020
+  ],
+  "status": "interrupted"
+}

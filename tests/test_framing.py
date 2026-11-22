@@ -138,3 +138,35 @@ def test_clipasso_records_the_frame(tmp_path):
         pipeline.get_target(args)
         pad = framing.fix_scale_pad(300, 200) if fix_scale else None
         assert args.photo_frame == framing.photo_frame((300, 200), pad=pad)
+
+
+def test_a_background_covers_the_new_frame(tmp_path, qapp):
+    """A background is as big as the canvas it was drawn on (svg_io, restyle_svg); a new frame larger than the
+    canvas (cropped to the strokes with a wide margin) or smaller (the photo's shape) gets a background of its own
+    size – otherwise the margin outside the old canvas stayed without it (in the SVG and in the PNG)."""
+    from PIL import Image
+
+    from clipasso_studio.gui import export
+
+    drawn = ('<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">'
+             '<rect x="0" y="0" width="224" height="224" fill="#fff8e7" />'
+             '<path d="M 60 60 C 100 80 140 70 160 120" fill="none" stroke="rgb(0, 0, 0)" stroke-width="2"/></svg>')
+    src = tmp_path / "run" / "best_iter.svg"
+    src.parent.mkdir()
+    src.write_text(drawn, encoding="utf-8")
+    dest = tmp_path / "out.svg"
+    export.export_svg(str(src), str(dest), background="#101010", frame="content", margin=0.5)
+    out = dest.read_text(encoding="utf-8")
+    x, y, w, h = re.search(r'viewBox="([^"]+)"', out).group(1).split()
+    rects = re.findall(r"<rect\b[^>]*>", out)
+    assert len(rects) == 2 and all(f'x="{x}" y="{y}" width="{w}" height="{h}"' in r for r in rects), rects
+    png = tmp_path / "out.png"
+    export.export_png(str(src), str(png), size=200, background="#ffffff", frame="content", margin=0.5)
+    with Image.open(png) as image:
+        rgb = image.convert("RGB")
+        assert rgb.getpixel((1, 1)) == rgb.getpixel((rgb.width - 2, rgb.height - 2)) == (255, 248, 231)
+    # a background of before 4.2 ("100%") gets the new frame's numbers too
+    old = drawn.replace('x="0" y="0" width="224" height="224"', 'width="100%" height="100%"')
+    framed = framing.make_framing(old, "content", None, 0.5).apply(old)
+    x, y, w, h = re.search(r'viewBox="([^"]+)"', framed).group(1).split()
+    assert f'width="{w}" height="{h}"' in re.search(r"<rect\b[^>]*>", framed).group(0)

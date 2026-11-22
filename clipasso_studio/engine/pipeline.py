@@ -12,6 +12,7 @@ import json
 import math
 import os
 import random
+import sys
 import time
 from types import SimpleNamespace
 from typing import Any
@@ -23,7 +24,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from .. import settings_schema as schema
-from . import checkpoint, imaging, jobs, masking
+from . import checkpoint, imaging, jobs, masking, mps_ops
 from .imaging import load_rgb  # noqa: F401 (used by the methods as pipeline.load_rgb)
 from .jobs import SeedResult, finish_job, job_seeds, make_job_dir, run_name_for  # noqa: F401
 
@@ -107,11 +108,28 @@ def cuda_arch_supported(idx: int) -> bool:
     return False
 
 
+def mps_available() -> bool:
+    """Is the Apple GPU (Metal Performance Shaders) usable by this PyTorch?"""
+    mps = getattr(torch.backends, "mps", None)
+    return bool(mps is not None and mps.is_available())
+
+
 def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
-    """-> (device, warning)."""
+    """-> (device, warning). "auto": an NVIDIA card, else the Apple GPU for the methods in ``schema.MPS_AUTO``, else
+    the CPU."""
     wanted = settings.get("device", "auto")
+    if wanted == "mps" and sys.platform != "darwin":
+        wanted = "auto"  # a job from a Mac continued on another computer: there it computes as "auto" would
     if wanted == "cpu":
         return torch.device("cpu"), None
+    if wanted == "mps":
+        if mps_available():
+            if mps_ops.ensure_right("mps") == "wrong":
+                return torch.device("cpu"), ("mps_wrong:The Apple GPU (MPS) computes wrongly with this PyTorch – "
+                                             "running on the CPU instead.")
+            return torch.device("mps"), None
+        return torch.device("cpu"), ("mps_unavailable:The Apple GPU (MPS) is not available – running on the CPU "
+                                     "instead.")
     if torch.cuda.is_available() and torch.cuda.device_count() > 0:
         idx = min(int(settings.get("gpunum", 0)), torch.cuda.device_count() - 1)
         if not cuda_arch_supported(idx):
@@ -122,6 +140,9 @@ def resolve_device(settings: dict) -> tuple[torch.device, str | None]:
     if wanted == "cuda":
         return torch.device("cpu"), ("cuda_unavailable:CUDA is not available – running on the CPU instead "
                                      "(much slower).")
+    if (sys.platform == "darwin" and schema.method_of(settings) in schema.MPS_AUTO and mps_available()
+            and mps_ops.ensure_right("mps") != "wrong"):  # (the Apple GPU only on a Mac)
+        return torch.device("mps"), None
     return torch.device("cpu"), None
 
 

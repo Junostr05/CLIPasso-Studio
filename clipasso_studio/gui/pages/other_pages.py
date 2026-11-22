@@ -17,6 +17,7 @@ from ... import settings_schema as schema
 from ...engine import imaging, jobs, model_store
 from .. import background, crash, dialogs, icons, methods_ui, power, shortcuts, theme, thumbs, updates
 from ..drop import dropped_images, has_images, image_files  # noqa: F401 (image_files re-exported)
+from ..methods_ui import MODEL_GROUP_ORDER, MODEL_PURPOSE, model_group  # (Qt-free there: the Mac app exports them)
 from ..app_settings import app_settings
 from ..controller import JobController, QueuedJob
 from ..i18n import AUTO, LANGUAGES, i18n, number, system_language, tr
@@ -536,38 +537,6 @@ def move_to_trash(path: str) -> bool:
 
 
 # ===================================================================== models
-MODEL_PURPOSE = {
-    "clip:RN101": "ui.models.purpose.rn101", "clip:ViT-B/32": "ui.models.purpose.vitb32",
-    "u2net": "ui.models.purpose.u2net", "dino": "ui.models.purpose.dino", "vgg16": "ui.models.purpose.vgg16",
-    "swiftsketch:diffusion": "ui.models.purpose.ss_diffusion", "swiftsketch:refine": "ui.models.purpose.ss_refine",
-    "sd15": "ui.models.purpose.sd15", "dpt-hybrid": "ui.models.purpose.dpt", "hed": "ui.models.purpose.hed",
-    "upernet": "ui.models.purpose.upernet", "blip": "ui.models.purpose.blip", "sdxl": "ui.models.purpose.sdxl",
-    "lama": "ui.models.purpose.lama", "birefnet": "ui.models.purpose.birefnet",
-    "birefnet-lite": "ui.models.purpose.birefnet-lite", "taesd": "ui.models.purpose.taesd",
-    "blazeface": "ui.models.purpose.blazeface",
-    "semantic:openclip-b16": "ui.models.purpose.openclip_b16", "semantic:siglip-b16": "ui.models.purpose.siglip_b16",
-}
-
-
-def model_group(key: str) -> str:
-    spec = model_store.SPECS[key]
-    if spec.extra.get("purpose") == "benchmark":
-        return "benchmark"  # (not on the models page)
-    if spec.bundled:
-        return "bundled"
-    if spec.extra.get("experimental"):
-        return "experimental"
-    if key.startswith("birefnet"):
-        return "masking"
-    if key.startswith("clip:"):
-        return "clipasso"
-    if key.startswith("swiftsketch:"):
-        return "swiftsketch"
-    if key == "lama":
-        return "scenesketch"
-    return "controlsketch"
-
-
 def _size_text(mb: float) -> str:
     from ..i18n import size
 
@@ -821,8 +790,7 @@ class ModelsPage(QWidget):
         self.list_lay.addSpacing(10)
         self.rows = []
         self.group_titles: dict[str, tuple[QLabel, QLabel]] = {}
-        for group in ("bundled", "masking", "clipasso", "experimental", "swiftsketch", "controlsketch",
-                      "scenesketch"):
+        for group in MODEL_GROUP_ORDER:
             title = label("", "h2")
             hint = label("", "faint", wrap=True)
             if group != "bundled":
