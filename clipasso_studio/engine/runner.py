@@ -168,7 +168,18 @@ class _SeedsDone:
 
 def _run_job(reporter, settings, target, output_root, job_dir, seeds, finish, control, resume):
     """``pipeline.run_job`` – and when cuDNN finds no way to run a convolution, again with a simpler way
-    (:func:`cudnn_step_back`): the sketches finished before are kept, the others continue (from their checkpoints)."""
+    (:func:`cudnn_step_back`): the sketches finished before are kept, the others continue (from their checkpoints).
+    Measured meanwhile: what runs on which device (device_analysis, written to the job's analysis/)."""
+    from . import device_analysis
+
+    reporter = device_analysis.begin(reporter, getattr(reporter, "worker_id", 0))  # (what runs where: analysis/)
+    try:
+        return _run_job_measured(reporter, settings, target, output_root, job_dir, seeds, finish, control, resume)
+    finally:
+        device_analysis.end()
+
+
+def _run_job_measured(reporter, settings, target, output_root, job_dir, seeds, finish, control, resume):
     import gc
 
     import torch

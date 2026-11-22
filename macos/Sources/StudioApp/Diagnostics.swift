@@ -24,6 +24,10 @@ public extension AppModel {
            let devices = try? await engine.request("devices", timeout: .seconds(10)), let d = devices.objectValue
         {
             out.append("PyTorch \(d["torch"]?.stringValue ?? "?") · MPS \(d["mps"]?.truthy == true ? "yes" : "no")")
+            if let build = d["build"]?.stringValue {  // (the engine's commit: which code runs)
+                out.append("Engine \(d["engine"]?.stringValue ?? "?") · build \(build)"
+                    + ((d["linear"]?.stringValue).map { " · linear layer on MPS: \($0)" } ?? ""))
+            }
         } else {
             out.append("PyTorch: not checked")
         }

@@ -39,6 +39,14 @@ def test_job_runs_with_preview_and_done(engine, tmp_path):
     summary = json.loads((tmp_path / "Ausgabe ö" / "Skizzen" / os.path.basename(job_dir) / "job.json")
                          .read_text(encoding="utf-8"))
     assert summary["best_svg"].endswith("_best.svg") and jobs.read_state(job_dir)["status"] == "done"
+    # what computed where (the Mac app's Analysis page): the parts of the steps with their devices
+    from clipasso_studio.engine import device_analysis
+
+    analysis = device_analysis.read(job_dir)
+    assert analysis and analysis["finished"] and analysis["iterations"] == 30 and analysis["method"] == "clipasso"
+    parts = {p["key"]: p for p in analysis["parts"]}
+    assert parts["draw"]["calls"] >= 30 and parts["clip"]["calls"] > 0 and parts["backward"]["calls"] >= 30
+    assert parts["optimizer"]["calls"] >= 30 and parts["draw"]["devices"] == ["cpu"]
     assert engine.request("pause")["error"]["code"] == "no_job"  # the job is over
 
 

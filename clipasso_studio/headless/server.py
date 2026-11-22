@@ -31,9 +31,15 @@ TERMINAL = ("job_done", "job_failed", "job_ended")  # the last event of a job
 WARM_IDLE = 300.0  # s – the waiting worker keeps its models this long after a job (like the studio)
 REQUEST_WAIT = 0.05  # s – how long the loop waits for a request when no event is coming
 
-_PROBE = ("import json, torch; mps = getattr(torch.backends, 'mps', None); "
-          "print(json.dumps({'torch': torch.__version__.split('+')[0], 'cuda': bool(torch.cuda.is_available()), "
-          "'mps': bool(mps is not None and mps.is_available())}))")
+_PROBE = ("import json, torch; mps = getattr(torch.backends, 'mps', None)\n"
+          "found = {'torch': torch.__version__.split('+')[0], 'cuda': bool(torch.cuda.is_available()), "
+          "'mps': bool(mps is not None and mps.is_available())}\n"
+          "try:\n"  # (the Analysis page's facts – the probe stays what it was where they cannot be had)
+          "    from clipasso_studio.engine.device_analysis import probe_extra\n"
+          "    found.update(probe_extra(found))\n"
+          "except Exception as exc:\n"
+          "    found['extra_error'] = str(exc)[:200]\n"
+          "print(json.dumps(found))")
 
 
 PIPE_POLL = 0.02  # s – how often a Windows pipe is looked at when nothing came

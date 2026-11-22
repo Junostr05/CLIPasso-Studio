@@ -22,6 +22,11 @@ import Testing
         return ((response as? HTTPURLResponse)?.statusCode ?? 0, (try? PyJSON.parse(data))?.objectValue)
     }
 
+    /// A result's folder by its name.
+    func gallery(_ model: AppModel, _ name: String) -> URL? {
+        model.gallery.everything.first { $0.jobDir.lastPathComponent == name }?.jobDir
+    }
+
     @Test func anAIUsesTheApp() async throws {
         let done = SelfTestTests.fixtures.appending(path: "jobs/done_clipasso")
         let out = FileManager.default.temporaryDirectory.appending(path: "mcp-\(UUID().uuidString)")
@@ -87,6 +92,29 @@ import Testing
         #expect(try Data(contentsOf: file).starts(with: Array("%PDF".utf8)))
 
         #expect(Self.json(await model.mcpCall("open_result", ["result": .string(name)]))?["opened"] == .string(name))
+
+        // what computes where: the Mac, the engine (its build), "Automatic" per method and why, a job's parts
+        let folder = try #require(gallery(model, name)).appending(path: "analysis")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("""
+            {"format": 1, "worker": 0, "method": "clipasso", "device": "mps", "draw_device": "cpu", "linear": "native",
+             "started": "2026-11-22T01:00:00+01:00", "updated": "2026-11-22T01:05:00+01:00", "finished": true,
+             "seconds": 10, "optimizing_seconds": 8, "iterations": 40,
+             "parts": [{"key": "draw", "seconds": 0.5, "calls": 10, "devices": ["cpu"]},
+                       {"key": "clip", "seconds": 4, "calls": 20, "devices": ["mps"]}],
+             "fallbacks": [], "memory": {"rss_peak": 1000000}}
+            """.utf8).write(to: folder.appending(path: "worker-0.json"))
+        let analysis = try #require(Self.json(await model.mcpCall("get_analysis", ["result": .string(name)])))
+        #expect(analysis["engine"]?.objectValue?["build"] == "abc1234 2026-11-22T01:00Z")
+        #expect(analysis["mac"]?.objectValue?["cores"]?.intValue ?? 0 > 0)
+        let automatic = analysis["automatic"]?.arrayValue?.compactMap(\.objectValue) ?? []
+        #expect(automatic.first { $0["method"] == "clipasso" }?["device"] == "mps")  // (the engine's default)
+        #expect(automatic.first { $0["method"] == "swiftsketch" }?["device"] == "cpu")
+        let measuredJob = try #require(analysis["job"]?.objectValue)
+        #expect(measuredJob["device"] == "mps" && measuredJob["iterations"] == 40)
+        #expect(measuredJob["parts"]?.arrayValue?.first?.objectValue?["devices"] == ["cpu"])
+        #expect(await model.mcpCall("get_analysis", ["result": "no-such-result"]).isError)
+        #expect(Self.json(await model.mcpCall("get_status", [:]))?["engine_build"] == "abc1234 2026-11-22T01:00Z")
         #expect(Self.json(await model.mcpCall("get_hardware_report", [:])) == ["measured": false])
         #expect(await model.mcpCall("whatever", [:]).isError)
 

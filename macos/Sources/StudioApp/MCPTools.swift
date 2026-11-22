@@ -134,6 +134,12 @@ public extension AppModel {
                 + "step, quality) – minutes; afterwards \"auto\" computes each method on the better device.",
                     inputSchema: schema(["methods": ["type": "array", "items": ["type": "string"]],
                                          "iterations": ["type": "integer"]])),
+            MCPTool(name: "get_analysis", description: "What computes where: this Mac (chip, cores, memory), the "
+                + "engine (version, build, PyTorch, Apple GPU, how the linear layer computes there), where "
+                + "\"Automatic\" computes each method and why, and for a job (the running one, else the newest result, "
+                + "or `result`) its time per part of a step – drawing, CLIP, model, backward, optimizer – with the "
+                + "device each ran on, operations the CPU computed for the Apple GPU, memory.",
+                    inputSchema: schema(["result": result])),
             MCPTool(name: "get_hardware_report", description: "The last hardware test: per method the times, the speed-up, "
                 + "and where \"auto\" computes."),
         ]
@@ -172,6 +178,8 @@ public extension AppModel {
             case .success(let report): return .json(.object(report))
             case .failure(let why): return .error(why.description)
             }
+        case "get_analysis":
+            return await mcpAnalysis(a)
         case "get_hardware_report":
             return .json(hardwareReport.map(JSONValue.object) ?? ["measured": false])
         default:
@@ -186,7 +194,9 @@ public extension AppModel {
         if let engine, let answer = try? await engine.request("devices", timeout: .seconds(10)) { devices = answer }
         let params = (studio.methodSchema?.params ?? []).filter { !$0.hidden && $0.kind != .path }
         return [
-            "app_version": .string(version), "engine": .string(engineStatusText), "devices": devices,
+            "app_version": .string(version), "devices": devices,
+            "engine": .string(engineStatus == .ready ? "ready" : engineStatusText),
+            "engine_build": devices.objectValue?["build"] ?? .null,
             "studio": [
                 "image": studio.image.map { JSONValue.string($0.path) } ?? .null,
                 "method": .string(studio.method), "preset": studio.preset.map(JSONValue.string) ?? .null,

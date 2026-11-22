@@ -40,6 +40,9 @@ cp -R "$ROOT/clipasso_studio/resources/samples" "$APP/Contents/Resources/samples
 if [ -d "$OUT/python" ]; then  # the app's own Python and the engine (build_python.sh)
     ditto "$OUT/python" "$APP/Contents/Resources/python"
     ditto "$OUT/engine" "$APP/Contents/Resources/engine"
+    # the engine's build (the Analysis page and the MCP tool get_status name it: which code a Mac really runs)
+    BUILD_ID=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo dev)
+    echo "$BUILD_ID $(date -u +%Y-%m-%dT%H:%MZ)" > "$APP/Contents/Resources/engine/clipasso_studio/BUILD"
 fi
 BLAZEFACE=$(cd "$ROOT" && PYTHONPATH="$ROOT" "$PYTHON" -c \
     "from clipasso_studio.engine import model_store; print(model_store.SPECS['blazeface'].filename)")

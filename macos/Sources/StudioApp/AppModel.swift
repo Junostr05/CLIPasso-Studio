@@ -68,6 +68,8 @@ public final class AppModel {
     public let telegram = TelegramLink()
     /// the server an AI uses the app through (MCP, on this Mac only)
     public let mcp = MCPLink()
+    /// the Analysis page: what computes where
+    public let analysis = AnalysisModel()
     /// how the bot's calls go out (the tests answer as Telegram would) and how long "Connect" waits for /start
     @ObservationIgnored let telegramTransport: any TelegramTransport
     @ObservationIgnored let telegramAPI = Telegram.api
@@ -221,6 +223,7 @@ public final class AppModel {
             await server.stop()
             phone.stopped()
         }
+        analysis.facts = nil  // (asked again of the next engine)
         if let server = mcp.server {
             await server.stop()
             mcp.server = nil

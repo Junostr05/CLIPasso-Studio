@@ -327,8 +327,16 @@ def test_probe_devices_asks_pytorch_in_a_child_process():
     from clipasso_studio.headless.server import probe_devices
 
     found = probe_devices()
-    assert found == {"torch": torch.__version__.split("+")[0], "cuda": torch.cuda.is_available(),
-                     "mps": bool(torch.backends.mps.is_available())}
+    assert {k: found[k] for k in ("torch", "cuda", "mps")} == {
+        "torch": torch.__version__.split("+")[0], "cuda": torch.cuda.is_available(),
+        "mps": bool(torch.backends.mps.is_available())}
+    # (for the Analysis page: the engine's version and build, the methods "auto" puts on the Apple GPU, …)
+    from clipasso_studio import __version__, settings_schema
+
+    assert "extra_error" not in found, found.get("extra_error")
+    assert found["engine"] == __version__ and found["build"] and found["mps_auto"] == list(settings_schema.MPS_AUTO)
+    assert found["draw_on_mps"] == "cpu" and found["cpu_count"] > 0 and found["threads"] > 0
+    assert ("linear" in found) == found["mps"]
     assert "torch" in sys.modules  # (this test imported it – the server itself does not)
 
 
@@ -358,7 +366,7 @@ def test_devices_answer_while_the_app_waits(tmp_path):
     engine = Engine(tmp_path)
     try:
         answer = engine.request("devices", timeout=90)
-        assert answer["ok"] and set(answer["result"]) == {"torch", "cuda", "mps"}, answer
+        assert answer["ok"] and {"torch", "cuda", "mps", "engine", "build"} <= set(answer["result"]), answer
     finally:
         engine.close()
 

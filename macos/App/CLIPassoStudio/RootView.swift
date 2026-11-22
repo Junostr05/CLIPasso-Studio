@@ -5,7 +5,7 @@ import SwiftUI
 
 /// The pages of the window, as in the studio's navigation.
 enum Page: String, CaseIterable, Identifiable {
-    case studio, compare, queue, gallery, models, settings
+    case studio, compare, queue, gallery, models, analysis, settings
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum Page: String, CaseIterable, Identifiable {
         case .queue: "nav.queue"
         case .gallery: "nav.gallery"
         case .models: "ui.models.title"
+        case .analysis: "ui.mac.analysis.title"
         case .settings: "ui.settings.title"
         }
     }
@@ -27,6 +28,7 @@ enum Page: String, CaseIterable, Identifiable {
         case .queue: "list.bullet.rectangle"
         case .gallery: "square.grid.2x2"
         case .models: "shippingbox"
+        case .analysis: "chart.bar.xaxis"
         case .settings: "gearshape"
         }
     }
@@ -51,6 +53,7 @@ struct RootView: View {
                 case .queue: QueueView()
                 case .gallery: GalleryView()
                 case .models: ModelsView()
+                case .analysis: AnalysisView()
                 case .settings: SettingsView()
                 }
             }
